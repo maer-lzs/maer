@@ -11,14 +11,14 @@ import Foundation
 /// The folded iPhone Duo stays upright; open, on an iPhone and an iPad the
 /// window keeps its orientations.
 struct FoldOrientationTests {
-    @Test("zugeklappt nur hochkant, offen und ohne Scharnier wie bisher")
+    @Test("folded only upright, open and without a hinge as before")
     func onlyTheClosedHingeLocks() {
         #expect(FoldOrientation.uprightOnly(hingeClosed: true))
         #expect(!FoldOrientation.uprightOnly(hingeClosed: false))
         #expect(!FoldOrientation.uprightOnly(hingeClosed: nil))
     }
 
-    @Test("die Szene fragt die Regel, liest das Scharnier und meldet jeden Wechsel", .needsTheSources)
+    @Test("the scene asks the rule, reads the hinge and reports every change", .needsTheSources)
     func theSceneAsksTheRule() throws {
         let app = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/MaerApp.swift"), encoding: .utf8))

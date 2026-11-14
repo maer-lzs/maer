@@ -18,45 +18,45 @@ struct FailureReasonTests {
     /// appear in a reason, which is why the last resort stays the type name.
     enum Eigen: Error { case abgewiesen(at: String) }
 
-    @Test("ein Fehler aus Objective-C nennt Domaene und Code")
+    @Test("an error from Objective-C names domain and code")
     func aBridgedErrorNamesItsDomainAndCode() {
-        // Eine Domaene, die NICHT nach URLError brueckt: genau die Sorte, die
-        // am Geraet als `__NSCFError` in der Zeile stand.
+        // A domain that does NOT bridge to URLError: exactly the kind that
+        // stood in the line as `__NSCFError` on the device.
         let error = NSError(domain: NSPOSIXErrorDomain, code: 54)
         #expect(FailureReason.of(error) == "NSPOSIXErrorDomain=54")
         #expect(!FailureReason.of(error).contains("NSError"), "die Klasse ist kein Grund")
         #expect(!FailureReason.of(error).contains("__NSCF"), "die Klasse ist kein Grund")
     }
 
-    /// Warum der URLError-Zweig VORNE stehen muss: ein `NSError` in
-    /// `NSURLErrorDomain` brueckt von selbst nach `URLError`, und die kurze
-    /// Form ist die, auf der die Nachbarn und die alten Logzeilen stehen.
-    @Test("ein NSError in der URL-Domaene kommt als kurze Form heraus, nicht als Domaene")
+    /// Why the URLError branch has to stand FIRST: an `NSError` in
+    /// `NSURLErrorDomain` bridges to `URLError` by itself, and the short
+    /// form is the one the neighbors and the old log lines rest on.
+    @Test("an NSError in the URL domain comes out as the short form, not as a domain")
     func anNSErrorInTheURLDomainComesOutShort() {
         #expect(FailureReason.of(NSError(domain: NSURLErrorDomain, code: -1001)) == "urlError=-1001")
     }
 
-    @Test("der darunterliegende Fehler kommt einmal mit, weil dort der Mechanismus steht")
+    @Test("the underlying error comes along once, because the mechanism is there")
     func theUnderlyingErrorComesAlongOnce() {
         let unten = NSError(domain: NSPOSIXErrorDomain, code: 54)
         let oben = NSError(domain: "kNWErrorDomainPOSIX", code: -1005,
                            userInfo: [NSUnderlyingErrorKey: unten])
         #expect(FailureReason.of(oben) == "kNWErrorDomainPOSIX=-1005 under=NSPOSIXErrorDomain=54")
-        // Eine Kette waechst sonst ohne Grenze: genau eine Ebene.
+        // Otherwise a chain grows without limit: exactly one level.
         let ganzUnten = NSError(domain: "A", code: 1, userInfo: [NSUnderlyingErrorKey: unten])
         let dreifach = NSError(domain: "B", code: 2, userInfo: [NSUnderlyingErrorKey: ganzUnten])
         #expect(FailureReason.of(dreifach) == "B=2 under=A=1")
     }
 
-    @Test("ein URLError behaelt seine kurze Form, auf der die Nachbarn stehen")
+    @Test("a URLError keeps its short form, which the neighbors rest on")
     func aURLErrorKeepsItsShortForm() {
         #expect(FailureReason.of(URLError(.timedOut)) == "urlError=-1001")
         #expect(FailureReason.of(URLError(.cannotConnectToHost)) == "urlError=-1004")
-        // Dieselbe Form, auf die MaerSyncSignIn und ArchiveOrgClient bauen.
+        // The same form that MaerSyncSignIn and ArchiveOrgClient build on.
         #expect(MaerSyncFailure.reason(of: URLError(.timedOut)) == "urlError=-1001")
     }
 
-    @Test("ein eigener Fehler bleibt sein TYP, damit keine Adresse in ein Log rutscht")
+    @Test("an own error stays its TYPE, so no address slips into a log")
     func anOwnErrorStaysItsTypeSoNoAddressLeaks() {
         let reason = FailureReason.of(Eigen.abgewiesen(at: "https://sync.example.test/v1/doc"))
         #expect(reason == "Eigen", "der Fall selbst gehoert nicht in die Zeile")
@@ -64,7 +64,7 @@ struct FailureReasonTests {
         #expect(!reason.contains("https"), "eine Adresse steht nie in einem Grund")
     }
 
-    @Test("die eigenen Faelle des Dienstes behalten ihren Namen")
+    @Test("the service's own cases keep their name")
     func theServicesOwnCasesKeepTheirName() {
         #expect(MaerSyncFailure.reason(of: MaerSyncFailure.sessionEnded) == "sessionEnded")
         #expect(MaerSyncFailure.reason(of: MaerSyncFailure.status(410)) == "status(410)")
@@ -89,7 +89,7 @@ struct FailureReasonTests {
     /// whole time and the fence never saw it, so the stock read five files
     /// when it was six. A fence that measures a name answers about that
     /// name, and the class is about the shape.
-    @Test("der blinde Rueckfall steht nur noch dort, wo er begruendet ist", .needsTheSources)
+    @Test("the blind fallback stands only where it is justified", .needsTheSources)
     func theBlindFallbackOnlyStandsWhereItIsReasoned() throws {
         let bestand: [String: String] = [
             "FailureReason.swift": "die Regel selbst, letzter Ausweg fuer einen Swift-Fehler",
@@ -121,7 +121,7 @@ struct FailureReasonTests {
     /// answer zero in silence: a stock that finds nothing looks exactly like
     /// a tree that carries nothing. Every line here is a shape the tree could
     /// grow tomorrow.
-    @Test("das Mass des Bestands-Zauns kennt die Gestalt, nicht den Namen des Wertes")
+    @Test("the measure of the stock fence knows the shape, not the name of the value")
     func theStockMeasureKnowsTheShapeNotTheName() throws {
         let ausdruck = try NSRegularExpression(pattern: Self.blindFallbackShape)
         func trifft(_ text: String) -> Bool {

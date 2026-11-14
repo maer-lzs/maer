@@ -19,7 +19,7 @@ struct FreeCatalogDecodersFenceTests {
         Self.forbidden.filter { text.contains($0) }
     }
 
-    @Test("Die Zerleger der freien Kataloge kennen weder Bestand noch Speicher noch Transport", .needsTheSources)
+    @Test("The decoders of the free catalogs know neither stock nor store nor transport", .needsTheSources)
     func decodersStayPure() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Models/FreeCatalogDecoders.swift") })
@@ -29,7 +29,7 @@ struct FreeCatalogDecodersFenceTests {
         #expect(Self.offenders(in: "try JSONDecoder().decode(Response.self, from: data)").isEmpty)
     }
 
-    @Test("Die Clients zerlegen nicht selbst", .needsTheSources)
+    @Test("The clients do not decode themselves", .needsTheSources)
     func clientsDoNotDecode() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Networking/FreeCatalogClients.swift") })

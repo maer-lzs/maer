@@ -25,7 +25,7 @@ struct EpisodeMappingFenceTests {
         return code.matches(of: pattern).count
     }
 
-    @Test("der Zaehler erkennt eine Abbildung an ihrer Form, nicht an ihrem Namen")
+    @Test("the counter recognizes a mapping by its form, not by its name")
     func theCounterKnowsAMappingByItsShape() {
         #expect(Self.mappings(in: "private func libraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {") == 1)
         #expect(Self.mappings(in: "static func entry(_ s: PodcastShow,\n    _ e: PodcastEpisode) -> LibraryItem {") == 1)
@@ -34,7 +34,7 @@ struct EpisodeMappingFenceTests {
         #expect(Self.mappings(in: "// func old(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem") == 0)
     }
 
-    @Test("genau eine Abbildung Folge zu Eintrag, und sie liegt in Models", .needsTheSources)
+    @Test("exactly one mapping from episode to entry, and it lies in Models", .needsTheSources)
     func exactlyOneMappingBelowTheViews() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")

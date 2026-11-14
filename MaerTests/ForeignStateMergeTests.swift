@@ -19,21 +19,21 @@ struct ForeignStateMergeTests {
                               stampedAt: stamp)
     }
 
-    @Test("(a) beide mit Zeitpunkt: der neuere gewinnt, auch mit kleinerer Position")
+    @Test("(a) both with a moment: the newer wins, even with a smaller position")
     func newerWinsEvenWhenBehind() {
-        let local: [Double] = [900, 1_000]           // Mär: weiter, aber aelter
+        let local: [Double] = [900, 1_000]           // Mär: further, but older
         let entry = ForeignStateMerge.adopt(local: local, foreign: foreign(300, at: 2_000), duration: 3_600)
         #expect(entry?.first == 300)
         #expect(entry?[1] == 2_000)
     }
 
-    @Test("(a) beide mit Zeitpunkt: der aeltere verliert, auch mit groesserer Position")
+    @Test("(a) both with a moment: the older loses, even with a larger position")
     func olderLosesEvenWhenAhead() {
         let local: [Double] = [300, 2_000]
         #expect(ForeignStateMerge.adopt(local: local, foreign: foreign(900, at: 1_000), duration: 3_600) == nil)
     }
 
-    @Test("(a) gleicher Zeitpunkt ist ein ehrliches Unentschieden, lokal bleibt")
+    @Test("(a) the same moment is an honest tie, local stays")
     func tieKeepsLocal() {
         #expect(ForeignStateMerge.adopt(local: [300, 1_000], foreign: foreign(900, at: 1_000), duration: 3_600) == nil)
     }
@@ -42,19 +42,19 @@ struct ForeignStateMergeTests {
     /// unplayed is knowledge with a time. Position zero alone used to read
     /// as "nothing known", so a fill wrote over the reset and an older
     /// foreign state beat a newer one.
-    @Test("Grabstein neuer als der Fremdstand: bleibt")
+    @Test("Tombstone newer than the foreign state: stays")
     func newerTombstoneStays() {
         #expect(ForeignStateMerge.adopt(local: [0, 2_000], foreign: foreign(900, at: 1_000), duration: 3_600) == nil)
     }
 
-    @Test("Grabstein aelter als der Fremdstand: der Fremdstand gewinnt")
+    @Test("Tombstone older than the foreign state: the foreign state wins")
     func olderTombstoneLoses() throws {
         let entry = try #require(ForeignStateMerge.adopt(local: [0, 1_000], foreign: foreign(900, at: 2_000), duration: 3_600))
         #expect(entry[0] == 900)
         #expect(entry[1] == 2_000)
     }
 
-    @Test("Fremdstand ohne Zeitpunkt gegen einen Grabstein: nichts")
+    @Test("Foreign state without a moment against a tombstone: nothing")
     func unstampedNeverFillsOverTombstone() {
         #expect(ForeignStateMerge.adopt(local: [0, 1_000], foreign: foreign(900, at: nil), duration: 3_600) == nil)
         // Truly nothing known (no entry, or a bare zero) still fills.
@@ -62,36 +62,36 @@ struct ForeignStateMergeTests {
         #expect(ForeignStateMerge.adopt(local: [0], foreign: foreign(900, at: nil), duration: 3_600) != nil)
     }
 
-    @Test("(b) ohne Zeitpunkt fuellt die Quelle nur eine Luecke")
+    @Test("(b) without a moment the source only fills a gap")
     func withoutMomentOnlyFills() {
         #expect(ForeignStateMerge.adopt(local: [300, 1_000], foreign: foreign(900), duration: 3_600) == nil)
         let filled = ForeignStateMerge.adopt(local: nil, foreign: foreign(900), duration: 3_600)
         #expect(filled?.first == 900)
-        // Und traegt KEIN „jetzt": ein Zeitpunkt von null verliert gegen
-        // jeden echten spaeteren.
+        // And carries NO „jetzt": a moment of zero loses against
+        // every real later one.
         #expect(filled?[1] == 0)
     }
 
-    @Test("(c) gehoert wird nie zurueckgenommen, auch nicht von einem neueren ungehoert")
+    @Test("(c) heard is never taken back, not even by a newer unheard")
     func finishedIsNeverRetracted() {
-        let local: [Double] = [3_600, 1_000]         // fertig
+        let local: [Double] = [3_600, 1_000]         // finished
         #expect(ForeignStateMerge.adopt(local: local, foreign: foreign(120, at: 9_000), duration: 3_600) == nil)
         #expect(ForeignStateMerge.adopt(local: local, foreign: foreign(3_600, finished: true, at: 9_000),
                                         duration: 3_600) == nil)
     }
 
-    @Test("gehoert ohne Dauer wird der Sentinel, nicht nichts")
+    @Test("heard without a duration becomes the sentinel, not nothing")
     func finishedWithoutDurationIsTheSentinel() {
         let entry = ForeignStateMerge.adopt(local: nil, foreign: foreign(0, finished: true, at: 5), duration: 0)
         #expect(entry?.first == ProgressMark.playedSentinel)
     }
 
-    @Test("ein alter Eintrag ohne Zeitpunkt zaehlt als Zeitpunkt null")
+    @Test("an old entry without a moment counts as moment zero")
     func oneValueLocalCountsAsZeroMoment() {
         #expect(ForeignStateMerge.adopt(local: [900], foreign: foreign(300, at: 1), duration: 3_600)?.first == 300)
     }
 
-    @Test("eine Position unter einer Sekunde ist kein Stand")
+    @Test("a position under one second is no state")
     func tinyPositionIsNothing() {
         #expect(ForeignStateMerge.adopt(local: nil, foreign: foreign(0.5, at: 1), duration: 3_600) == nil)
     }

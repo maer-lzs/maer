@@ -85,7 +85,7 @@ struct DownloadNotifyCountTests {
             && manager.totalDownloadsSize == sizes.values.reduce(0, +)
     }
 
-    @Test("nach jedem Weg, der Dateien aendert, stimmen die Groessen des Bestands mit der Platte")
+    @Test("after every path that changes files, the sizes of the stock match the disk")
     func sizesFollowEveryWay() async throws {
         let home = try Self.home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -122,7 +122,7 @@ struct DownloadNotifyCountTests {
 
     // MARK: Fences
 
-    @Test("niemand beobachtet den Downloader oder den ganzen Fortschritt, nur den Bestand und das Objekt eines Eintrags")
+    @Test("nobody observes the downloader or the whole progress, only the stock and the object of one entry")
     func nobodyObservesTheManager() {
         // A conformance put back would make every observer of it a waker of
         // all again; any path to its `objectWillChange` goes with it.
@@ -133,7 +133,7 @@ struct DownloadNotifyCountTests {
         #expect((DownloadManager.progress.item("x") as AnyObject) is any ObservableObject)
     }
 
-    @Test("ein Eintrag wacht fuer seinen eigenen Download auf, nicht fuer einen anderen, und sieht das Ende")
+    @Test("an entry wakes for its own download, not for another, and sees the end")
     func anItemWakesForItsOwnDownloadAndSeesTheEnd() async throws {
         let home = try Self.home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -160,7 +160,7 @@ struct DownloadNotifyCountTests {
         #expect(home.manager.progress.item("book-1") === own, "while held, the item keeps its one object")
     }
 
-    @Test("auch ein Abbruch und ein Fehlschlag erreichen das gehaltene Objekt")
+    @Test("an abort and a failure also reach the held object")
     func failureReachesTheHeldObject() async throws {
         let home = try Self.home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -201,7 +201,7 @@ struct DownloadNotifyCountTests {
         return out
     }
 
-    @Test("wer den Fortschritt beobachtet, liest ihn; keine Ansicht liest Groessen von der Platte", .needsTheSources)
+    @Test("whoever observes the progress reads it; no view reads sizes from the disk", .needsTheSources)
     func progressObserversReadProgress() throws {
         let root = SourceTree.root.appendingPathComponent("Sources/Views")
         var observers: [(type: String, reads: Bool)] = []
@@ -225,7 +225,7 @@ struct DownloadNotifyCountTests {
 
     /// Before the split (measured): one notifier, 104 wakes
     /// for every observer. Now each observer is woken by what it reads.
-    @Test("ein Download mit 100 Schritten weckt den Bestand 3 Mal und den Fortschritt 102 Mal, vorher jeden 104 Mal")
+    @Test("a download with 100 steps wakes the stock 3 times and the progress 102 times, before it woke each 104 times")
     func eachNotifierWakesForWhatItCarries() async throws {
         let home = try Self.home()
         defer { try? FileManager.default.removeItem(at: home.directory) }

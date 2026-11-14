@@ -46,7 +46,7 @@ struct FeedAuthWayTests {
     /// The save moves an item instead of losing it: the new place stands
     /// before the other world is cleared, a failed add leaves the old item
     /// where it was, and the same place is updated, never doubled.
-    @Test("save stellt den neuen Ort her, bevor es den alten raeumt; ein gescheiterter Add laesst den alten Eintrag stehen")
+    @Test("save establishes the new place before it clears the old one; a failed add leaves the old entry in place")
     func saveMovesAndNeverLoses() {
         let key = "test.way.\(UUID().uuidString)"
         defer { KeychainStore.delete(forKey: key) }
@@ -72,7 +72,7 @@ struct FeedAuthWayTests {
         #expect(places(account: key) == [true])
     }
 
-    @Test("die Wegewahl: Apple nur ohne Dienst-Zugang und mit Schalter")
+    @Test("the choice of way: Apple only without a service access and with the switch")
     func theWayIsTheFactoriesQuestion() {
         #expect(PodcastFeedAuth.travelsOverApple(syncEnabled: true, serviceAccess: false), "ohne Dienst und mit Schalter: Apple")
         #expect(!PodcastFeedAuth.travelsOverApple(syncEnabled: true, serviceAccess: true), "mit Dienst nie Apple, auch mit Schalter")
@@ -80,7 +80,7 @@ struct FeedAuthWayTests {
         #expect(!PodcastFeedAuth.travelsOverApple(syncEnabled: false, serviceAccess: true))
     }
 
-    @Test("das Umschreiben schreibt jeden Eintrag mit dem Weg der Gegenwart, zaehlt Fehlschlaege und tut ohne Auflistung nichts")
+    @Test("the rewrite writes every entry with the way of the present, counts failures and does nothing without a listing")
     func rewriteWritesEveryEntryAndDoesNothingWithoutAListing() {
         var written: [(String, String, String)] = []
         let outcome = PodcastFeedAuth.rewriteAll(by: "witness",
@@ -98,7 +98,7 @@ struct FeedAuthWayTests {
     /// service a credential travels; the sign-in rewrites it as local and
     /// writes new ones local; the sign-out brings them back to Apple. The
     /// moments are never touched.
-    @Test("Anmeldung schreibt die Zugaenge lokal um, Abmeldung zurueck zu Apple; kein Moment geht verloren") @MainActor
+    @Test("sign-in rewrites the credentials as local, sign-out back to Apple; no moment is lost") @MainActor
     func signInAndSignOutRewriteTheCredentials() throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -161,7 +161,7 @@ struct FeedAuthWayTests {
     /// The three occasions call the rewrite, named: a fence over the two
     /// files, so a sign-in, a sign-out or a switch that forgets the rewrite
     /// is red here and not only on a device with old twins.
-    @Test("Anmeldung, Abmeldung und der Schalter rufen das Umschreiben, je beim Namen", .needsTheSources)
+    @Test("sign-in, sign-out and the switch call the rewrite, each by name", .needsTheSources)
     func allThreeOccasionsCallTheRewrite() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func code(_ file: URL) throws -> String {

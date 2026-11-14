@@ -27,7 +27,7 @@ struct ForeignSelfImportTests {
         return back.states.first
     }
 
-    @Test("die eigene Ausfuhr, sofort wieder importiert, uebernimmt 0")
+    @Test("the own export, imported straight back, adopts 0")
     func ownExportAdoptsNothing() throws {
         let entries: [(entry: [Double], duration: Double)] = [
             ([900, 1_788_449_803_209.24], hour),          // fraction below .5
@@ -46,7 +46,7 @@ struct ForeignSelfImportTests {
         }
     }
 
-    @Test("nichts Gehoertes geht nicht hinaus")
+    @Test("nothing unheard goes out")
     func nothingHeardStaysHome() {
         #expect(OPMLExport.exportedState(entry: [0, 1_000], feedURL: feed, guid: "g", enclosureURL: nil,
                                          link: nil, title: nil, duration: hour) == nil)
@@ -54,7 +54,7 @@ struct ForeignSelfImportTests {
                                          link: nil, title: nil, duration: hour) == nil)
     }
 
-    @Test("ein echt neuerer Fremdstand gewinnt weiterhin, um ganze Millisekunden")
+    @Test("a truly newer foreign state still wins, by whole milliseconds")
     func genuinelyNewerStillWins() throws {
         let local: [Double] = [900, 1_788_449_803_209.74]
         var back = try #require(try roundTrip(local, duration: hour))
@@ -65,7 +65,7 @@ struct ForeignSelfImportTests {
         #expect(adopted.entry[0] == 300)
     }
 
-    @Test("die Gruende werden benannt: gefuellt, neuer, ein Wert")
+    @Test("the reasons are named: filled, newer, one value")
     func reasonsAreNamed() throws {
         let foreign = ForeignListeningState(feedURL: feed, episodeGUID: "g", enclosureURL: nil, episodeLink: nil,
                                             episodeTitle: nil, position: 500, finished: false, stampedAt: 2_000)

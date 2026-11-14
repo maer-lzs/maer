@@ -15,7 +15,7 @@ import OSLog
 struct FetchAnswerTests {
     private static let logger = Logger(subsystem: "fm.maer.app.tests", category: "fetch-answer")
 
-    @Test("ein Abruf hat drei Antworten: Wert, Fehler mit Grund, Abbruch ist kein Fehler")
+    @Test("a fetch has three answers: value, failure with a reason, cancellation is no failure")
     func threeAnswers() async throws {
         let value = await FetchAnswer.of("probe", logger: Self.logger) { [1, 2] }
         #expect(value.value == [1, 2])
@@ -37,7 +37,7 @@ struct FetchAnswerTests {
         #expect(throws: CancellationError.self) { try cancelled.get() }
     }
 
-    @Test("mehrere Abrufe einer Liste: gescheitert nur, wenn keiner antwortete")
+    @Test("several fetches of a list: failed only if none answered")
     func joinedFailsOnlyWhenNoneAnswered() {
         let some = FetchAnswer.joined([.value([1]), .failed(reason: "a"), .value([2, 3])])
         #expect(some.value == [1, 2, 3], "an answer beside a failure was dropped")
@@ -96,7 +96,7 @@ struct FetchAnswerTests {
         return flat.ranges(of: try! Regex(copy)).count
     }
 
-    @Test("squeezed steht einmal: keine Testdatei schreibt die Form selbst", .needsTheSources)
+    @Test("squeezed stands once: no test file writes the form itself", .needsTheSources)
     func theSqueezeIsWrittenOnce() throws {
         var copies: [String: Int] = [:]
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["MaerTests"]) where name != "FetchAnswerTests.swift" {
@@ -111,7 +111,7 @@ struct FetchAnswerTests {
                 "without stripping the comments it is another form")
     }
 
-    @Test("die Abrufe, die einen Fehler als leere Liste zeigten, fragen ueber FetchAnswer", .needsTheSources)
+    @Test("the fetches that showed a failure as an empty list ask through FetchAnswer", .needsTheSources)
     func theSilentFetchesAskThroughTheAnswer() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         var offenders: [String] = []

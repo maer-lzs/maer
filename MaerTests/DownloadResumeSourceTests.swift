@@ -42,7 +42,7 @@ struct DownloadResumeSourceTests {
         return manager
     }
 
-    @Test("ein angehaltenes Laden wird mit der Quelle fortgesetzt, mit der es begann, auch wenn dazwischen ein anderes Laden begann")
+    @Test("a paused download is resumed with the source it began with, even if another download began in between")
     func aResumeAsksTheSourceTheDownloadBeganWith() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("resume-source-\(UUID().uuidString)", isDirectory: true)
@@ -63,7 +63,7 @@ struct DownloadResumeSourceTests {
         #expect(other.asked == ["album.mp3"], "the resume asked the source of the download that started last: \(other.asked)")
     }
 
-    @Test("ist die Quelle eines angehaltenen Ladens fort, sagt das Fortsetzen es und bleibt nicht angehalten")
+    @Test("if the source of a paused download is gone, the resume says so and does not stay paused")
     func aResumeWithoutItsSourceSaysSo() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("resume-gone-\(UUID().uuidString)", isDirectory: true)

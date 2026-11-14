@@ -8,30 +8,30 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Wiederherstellungs-Schluessel der reisenden Feed-Zugaenge: seine
-/// SCHRIFTFORM (pur) und die eine Zusage, an der der ganze Punkt haengt,
-/// naemlich dass er nicht ueber Apple reist.
+/// The recovery key of the travelling feed accesses: its
+/// WRITTEN FORM (pure) and the one promise the whole point hangs on,
+/// namely that it does not travel through Apple.
 struct DeviceLinkCodeTests {
 
-    // MARK: - Die Schriftform
+    // MARK: - The written form
 
-    /// Ein Code, den die Tests von Hand schreiben. Nur Buchstaben aus dem
-    /// Alphabet, genau so lang wie verlangt.
+    /// A code the tests write by hand. Only letters from the
+    /// alphabet, exactly as long as asked.
     static let sample = "ABCDEFGHJKMNPQRSTVWXYZAB"
     static let other  = "ZYXWVTSRQPNMKJHGFEDCBAZY"
 
-    @Test("vierundzwanzig Zeichen werden sechs Gruppen, alles andere bleibt wie es ist")
+    @Test("twenty-four characters become six groups, everything else stays as it is")
     func groupingIsSixBlocksOrNothing() {
         let code = Self.sample
         #expect(code.count == DeviceLinkCode.length)
         #expect(DeviceLinkCode.grouped(code) == "ABCD-EFGH-JKMN-PQRS-TVWX-YZAB")
-        // Eine falsche Laenge bekommt KEINE vertraute Gestalt: sonst sieht
-        // ein kaputter Wert aus wie ein richtiger.
+        // A wrong length gets NO familiar shape: otherwise
+        // a broken value looks like a correct one.
         #expect(DeviceLinkCode.grouped("ABCD") == "ABCD")
         #expect(DeviceLinkCode.grouped("") == "")
     }
 
-    @Test("gelesen wird, was ein Mensch tippt: Striche, Leerzeichen, Kleinschrift")
+    @Test("what a person types is read: dashes, spaces, lowercase")
     func readingAcceptsWhatPeopleType() {
         let want = Self.sample
         #expect(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB") == want)
@@ -39,12 +39,12 @@ struct DeviceLinkCodeTests {
         #expect(DeviceLinkCode.normalized("abcdefghjkmnpqrstvwxyzab") == want)
     }
 
-    @Test("die verwechselbaren Zeichen gibt es gar nicht erst, und nichts wird still berichtigt")
+    @Test("the confusable characters do not exist in the first place, and nothing is silently corrected")
     func theConfusableShapesSimplyDoNotOccur() {
-        // Ohne Ziffern im Alphabet kann die Verwechslung nicht entstehen:
-        // niemand sieht hier eine 1 und tippt ein I dafuer. Also wird auch
-        // nichts abgebildet, sondern abgelehnt, und die Ablehnung sagt dem
-        // Menschen, wo er hingesehen hat.
+        // Without digits in the alphabet the mix-up cannot arise:
+        // nobody sees a 1 here and types an I for it. So nothing is
+        // mapped either, it is rejected, and the rejection tells the
+        // person where they looked.
         for confusable: Character in ["I", "L", "O", "U"] {
             #expect(!DeviceLinkCode.alphabet.contains(confusable),
                     "\(confusable) darf im Alphabet nicht vorkommen")
@@ -55,33 +55,33 @@ struct DeviceLinkCodeTests {
         #expect(DeviceLinkCode.alphabet.count == 22)
     }
 
-    @Test("zu kurz, zu lang oder fremdes Zeichen ist KEIN Code")
+    @Test("too short, too long or a foreign character is NO code")
     func anythingElseIsNotACode() {
         #expect(DeviceLinkCode.normalized(String(Self.sample.dropLast())) == nil, "eins zu kurz")
         #expect(DeviceLinkCode.normalized(Self.sample + "C") == nil, "eins zu lang")
         #expect(DeviceLinkCode.normalized("ABCDEFGHJKMNPQRSTVWXY!B") == nil, "fremdes Zeichen")
         #expect(DeviceLinkCode.normalized("") == nil)
-        // Ein zu kurzer Code darf nicht durchgereicht werden: die
-        // Entschluesselung koennte danach nur noch "falscher Schluessel"
-        // sagen, und der Mensch sucht den Fehler an der falschen Stelle.
+        // A code that is too short must not be passed on: the
+        // decryption could afterwards only say "falscher Schluessel",
+        // and the person looks for the error in the wrong place.
         #expect(!DeviceLinkCode.isCode(String(Self.sample.dropLast())))
     }
 
-    // MARK: - Die Erzeugung
+    // MARK: - The generation
 
-    @Test("verzerrende Bytes werden VERWORFEN, und zwar gemessen an der FUNKTION")
+    @Test("skewing bytes are DISCARDED, measured against the FUNCTION")
     func biasingBytesAreRejected() throws {
-        // 22 teilt 256 nicht. Wer `byte % 22` rechnet, macht die ersten
-        // vierzehn Buchstaben haeufiger als die uebrigen acht.
+        // 22 does not divide 256. Whoever computes `byte % 22` makes the first
+        // fourteen letters more frequent than the other eight.
         let alphabet = DeviceLinkCode.alphabet
         let ceiling = 256 - (256 % alphabet.count)
         #expect(ceiling == 242, "22 mal 11, die groesste ganze Vielfache unter 256")
 
-        // Erschoepfend ueber ALLE 256 Byte-Werte, und zwar DURCH die
-        // Funktion statt durch eine Nachbildung ihrer Rechnung. Ein
-        // Zeuge, der `alphabet[byte % 22]` selbst bildet, misst die
-        // Annahme; dieser misst, was der Code tut, und sieht deshalb auch
-        // eine verschobene Verwerfungsgrenze.
+        // Exhaustive over ALL 256 byte values, and THROUGH the
+        // function instead of through a replica of its arithmetic. A
+        // witness that forms `alphabet[byte % 22]` itself measures the
+        // assumption; this one measures what the code does, and therefore also sees
+        // a shifted rejection boundary.
         let filler = [UInt8](repeating: 0, count: DeviceLinkCode.length)
         for value in 0..<256 {
             let byte = UInt8(value)
@@ -90,14 +90,14 @@ struct DeviceLinkCodeTests {
                 #expect(code.first == alphabet[value % alphabet.count],
                         "Byte \(value) muss den Buchstaben \(value % alphabet.count) geben")
             } else {
-                // Verworfen: das erste Zeichen kommt aus dem naechsten Byte.
+                // Discarded: the first character comes from the next byte.
                 #expect(code.first == alphabet[0],
                         "Byte \(value) haette verworfen werden muessen")
             }
         }
 
-        // Und jeder Buchstabe ist ueber die Funktion erreichbar, keiner
-        // faellt aus dem Alphabet heraus.
+        // And every letter is reachable through the function, none
+        // falls out of the alphabet.
         var reachable: Set<Character> = []
         for value in 0..<ceiling {
             let code = try #require(DeviceLinkCode.code(fromRandomBytes: [UInt8(value)] + filler))
@@ -106,30 +106,30 @@ struct DeviceLinkCodeTests {
         #expect(reachable.count == alphabet.count, "erreichbar: \(reachable.count)")
     }
 
-    @Test("zu wenig Zufall gibt KEINEN Code")
+    @Test("too little randomness gives NO code")
     func tooLittleRandomnessGivesNothing() {
         #expect(DeviceLinkCode.code(fromRandomBytes: []) == nil)
         #expect(DeviceLinkCode.code(fromRandomBytes: [1, 2, 3]) == nil)
-        // Lauter verzerrende Bytes sind so gut wie keine.
+        // Nothing but skewing bytes is as good as none.
         #expect(DeviceLinkCode.code(fromRandomBytes: [UInt8](repeating: 255, count: 200)) == nil)
     }
 
-    @Test("die Staerke steht als Zahl da, nicht als Behauptung")
+    @Test("the strength stands as a number, not as a claim")
     func theStrengthIsANumber() {
-        // 100 Bit. Wer das Alphabet kuerzt oder den Code verkuerzt, um die
-        // Eingabe bequemer zu machen, reisst hier und liest den Grund: ein
-        // kurzer Code waere offline durchsuchbar von dem, der den Block
-        // ohnehin haelt.
-        // 107 Bit. Wer das Alphabet kuerzt oder den Code verkuerzt, um die
-        // Eingabe bequemer zu machen, reisst hier. Und die Eingabe wird
-        // davon nicht bequemer: gemessen kostet die gemischte Form mit 20
-        // Zeichen 28,5 Tastendruecke, diese mit 24 nur 24.
+        // 100 bits. Whoever shortens the alphabet or the code to make
+        // the input more convenient fails here and reads the reason: a
+        // short code would be searchable offline by whoever
+        // holds the block anyway.
+        // 107 bits. Whoever shortens the alphabet or the code to make
+        // the input more convenient fails here. And the input does not
+        // become more convenient: measured, the mixed form with 20
+        // characters costs 28.5 keystrokes, this one with 24 only 24.
         #expect(DeviceLinkCode.entropyBits == 107)
         #expect(DeviceLinkCode.length == 24)
         #expect(DeviceLinkCode.entropyBits >= 100, "unter 100 Bit wird der Code durchsuchbar")
     }
 
-    @Test("Rundlauf: erzeugt, gruppiert, wieder gelesen, derselbe Code")
+    @Test("Round trip: generated, grouped, read again, the same code")
     func roundTrip() throws {
         let bytes: [UInt8] = [21, 0, 17, 9, 4, 19, 20, 1, 12, 8, 3, 15,
                               11, 6, 18, 2, 13, 5, 10, 7, 16, 14, 9, 3]
@@ -140,30 +140,30 @@ struct DeviceLinkCodeTests {
         #expect(DeviceLinkCode.isCode(code))
     }
 
-    // MARK: - Die Zusage, an der der Punkt haengt
+    // MARK: - The promise the point hangs on
 
-    /// Ein Quelltext-Zaun, und er ist hier die einzige ehrliche Sicherung:
-    /// ob ein Schluessel in Apples iCloud-Schluesselbund landet, sieht ein
-    /// Verhaltensfall im Simulator nicht. Dieselbe Bauart wie beim
-    /// Zeitvergleich, der `==` und `compare_digest` nicht unterscheiden kann.
-    @Test("der Wiederherstellungs-Schluessel reist NIE ueber Apple", .needsTheSources)
+    /// A source-text fence, and here it is the only honest safeguard:
+    /// whether a key lands in Apple's iCloud keychain, a
+    /// behavior case in the simulator does not see. The same construction as for the
+    /// time comparison, which cannot tell `==` and `compare_digest` apart.
+    @Test("the recovery key NEVER travels through Apple", .needsTheSources)
     func theRecoveryKeyNeverTravelsThroughApple() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "DeviceLinkCodeStore.swift" })
         let text = try String(contentsOf: door, encoding: .utf8)
-        // Die Tuer schreibt mit der Vorgabe, also geraete-lokal. Sie
-        // uebergibt den Reise-Parameter nirgends, auch nicht mit false:
-        // stuende er da, waere er eine Stellschraube, und eine Stellschraube
-        // an dieser Stelle ist die Luecke selbst.
+        // The door writes with the default, so device-local. It
+        // passes the travel parameter nowhere, not even with false:
+        // if it stood there, it would be an adjusting screw, and an adjusting screw
+        // at this place is the gap itself.
         #expect(!text.contains("synchronizable"),
                 "die Schluessel-Tuer nennt den Reise-Parameter")
-        // Seit S3 entsteht kein Code mehr: die Tuer liest und vergisst,
-        // schreiben kann sie nicht.
+        // Since S3 no code is generated any more: the door reads and forgets,
+        // it cannot write.
         #expect(!text.contains("KeychainStore.save("), "die Tuer schreibt noch einen Code")
         #expect(text.contains("KeychainStore.load(") && text.contains("KeychainStore.delete("))
 
-        // Und der Name des Schluessels lebt nur an dieser einen Stelle, damit
-        // niemand ihn anderswo mit anderen Bedingungen schreibt.
+        // And the name of the key lives only in this one place, so that
+        // nobody writes it elsewhere with other conditions.
         var holders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let body = try String(contentsOf: file, encoding: .utf8)

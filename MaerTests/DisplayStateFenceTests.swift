@@ -17,7 +17,7 @@ struct DisplayStateFenceTests {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("eine Playlist ohne angegebene Laufzeit zeigt keine 0:00, sondern nur die Titelzahl", .needsTheSources)
+    @Test("a playlist without a given running time shows no 0:00, only the title count", .needsTheSources)
     func anUnknownRunningTimeStaysUnknown() throws {
         #expect(PlaylistPresentation.knownSeconds(nil) == nil, "no running time became a number")
         #expect(PlaylistPresentation.knownSeconds(0) == nil && PlaylistPresentation.knownSeconds(0.4) == nil,
@@ -32,7 +32,7 @@ struct DisplayStateFenceTests {
     /// Which lock a feed carries is asked in one place
     /// (`PodcastSubscriptions.lock(feedURL:)`); every surface hands its
     /// answer on, and no lock has a default a surface could fall back to.
-    @Test("jedes Schloss fragt die dauerhafte Verweigerung, nicht nur die Sendungs-Kacheln", .needsTheSources)
+    @Test("every lock asks for the lasting refusal, not only the show tiles", .needsTheSources)
     func everyLockAsksTheRefusal() throws {
         var deciders: [String] = []
         var handWritten: [String] = []
@@ -93,7 +93,7 @@ struct DisplayStateFenceTests {
             .reduce(0) { $0 + squeezed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("jede Kachel, die das Schloss von Hand auf keins setzt, ist je Datei gezaehlt, kurz oder lang geschrieben", .needsTheSources)
+    @Test("every tile that sets the lock to none by hand is counted per file, written short or long", .needsTheSources)
     func everyHandWrittenNoLockIsCounted() throws {
         var counts: [String: Int] = [:]
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
@@ -104,7 +104,7 @@ struct DisplayStateFenceTests {
         #expect(drift.isEmpty, "a tile names no lock unseen, or the stock stands above the count: \(drift)")
     }
 
-    @Test("der Zaehler der leeren Schloesser sieht jede Schreibweise, auch einen spaeter uebergebenen Wert, und nicht den Rueckfall der einen Antwort")
+    @Test("the counter of empty locks sees every spelling, also a value handed on later, and not the fallback of the one answer")
     func theNoLockCounterReads() {
         #expect(Self.handWrittenNoLocks("lock:.none,") == 1)
         #expect(Self.handWrittenNoLocks("lock:FeedLock.none,") == 1)
@@ -117,7 +117,7 @@ struct DisplayStateFenceTests {
 
     /// The favorite entry says in words which state it changes, and the
     /// running ring is one control with its name and progress.
-    @Test("der Favoriten-Eintrag nennt den Zustand im Wort, der laufende Ring ist ein Bauteil mit Namen und Fortschritt", .needsTheSources)
+    @Test("the favorite entry names the state in words, the running ring is one component with name and progress", .needsTheSources)
     func picturedStatesAreNamed() throws {
         let album = try code("Sources/Views/Music/MusicAlbumView.swift")
         let entry = try #require(album.range(of: "if starred {\n                        Label(\"Remove Favorite\", systemImage: \"heart.slash\")"),
@@ -149,7 +149,7 @@ struct DisplayStateFenceTests {
     /// A state a glyph alone carries is named: the offline mark wherever it
     /// stands without a text beside it, the subscribed check, the pages'
     /// actions menu.
-    @Test("ein Zustand, den nur ein Zeichen traegt, hat einen Namen: Offline-Zeichen, Abo-Haken, Aktionen-Menue", .needsTheSources)
+    @Test("a state that only a glyph carries has a name: offline mark, subscribed check, actions menu", .needsTheSources)
     func glyphStatesAreNamed() throws {
         var unnamed: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {

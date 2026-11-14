@@ -27,7 +27,7 @@ struct FetchHoldbackTests {
         var count: Int { lock.withLock { value } }
     }
 
-    @Test("ein Fehlschlag haelt zurueck, ein Abbruch und ein weg nicht")
+    @Test("a failure holds back, a cancellation and a gone one do not")
     func whatStartsAHoldback() {
         #expect(FetchHoldback.starts(after: URLError(.timedOut)))
         #expect(FetchHoldback.starts(after: APIError.http(503, "")))
@@ -38,7 +38,7 @@ struct FetchHoldbackTests {
         #expect(!FetchHoldback.starts(after: APIError.http(404, "")), "weg ist ein Befund, kein Fehlschlag")
     }
 
-    @Test("zehn Minuten nach dem Fehlschlag darf wieder gefragt werden, vorher nicht")
+    @Test("ten minutes after the failure it may be asked again, not before")
     func tenMinutes() {
         let failed = Date(timeIntervalSince1970: 0)
         #expect(FetchHoldback.seconds == 600)
@@ -47,7 +47,7 @@ struct FetchHoldbackTests {
         #expect(FetchHoldback.mayAsk(failedAt: failed, now: failed.addingTimeInterval(600)))
     }
 
-    @Test("der Flug fragt nach einem Fehlschlag erst nach dem Rueckhalt wieder")
+    @Test("the flight asks again after a failure only after the holdback")
     func theFlightWaitsOutTheHoldback() async throws {
         let clock = Clock()
         let held = Count()
@@ -75,7 +75,7 @@ struct FetchHoldbackTests {
     /// A tap on "try again", an opened detail, a playback start: deliberate,
     /// the default. It reaches the network inside the holdback, and when it
     /// succeeds the holdback of the id is gone.
-    @Test("eine bewusste Frage erreicht im Rueckhalt das Netz und beendet ihn mit einem Erfolg")
+    @Test("a deliberate question reaches the network inside the holdback and ends it with a success")
     func aDeliberateQuestionAlwaysAsks() async throws {
         let clock = Clock()
         let held = Count()
@@ -94,7 +94,7 @@ struct FetchHoldbackTests {
         #expect(runs.count == 3)
     }
 
-    @Test("ein Zurueckhalten erreicht keinen Satz, den ein Mensch liest")
+    @Test("a holdback reaches no sentence that a person reads")
     func aHoldbackIsNeverSaid() {
         #expect(FreeCatalog.failureReason(FetchHeldBack(), online: true) == nil)
         #expect(FreeCatalog.failureReason(URLError(.timedOut), online: true) != nil, "ein echter Fehlschlag bleibt benannt")
@@ -112,7 +112,7 @@ struct FetchHoldbackTests {
         "CarPlaySceneDelegate.swift": (1, "the car's Recently Played resolves a catalogue title's name when it rebuilds"),
     ]
 
-    @Test("die automatische Marke steht nur an den benannten Stellen", .needsTheSources)
+    @Test("the automatic mark stands only at the named places", .needsTheSources)
     func theAutomaticMarkStandsOnlyWhereNamed() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoalescedFlights.swift" {
@@ -126,7 +126,7 @@ struct FetchHoldbackTests {
     /// Only an automatic question waits out a holdback, so the question
     /// after the cancellation is automatic too: a deliberate one would ask
     /// the network even inside a holdback and prove nothing.
-    @Test("ein Abbruch haelt nicht zurueck, und ohne Rueckhalt fragt der Flug sofort wieder")
+    @Test("a cancellation does not hold back, and without a holdback the flight asks again at once")
     func aCancellationDoesNotHoldBack() async throws {
         let clock = Clock()
         let held = Count()
@@ -144,7 +144,7 @@ struct FetchHoldbackTests {
         #expect(try await plain.value(for: "k") { (2, 1) } == 2, "ohne Rueckhalt wie in F1a")
     }
 
-    @Test("vergessen raeumt die behaltene Antwort, die naechste Frage fragt das Netz")
+    @Test("forgetting clears the kept answer, the next question asks the network")
     func forgetDropsTheKeptAnswer() async throws {
         let runs = Count()
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 8, bytes: 100))
@@ -160,7 +160,7 @@ struct FetchHoldbackTests {
     /// The player forgets a catalogue answer where playback visibly failed:
     /// both places that show the track failure hint after the retry: the
     /// spent retry, and a rebuild that built no queue.
-    @Test("ein sichtbar gescheitertes Abspielen vergisst die Katalog-Antwort", .needsTheSources)
+    @Test("a visibly failed playback forgets the catalog answer", .needsTheSources)
     func aFailedPlaybackForgetsTheAnswer() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)

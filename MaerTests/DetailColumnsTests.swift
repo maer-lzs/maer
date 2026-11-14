@@ -12,7 +12,7 @@ import SwiftUI
 /// A detail page in two columns divides at the fold, its cover leaves the
 /// main button above the playback bar, and its two buttons stand whole.
 struct DetailColumnsTests {
-    @Test("die offene Duo teilt am Falz, die Seitenspalte nimmt nur der rechten Spalte Breite")
+    @Test("the open Duo divides at the fold, the side column takes only the width of the right column")
     func theOpenDuoDividesAtTheFold() {
         // Measured on the open Duo: window 951, fold 455.5 to 495.5, the page
         // ends at the side column (867).
@@ -20,7 +20,7 @@ struct DetailColumnsTests {
         #expect(columns == .init(leading: 455.5, gap: 40, trailing: 371.5))
     }
 
-    @Test("ohne Falz teilt die Mitte der Anzeige, nicht die der Seite")
+    @Test("without a fold the middle of the display divides, not that of the page")
     func withoutAFoldTheDisplayMiddle() {
         // An iPad in landscape: the page spans the window.
         #expect(FoldSplit.columns(contentMinX: 0, contentWidth: 1366, fold: nil, windowWidth: 1366)
@@ -30,13 +30,13 @@ struct DetailColumnsTests {
                 == .init(leading: 475.5, gap: 0, trailing: 391.5))
     }
 
-    @Test("ein Falz ausserhalb der Seite schiebt keine Spalte unter null")
+    @Test("a fold outside the page pushes no column below zero")
     func aFoldOutsideThePageStaysInside() {
         let columns = FoldSplit.columns(contentMinX: 100, contentWidth: 300, fold: 20...60, windowWidth: 951)
         #expect(columns.leading == 0 && columns.gap == 0 && columns.trailing == 300)
     }
 
-    @Test("das Cover nimmt seine Groesse einmal aus dem Raum, nie aus dem, was darunter steht")
+    @Test("the cover takes its size once from the room, never from what stands below it")
     func theCoverTakesItsSizeFromTheRoom() {
         // Folded Duo upright: 678 high, 412 for the column; a share of the
         // height below the cover's top.
@@ -67,7 +67,7 @@ struct DetailColumnsTests {
         ("Sources/Views/SettingsView.swift", "FoldColumns { _ in"),
     ]
 
-    @Test("das erste Zeichen jeder Liste steht gleich weit vom Rand und vom Falz", .needsTheSources)
+    @Test("the first character of every list stands equally far from the edge and from the fold", .needsTheSources)
     func everyListsFirstMarkStandsAtTheGutter() throws {
         // The album's track number leads its column; the episode row keeps
         // the page's standard margin, not a smaller one of its own.
@@ -80,7 +80,7 @@ struct DetailColumnsTests {
         #expect(!rows.contains(".padding(.horizontal, 12)\n        .padding(.vertical, 10)"), "the episode row keeps a margin of its own")
     }
 
-    @Test("jede Seite mit Kopf und Inhalt nimmt den einen Rahmen", .needsTheSources)
+    @Test("every page with head and content takes the one frame", .needsTheSources)
     func everyHeadedPageTakesTheFrame() throws {
         // Every page with the head (`DetailHeaderTests.headedPages`) stands in
         // one of the frames; pure lists without a head stay in one column.
@@ -90,7 +90,7 @@ struct DetailColumnsTests {
         }
     }
 
-    @Test("Buchseite, Sendung, Album und Playlist, Kuenstler nehmen den einen Rahmen", .needsTheSources)
+    @Test("book page, show, album and playlist, artist take the one frame", .needsTheSources)
     func everyDetailPageTakesTheFrame() throws {
         for page in Self.framedPages {
             let text = SyncContractFenceTests.stripped(
@@ -104,7 +104,7 @@ struct DetailColumnsTests {
         #expect(frame.components(separatedBy: "FoldColumns {").count - 1 == 2)
     }
 
-    @Test("beide Spalten stehen gleich weit vom Falz, die Strecke liegt im Rahmen", .needsTheSources)
+    @Test("both columns stand equally far from the fold, the span lies in the frame", .needsTheSources)
     @MainActor
     func bothColumnsStandEquallyFarFromTheFold() throws {
         #expect(FoldColumns<EmptyView, EmptyView>.foldMargin + FoldSplit.pageGutter == FoldSplit.foldDistance)
@@ -136,7 +136,7 @@ struct DetailColumnsTests {
         min(412, 678 - kept - 126.5).rounded(.down)
     }
 
-    @Test("ein gemessenes Mass kommt nach endlich vielen Durchlaeufen zur Ruhe")
+    @Test("a measured size settles after finitely many passes")
     func aMeasuredHeightSettlesAfterFinitelyManyPasses() {
         // Unsettled, the model swings without end: the loop a measuring
         // page showed (100 % CPU, the setters on the main thread).
@@ -163,7 +163,7 @@ struct DetailColumnsTests {
         #expect(passes < 5, "the layout did not come to rest: \(passes) passes")
     }
 
-    @Test("auch eine Schwingung ab einem Punkt endet: die gehaltene Hoehe kehrt zu keinem verlassenen Wert zurueck")
+    @Test("an oscillation from one point on also ends: the kept height returns to no abandoned value")
     func aSwingOfWholePointsEndsToo() {
         // A layout that answers a large cover with a tall height and a small
         // cover with a short one, 4 pt apart: the height shrinks the cover,
@@ -188,7 +188,7 @@ struct DetailColumnsTests {
         #expect(DetailCoverSide.settled(305, measured: 305 - DetailCoverSide.shrinkStep + 0.5) == 305)
     }
 
-    @Test("keine Detailseite misst, was unter dem Cover steht; der Player haelt sein Mass ueber den Stillstand", .needsTheSources)
+    @Test("no detail page measures what stands below the cover; the player keeps its size through the standstill", .needsTheSources)
     func noDetailPageMeasuresBelowTheCover() throws {
         // The cover's size comes from the room alone, so it does not change
         // between the first frame and rest.
@@ -204,7 +204,7 @@ struct DetailColumnsTests {
         #expect(player.contains("controlsHeight = DetailCoverSide.settled(controlsHeight, measured: $0)"))
     }
 
-    @Test("zwei Knoepfe nebeneinander nur, wo beide ganz Platz haben")
+    @Test("two buttons side by side only where both have full room")
     func twoButtonsSideBySideOnlyWhereTheyFit() {
         let standard = DetailButtonRow.sideBySideMinWidth
         #expect(DetailButtonRow.stacked(width: 342, needs: standard))
@@ -214,7 +214,7 @@ struct DetailColumnsTests {
         #expect(DetailButtonRow.stacked(width: 407, needs: standard * 1.35))
     }
 
-    @Test("die Buchseite skaliert den Bedarf der Knopfreihe mit der Schrift", .needsTheSources)
+    @Test("the book page scales the need of the button row with the type size", .needsTheSources)
     func theNeedScalesWithTheType() throws {
         let page = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))
@@ -223,7 +223,7 @@ struct DetailColumnsTests {
         #expect(page.contains("DetailButtonRow.form(width: width, needs: buttonPairWidth, compactNeeds: compactPairWidth)"))
     }
 
-    @Test("zwischen voller Zeile und untereinander stehen die zwei Knoepfe knapp in einer Zeile")
+    @Test("between a full row and stacked, the two buttons just fit in one row")
     func theCompactRowStandsBetween() {
         let full = DetailButtonRow.sideBySideMinWidth, compact = DetailButtonRow.compactMinWidth
         #expect(DetailButtonRow.form(width: 380, needs: full, compactNeeds: compact) == .sideBySide)
@@ -233,7 +233,7 @@ struct DetailColumnsTests {
         #expect(DetailButtonRow.form(width: 342, needs: full * 1.35, compactNeeds: compact * 1.35) == .stacked)
     }
 
-    @Test("das Cover steht immer als Karte, auch wo die volle Breite passt")
+    @Test("the cover always stands as a card, even where the full width fits")
     func theCoverIsACard() {
         // iPhone 17: the full width would fit; a card with the gap at its sides.
         #expect(DetailCoverCard.form(width: 402, height: 874, safeTop: 62)
@@ -246,7 +246,7 @@ struct DetailColumnsTests {
         #expect(card.side < 412 - 2 * DetailCoverCard.gap + 1)
     }
 
-    @Test("der grosse Player passt auf eine Ansicht: das Cover gibt nach bis auf null, die Bedienung nie")
+    @Test("the large player fits one view: the cover gives way down to zero, the controls never")
     func thePlayerFitsOneView() {
         // Upright: as wide as the bar, never taller than the area the
         // controls leave, down to nothing; the book page keeps its minimum.
@@ -267,7 +267,7 @@ struct DetailColumnsTests {
         #expect(!PlayerFit.controlsOverflow(controls: 400, viewportHeight: 700, margin: 16))
     }
 
-    @Test("der Zieh-Strich steht knapp unter der Statuszeile, das Cover seinen Abstand darunter", .needsTheSources)
+    @Test("the drag handle stands just below the status bar, the cover its gap below that", .needsTheSources)
     func theHandleStandsUnderTheStatusBar() throws {
         // iPhone 17: reserved top edge 62 pt.
         #expect(PlayerGrabHandle.top(topInset: 62) == 56)
@@ -285,7 +285,7 @@ struct DetailColumnsTests {
             .contains("? 16 : PlayerGrabHandle.coverTop(topInset: topInset) - topInset)"))
     }
 
-    @Test("das Cover des Players steht aufgeklappt gleich weit von Aussenrand und sichtbarem Falz")
+    @Test("the player's cover, opened, stands equally far from the outer edge and the visible fold")
     func theCoverStandsMidwayToTheVisibleFold() {
         // The open Duo: band 455.5 to 495.5, the visible fold in its middle.
         let fold: ClosedRange<CGFloat> = 455.5...495.5
@@ -300,7 +300,7 @@ struct DetailColumnsTests {
         #expect(right < fold.lowerBound)
     }
 
-    @Test("Buchseite und Player tragen die eine Form der Karte", .needsTheSources)
+    @Test("book page and player carry the one form of the card", .needsTheSources)
     func bookPageAndPlayerShareTheCard() throws {
         let page = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BookDetailScreen.swift"), encoding: .utf8))

@@ -8,18 +8,18 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// „Ist das geladen?" sind ZWEI Fragen mit einem Namen:
+/// „Ist das geladen?" is TWO questions under one name:
 ///
-/// - `isDownloaded` heisst Download und beantwortet OFFLINE-VERFUEGBARKEIT.
-///   Eine importierte lokale Datei ist offline verfuegbar und wurde nie
-///   geladen (`LocalProvider` kann `.alwaysLocal`).
-/// - `isDeletableDownload` beantwortet, ob WIR etwas geholt haben, dessen
-///   Loeschen Platz freigibt.
+/// - `isDownloaded` is called download and answers OFFLINE AVAILABILITY.
+///   An imported local file is available offline and was never
+///   downloaded (`LocalProvider` can `.alwaysLocal`).
+/// - `isDeletableDownload` answers whether WE fetched something whose
+///   deletion frees space.
 ///
-/// Sieben Loesch-Tore fragten die erste und meinten die zweite. Bei einem
-/// importierten lokalen Hoerbuch stand damit „Download loeschen" im Menue,
-/// der Tipp entfernte ein `Downloads/`-Verzeichnis, das es nie gab, der
-/// Eintrag blieb, der Knopf blieb, und gesagt wurde nichts.
+/// Seven delete gates asked the first and meant the second. For an
+/// imported local audiobook, „Download loeschen" thus appeared in the menu,
+/// the tap removed a `Downloads/` directory that never existed, the
+/// entry stayed, the button stayed, and nothing was said.
 @MainActor
 struct DeletableDownloadTests {
     private func sourceText(_ relative: String) throws -> String {
@@ -27,10 +27,10 @@ struct DeletableDownloadTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    /// Der Fall am VERHALTEN, ohne Attrappe: eine `local:`-Kennung fuehrt
-    /// ueber `AppSession.provider(for:)` zum `LocalProvider`, und der traegt
-    /// `.alwaysLocal`. Nichts davon ist gestellt.
-    @Test("Eine lokale Datei ist offline verfuegbar, aber kein loeschbarer Download")
+    /// The case on BEHAVIOR, without a stand-in: a `local:` id leads
+    /// through `AppSession.provider(for:)` to the `LocalProvider`, and that carries
+    /// `.alwaysLocal`. None of it is staged.
+    @Test("A local file is available offline, but not a deletable download")
     func localFileIsAvailableButNotADownload() {
         let id = "local:probe-nicht-geladen"
         #expect(DownloadManager.shared.isDownloaded(itemId: id),
@@ -39,20 +39,20 @@ struct DeletableDownloadTests {
                 "eine lokale Datei wurde nie geladen, ihr Loeschen gibt nichts frei")
     }
 
-    /// Die Gegenprobe, damit der Fall oben nicht gruen ist, weil die zweite
-    /// Frage immer falsch antwortet: eine Kennung ohne lokale Quelle ist
-    /// weder verfuegbar noch loeschbar, und beide sagen dasselbe.
-    @Test("Ohne lokale Quelle sagen beide Fragen dasselbe")
+    /// The counter-check, so the case above is not green because the second
+    /// question always answers false: an id without a local source is
+    /// neither available nor deletable, and both say the same.
+    @Test("Without a local source both questions say the same")
     func withoutALocalSourceBothAgree() {
         let id = "sub:song:gibt-es-nicht"
         #expect(!DownloadManager.shared.isDownloaded(itemId: id))
         #expect(!DownloadManager.shared.isDeletableDownload(itemId: id))
     }
 
-    /// Jede Stelle, die einen Download loescht, nennt ihr Tor. Der Bestand
-    /// steht je Datei MIT Grund, damit eine neue Loesch-Stelle die Frage
-    /// beantworten muss, statt die naechstliegende zu nehmen.
-    @Test("Jede Loesch-Stelle nennt, was sie vorher fragt", .needsTheSources)
+    /// Every place that deletes a download names its gate. The inventory
+    /// lists each file WITH a reason, so a new delete place has to
+    /// answer the question instead of taking the nearest one.
+    @Test("Every delete place names what it asks first", .needsTheSources)
     func everyDeleteSiteNamesItsGate() throws {
         let expected: [String: (count: Int, reason: String)] = [
             "Sources/Views/BookGridComponents.swift":
@@ -100,11 +100,11 @@ struct DeletableDownloadTests {
                 "neue, verschwundene oder verschobene Loesch-Stelle")
     }
 
-    /// Und die Umkehrung des Fundes: kein Loesch-Tor fragt mehr die
-    /// Verfuegbarkeit. Gezaehlt wird die ZEILE des Tors direkt vor einem
-    /// destruktiven Knopf, nicht die Datei — eine Datei darf beide Fragen
-    /// stellen, sie stehen nur an verschiedenen Stellen.
-    @Test("Kein Loesch-Tor fragt mehr die Verfuegbarkeit", .needsTheSources)
+    /// And the reverse of the finding: no delete gate asks for
+    /// availability any more. What is counted is the gate's LINE directly before a
+    /// destructive button, not the file. A file may ask both questions,
+    /// they just stand in different places.
+    @Test("No delete gate asks for availability any more", .needsTheSources)
     func noDeleteGateAsksAvailability() throws {
         var offenders: [String] = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -116,9 +116,9 @@ struct DeletableDownloadTests {
                 .map(String.init)
             for (index, line) in lines.enumerated()
             where line.contains("isDownloaded(itemId:") && !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") {
-                // „destruktiv" ist die Marke, die den Loesch-Weg eindeutig
-                // macht: der Knopf traegt sie, eine Anzeige nie. Zwei Zeilen,
-                // weil zwischen Tor und Marke nur die Klammer steht.
+                // „destruktiv" is the mark that makes the delete path unambiguous:
+                // the button carries it, a display never. Two lines,
+                // because only the bracket stands between gate and mark.
                 let window = lines[index..<min(index + 3, lines.count)].joined(separator: " ")
                 if window.contains("role: .destructive") { offenders.append("\(path):\(index + 1)") }
             }

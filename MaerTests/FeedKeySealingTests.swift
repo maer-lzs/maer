@@ -25,7 +25,7 @@ struct FeedKeySealingTests {
 
     // MARK: - The envelope
 
-    @Test("Umschlag 2 oeffnet mit demselben Feed-Schluessel, mit einem anderen nicht, ohne keinen; Umschlag 1 wie vorher")
+    @Test("envelope 2 opens with the same feed key, not with another, none without; envelope 1 as before")
     func theFeedEnvelope() throws {
         let plain = Data("geheim".utf8)
         let sealed = try #require(FeedAuthCrypto.seal(plain, feed: Self.feedK))
@@ -45,7 +45,7 @@ struct FeedKeySealingTests {
 
     // MARK: - The rule
 
-    @Test("mit Feed-Schluessel zaehlt ein ungeoeffneter Code-Block nicht, ein ungeoeffneter Feed-Block schon; ohne alles wie vorher")
+    @Test("with a feed key an unopened code block does not count, an unopened feed block does; without anything as before")
     func whatCounts() {
         #expect(!FeedAuthRound.counts(envelope: 1, opening: .sealedForAnother, hasFeed: true))
         #expect(FeedAuthRound.counts(envelope: 1, opening: .plaintext(Data()), hasFeed: true), "an opened one is read")
@@ -95,7 +95,7 @@ struct FeedKeySealingTests {
         return found
     }
 
-    @Test("die gemessene Lage, Telefon mit Zugaengen und Code X, Tablet leer mit Code Y und altem Block; nach den Runden tragen beide die Zugaenge, kein Block der Fassung 1 bleibt, beide Codes sind vergessen")
+    @Test("the measured situation, phone with credentials and code X, tablet empty with code Y and an old block; after the rounds both carry the credentials, no block of version 1 stays, both codes are forgotten")
     func twoDevicesOneService() async throws {
         let transport = MaerSyncCarrierTests.FakeTransport()
         // The iPad's old block: empty, sealed with its own code Y, as the
@@ -133,7 +133,7 @@ struct FeedKeySealingTests {
         transport.writes.filter { $0.kind == MaerSyncSession.feedAuthKind && $0.scope == device }.count
     }
 
-    @Test("eine Runde schreibt nur, wenn Inhalt oder Umschlag vom stehenden eigenen Block abweichen, geoeffnet verglichen")
+    @Test("a round writes only if content or envelope differ from the standing own block, compared opened")
     func onlyAChangedContentWrites() {
         let same = ["a": Self.entry("anna", at: 1000)]
         #expect(!FeedAuthRound.mustPutUp(same, envelope: 2, standing: same, standingEnvelope: 2),
@@ -144,7 +144,7 @@ struct FeedKeySealingTests {
         #expect(FeedAuthRound.mustPutUp(same, envelope: 2, standing: nil, standingEnvelope: nil), "nothing stands yet")
     }
 
-    @Test("zwei Geraete mit Feed-Schluessel und gleichem Inhalt werden still; nach dem Einschwingen null Schreibvorgaenge in zwanzig Runden")
+    @Test("two devices with a feed key and equal content go quiet; after settling zero writes in twenty rounds")
     func twoDevicesComeToRest() async throws {
         let transport = MaerSyncCarrierTests.FakeTransport()
         let phoneKeys = Keychain(code: nil, feed: Self.feedK, mine: [:])
@@ -177,7 +177,7 @@ struct FeedKeySealingTests {
         #expect(Self.feedWrites(transport, "dev-pad") == settled.1, "the pad keeps writing its unchanged block")
     }
 
-    @Test("mit einem Eintrag auf einer Seite schreibt nach der Uebernahme jedes Geraet hoechstens einmal, dann Ruhe")
+    @Test("with an entry on one side, after the adoption each device writes at most once, then quiet")
     func oneEntryOneMoreWriteEach() async throws {
         let transport = MaerSyncCarrierTests.FakeTransport()
         let phoneKeys = Keychain(code: nil, feed: Self.feedK, mine: ["a": Self.entry("anna", at: 1000)])
@@ -208,7 +208,7 @@ struct FeedKeySealingTests {
         #expect(Self.feedWrites(transport, "dev-pad") - takenOver.1 <= 1, "the pad wrote on after the takeover")
     }
 
-    @Test("der alte Code-Block eines Geraets, das nie wiederkommt, haelt den Feed-Schluessel nicht zurueck")
+    @Test("the old code block of a device that never comes back does not hold back the feed key")
     func aStaleCodeBlockDoesNotHoldBack() async throws {
         let transport = MaerSyncCarrierTests.FakeTransport()
         let emptyBlock = try #require(FeedAuthBlock.encode([:]))
@@ -225,7 +225,7 @@ struct FeedKeySealingTests {
         #expect(runner.block != .sealedForAnother)
     }
 
-    @Test("ein Geraet ohne Feed-Schluessel versiegelt nichts neu und vergisst seinen Code nicht")
+    @Test("a device without a feed key seals nothing anew and does not forget its code")
     func withoutTheFeedKeyNothingChanges() async throws {
         let transport = MaerSyncCarrierTests.FakeTransport()
         let keys = Keychain(code: Self.codeX, feed: nil, mine: ["a": Self.entry("anna", at: 1000)])
@@ -238,7 +238,7 @@ struct FeedKeySealingTests {
         #expect(keys.code == Self.codeX, "the code stays")
     }
 
-    @Test("die App liest ihre Schluessel an der Tuer des Geraets, die Seite hat keinen Code mehr", .needsTheSources)
+    @Test("the app reads its keys at the device's door, the page has no code any more", .needsTheSources)
     func theDeviceWiring() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Networking/FeedAuthSync.swift")
         // The app's runner names no keys, so it takes the device's; it gets

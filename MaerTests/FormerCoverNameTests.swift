@@ -36,7 +36,7 @@ struct FormerCoverNameTests {
         image.map { $0.size.width * $0.scale }
     }
 
-    @Test("die frueheren Namen eines Audiobookshelf-Covers: der Name nach Adresse, dann der Name der Adresse ohne raw")
+    @Test("the former names of an Audiobookshelf cover: the name by address, then the name of the address without raw")
     func theFormerNameIsTheNameWithoutRaw() {
         let tag = UUID().uuidString
         let cache = ImageCache.shared
@@ -46,7 +46,7 @@ struct FormerCoverNameTests {
         #expect(cache.formerNames(for: URL(string: "https://nd.example.lan/rest/getCoverArt?id=al-1&raw=1")!).isEmpty)
     }
 
-    @Test("offline: alte Datei da, neue nicht, das alte Bild kommt; das Netz-Tor sieht es nicht")
+    @Test("offline: old file there, new one not, the old image comes; the network gate does not see it")
     func theOldCoverAnswersWhenNoNewOneStands() async throws {
         let tag = UUID().uuidString
         let url = address(tag, raw: true)
@@ -62,7 +62,7 @@ struct FormerCoverNameTests {
                 "the network gate took the old cover")
     }
 
-    @Test("beide Dateien da: das neue Bild kommt")
+    @Test("both files there: the new image comes")
     func theNewCoverWinsOverTheOld() async throws {
         let tag = UUID().uuidString
         let url = address(tag, raw: true)
@@ -77,7 +77,7 @@ struct FormerCoverNameTests {
         #expect(pixels(await cache.image(for: url)) == 32)
     }
 
-    @Test("der Fegelauf behaelt den frueheren Namen, bis der heutige geschuetzt steht")
+    @Test("the sweep keeps the former name until today's is protected")
     func theSweepKeepsTheFormerNameUntilTodaysIsKept() {
         let formers = ["today": ["former"]]
         #expect(ImageCache.keptFormerNames(formers, persistent: ["former"]) == ["former"])
@@ -88,7 +88,7 @@ struct FormerCoverNameTests {
         #expect(moves.isEmpty, "the sweep moved the old cover of a download down")
     }
 
-    @Test("der Fegelauf zaehlt die frueheren Namen zu den aktiven", .needsTheSources)
+    @Test("the sweep counts the former names among the active ones", .needsTheSources)
     func theSweepCountsTheFormerNames() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))

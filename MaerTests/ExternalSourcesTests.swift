@@ -7,19 +7,19 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Quellen-Seite ist nur wahr, wenn sie VOLLSTAENDIG ist. Der Zaun
-/// haelt die Aufzaehlung gegen den Host-Scan des eigenen Netz-Codes:
-/// spricht ein Client mit einem Host, den keine Quelle nennt, ist die
-/// Seite eine Luege geworden.
+/// The sources page is only true if it is COMPLETE. The fence
+/// holds the enumeration against the host scan of the own network code:
+/// if a client talks to a host that no source names, the
+/// page has become a lie.
 struct ExternalSourcesTests {
 
-    /// Die Hosts der eigenen Infrastruktur und der Inhalte. Sie gehoeren
-    /// ausdruecklich NICHT auf die Quellen-Seite: eigene Server sind keine
-    /// fremde Quelle, und Feed-/Stream-Hosts sind der INHALT, den der
-    /// Nutzer abonniert hat, nicht ein Dienst, den die App waehlt.
+    /// The hosts of the own infrastructure and of the content. They explicitly
+    /// do NOT belong on the sources page: own servers are no
+    /// foreign source, and feed/stream hosts are the CONTENT the
+    /// user subscribed to, not a service the app chooses.
     private static let ownedOrContent: Set<String> = [
-        "maer.fm", "gpodder.maer.fm",        // eigener gpodder-Dienst
-        "api.jellyfin.org",                   // Jellyfin-Doku-Verweis, eigener Server
+        "maer.fm", "gpodder.maer.fm",        // own gpodder service
+        "api.jellyfin.org",                   // Jellyfin docs link, own server
         "host", "seed.invalid",
     ]
 
@@ -37,8 +37,8 @@ struct ExternalSourcesTests {
         text.matches(of: #/[A-Za-z_]*[Hh]ost[A-Za-z_]*\s*[:=]\s*"([a-z0-9.\-]+\.[a-z]{2,})"/#).map { String($0.output.1) }
     }
 
-    /// Beispiel- und Fixture-Hosts: Platzhalter in Kommentaren und Seeds,
-    /// nie ein echter Kontakt. Am Muster erkannt statt einzeln gepflegt.
+    /// Example and fixture hosts: placeholders in comments and seeds,
+    /// never a real contact. Recognized by pattern instead of kept one by one.
     private static func isExampleHost(_ host: String) -> Bool {
         host.contains("example") || host.hasSuffix(".invalid") || host.hasSuffix(".example")
     }
@@ -63,16 +63,16 @@ struct ExternalSourcesTests {
         return hosts
     }
 
-    /// Jeder fest verdrahtete fremde Host gehoert einer erklaerten Quelle.
-    /// Feed-Hosts (Podcast-Anbieter in kuratierten Listen und Fixtures)
-    /// gehoeren der Feed-Artwork-/Inhalts-Seite und sind daran erkennbar,
-    /// dass sie in DATEN stehen, nicht in Clients — der Zaun nimmt sie
-    /// ueber die bekannte Feed-Host-Liste aus.
-    @Test("kein Client spricht mit einem Host, den keine Quelle nennt", .needsTheSources)
+    /// Every hard-wired foreign host belongs to a declared source.
+    /// Feed hosts (podcast providers in curated lists and fixtures)
+    /// belong to the feed artwork/content page and are recognizable by
+    /// standing in DATA, not in clients. The fence excludes them
+    /// through the known feed host list.
+    @Test("no client talks to a host that no source names", .needsTheSources)
     func everyHardwiredHostBelongsToASource() throws {
         let declared = Set(ExternalSources.all.flatMap(\.hosts))
-        // Feed- und Sender-Hosts: Inhalt, kein Dienst. Erkannt an den
-        // Mustern der kuratierten Listen.
+        // Feed and station hosts: content, no service. Recognized by the
+        // patterns of the curated lists.
         let contentPatterns = ["feeds.", "rss.", "podcast", "audiothek", ".ard", "srf.ch",
                                "wdr", "swr", "mdr", "ndr", "rbb", "br.de", "deutschlandfunk",
                                "hoerspiel", "hoer-talk", "drabblecast", "escapepod",
@@ -88,9 +88,9 @@ struct ExternalSourcesTests {
             if Self.ownedOrContent.contains(host) { continue }
             if Self.isExampleHost(host) { continue }
             if contentPatterns.contains(where: { host.contains($0) }) { continue }
-            // Installationsanleitungen der Server-Projekte: Adressen, die der
-            // Browser oeffnet, die App ruft sie nie (ServerGuidesTests haelt
-            // sie aus jeder Datei heraus, die eine Verbindung oeffnen kann).
+            // Installation guides of the server projects: addresses the
+            // browser opens, the app never calls them (ServerGuidesTests keeps
+            // them out of every file that can open a connection).
             if ServerGuidesTests.projectHosts.contains(host) { continue }
             if Self.outsideThePage[host] != nil { continue }
             unexplained.append(host)
@@ -106,10 +106,10 @@ struct ExternalSourcesTests {
                 "Hosts ohne erklaerte Quelle: \(unexplained.sorted()). Entweder gehoeren sie einer neuen Quelle auf der Seite, oder der Inhalts-Ausnahmeliste hier — beides ist eine benannte Entscheidung.")
     }
 
-    /// Die Aufzaehlung selbst: eindeutige Schluessel, eindeutige
-    /// Speicher-Schluessel, jede Gruppe besetzt, und die vier gemessenen
-    /// Katalog-Quellen stehen wirklich als Kataloge da.
-    @Test("die Aufzaehlung ist eindeutig und traegt die gemessene Gliederung")
+    /// The enumeration itself: unique keys, unique
+    /// storage keys, every group filled, and the four measured
+    /// catalog sources really stand there as catalogs.
+    @Test("the enumeration is unambiguous and carries the measured structure")
     func theEnumerationIsSound() {
         let keys = ExternalSources.all.map(\.key)
         #expect(Set(keys).count == keys.count, "doppelte Quellen-Schluessel")
@@ -122,10 +122,10 @@ struct ExternalSourcesTests {
         for key in ["librivox", "gutenberg", "internetArchive", "jamendo"] {
             #expect(ExternalSources.source(key: key)?.group == .catalogs)
         }
-        // Jede Quelle sagt, was dann gilt — in der ZWEI-TEILE-Form: was
-        // stoppt plus was bleibt. Der Bleibt-Teil steht woertlich in der
-        // Zeile, damit die zwoelfte Quelle die Form nicht vergisst und die
-        // zwei Felder nicht auseinanderdriften.
+        // Every source says what then applies, in the TWO-PART form: what
+        // stops plus what stays. The stays part stands verbatim in the
+        // line, so the twelfth source does not forget the form and the
+        // two fields do not drift apart.
         for source in ExternalSources.all {
             #expect(!source.effectLine.isEmpty, "\(source.key) sagt nicht, was dann gilt")
             #expect(!source.staysLine.isEmpty, "\(source.key) sagt nicht, was bleibt")
@@ -134,10 +134,10 @@ struct ExternalSourcesTests {
         }
     }
 
-    /// Bestehende Wahlen ueberleben: Quellen, die heute einen Schalter
-    /// haben, behalten ihren SCHLUESSEL. Ein umbenannter Schluessel wuerde
-    /// die gespeicherte Entscheidung jedes Nutzers still zuruecksetzen.
-    @Test("bestehende Schalter behalten ihre Schluessel")
+    /// Existing choices survive: sources that have a switch today
+    /// keep their KEY. A renamed key would silently reset the
+    /// stored decision of every user.
+    @Test("existing switches keep their keys")
     func existingSwitchesKeepTheirKeys() {
         let erwartet: [String: String] = [
             "librivox": "librivoxRowsEnabled",
@@ -147,10 +147,10 @@ struct ExternalSourcesTests {
             "wikimedia": "radioLogoChainEnabled",
             "musicBrainz": "musicArtistImagesOnline",
             "lrclib": "musicLyricsOnlineLookup",
-            // Der Radio-BEREICHS-Schalter beantwortete immer schon genau
-            // die Quellen-Frage (er torte die Katalog-Abrufe) und wird
-            // wiederverwendet; ein frischer Schluessel waere ein zweiter
-            // Schalter fuer denselben Dienst gewesen.
+            // The radio AREA switch has always answered exactly
+            // the sources question (it gated the catalog fetches) and is
+            // reused; a fresh key would have been a second
+            // switch for the same service.
             "radioBrowser": "radioEnabled",
         ]
         for (key, storage) in erwartet {
@@ -159,12 +159,12 @@ struct ExternalSourcesTests {
         }
     }
 
-    /// Die Sammel-Aktion fasst nur an, was die Seite auch ZEIGT. Ohne
-    /// eigenen Schluessel traegt die PodcastIndex-Zeile keinen Schalter
-    /// (sie sagt stattdessen, dass ohne Schluessel nicht gefragt wird), und
-    /// ein AUS, das niemand sehen kann, faellt der Person erst Wochen
-    /// spaeter auf die Fuesse, wenn sie einen Schluessel eintraegt.
-    @Test("ohne Schluessel bleibt PodcastIndex aus der Sammel-Abschaltung heraus")
+    /// The bulk action only touches what the page also SHOWS. Without an
+    /// own key the PodcastIndex row carries no switch
+    /// (it says instead that without a key nothing is asked), and
+    /// an OFF that nobody can see comes back to bite the person only weeks
+    /// later, when they enter a key.
+    @Test("without a key PodcastIndex stays out of the bulk switch-off")
     func theCollectiveActionSkipsASourceWithoutAnOperableSwitch() throws {
         let ohne = ExternalSources.switchable(podcastIndexConfigured: false)
         let mit = ExternalSources.switchable(podcastIndexConfigured: true)
@@ -173,8 +173,8 @@ struct ExternalSourcesTests {
         #expect(!ohne.contains { $0.key == "podcastIndex" })
         #expect(mit.contains { $0.key == "podcastIndex" })
 
-        // Und am Speicher gemessen, nicht nur an der Liste: der Schluessel
-        // der uebersprungenen Quelle wird NICHT geschrieben.
+        // And measured at the store, not only at the list: the key
+        // of the skipped source is NOT written.
         let suite = "sammel-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -192,28 +192,28 @@ struct ExternalSourcesTests {
                 "mit Schluessel gehoert PodcastIndex sehr wohl dazu")
     }
 
-    /// Das tragende Prinzip als Test: eine abgeschaltete Quelle betrifft
-    /// nur NEUE Abfragen, nie den Bestand. Am Speicher gemessen: die
-    /// Sammel-Aktion (die haerteste Form des Abschaltens) schreibt
-    /// AUSSCHLIESSLICH Schluessel der Aufzaehlung — Favoriten, Abos,
-    /// Hoerstand und jede andere fremde Ablage bleiben byte-gleich.
+    /// The load-bearing principle as a test: a switched-off source affects
+    /// only NEW queries, never the stock. Measured at the store: the
+    /// bulk action (the hardest form of switching off) writes
+    /// EXCLUSIVELY keys of the enumeration. Favorites, subscriptions,
+    /// listening state and every other foreign store stay byte-identical.
     ///
-    /// Die Tatsache „traegt dieser Bau einen PodcastIndex-Schluessel" ist hier
-    /// ein EINGANG, kein Wert, den der Fall selbst liest. Liest ein Zeuge sie
-    /// selbst, misst er nur die Richtung, die auf seiner Maschine zufaellig
-    /// gilt: mit Schluessel wandert jede Quelle und er ist gruen, ohne
-    /// Schluessel ueberspringt die Regel PodcastIndex und derselbe Fall wird
-    /// rot, bei gleichem Quelltext. Die Zusage gilt in BEIDEN Richtungen,
-    /// also faehrt der Fall beide.
-    @Test("Quellen abschalten laesst jeden fremden Schluessel unberuehrt",
+    /// The fact „traegt dieser Bau einen PodcastIndex-Schluessel" is here
+    /// an INPUT, not a value the case reads itself. If a witness reads it
+    /// itself, it only measures the direction that happens to hold on its machine:
+    /// with a key every source moves and it is green, without a
+    /// key the rule skips PodcastIndex and the same case turns
+    /// red, with the same source text. The promise holds in BOTH directions,
+    /// so the case runs both.
+    @Test("switching sources off leaves every foreign key untouched",
           arguments: [false, true])
     func disablingSourcesTouchesOnlySourceKeys(podcastIndexConfigured: Bool) throws {
         let suite = "bestand-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
 
-        // Bestand hinlegen: die Klassen aus dem Entscheid (Sender-Objekte,
-        // Abos, Hoerstand) als Stellvertreter-Werte.
+        // Lay out the stock: the classes from the decision (station objects,
+        // subscriptions, listening state) as stand-in values.
         defaults.set(["sender-a", "sender-b"], forKey: "radioFavorites")
         defaults.set("hoerstand", forKey: "listenLog:buch1")
         defaults.set(9.5, forKey: "progress:rss:abc")
@@ -228,13 +228,13 @@ struct ExternalSourcesTests {
         for key in quellenSchluessel { nachher.removeValue(forKey: key) }
         #expect(Set(nachher.keys) == Set(vorher.keys),
                 "die Sammel-Aktion hat fremde Schluessel angefasst: \(Set(nachher.keys).symmetricDifference(Set(vorher.keys)).sorted())")
-        // Abgeschaltet ist, was die Seite auch zeigt: die uebersprungene Quelle
-        // bleibt unberuehrt, und genau das haelt der Fall daneben fest.
+        // What is switched off is what the page also shows: the skipped source
+        // stays untouched, and exactly that is what the neighboring case pins down.
         for source in ExternalSources.switchable(podcastIndexConfigured: podcastIndexConfigured) {
             #expect(!ExternalSources.isAllowed(source, defaults: defaults))
         }
-        // Und kein Quellen-Schluessel liegt im Nutzerbesitz: die Aufzaehlung
-        // darf nie mit einer Bestands-Familie kollidieren.
+        // And no source key lies in user ownership: the enumeration
+        // must never collide with a stock family.
         for key in quellenSchluessel {
             #expect(!key.hasPrefix("progress:") && !key.hasPrefix("listenLog:")
                     && key != "radioFavorites")

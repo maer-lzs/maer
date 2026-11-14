@@ -40,7 +40,7 @@ struct FinishedDownloadControlTests {
         return try String(contentsOf: file, encoding: .utf8)
     }
 
-    @Test("ein fertiger Download-Knopf loescht nichts", .needsTheSources)
+    @Test("a finished download button deletes nothing", .needsTheSources)
     func aFinishedControlDeletesNothing() throws {
         let body = try #require(Self.body(of: "PodcastDownloadButton",
                                           in: try Self.source("Views/Podcasts/PodcastComponents.swift")),
@@ -48,7 +48,7 @@ struct FinishedDownloadControlTests {
         #expect(Self.unnamedDeletes(in: body) == 0, "PodcastDownloadButton loescht wieder beim Tippen")
     }
 
-    @Test("der Download des Albums steht im Menue der Seite, mit denselben Eintraegen wie eine Titelzeile", .needsTheSources)
+    @Test("the album's download stands in the page's menu, with the same entries as a title row", .needsTheSources)
     func theAlbumDownloadStandsInThePageMenu() throws {
         let page = try Self.source("Views/Music/MusicAlbumView.swift")
         // No control of its own in the top bar.
@@ -65,7 +65,7 @@ struct FinishedDownloadControlTests {
         #expect(entries[loading.upperBound...].contains("Download Album"))
     }
 
-    @Test("Eichzeilen: nur ein Loeschen unter einer benannten VoiceOver-Handlung ist erlaubt")
+    @Test("Calibration lines: only a delete under a named VoiceOver action is allowed")
     func onlyANamedActionMayDelete() {
         #expect(Self.unnamedDeletes(in: "Button { m.deleteDownload(itemId: i) } label: { x }") == 1)
         #expect(Self.unnamedDeletes(in: ".accessibilityAction(named: Text(\"Delete Download\")) {\n    m.deleteDownload(itemId: i)\n}") == 0)
@@ -73,7 +73,7 @@ struct FinishedDownloadControlTests {
         #expect(Self.unnamedDeletes(in: "Image(systemName: \"x\")") == 0)
     }
 
-    @Test("das Album wird ueber das Langdruck-Menue seiner Titel geloescht", .needsTheSources)
+    @Test("the album is deleted through the long-press menu of its titles", .needsTheSources)
     func theAlbumIsDeletedFromTheLongPressMenu() throws {
         let page = try Self.source("Views/Music/MusicAlbumView.swift")
         let menu = try #require(Self.body(of: "AlbumDownloadMenuItems", in: page))
@@ -81,7 +81,7 @@ struct FinishedDownloadControlTests {
         #expect(page.contains("AlbumDownloadMenuItems(itemId: item.id"), "die Albumseite ruft das Menue nicht mehr")
     }
 
-    @Test("der Koerper-Finder schneidet genau einen Typ")
+    @Test("the body finder cuts out exactly one type")
     func theBodyFinderCutsOneType() {
         let text = "struct A: View {\n    var body: some View { x.deleteDownload(itemId: i) }\n}\n\nprivate struct B {\n    let y = 1\n}\n"
         #expect(Self.body(of: "A", in: text)?.contains("deleteDownload(") == true)

@@ -71,7 +71,7 @@ extension Trait where Self == ConditionTrait {
 @MainActor
 struct FailedLoadTests {
 
-    @Test("die Regel: nur das laufende Item der aktuellen Warteschlange haelt an; ein Play oder das Netz baut neu")
+    @Test("the rule: only the running item of the current queue stops; a play or the network rebuilds")
     func theRule() {
         #expect(FailedLoad.stopsPlayback(failedIndex: 0, currentIndex: 0, inCurrentQueue: true))
         #expect(!FailedLoad.stopsPlayback(failedIndex: 2, currentIndex: 0, inCurrentQueue: true))
@@ -134,7 +134,7 @@ struct FailedLoadTests {
         }
     }
 
-    @Test("ein Play nach einem Ladefehler baut das Item an der gehaltenen Position neu, der Fehler haelt an mit Hinweis")
+    @Test("a play after a load failure rebuilds the item at the held position, the failure stops with a hint")
     func aPlayAfterALoadFailureBuildsTheItemAnew() async throws {
         let id = "loadfail-\(UUID().uuidString)"
         let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 600, contentUrl: "episode.mp3", metadata: nil)
@@ -250,7 +250,7 @@ struct FailedLoadTests {
         return url
     }
 
-    @Test("eine spaetere Datei, die nicht laden kann, haelt an ihrem Anfang an, die Position springt nicht ueber sie", .needsAudio)
+    @Test("a later file that cannot load stops at its start, the position does not jump over it", .needsAudio)
     func aLaterFailedTrackHoldsAtItsStart() async throws {
         let first = try tone(seconds: 1)
         let third = try tone(seconds: 1)
@@ -299,7 +299,7 @@ struct FailedLoadTests {
     /// the playing item, because the book starts at it. Which way a failure
     /// takes in the case above is up to the clock; here it is forced, and
     /// it must leave the same state: nothing behind the failed file waits.
-    @Test("die gescheiterte Datei ist schon die laufende: Halt an ihrem Anfang, nichts dahinter bleibt in der Warteschlange", .needsAudio)
+    @Test("the failed file is already the running one: stop at its start, nothing behind it stays in the queue", .needsAudio)
     func aFailedPlayingTrackLeavesNothingBehind() async throws {
         let first = try tone(seconds: 1)
         let third = try tone(seconds: 1)
@@ -343,7 +343,7 @@ struct FailedLoadTests {
     /// one of the other two ways: the position stays, nothing from the failed
     /// track on waits in the queue, and the next play builds anew at the held
     /// position instead of resuming the item that failed.
-    @Test("eine Datei scheitert mitten im Hoeren, nach ihrem einen Versuch erneut: Halt an der Stelle, nichts bleibt in der Warteschlange, das naechste Play baut dort neu", .needsAudio)
+    @Test("a file fails in the middle of listening, after its one attempt again: stop at the spot, nothing stays in the queue, the next play rebuilds there", .needsAudio)
     func aTrackFailingMidwayTwiceHoldsLikeTheOthers() async throws {
         let first = try tone(seconds: 3)
         let second = try tone(seconds: 2)
@@ -381,7 +381,7 @@ struct FailedLoadTests {
     /// observer for every item, a station included, and its hold takes the
     /// station out of the queue as well. The next play builds it anew, one
     /// item, instead of resuming the stream that failed.
-    @Test("ein Sender scheitert mitten im Strom, nach seinem einen Versuch erneut: Halt mit Hinweis, das naechste Play baut ihn neu", .needsAudio)
+    @Test("a station fails in the middle of the stream, after its one attempt again: stop with a hint, the next play rebuilds it", .needsAudio)
     func aStationFailingMidwayTwiceIsBuiltAnew() async throws {
         let stream = try tone(seconds: 5)
         defer { try? FileManager.default.removeItem(at: stream) }
@@ -418,7 +418,7 @@ struct FailedLoadTests {
     /// The same unreadable file, once with the network and once without: the
     /// hint carries the file's own cause, and without network the network,
     /// whose symbol says where to look.
-    @Test("ein Ladefehler ohne Netz zeigt das Netz als Ursache, mit Netz die Ursache der Datei", .needsAudio)
+    @Test("a load failure without network shows the network as the cause, with network the cause of the file", .needsAudio)
     func aLoadFailureWithoutNetworkShowsTheNetwork() async throws {
         let broken = try brokenFile()
         defer { try? FileManager.default.removeItem(at: broken) }
@@ -439,7 +439,7 @@ struct FailedLoadTests {
 
     /// A station whose stream cannot be loaded says that the station could
     /// not be reached, not the sentence of a file.
-    @Test("ein Sender, dessen Strom nicht laedt, bekommt den Satz des Stroms", .needsAudio)
+    @Test("a station whose stream does not load gets the sentence of the stream", .needsAudio)
     func aStationThatCannotLoadSaysTheStream() async throws {
         let broken = try brokenFile()
         defer { try? FileManager.default.removeItem(at: broken) }
@@ -484,7 +484,7 @@ struct FailedLoadTests {
     /// server, the file goes and the hint says the download could not be
     /// read; without network it stops with that hint, not a network one, and
     /// the file stays.
-    @Test("eine fehlende oder kaputte lokale Datei: mit Netz weiter vom Server, ohne Netz Halt, beide Male der Hinweis auf den Download", .needsAudio)
+    @Test("a missing or broken local file: with network on from the server, without network a stop, both times the hint about the download", .needsAudio)
     func aBrokenLocalFilePlaysOnFromTheServer() async throws {
         let server = try tone(seconds: 3)
         defer { try? FileManager.default.removeItem(at: server) }
@@ -519,7 +519,7 @@ struct FailedLoadTests {
     /// A later track that fails only after the track before has ended: the
     /// queue has moved past it by then, and its failure comes too late to
     /// hold ahead. The gap in the playing index holds it all the same.
-    @Test("eine spaetere Datei, die erst nach dem Ende der Datei davor scheitert, haelt an ihrem Anfang, nie in der Datei dahinter", .needsAudio)
+    @Test("a later file that fails only after the end of the file before it stops at its start, never in the file behind it", .needsAudio)
     func aLateFailureHoldsAtItsStart() async throws {
         let first = try tone(seconds: 1)
         let third = try tone(seconds: 3)
@@ -550,7 +550,7 @@ struct FailedLoadTests {
 
     /// A later downloaded file that cannot load is dropped while the one
     /// before plays; at its start playback goes on from the server, no stop.
-    @Test("eine spaetere kaputte lokale Datei: mit Netz laeuft die Wiedergabe an ihrem Anfang vom Server weiter", .needsAudio)
+    @Test("a later broken local file: with network playback goes on from the server at its start", .needsAudio)
     func aLaterBrokenLocalFilePlaysOnFromTheServer() async throws {
         let first = try tone(seconds: 1)
         let server = try tone(seconds: 2)
@@ -580,7 +580,7 @@ struct FailedLoadTests {
     /// the network goes while the track before still plays. At the held
     /// point nothing can take over: playback holds with the offline hint,
     /// it does not claim to play on from the server.
-    @Test("eine spaetere kaputte lokale Datei, und das Netz geht vor ihrem Anfang: Halt mit dem Hinweis ohne Netz", .needsAudio)
+    @Test("a later broken local file, and the network goes before its start: stop with the offline hint", .needsAudio)
     func aLaterBrokenLocalFileHoldsWhenTheNetworkLeft() async throws {
         let first = try tone(seconds: 1)
         let server = try tone(seconds: 2)
@@ -608,7 +608,7 @@ struct FailedLoadTests {
     /// One attempt per track: the server copy fails too. The track streams
     /// by then, so the network hint stands, and nothing builds it again by
     /// itself.
-    @Test("eine lokale Datei und ihr Server scheitern: nach dem einen Versuch der Netz-Hinweis, keine Schleife")
+    @Test("a local file and its server fail: after the one attempt the network hint, no loop")
     func oneAttemptThenTheNetworkHint() async throws {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("loadfail-missing-\(UUID().uuidString).caf")
         let model = PlayerViewModel(provider: MixedProvider(), localTracks: { _ in [0: missing] }, isOnline: { true })
@@ -627,7 +627,7 @@ struct FailedLoadTests {
     /// to the server: the retry re-read the same file. Failing again at
     /// load with network, it plays on from the server instead of being
     /// unavailable with the sentence that it would play from the server.
-    @Test("eine Datei, die ohne Netz scheiterte, laeuft beim naechsten Scheitern mit Netz vom Server")
+    @Test("a file that failed without network plays from the server on the next failure with network")
     func anOfflineRetryKeepsTheWayToTheServer() {
         var attempts = FailedLoad.TrackAttempts()
         let offline = attempts.failedWhilePlaying(3, online: false)

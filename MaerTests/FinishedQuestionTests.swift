@@ -8,18 +8,18 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Fertig-Frage, an EINER Stelle beantwortet.
+/// The finished question, answered in ONE place.
 ///
-/// Der Fall, der sie erzwungen hat: ein Buch stand mit 18:40:56 von 18:40:56
-/// auf dem Server. Und das Flag sagte trotzdem nicht fertig. Es blieb damit
-/// an erster Stelle in Weiterhoeren, obwohl es durchgehoert war.
+/// The case that forced it: a book stood at 18:40:56 of 18:40:56
+/// on the server. And the flag still did not say finished. So it stayed
+/// in first place in Continue Listening, although it had been heard through.
 struct FinishedQuestionTests {
 
     private func progress(_ fraction: Double, flag: Bool) -> BookProgress {
         BookProgress(fraction: fraction, isFinished: flag, lastUpdate: 1.7e12)
     }
 
-    @Test("die Zahlen entscheiden mit — ein Flag darf nicht fehlen duerfen")
+    @Test("the numbers decide too: a flag must not be allowed to be absent")
     func numbersDecideToo() {
         #expect(progress(1.0, flag: false).countsAsFinished,
                 "Position gleich Dauer, Flag verloren")
@@ -28,7 +28,7 @@ struct FinishedQuestionTests {
                 "ein gesetztes Flag gilt weiter, auch mitten im Buch")
     }
 
-    @Test("die Schwelle heisst VOLLSTAENDIG, nicht fast")
+    @Test("the threshold is called COMPLETE, not almost")
     func thresholdMeansComplete() {
         #expect(!progress(0.99, flag: false).countsAsFinished,
                 "ein 20-Stunden-Buch hat bei 99 % noch zwoelf Minuten")
@@ -36,7 +36,7 @@ struct FinishedQuestionTests {
         #expect(progress(0.9999, flag: false).countsAsFinished, "nur Float-Rauschen")
     }
 
-    @Test("fertig heisst nicht mehr begonnen — die Reihe verliert es damit")
+    @Test("finished no longer means begun: the row loses it as a result")
     func finishedIsNotStarted() {
         #expect(!progress(1.0, flag: false).isStarted,
                 "das ist der Grund, warum es aus Weiterhoeren faellt")
@@ -44,7 +44,7 @@ struct FinishedQuestionTests {
         #expect(!progress(0.0, flag: false).isStarted)
     }
 
-    @Test("die Weiterhoeren-Regel fragt dieselbe Antwort")
+    @Test("the Continue Listening rule asks the same answer")
     func continueRowAsksTheSameAnswer() {
         let done = progress(1.0, flag: false)
         #expect(!ContinueSources.isStarted(serverSaysStarted: done.isStarted,
@@ -56,21 +56,21 @@ struct FinishedQuestionTests {
                                           finished: half.countsAsFinished))
     }
 
-    /// Der zweite Fall am selben Buch: dieses Geraet hatte den Endstand
-    /// einmal gesendet, und dieser Zeuge wurde als begonnen gelesen.
-    @Test("der Zeuge belegt den ANFANG und darf das Ende nicht ueberstimmen")
+    /// The second case on the same book: this device had sent the final
+    /// state once, and this witness was read as begun.
+    @Test("the witness proves the BEGINNING and must not overrule the end")
     func theWitnessCannotOutvoteTheEnd() {
-        // Die gemessene Lage: Server sagt fertig, und der eigene Push steht
-        // mit der vollen Dauer daneben.
+        // The measured situation: the server says finished, and the own push stands
+        // beside it with the full duration.
         #expect(!ContinueSources.isStarted(serverSaysStarted: false,
                                            flushed: [67256, 1.7e12],
                                            finished: true),
                 "ein Push ueber die ganze Dauer ist kein Grund, es weiter anzubieten")
-        // Ohne Fertig-Aussage traegt der Zeuge weiterhin. Dafuer ist er da.
+        // Without a finished statement the witness still carries. That is what it is there for.
         #expect(ContinueSources.isStarted(serverSaysStarted: false,
                                           flushed: [67256, 1.7e12],
                                           finished: false))
-        // Und die Schwelle bleibt: ein Antippen ist kein begonnenes Buch.
+        // And the threshold stays: a tap is not a begun book.
         #expect(!ContinueSources.isStarted(serverSaysStarted: false,
                                            flushed: [5, 1.7e12],
                                            finished: false))

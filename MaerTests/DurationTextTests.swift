@@ -12,7 +12,7 @@ import Foundation
 /// "x Std. y Min." and "y Min.". Two forms stood side by side before
 /// (episodes and the catalogue wrote "x h y min", German "x Std y min").
 struct DurationTextTests {
-    @Test("die Dauer wird in Stunden und Minuten geteilt, nie negativ")
+    @Test("the duration is split into hours and minutes, never negative")
     func partsSplitTheMinutes() {
         let cases: [(minutes: Int, hours: Int, rest: Int)] = [(0, 0, 0), (59, 0, 59), (60, 1, 0), (95, 1, 35), (-5, 0, 0)]
         for c in cases {
@@ -23,7 +23,7 @@ struct DurationTextTests {
 
     /// The written output on a full hour: "1 Std.", never "1 Std. 0 Min."
     /// (the sleep menu's 60, a wait, a book of exactly two hours).
-    @Test("eine volle Stunde steht als Stunden allein, nie mit null Minuten")
+    @Test("a full hour stands as hours alone, never with zero minutes")
     func aFullHourStandsAlone() {
         for minutes in [60, 120, 180] {
             let length = DurationText.length(minutes: minutes)
@@ -43,7 +43,7 @@ struct DurationTextTests {
 
     /// The German side of the rule: the catalogue carries exactly the one
     /// form, and no other value writes a duration in a second form.
-    @Test("der Katalog traegt die Dauer in genau einer Form, deutsch mit Punkt", .needsTheSources)
+    @Test("the catalog carries the duration in exactly one form, German with a period", .needsTheSources)
     func theCatalogCarriesOneForm() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -83,7 +83,7 @@ struct DurationTextTests {
     /// drive mode's clock form ("1:05 h") is a format, not an interpolation
     /// with a unit, and its minutes go through the rule; the logo report's
     /// age line is German diagnosis text and an age, not a duration.
-    @Test("nur die Regel schreibt eine Dauer; die benannte Ausnahme mit Grund", .needsTheSources)
+    @Test("only the rule writes a duration; the named exception with its reason", .needsTheSources)
     func onlyTheRuleWritesADuration() throws {
         #expect(Self.handWritten(in: #"return "\(m) min""#) == 1, "the finder sees a minute form")
         #expect(Self.handWritten(in: #"String(localized: "\(total / 60) h \(total % 60) min")"#) == 2)
@@ -102,7 +102,7 @@ struct DurationTextTests {
         #expect(drift.isEmpty, "a duration written outside the rule, or a stale exception: \(drift)")
     }
 
-    @Test("die Zeile unter dem Titel nennt, was endet: Buch, Folge, Sammlung, Album; ein Lied nur seine Restzeit")
+    @Test("the line under the title names what ends: book, episode, collection, album; a song only its remaining time")
     func theRemainingLineNamesWhatEnds() {
         #expect(RemainingLine.form(isMusic: false, isPodcast: false, hasParts: false, chapterCount: 12) == .book)
         // A book in parts the app names itself ("Part 2 of 40").
@@ -114,7 +114,7 @@ struct DurationTextTests {
         #expect(RemainingLine.form(isMusic: true, isPodcast: false, hasParts: false, chapterCount: 1) == .song)
     }
 
-    @Test("der Katalog traegt jede Form der Zeile deutsch und englisch, die alte ohne Gegenstand nicht mehr", .needsTheSources)
+    @Test("the catalog carries every form of the line in German and English, the old one without an object no longer", .needsTheSources)
     func theCatalogCarriesEveryForm() throws {
         let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"),
                                  encoding: .utf8)

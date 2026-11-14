@@ -8,13 +8,13 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Das Datum einer Folge in der Zukunft (ein Feed, der vorab veroeffentlicht)
-/// zeigt den Termin, „heute 09:05“ oder „morgen 09:05“, statt „in 8 Stunden“;
-/// Vergangenes bleibt relativ. Eine Regel fuer jede Flaeche mit Folgendatum.
+/// The date of an episode in the future (a feed that publishes ahead)
+/// shows the appointment, „heute 09:05“ or „morgen 09:05“, instead of „in 8 Stunden“;
+/// the past stays relative. One rule for every surface with an episode date.
 struct EpisodeDateLineTests {
-    /// Ein Sendedatum ist ein Tag, kein Zeitpunkt: in Los Angeles, Zuerich
-    /// und Tokio derselbe Tag; was kein Tag ist, ergibt keine Zeile.
-    @Test("ein Sendedatum zeigt in jeder Zeitzone denselben Tag")
+    /// A broadcast date is a day, not a point in time: in Los Angeles, Zurich
+    /// and Tokyo the same day; what is no day yields no line.
+    @Test("a broadcast date shows the same day in every time zone")
     func anAirDateIsTheSameDayInEveryZone() {
         let german = Locale(identifier: "de_DE")
         for zone in ["America/Los_Angeles", "Europe/Zurich", "Asia/Tokyo", "Pacific/Honolulu"] {
@@ -37,7 +37,7 @@ struct EpisodeDateLineTests {
         zurich.date(from: DateComponents(year: 2026, month: 9, day: day, hour: hour, minute: minute))!
     }
 
-    @Test("Die Tabelle: vorher, heute, ueber Mitternacht, uebermorgen, in zehn Tagen")
+    @Test("The table: before, today, past midnight, the day after tomorrow, in ten days")
     func theKinds() {
         let evening = date(28, 20, 0)
         let night = date(28, 0, 35)
@@ -52,7 +52,7 @@ struct EpisodeDateLineTests {
                                      calendar: zurich) == .later, "plus ten days")
     }
 
-    @Test("Heute und morgen nennen die Uhrzeit, weiter weg Datum und Uhrzeit, Vergangenes bleibt relativ")
+    @Test("Today and tomorrow name the time of day, further away date and time of day, the past stays relative")
     func theTexts() {
         let night = date(28, 0, 35)
         let locale = Locale(identifier: "de_CH")
@@ -67,7 +67,7 @@ struct EpisodeDateLineTests {
         #expect(EpisodeDateLine.text(ms: nil).isEmpty && EpisodeDateLine.text(ms: 0).isEmpty)
     }
 
-    @Test("Jede Flaeche mit Folgendatum fragt die eine Regel", .needsTheSources)
+    @Test("Every surface with an episode date asks the one rule", .needsTheSources)
     func everySurfaceAsksTheOneRule() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

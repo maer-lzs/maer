@@ -64,7 +64,7 @@ struct ExpectationFormFenceTests {
         return after.firstMatch(of: #/==|!=|<=|>=|\s<\s|\s>\s/#) == nil
     }
 
-    @Test("keine Erwartung fragt eine Eigenschaft oder Methode an einer Optional-Kette mit Rueckfall in Klammern ohne Vergleich", .needsTheTests)
+    @Test("no expectation asks a property or method on an optional chain with a fallback in parentheses without a comparison", .needsTheTests)
     func noExpectationTakesTheSilentForm() throws {
         var offenders: [String] = []
         var read = 0

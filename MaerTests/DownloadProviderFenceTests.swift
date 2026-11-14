@@ -8,22 +8,22 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Ein Download bekommt den Anbieter DES TITELS, nie einen benannten.
+/// A download gets the provider OF THE TITLE, never a named one.
 ///
-/// Zwei Funde derselben Klasse an einem Tag, in zwei Tabs:
+/// Two findings of the same class in one day, in two tabs:
 ///
-/// - `MusicAlbumView` gab beiden Album-Downloads fest den Subsonic-Anbieter
-///   mit. Bei einer Jellyfin-Bibliothek war das der falsche Server.
-/// - `PodcastComponents` gab zwei Folgen-Downloads fest den RSS-Anbieter mit
-///   (Weiter-Karte und Download-Knopf). Eine ABS-Folge traegt eine
-///   `abspod:`-Kennung, die RSS-Ablage ist ein exakter Index ueber ihre
-///   eigenen Guids, findet sie also nicht — und die Wache dahinter kehrte
-///   still zurueck. Der Knopf tat nichts und sagte nichts.
+/// - `MusicAlbumView` passed the Subsonic provider as fixed to both album
+///   downloads. With a Jellyfin library that was the wrong server.
+/// - `PodcastComponents` passed the RSS provider as fixed to two episode
+///   downloads (continue card and download button). An ABS episode carries an
+///   `abspod:` id, the RSS store is an exact index over its
+///   own guids, so it does not find it. The guard behind it returned
+///   silently. The button did nothing and said nothing.
 ///
-/// Beide Male stand die richtige Fassung in DERSELBEN Datei: `PodcastComponents`
-/// fragt an einer dritten Stelle laengst `router.provider(item.id)`, und in
-/// `MusicAlbumView` fragten fuenfzehn der achtzehn Griffe den eingestellten
-/// Anbieter. Es war nie eine Meinung, es war ein Rest.
+/// Both times the right version stood in the SAME file: `PodcastComponents`
+/// long since asks `router.provider(item.id)` in a third place, and in
+/// `MusicAlbumView` fifteen of the eighteen handles asked the configured
+/// provider. It was never an opinion, it was a remnant.
 struct DownloadProviderFenceTests {
     private func codeOf(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -34,11 +34,11 @@ struct DownloadProviderFenceTests {
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 
-    /// Der Bestand ist NULL: kein Download nennt einen Anbieter beim Namen.
-    /// Erlaubt ist, was aus dem Titel oder aus der laufenden Sitzung kommt
-    /// (`router.provider(id)`, ein hergeleitetes `provider`, der Anbieter des
-    /// Koordinators). Verboten ist jeder feste Name.
-    @Test("Kein Download nennt einen Anbieter beim Namen", .needsTheSources)
+    /// The stock is ZERO: no download names a provider by name.
+    /// Allowed is what comes from the title or from the running session
+    /// (`router.provider(id)`, a derived `provider`, the provider of the
+    /// coordinator). Every fixed name is forbidden.
+    @Test("No download names a provider by name", .needsTheSources)
     func noDownloadNamesAProvider() throws {
         let named = ["AppSession.shared.rssProvider", "AppSession.shared.absPodcastProvider",
                      "AppSession.shared.subsonicProvider", "AppSession.shared.jellyfinProvider",
@@ -52,9 +52,9 @@ struct DownloadProviderFenceTests {
             let path = SourceTree.relativePath(of: url)
             let flat = try codeOf(path)
             for range in flat.ranges(of: "download(item:") {
-                // Das Argument reicht bis zur schliessenden Klammer des
-                // Aufrufs; ein Fenster genuegt, weil provider: unmittelbar
-                // folgt. LOKAL gefragt, nicht in der Nachbarschaft.
+                // The argument extends to the closing bracket of the
+                // call; a window suffices, because provider: follows
+                // directly. Asked LOCALLY, not in the neighborhood.
                 let to = flat.index(range.upperBound, offsetBy: 160, limitedBy: flat.endIndex) ?? flat.endIndex
                 let window = String(flat[range.upperBound..<to])
                 guard let arg = window.range(of: "provider:") else { continue }
@@ -68,17 +68,17 @@ struct DownloadProviderFenceTests {
         #expect(offenders.isEmpty, "ein Download bekommt einen benannten Anbieter: \(offenders)")
     }
 
-    /// „Detail holen, dann laden" ist EINE Handlung, und sie hat einen Ort.
-    /// Sechs Flaechen schrieben die drei Schritte von Hand, und sie waren sich
-    /// nicht einig: zwei fragten den Koordinator nach einem Anbieter, der fuer
-    /// die Bibliothek antwortet und nicht fuer den Titel, und ALLE SECHS
-    /// verschluckten einen fehlgeschlagenen Abruf mit `try?` und einem
-    /// `return` — der Knopf tat nichts und sagte nichts, waehrend die
-    /// automatische Schleife nebenan den Fehler faengt und meldet.
+    /// „Detail holen, dann laden" is ONE action, and it has one place.
+    /// Six surfaces wrote the three steps by hand, and they did not
+    /// agree: two asked the coordinator for a provider that answers for
+    /// the library and not for the title, and ALL SIX
+    /// swallowed a failed fetch with `try?` and a
+    /// `return`. The button did nothing and said nothing, while the
+    /// automatic loop next door catches the error and reports it.
     ///
-    /// Wer den Lader jetzt noch direkt ruft, HAELT das Detail bereits: er
-    /// handelt auf eine Entscheidung hin, die schon gefallen ist.
-    @Test("Wer aus einer Kennung laedt, nimmt die eine Handlung", .needsTheSources)
+    /// Whoever still calls the loader directly now ALREADY HOLDS the detail: it
+    /// acts on a decision that has already been made.
+    @Test("Whoever loads from an id takes the one action", .needsTheSources)
     func startingFromAnIdUsesTheOneAction() throws {
         let holdsTheDetail: [String: String] = [
             "Sources/ViewModels/PlayerViewModel.swift":
@@ -90,18 +90,18 @@ struct DownloadProviderFenceTests {
             "Sources/Views/Podcasts/PodcastHelpers.swift":
                 "die Auto-Download-Schleife: eine Massenhandlung mit eigener Fehlermeldung je Folge",
         ]
-        // `DownloadManager` steht NICHT in der Liste: sein eigener Ruf in
-        // `startDownload` hat keinen Empfaenger („download(item:" ohne Punkt)
-        // und faellt dem Sucher deshalb gar nicht auf. Das ist richtig so, und
-        // es hier hinzuschreiben ist billiger, als den Sucher ungenauer zu
-        // machen.
+        // `DownloadManager` is NOT in the list: its own call in
+        // `startDownload` has no receiver („download(item:" without a dot)
+        // and so the finder does not notice it at all. That is right, and
+        // writing it down here is cheaper than making the finder less
+        // precise.
         var callers: Set<String> = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let path = SourceTree.relativePath(of: url)
             let code = try codeOf(path)
-            // Die Fassung selbst ist kein Rufer.
+            // The wrapper itself is not a caller.
             let calls = code.replacingOccurrences(of: "func download(item:", with: "func download(DECL:")
             if calls.contains(".download(item:") { callers.insert(path) }
         }
@@ -109,12 +109,12 @@ struct DownloadProviderFenceTests {
                 "jemand laedt aus einer Kennung, ohne die eine Handlung zu nehmen: \(callers.symmetricDifference(Set(holdsTheDetail.keys)).sorted())")
     }
 
-    /// Und die Haelfte, die dem Menschen gehoert: ein fehlgeschlagener Abruf
-    /// wird GEMELDET. Die Rot-Probe deckte auf, dass mein erster Zaun das gar
-    /// nicht prueft — ich haette den `catch` leeren koennen und alles waere
-    /// gruen geblieben, also haette der Zaun genau den Fehler durchgelassen,
-    /// gegen den die Handlung gebaut ist.
-    @Test("Die eine Handlung meldet einen fehlgeschlagenen Abruf", .needsTheSources)
+    /// And the half that belongs to the person: a failed fetch
+    /// is REPORTED. The red probe revealed that my first fence did not check this at
+    /// all. I could have emptied the `catch` and everything would have stayed
+    /// green, so the fence would have let through exactly the error
+    /// the action is built against.
+    @Test("The one action reports a failed fetch", .needsTheSources)
     func theOneActionReportsAFailedFetch() throws {
         let code = try codeOf("Sources/Networking/DownloadManager.swift")
         guard let action = code.range(of: "func startDownload(itemId: String, kind: DownloadKind) async") else {
@@ -128,10 +128,10 @@ struct DownloadProviderFenceTests {
         #expect(body.contains("Logger."), "der Fehlschlag hinterlaesst keine Spur im Geraete-Log")
     }
 
-    /// Gegenprobe, damit der Bestand oben nicht deshalb leer ist, weil es
-    /// keine Downloads mehr gibt: es sind weiterhin die dreizehn Aufrufe, und
-    /// die Tuer, die den Anbieter aus der Kennung holt, existiert.
-    @Test("Es gibt die Download-Stellen noch, und die Tuer auch", .needsTheSources)
+    /// Counter-check, so the stock above is not empty because there
+    /// are no downloads any more: there are still the thirteen calls, and
+    /// the door that gets the provider from the id exists.
+    @Test("The download places still exist, and the door too", .needsTheSources)
     func theCallSitesAndTheDoorStillExist() throws {
         var sites = 0
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -139,9 +139,9 @@ struct DownloadProviderFenceTests {
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             sites += try codeOf(SourceTree.relativePath(of: url)).ranges(of: "download(item:").count
         }
-        // Waren dreizehn, bevor „Detail holen, dann laden" eine Handlung
-        // wurde; sechs davon sind in `startDownload` zusammengefallen. Die
-        // Zahl steht hier als Boden gegen das Verschwinden, nicht als Ziel.
+        // Were thirteen before „Detail holen, dann laden" became one action;
+        // six of them collapsed into `startDownload`. The
+        // number stands here as a floor against vanishing, not as a target.
         #expect(sites >= 8, "die Download-Aufrufe sind verschwunden, der Bestand oben prueft nichts")
         #expect(try codeOf("Sources/Views/ItemRouterEnvironment.swift").contains("var provider:"),
                 "der Router beantwortet die Anbieter-Frage nicht mehr")

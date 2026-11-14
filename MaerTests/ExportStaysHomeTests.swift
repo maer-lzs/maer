@@ -18,7 +18,7 @@ struct ExportStaysHomeTests {
         UserDefaults(suiteName: "export-home-\(UUID().uuidString)")!
     }
 
-    @Test("Geheimnis in der Adresse: andere Namen, Benutzer und Passwort ohne Schema; eine gewoehnliche Adresse nicht")
+    @Test("secret in the address: other names, user and password without a scheme; an ordinary address does not")
     func anAddressCarriesAccessByAnyName() {
         for raw in ["https://feeds.example/show.xml?api_key=abc", "https://feeds.example/show.xml?access_token=abc",
                     "https://feeds.example/show.xml?x=1&Password=abc", "https://feeds.example/show.xml?sig=abc",
@@ -48,7 +48,7 @@ struct ExportStaysHomeTests {
                 "a wider access name made the feed premium")
     }
 
-    @Test("bleibt zu Hause: ein gespiegelter Feed und ein Feed auf dem eigenen Server, ein offener Feed nicht")
+    @Test("stays home: a mirrored feed and a feed on the own server, an open feed does not")
     func theOwnServerStaysHome() {
         let defaults = suite()
         let mirrored = "https://pinchflat.home.example/feeds/abc.xml"
@@ -60,7 +60,7 @@ struct ExportStaysHomeTests {
                                                 ownHosts: ["abs.home.example"]), "an open feed was held back")
     }
 
-    @Test("Export: die Adresse einer Folge mit Zugang reist nicht mit, der Stand mit seiner guid schon")
+    @Test("Export: the address of an episode with access does not travel along, the state with its guid does")
     func anEpisodeAddressWithAccessStaysOut() {
         let show = (title: "Open", feedURL: "https://feeds.open.example/show.xml")
         let state = ForeignListeningState(feedURL: show.feedURL, episodeGUID: "g1",

@@ -79,7 +79,7 @@ struct DownloadFolderTests {
     private static let escaping = "rss:k:a/../../x"
 
     /// The values a second implementation of the rule must give too.
-    @Test("der Name eines Download-Ordners: sichere Zeichen, hoechstens 64, Bindestrich, 16 Hexzeichen")
+    @Test("the name of a download folder: safe characters, at most 64, hyphen, 16 hex characters")
     func theFolderName() {
         #expect(DownloadManager.folderName(of: Self.escaping) == "rss_k_a_______x-80a0e278a9898246")
         #expect(DownloadManager.folderName(of: "rss:k:https://ex.com/a.mp3") == "rss_k_https___ex_com_a_mp3-ee0cbade3a236da5")
@@ -95,7 +95,7 @@ struct DownloadFolderTests {
         }
     }
 
-    @Test("eine Folge mit einer guid wie a/../../x laedt in einen Ordner direkt unter Downloads und loescht nichts ausserhalb")
+    @Test("an episode with a guid like a/../../x loads into a folder directly under Downloads and deletes nothing outside")
     func anEscapingGuidStaysInTheDownloads() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -123,7 +123,7 @@ struct DownloadFolderTests {
         #expect(!FileManager.default.fileExists(atPath: folder.path), "and removes the download's own")
     }
 
-    @Test("ein Download in neuer Form zaehlt nach einem Neustart, gelesen aus .item-id")
+    @Test("a download in the new form counts after a restart, read from .item-id")
     func aNewFolderCountsAfterARestart() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -145,7 +145,7 @@ struct DownloadFolderTests {
     /// The end of a download drops every file of the folder that is no
     /// track. The id file stays, or the next start reads the folder by its
     /// name and the download counts for no id.
-    @Test("das Aufraeumen am Ende eines Downloads laesst die Kennung des Ordners stehen")
+    @Test("the cleanup at the end of a download leaves the id of the folder in place")
     func theIdFileOutlivesTheEndOfADownload() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -166,7 +166,7 @@ struct DownloadFolderTests {
         #expect(manager.localTrackMap(forItemId: id)[0] != nil, "the track stays")
     }
 
-    @Test("ein alter Ordner, der die Kennung selbst als Namen traegt, gilt weiter und laesst sich loeschen")
+    @Test("an old folder that carries the id itself as its name still counts and can be deleted")
     func anOldFolderStillCounts() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -187,7 +187,7 @@ struct DownloadFolderTests {
     /// An older folder of a guid with "/" is named by the raw id and lies
     /// nested: the start walk sees only the outermost name. The start moves
     /// it to its own name, and the download counts.
-    @Test("ein verschachtelter Ordner einer guid mit Schraegstrich zaehlt nach dem Update wieder")
+    @Test("a nested folder of a guid with a slash counts again after the update")
     func aNestedFolderIsFoundAgain() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -205,7 +205,7 @@ struct DownloadFolderTests {
                 "the emptied folders the nested one lay in stay")
     }
 
-    @Test("ein Ordner, dessen .item-id eine andere Kennung nennt, zaehlt fuer keine")
+    @Test("a folder whose .item-id names another id counts for none")
     func aForeignIdFileIsRefused() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -222,7 +222,7 @@ struct DownloadFolderTests {
         #expect(manager.downloadedItemIds.isEmpty)
     }
 
-    @Test("ein fertiger Download, dessen Ordner die Kennung nicht traegt, zaehlt ueber seine vermerkte Kennung")
+    @Test("a finished download whose folder does not carry the id counts through its recorded id")
     func aMarkedFolderWithoutItsIdFileCounts() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -239,7 +239,7 @@ struct DownloadFolderTests {
         #expect(DownloadManager.itemId(ofFolder: folder) == folder.lastPathComponent, "without a mark the folder stands for its name")
     }
 
-    @Test("ein Ordner, der seine Kennung nicht tragen kann, ist ein gescheiterter Download, und eine zu lange Datei wird nicht gelesen")
+    @Test("a folder that cannot carry its id is a failed download, and a file that is too long is not read")
     func aFolderThatCannotCarryItsIdFailsTheDownload() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -261,7 +261,7 @@ struct DownloadFolderTests {
         #expect(!DownloadManager.settle(folder, for: id))
     }
 
-    @Test("jede Stelle bekommt nur ein direktes Kind von Downloads")
+    @Test("every place gets only a direct child of Downloads")
     func everyFolderIsADirectChild() throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }

@@ -17,7 +17,7 @@ struct EpochUnderLockTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
-    @Test("store und merge mit der Epoche vor einem Kontowechsel schreiben nichts in den Bestand danach, mit der neuen schon")
+    @Test("store and merge with the epoch from before an account change write nothing into the stock afterwards, with the new one they do")
     func aWriteWithTheEpochBeforeASwitchWritesNothing() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -36,7 +36,7 @@ struct EpochUnderLockTests {
         #expect(ListeningStore.backup("rss:b-1", in: defaults) == [30, 1_700_000_100_000, 600], "a store of the account now was dropped")
     }
 
-    @Test("die Uebernahme von gpodder entscheidet am Eintrag von jetzt: ein neuerer Schrieb des Players zwischen Lesen und Schreiben bleibt")
+    @Test("the adoption from gpodder decides on the entry as it is now: a newer write of the player between reading and writing stays")
     func theMergeDecidesFromTheEntryAsItStands() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -58,7 +58,7 @@ struct EpochUnderLockTests {
         #expect(ListeningStore.backup("rss:x", in: defaults)?.first == 500, "the server's older state overwrote the player's newer one")
     }
 
-    @Test("der Weg der Uebernahme: neuer gewinnt, gleich alt ergaenzt nur die Dauer, sonst nichts")
+    @Test("the path of the adoption: newer wins, equally old adds only the duration, nothing else")
     func thePathOfAPulledPlay() {
         #expect(GPodderMergePath.of(local: nil, serverTsMs: 10, serverTotal: 0) == .adopt)
         #expect(GPodderMergePath.of(local: [5, 10], serverTsMs: 20, serverTotal: 0) == .adopt)
@@ -74,7 +74,7 @@ struct EpochUnderLockTests {
     /// it happen. So the shape is fenced: the epoch moves in the lock of the
     /// swap, every write asks it in the lock of its write, and the gpodder
     /// round goes through `merge` with the epoch it took before the network.
-    @Test("die Epoche steht in der Sperre des Bestands: Wechsel, record, store, merge, und gpodder schreibt nur ueber merge mit seiner Epoche", .needsTheSources)
+    @Test("the epoch stands in the lock of the stock: swap, record, store, merge, and gpodder writes only through merge with its epoch", .needsTheSources)
     func theEpochLivesInTheStocksLock() throws {
         let store = try Self.code("Sources/Models/ListeningStore.swift")
         let replace = try #require(Self.body(of: "static func replaceForNewOwner(", in: store))

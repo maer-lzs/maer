@@ -75,7 +75,7 @@ struct DownloadManagerRowsTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("Zeile plus Ordner ist ein Download, jedes allein nicht")
+    @Test("row plus folder is a download, each alone is not")
     func aRowAndAFolderAreADownload() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -96,7 +96,7 @@ struct DownloadManagerRowsTests {
         #expect(again.loadCachedDetail(forItemId: "done") != nil, "the row itself is left in place")
     }
 
-    @Test("ein geloeschter Download verlaesst seine Zeile; der naechste Start kennt ihn nicht mehr")
+    @Test("a deleted download leaves its row; the next start no longer knows it")
     func aDeletedDownloadLeavesItsRow() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -115,7 +115,7 @@ struct DownloadManagerRowsTests {
         #expect(again.totalDownloadsSize == 20)
     }
 
-    @Test("die Regel fuer unfertige Downloads: geraeumt nur ohne Marke, ohne Lauf, mit gelesenen Marken und nach sieben Tagen")
+    @Test("the rule for unfinished downloads: cleared only without a mark, without a run, with marks read and after seven days")
     func theRemnantRule() {
         let now = Date(timeIntervalSince1970: 1_000_000_000)
         let old = now.addingTimeInterval(-8 * 24 * 3600)
@@ -130,7 +130,7 @@ struct DownloadManagerRowsTests {
                 "no age, no verdict")
     }
 
-    @Test("ein unfertiger Download, sieben Tage unberuehrt, wird beim Start geraeumt; ein juengerer und ein fertiger bleiben")
+    @Test("an unfinished download, untouched for seven days, is cleared at start; a younger one and a finished one stay")
     func anOldRemnantIsClearedAtStart() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -160,7 +160,7 @@ struct DownloadManagerRowsTests {
     /// `controls` stands. The folders turn old only after the start scan, so
     /// the clearing is run by hand, with a free remnant beside it to show
     /// the clearing does clear.
-    @Test("ein unfertiger Download, der gerade fortgesetzt wird, wird nicht geraeumt, auch wenn er alt ist")
+    @Test("an unfinished download that is being resumed is not cleared, even if it is old")
     func aResumingDownloadIsNeverCleared() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -185,7 +185,7 @@ struct DownloadManagerRowsTests {
 
     /// The scan saw an old folder; it changed before the clearing. The age
     /// that decides is the one on the disk when clearing.
-    @Test("das Alter wird beim Raeumen gelesen: ein Ordner, der seit dem Scan geaendert wurde, bleibt")
+    @Test("the age is read at clearing: a folder changed since the scan stays")
     func theAgeIsReadWhenClearing() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -207,7 +207,7 @@ struct DownloadManagerRowsTests {
 
     /// The line of a cleared remnant names its files and bytes; they come
     /// from here, so a complete download that lost its mark would show.
-    @Test("ein Ordner wird mit Dateizahl und Bytes vermessen")
+    @Test("a folder is measured with file count and bytes")
     func aFolderIsMeasured() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -232,7 +232,7 @@ struct DownloadManagerRowsTests {
         try FileManager.default.moveItem(at: tone, to: folder.appendingPathComponent("\(index).\(tone.pathExtension)"))
     }
 
-    @Test("das Downloads-Verzeichnis traegt das Backup-Zeichen")
+    @Test("the Downloads directory carries the backup mark")
     func theDirectoryCarriesTheExclusion() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -242,7 +242,7 @@ struct DownloadManagerRowsTests {
         #expect(excluded == true, "the exclusion sits on the directory")
     }
 
-    @Test("die Marke landet, bevor der Download als fertig gilt: ein frischer Start liest sie ohne Warten")
+    @Test("the mark lands before the download counts as finished: a fresh start reads it without waiting")
     func theMarkLandsBeforeTheDownloadCountsAsFinished() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -274,7 +274,7 @@ struct DownloadManagerRowsTests {
     /// The kind a download is started as stays with it: a fresh start reads
     /// it back, deleting the download takes it away, and a download started
     /// without a kind has none (so no mass deletion reaches it).
-    @Test("die Art eines Downloads wird beim Start festgehalten, ueberlebt einen Neustart und geht mit dem Loeschen")
+    @Test("the kind of a download is recorded at start, survives a restart and goes with the deletion")
     func theKindIsRecordedAndSurvivesAndLeavesWithTheDownload() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -321,7 +321,7 @@ struct DownloadManagerRowsTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("nach einem Neustart und nach einem Wechsel des Servers nennen Fegelauf und Loeschen die Cover, die der Download sicherte")
+    @Test("after a restart and after a change of server, sweep and deletion name the covers the download kept")
     func aRestartStillNamesTheKeptOriginal() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -377,7 +377,7 @@ struct DownloadManagerRowsTests {
         return names.filter(signIn.contains) + (text.contains("SECRET") ? ["a value"] : [])
     }
 
-    @Test("das Dokument der gesicherten Cover haelt keinen Anmeldeteil eines Clients, und jede Adresse nennt dieselbe Datei")
+    @Test("the document of the kept covers holds no sign-in part of a client, and every address names the same file")
     func keptCoversCarryNoSignIn() throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -395,7 +395,7 @@ struct DownloadManagerRowsTests {
         }
     }
 
-    @Test("ein Dokument eines frueheren Baus mit Anmeldeteilen liest sich und wird beim Start ohne sie neu geschrieben")
+    @Test("a document of an earlier build with sign-in parts reads fine and is rewritten without them at start")
     func anEarlierDocumentIsRewrittenWithoutSignIn() throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }

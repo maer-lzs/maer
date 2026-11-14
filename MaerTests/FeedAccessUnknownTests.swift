@@ -21,7 +21,7 @@ struct FeedAccessUnknownTests {
         { $0 == feedKey ? read : .missing }
     }
 
-    @Test("ein Zugang hat drei Antworten: da, keiner, gerade nicht lesbar")
+    @Test("an access has three answers: there, none, currently not readable")
     func theThreeAnswers() {
         let table: [(KeychainRead, PodcastFeedAuth.Access)] = [
             (.value("anna\ngeheim"), .present(user: "anna", password: "geheim")),
@@ -43,7 +43,7 @@ struct FeedAccessUnknownTests {
         }
     }
 
-    @Test("die Kopfzeilen einer Folge haben drei Antworten, auch ueber das Protokoll und einen Weiterreicher")
+    @Test("the headers of an episode have three answers, also through the protocol and a pass-through")
     func theHeadersHaveThreeAnswers() {
         #expect(PodcastFeedAuth.headers(for: .present(user: "anna", password: "geheim"))
                 == ["Authorization": "Basic YW5uYTpnZWhlaW0="])
@@ -106,7 +106,7 @@ struct FeedAccessUnknownTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("ein Download mit unlesbarem Zugang fragt nichts und setzt keine Phase")
+    @Test("a download with an unreadable access asks nothing and sets no phase")
     func aDownloadWaitsForItsSignIn() async throws {
         let home = try DownloadNotifyCountTests.home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -126,7 +126,7 @@ struct FeedAccessUnknownTests {
         #expect(home.manager.downloadedItemIds.contains(id))
     }
 
-    @Test("ein Start mit unlesbarem Zugang fragt keinen Strom und zeigt den Ladefehler")
+    @Test("a start with an unreadable access asks no stream and shows the load failure")
     func aStartWaitsForItsSignIn() async {
         let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 600, contentUrl: "episode.mp3", metadata: nil)
         let detail = LibraryItemDetail(
@@ -148,7 +148,7 @@ struct FeedAccessUnknownTests {
         return nil
     }
 
-    @Test("ein Start mit unlesbarem Zugang sagt, dass das Geraet einmal entsperrt werden muss; ohne Zugang und bei einem anderen Fehler bleibt es bei den bisherigen")
+    @Test("a start with an unreadable access says the device must be unlocked once; without access and with another error the existing ones stay")
     func aLockedStartSaysToUnlock() async {
         let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 600, contentUrl: "episode.mp3", metadata: nil)
         let detail = LibraryItemDetail(
@@ -171,7 +171,7 @@ struct FeedAccessUnknownTests {
     /// track found."), so no start reaches a queue that is not built today.
     /// The fence keeps the mark of the queue before its first way out, so a
     /// queue that is not built never answers with the mark of the one before.
-    @Test("die Marke der Warteschlange faellt vor ihrem ersten Ausgang", .needsTheSources)
+    @Test("the mark of the queue is dropped before its first exit", .needsTheSources)
     func theQueueMarkFallsBeforeItsFirstWayOut() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PlayerViewModel.swift" })
         let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
@@ -181,7 +181,7 @@ struct FeedAccessUnknownTests {
         #expect(reset.lowerBound < firstGuard.lowerBound, "the mark of the queue before stays past its first way out")
     }
 
-    @Test("ein Feed mit unlesbarem Zugang wird nicht ohne ihn gefragt")
+    @Test("a feed with an unreadable access is not asked without it")
     func aFeedIsNotAskedWithoutItsSignIn() async throws {
         // A closed port on the loopback: a request that goes out comes back
         // as unreachable at once.
@@ -200,7 +200,7 @@ struct FeedAccessUnknownTests {
         if case .accessUnknown = none { Issue.record("a feed without a sign-in is asked as before") }
     }
 
-    @Test("eine Uebernahme mit unlesbarem Zugang wird nicht gefragt und nicht vermerkt")
+    @Test("an adoption with an unreadable access is not asked and not marked")
     func anAdoptionWaitsUnmarked() async throws {
         let (subs, defaults, cleanup) = try await BulkImportTests.storeAndDefaults()
         defer { cleanup() }
@@ -216,7 +216,7 @@ struct FeedAccessUnknownTests {
         #expect(FeedAdoptionPending.pending(defaults: defaults)[PodcastIdentity.feedKey(feed)]?.reason == .timeout)
     }
 
-    @Test("der freie Zwilling einer Sendung mit unlesbarem Zugang wird weder abonniert noch uebersprungen")
+    @Test("the free twin of a show with an unreadable access is neither subscribed nor skipped")
     func aFreeTwinWaitsForThePaidShowsSignIn() async throws {
         let run = UUID().uuidString.prefix(8)
         let paid = "https://paid.example/\(run)/feed.xml"
@@ -246,7 +246,7 @@ struct FeedAccessUnknownTests {
         #expect(noSignIn.1, "without a sign-in the other show is followed as before")
     }
 
-    @Test("das Abbild einer Regel laesst das Bild zu Hause, solange der Zugang unlesbar ist")
+    @Test("the picture of a rule stays home while the access is unreadable")
     func aRulesPictureStaysHomeWhileTheSignInIsUnread() throws {
         let feed = "https://paid.example/\(UUID().uuidString.prefix(8))/feed.xml"
         let key = PodcastIdentity.feedKey(feed)
@@ -266,7 +266,7 @@ struct FeedAccessUnknownTests {
         #expect(RoutinePlayback.snapshot(id, show: show, premium: false)?.coverURL == "https://cdn.example/cover.jpg")
     }
 
-    @Test("jeder Leser des Zugangs eines Feeds liest ihn ueber die eine Stelle", .needsTheSources)
+    @Test("every reader of a feed's access reads it through the one place", .needsTheSources)
     func everyReaderOfAFeedsSignInGoesThroughTheOnePlace() throws {
         func code(_ relative: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(relative), encoding: .utf8))
@@ -319,7 +319,7 @@ struct FeedAccessUnknownTests {
         "PodcastShowView.swift": (1, "the remedy of a refused show, on a screen only an unlocked device shows"),
     ]
 
-    @Test("jede Antwort der Kopfzeilen traegt die drei Antworten, keiner faltet sie, jeder Leser des Zugangs steht im Bestand", .needsTheSources)
+    @Test("every answer of the headers carries the three answers, none folds them, every reader of the access is in the stock", .needsTheSources)
     func everyHeaderAnswerKeepsTheUnknown() {
         var answerers: [String: Int] = [:]
         var twoAnswers: [String] = []

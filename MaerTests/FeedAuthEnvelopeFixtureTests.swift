@@ -19,12 +19,12 @@ struct FeedAuthEnvelopeFixtureTests {
     /// Swift and Kotlin alike.
     nonisolated static let envelopes = SharedCases.cases("umschlaege", area: "feedauth")
 
-    @Test("gemeinsame Faelle: umschlaege traegt drei Faelle")
+    @Test("shared cases: umschlaege carries three cases")
     func envelopeCasesLoaded() {
         #expect(Self.envelopes.count == 3)
     }
 
-    @Test("gemeinsame Faelle: jeder Umschlag oeffnet mit seinem Schluessel zum Klartext der Datei, der fremde Code oeffnet nicht", arguments: envelopes)
+    @Test("shared cases: every envelope opens with its key to the plaintext of the file, the foreign code does not open", arguments: envelopes)
     func everyEnvelopeOpensAsTheFileSays(_ c: SharedCase) throws {
         let input = try c.value("input")
         let envelope = Data(try #require(input["umschlag"]?.string).utf8)
@@ -40,7 +40,7 @@ struct FeedAuthEnvelopeFixtureTests {
 
     /// The file is a record, never regenerated: no witness of this file
     /// seals. Read from the source so the rule cannot drift with a refactor.
-    @Test("die Datei ist eine Ablage: kein Zeuge dieser Datei versiegelt neu", .needsTheTests)
+    @Test("the file is a record: no witness of this file seals anew", .needsTheTests)
     func theFileIsARecordNotARegeneration() throws {
         let text = try String(contentsOf: URL(fileURLWithPath: #filePath), encoding: .utf8)
         #expect(!text.contains("FeedAuthCrypto.seal" + "("), "this witness seals; the file would then measure itself")

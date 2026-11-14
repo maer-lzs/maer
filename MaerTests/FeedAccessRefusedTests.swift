@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Drei Bezahlfeeds folgten auf einem neuen Geraet nicht (403).
-/// Ein gewechselter Token reiste als alte Aussage weiter, nach der Mär-Sync-
-/// Anmeldung versuchte niemand es neu, und die Liste bot fuer eine reine
-/// Token-Adresse „Anmelden“ an.
+/// Three paid feeds did not follow on a new device (403).
+/// A changed token travelled on as the old statement, after the Mär Sync
+/// sign-in nobody tried again, and the list offered for a pure
+/// token address „Anmelden“.
 struct FeedAccessRefusedTests {
     private func show(_ token: String, episodes: Int) -> PodcastShow {
         let url = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=\(token)"
@@ -25,7 +25,7 @@ struct FeedAccessRefusedTests {
                            })
     }
 
-    @Test("Ein Token-Wechsel nennt die alte und die neue Adresse, damit die alte nicht weiterreist")
+    @Test("A token change names the old and the new address, so the old one does not travel on")
     func aRetiredTwinIsNamed() {
         var retired: [(String, String)] = []
         let (result, _) = PodcastIdentity.migrate([show("OLDTOKEN", episodes: 3), show("NEWTOKEN", episodes: 40)],
@@ -46,7 +46,7 @@ struct FeedAccessRefusedTests {
         #expect(none == 0)
     }
 
-    @Test("Der Laden sagt dem Konto: alte Adresse abbestellt, neue abonniert", .needsTheSources)
+    @Test("The store tells the account: old address unsubscribed, new one subscribed", .needsTheSources)
     func theLoadTellsTheAccount() throws {
         let source = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
@@ -56,7 +56,7 @@ struct FeedAccessRefusedTests {
         #expect(collapsed.contains("Self.stateSubscription(twin.survivor,subscribed:true)"))
     }
 
-    @Test("Ein 401/403 an einer Token-Adresse ohne Zugangsdaten heisst Zugang abgelehnt, nie braucht eine Anmeldung")
+    @Test("A 401/403 on a token address without credentials means access refused, never needs a sign-in")
     func theReading() {
         typealias R = FeedAdoptionPending.Reason
         #expect(R.from(meaning: StatusMeaning.from(status: 403), tokenAddress: true, hasCredentials: false) == .accessRefused)
@@ -71,7 +71,7 @@ struct FeedAccessRefusedTests {
                 "the ZEIT class is a token address, or the case measures nothing")
     }
 
-    @Test("Wenn Zugang eintrifft, bekommt genau jeder abgelehnte Feed einen neuen Versuch")
+    @Test("When access arrives, exactly every refused feed gets a new attempt")
     func whoIsRetried() {
         typealias E = FeedAdoptionPending.Entry
         let pending: [String: E] = [
@@ -84,7 +84,7 @@ struct FeedAccessRefusedTests {
         #expect(FeedAdoptionPending.retryOnNewAccess(pending) == ["a", "b"])
     }
 
-    @Test("Mär-Sync-Anmeldung und eintreffende Feed-Zugaenge melden es, die Abos versuchen es neu", .needsTheSources)
+    @Test("Mär Sync sign-in and arriving feed accesses report it, the subscriptions try again", .needsTheSources)
     func theTriggersAreWired() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -99,7 +99,7 @@ struct FeedAccessRefusedTests {
         #expect(subs.contains("forkeyinkeys{retryAdoption(feedKey:key)}"))
     }
 
-    @Test("Die Messzeile traegt nie den Token, und derselbe Feed hat auf beiden Geraeten denselben Schluessel")
+    @Test("The measurement line never carries the token, and the same feed has the same key on both devices")
     func theMeasuringLine() {
         let upper = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=AbC123SecretToken"
         let lower = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=abc123secrettoken"

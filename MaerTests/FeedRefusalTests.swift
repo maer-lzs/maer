@@ -8,36 +8,36 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Eine abonnierte Sendung, deren Feed der Server dauerhaft
-/// ablehnt, sagt es an der Sendung und bietet einen neuen Link oder eine
-/// Anmeldung an. „Dauerhaft“ ist entschieden: drei Ablehnungen in Folge und
-/// mindestens ein Tag zwischen der ersten und der letzten. Folgen und
-/// Hoerstaende bleiben.
+/// A subscribed show whose feed the server refuses
+/// permanently says so on the show and offers a new link or a
+/// sign-in. „Dauerhaft“ is decided: three refusals in a row and
+/// at least one day between the first and the last. Episodes and
+/// listening states stay.
 @MainActor
 struct FeedRefusalTests {
     private let day = FeedRefusal.span
 
-    // MARK: - Die Regel
+    // MARK: - The rule
 
-    @Test("Dauerhaft erst nach drei Ablehnungen UND einem Tag; ein Erfolg setzt zurueck, alles andere laesst stehen")
+    @Test("Permanent only after three refusals AND one day; a success resets, everything else leaves it standing")
     func rule() {
         func run(_ steps: [(FeedRefusal.Answer, Double)]) -> FeedRefusal.Record? {
             steps.reduce(nil) { FeedRefusal.next($0, $1.0, now: $1.1) }
         }
         let r = FeedRefusal.Answer.refused(status: 403)
-        // Drei an einem Tag: nicht dauerhaft.
+        // Three on one day: not permanent.
         #expect(!FeedRefusal.isLasting(run([(r, 0), (r, 3600), (r, day - 1)])))
-        // Drei ueber einen Tag: dauerhaft.
+        // Three over a day: permanent.
         #expect(FeedRefusal.isLasting(run([(r, 0), (r, 3600), (r, day)])))
-        // Zwei ueber zwei Tage: nicht dauerhaft.
+        // Two over two days: not permanent.
         #expect(!FeedRefusal.isLasting(run([(r, 0), (r, 2 * day)])))
-        // Ein Erfolg dazwischen beginnt die Reihe neu.
+        // A success in between starts the series anew.
         #expect(!FeedRefusal.isLasting(run([(r, 0), (r, 3600), (.success, 7200), (r, day)])))
         #expect(run([(r, 0), (.success, 1)]) == nil)
-        // Ein Zeitueberlauf sagt nichts ueber den Zugang: die Reihe bleibt.
+        // A timeout says nothing about the access: the series stays.
         #expect(FeedRefusal.isLasting(run([(r, 0), (.other, 10), (r, 3600), (.other, 20), (r, day)])))
         #expect(run([(.other, 0)]) == nil)
-        // Die Lesung des Status geht ueber die eine Tafel der Bedeutungen.
+        // The reading of the status goes through the one table of meanings.
         #expect(FeedRefusal.answer(status: 401) == .refused(status: 401))
         #expect(FeedRefusal.answer(status: 403) == .refused(status: 403))
         for other in [404, 410, 429, 500, 503] {
@@ -45,7 +45,7 @@ struct FeedRefusalTests {
         }
     }
 
-    @Test("Das Mittel: Token-Adresse ohne Zugangsdaten bekommt einen neuen Link, alles andere eine Anmeldung")
+    @Test("The remedy: a token address without credentials gets a new link, everything else a sign-in")
     func remedy() {
         #expect(ShowAccessRemedy.of(tokenAddress: true, hasCredentials: false) == .newLink)
         #expect(ShowAccessRemedy.of(tokenAddress: true, hasCredentials: true) == .signIn)
@@ -53,7 +53,7 @@ struct FeedRefusalTests {
         #expect(ShowAccessRemedy.of(tokenAddress: false, hasCredentials: true) == .signIn)
     }
 
-    // MARK: - Der Speicher
+    // MARK: - The store
 
     private func harness(_ name: String) throws -> (subs: PodcastSubscriptions, defaults: UserDefaults, close: () -> Void) {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("refusal-\(UUID().uuidString)")
@@ -83,7 +83,7 @@ struct FeedRefusalTests {
                     })
     }
 
-    @Test("Das Auffrischen reicht den Status durch: dreimal abgelehnt ueber einen Tag macht die Sendung dauerhaft abgelehnt, Folgen bleiben, ein Erfolg hebt es auf")
+    @Test("The refresh passes the status through: refused three times over a day makes the show permanently refused, episodes stay, a success lifts it")
     func refreshCountsRefusals() async throws {
         let h = try harness("refresh")
         defer { h.close() }
@@ -100,7 +100,7 @@ struct FeedRefusalTests {
         h.subs._testFeedFetcher = { _ in .status(403) }
         await h.subs.refreshAll()
         now += 12 * 3600
-        // Ein Zeitueberlauf dazwischen zaehlt nicht und setzt nicht zurueck.
+        // A timeout in between does not count and does not reset.
         h.subs._testFeedFetcher = { _ in .failed(.timeout) }
         await h.subs.refreshAll()
         h.subs._testFeedFetcher = { _ in .status(403) }
@@ -121,7 +121,7 @@ struct FeedRefusalTests {
                 "ein Erfolg raeumt den Eintrag, der Schluessel bleibt nicht leer stehen")
     }
 
-    @Test("Neuer Link: Hoerstaende gehen ueber die Folgen-Bruecke mit, die alte Adresse geht, die Ablehnung auch")
+    @Test("New link: listening states go along over the episode bridge, the old address goes, the refusal too")
     func newLinkCarriesOver() async throws {
         let h = try harness("newlink")
         defer { h.close() }
@@ -137,7 +137,7 @@ struct FeedRefusalTests {
         try #require(await h.subs.subscribe(urlString: old.absoluteString, notesCloud: false))
         let oldShow = try #require(h.subs.shows.first)
         ListeningStore.store("rss:alt-2", entry: [900, 1_700_000_000_000, 3000], in: h.defaults)
-        // Dauerhaft abgelehnt machen.
+        // Make it permanently refused.
         h.subs._testFeedFetcher = { _ in .status(403) }
         for _ in 0..<3 { await h.subs.refreshAll(); now += day / 2 }
         try #require(h.subs.isAccessRefused(oldShow))
@@ -155,7 +155,7 @@ struct FeedRefusalTests {
         #expect(FeedRefusal.all(defaults: h.defaults).isEmpty)
     }
 
-    @Test("Behaelt eine Folge ihre guid, bleibt ihr Hoerstand stehen: kein Umzug auf sich selbst")
+    @Test("If an episode keeps its guid, its listening state stays: no move onto itself")
     func sameGuidKeepsItsStand() async throws {
         let h = try harness("sameguid")
         defer { h.close() }
@@ -163,8 +163,8 @@ struct FeedRefusalTests {
         let old = try #require(URL(string: "https://paid.example/\(run)/feed?token=alt"))
         let new = try #require(URL(string: "https://paid.example/\(run)/feed?token=neu"))
         await h.subs.ensureLoaded()
-        // Dieselben guids unter beiden Adressen, wie ein Anbieter, der nur
-        // den Token dreht.
+        // The same guids under both addresses, like a provider that only
+        // rotates the token.
         h.subs._testFeedFetcher = { url in .show(Self.show(url, guidStem: "gleich", episodes: 0..<4)) }
         try #require(await h.subs.subscribe(urlString: old.absoluteString, notesCloud: false))
         let oldShow = try #require(h.subs.shows.first)
@@ -175,7 +175,7 @@ struct FeedRefusalTests {
         #expect(ListeningStore.backup("rss:gleich-1", in: h.defaults)?.first == 600)
     }
 
-    // MARK: - Verdrahtung
+    // MARK: - Wiring
 
     private func sourceText(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -183,7 +183,7 @@ struct FeedRefusalTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("Die Sendung zeigt den Hinweis, die Kacheln das Zeichen, beide Orte sagen Neuen Link eintragen", .needsTheSources)
+    @Test("The show displays the notice, the tiles the glyph, both places say „Neuen Link eintragen“", .needsTheSources)
     func wiring() throws {
         let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(seite.contains("ShowAccessRefusedBanner("))
@@ -211,9 +211,9 @@ struct FeedRefusalTests {
                 "die Vereinigung wird fuer die Logzeile ein zweites Mal gerechnet")
     }
 
-    // MARK: - Der Anmelde-Bogen fragt nur nach einer Aenderung
+    // MARK: - The sign-in sheet asks only after a change
 
-    @Test("Ein Bogen, der ohne neue Anmeldung schliesst, fragt nicht; gesichert oder entfernt fragt einmal")
+    @Test("A sheet that closes without a new sign-in does not ask; saved or removed asks once")
     func signInSheetAsksOnlyAfterAChange() {
         #expect(!FeedRefusal.asksAgainAfterSignIn(momentBefore: nil, momentAfter: nil), "no sign-in, swiped away")
         #expect(!FeedRefusal.asksAgainAfterSignIn(momentBefore: 5, momentAfter: 5), "a sign-in, swiped away unchanged")
@@ -222,7 +222,7 @@ struct FeedRefusalTests {
         #expect(FeedRefusal.asksAgainAfterSignIn(momentBefore: 5, momentAfter: nil), "a sign-in removed")
     }
 
-    @Test("Der Moment einer Anmeldung bewegt sich nur bei einer gelandeten Schrift")
+    @Test("The moment of a sign-in moves only on a write that landed")
     func theSignInMomentMovesOnlyOnALandedWrite() throws {
         let suite = "feedauth-moment-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -237,7 +237,7 @@ struct FeedRefusalTests {
         #expect(PodcastFeedAuth.moment(feedKey: feed, defaults: defaults) == 100_000)
     }
 
-    @Test("Der Bogen der Sendung fragt die Regel, bevor er neu fragt", .needsTheSources)
+    @Test("The show's sheet asks the rule before it asks again", .needsTheSources)
     func theSheetAsksTheRuleBeforeItAsksTheFeed() throws {
         let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
         let sheet = try #require(seite.range(of: ".sheet(item: $signInShow, onDismiss: {"))
@@ -248,9 +248,9 @@ struct FeedRefusalTests {
         #expect(seite.components(separatedBy: "subs.recheckAccess(showId:").count == 2, "one recheck on the page")
     }
 
-    // MARK: - Register, Eintrag fuer Eintrag
+    // MARK: - Register, entry by entry
 
-    @Test("Das Register liest Eintrag fuer Eintrag und schreibt unlesbare Eintraege unveraendert zurueck")
+    @Test("The register reads entry by entry and writes unreadable entries back unchanged")
     func registerReadsEntryByEntry() throws {
         let suite = "known-lenient-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

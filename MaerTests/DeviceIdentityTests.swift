@@ -10,14 +10,14 @@ import Foundation
 
 /// The name the other devices see for this one.
 struct DeviceIdentityTests {
-    @Test("auf dem Mac heisst das Geraet Mac, nicht iPad; iPhone und iPad behalten den Namen des Systems")
+    @Test("on the Mac the device is called Mac, not iPad; iPhone and iPad keep the name of the system")
     func theMacIsNotAnIPad() {
         #expect(DeviceIdentity.name(system: "iPad", onMac: true) == "Mac")
         #expect(DeviceIdentity.name(system: "iPad", onMac: false) == "iPad")
         #expect(DeviceIdentity.name(system: "iPhone", onMac: false) == "iPhone")
     }
 
-    @Test("die Frage, ob die App auf einem Mac laeuft, stellt nur PlatformIdiom; DeviceIdentity fragt dort", .needsTheSources)
+    @Test("the question whether the app runs on a Mac is asked only by PlatformIdiom; DeviceIdentity asks there", .needsTheSources)
     func oneQuestionForTheMac() throws {
         var askers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "PlatformScrubber.swift" {

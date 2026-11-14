@@ -20,7 +20,7 @@ struct ForeignMarksTests {
     private let guid = "rss:feedkey1:episode-1"
     private let showId: (String) -> String? = AppStorageKeys.podcastShowId(forEpisodeId:)
 
-    @Test("ein importierter Gehoert-Eintrag erhoeht keine Statistik-Summe, ein echtes Hoeren tut es")
+    @Test("an imported heard entry raises no statistics total, a real listen does")
     func importedIsNoListeningTime() {
         ListeningStore.store(guid, entry: [3_600, 1_000, 3_600], in: defaults)
         ForeignMarks.markImported(guid, in: defaults)
@@ -37,7 +37,7 @@ struct ForeignMarksTests {
         #expect(after["rss:feedkey1"] == 1_200)
     }
 
-    @Test("archiviert bleibt erhalten und faellt mit dem Grabstein")
+    @Test("archived is preserved and falls with the tombstone")
     func archivedSurvivesUntilTombstone() {
         ForeignMarks.markArchived(guid, in: defaults)
         ForeignMarks.markImported(guid, in: defaults)
@@ -50,7 +50,7 @@ struct ForeignMarksTests {
         #expect(!ForeignMarks.isArchived(guid, in: defaults))
     }
 
-    @Test("archiviert geht mit der Ausfuhr hinaus und kommt als archiviert und gehoert zurueck")
+    @Test("archived goes out with the export and comes back as archived and heard")
     func archivedRoundTrip() throws {
         let state = try #require(OPMLExport.exportedState(
             entry: [ProgressMark.playedSentinel, 1_000], feedURL: "https://f.example/rss", guid: "g",
@@ -63,7 +63,7 @@ struct ForeignMarksTests {
         #expect(back.states.first?.finished == true)
     }
 
-    @Test("die Statistik findet die Sendung hinter dem gefalteten Schluessel")
+    @Test("the statistics find the show behind the folded key")
     func statisticsKeyFindsTheShow() {
         let key = PodcastIdentity.feedKey("https://f.example/rss")
         let show = PodcastShow(id: "feed:\(key)", title: "Found", author: nil, artworkURL: nil,
@@ -75,7 +75,7 @@ struct ForeignMarksTests {
         #expect(PodcastIdentity.showTitle(for: "feed:\(key)", in: [show]) == "Found")
     }
 
-    @Test("ein Wiedergabe-Tick liest die Markenliste nicht und schreibt nur, wenn die Folge markiert war")
+    @Test("a playback tick does not read the mark list and writes only if the episode was marked")
     func aTickReadsNoList() {
         ForeignMarks.markImported((0..<500).map { "rss:marks:\($0)" }, in: defaults)
         #expect(ForeignMarks.importedIDs(in: defaults).count == 500)
@@ -98,7 +98,7 @@ struct ForeignMarksTests {
         #expect(left.count == 499 && !left.contains("rss:marks:7"))
     }
 
-    @Test("eine Markenliste von vor dem Stempel wird gelesen, wie sie liegt, und nichts geht verloren")
+    @Test("a mark list from before the stamp is read as it lies, and nothing is lost")
     func aListFromBeforeTheStampIsReadAsItLies() {
         let earlier = (0..<22_000).map { "rss:earlier:\($0)" }.sorted()
         defaults.set(earlier, forKey: ForeignMarks.importedKey)
@@ -127,7 +127,7 @@ struct ForeignMarksTests {
         }
     }
 
-    @Test("ein Wiedergabe-Tick liest nach dem ersten Laden keinen Marken-Schluessel, auch keinen Stempel")
+    @Test("a playback tick reads no mark key after the first load, not even a stamp")
     func aTickReadsNoMarkKeyAtAll() throws {
         let suite = "tf11-counting-\(UUID().uuidString)"
         let counting = try #require(CountingDefaults(suiteName: suite))
@@ -147,7 +147,7 @@ struct ForeignMarksTests {
         #expect(markReads.isEmpty, "no mark key read after the first load: \(markReads.prefix(5))")
     }
 
-    @Test("eine Aenderung von aussen und entfernte Marken werden gesehen")
+    @Test("a change from outside and removed marks are seen")
     func anOutsideChangeIsSeen() throws {
         let suite = "tf11-outside-\(UUID().uuidString)"
         let own = try #require(UserDefaults(suiteName: suite))
@@ -173,7 +173,7 @@ struct ForeignMarksTests {
     /// (measured: the held copy survived it). The app never removes one,
     /// and this keeps it so; a new place that does would need the held
     /// lists to hear it first.
-    @Test("die App loescht keine ganze Domaene, die die gehaltenen Marken nicht hoeren", .needsTheSources)
+    @Test("the app deletes no whole domain that the held marks do not hear", .needsTheSources)
     func theAppRemovesNoDomain() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.contains { $0.lastPathComponent == "ForeignMarks.swift" },
@@ -189,7 +189,7 @@ struct ForeignMarksTests {
         #expect(hits.isEmpty, "\(hits)")
     }
 
-    @Test("viele Grabsteine in einem Abgleich schreiben jede Liste einmal")
+    @Test("many tombstones in one reconcile write each list once")
     func tombstonesInMassWriteEachListOnce() {
         let ids = (0..<300).map { "rss:tomb:\($0)" }
         ForeignMarks.markImported(ids, in: defaults)
@@ -204,7 +204,7 @@ struct ForeignMarksTests {
         #expect(ids.filter { ForeignMarks.isArchived($0, in: defaults) }.isEmpty)
     }
 
-    @Test("der Abgleich und Alle-markieren raeumen in einem Zug", .needsTheSources)
+    @Test("the reconcile and mark-all clear in one go", .needsTheSources)
     func theMassPathsClearTogether() throws {
         for path in ["Sources/Networking/PodcastCloudSync.swift", "Sources/Views/Podcasts/PodcastShowView.swift"] {
             let source = SyncContractFenceTests.stripped(try String(

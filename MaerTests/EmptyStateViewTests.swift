@@ -92,7 +92,7 @@ struct EmptyStateViewTests {
         }
     }
 
-    @Test("In einer Listenzeile steht die Ueberschrift bei 330 und 380 pt in zwei Zeilen, bei 450 in einer")
+    @Test("In a list row the heading stands in two lines at 330 and 380 pt, in one at 450")
     func theHeadingWrapsInAListRow() async throws {
         for width in Self.widths {
             let long = try await headingInk(failedPlaylist, width: width)
@@ -106,7 +106,7 @@ struct EmptyStateViewTests {
         }
     }
 
-    @Test("Unter einer Zeilengrenze des Behaelters bleibt die Ueberschrift so hoch wie frei")
+    @Test("Under a line limit of the container the heading stays as tall as without one")
     func aContainerLineLimitDoesNotReachTheHeading() {
         for width in Self.widths {
             let free = height(failedPlaylist, width: width)
@@ -116,7 +116,7 @@ struct EmptyStateViewTests {
         }
     }
 
-    @Test("Gegenprobe: das nackte ContentUnavailableView kuerzt auf dem laufenden System")
+    @Test("Counter probe: the bare ContentUnavailableView truncates on the running system")
     func theBareSystemViewIsCut() async throws {
         if #available(iOS 27, *) {
             #expect(try await headingInk(bare, width: 330) < headingInk(failedPlaylist, width: 330),
@@ -127,7 +127,7 @@ struct EmptyStateViewTests {
         }
     }
 
-    @Test("Jeder Leerzustand der App geht ueber EmptyStateView", .needsTheSources)
+    @Test("Every empty state of the app goes through EmptyStateView", .needsTheSources)
     func everyEmptyStateGoesThroughTheOneView() throws {
         var direct: [String] = []
         for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources"))

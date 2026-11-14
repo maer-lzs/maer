@@ -8,18 +8,17 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Ein Datum, das der Feed-Parser nicht liest, ist kein Schoenheitsfehler.
-/// Der Podcast-Tab nimmt eine Sendung nur auf, wenn ihre neueste Folge ein
-/// Datum HAT (`PodcastSections.compute`: `newest > 0`). Ein Feed mit
-/// unerkannten Daten wird deshalb ein Abo, das in der Einstellungsliste steht
-/// — mit seiner Folgenzahl — und im Tab unsichtbar bleibt, ohne ein Wort.
+/// A date that the feed parser does not read is not a cosmetic fault.
+/// The podcast tab takes in a show only if its newest episode HAS a
+/// date (`PodcastSections.compute`: `newest > 0`). A feed with
+/// unrecognized dates thus becomes a subscription that stands in the settings list
+/// (with its episode count) and stays invisible in the tab, without a word.
 ///
-/// Gemessen wurde das an einer gemeldeten Sendung, die „nur in den
-/// Einstellungen" stand. Der Fall passt, weil er nichts von „0 Folgen"
-/// geschrieben hat.
+/// This was measured on a reported show that stood
+/// „nur in den Einstellungen". The case fits, because it wrote nothing of „0 Folgen".
 ///
-/// Die Faelle fahren den ECHTEN Parser ueber echte Feed-Texte, nicht eine
-/// Nachbildung der Formatliste.
+/// The cases run the REAL parser over real feed texts, not a
+/// replica of the format list.
 struct FeedDateParsingTests {
     private func feed(itemDate: String) -> Data {
         Data("""
@@ -43,7 +42,7 @@ struct FeedDateParsingTests {
             .parse(feed(itemDate: itemDate))?.episodes.first?.pubDate
     }
 
-    @Test("Das gewoehnliche RFC-822-Datum wird gelesen")
+    @Test("The ordinary RFC 822 date is read")
     func plainRFC822IsRead() {
         let date = pubDate("<pubDate>Wed, 09 Sep 2026 10:30:00 +0200</pubDate>") ?? 0
         #expect(date > 0)
@@ -54,27 +53,27 @@ struct FeedDateParsingTests {
                 "a wrong weekday on purpose")
     }
 
-    /// Die Sekunden sind in RFC 822 OPTIONAL, und Feeds verschicken beide
-    /// Formen. Vorher fiel die kuerzere auf 0 und nahm der Sendung den Tab.
-    @Test("RFC 822 OHNE Sekunden wird gelesen")
+    /// The seconds are OPTIONAL in RFC 822, and feeds send both
+    /// forms. Before, the shorter fell to 0 and took the show out of the tab.
+    @Test("RFC 822 WITHOUT seconds is read")
     func rfc822WithoutSecondsIsRead() {
         #expect(pubDate("<pubDate>Wed, 09 Sep 2026 10:30 +0200</pubDate>") ?? 0 > 0)
         #expect(pubDate("<pubDate>09 Sep 2026 10:30 GMT</pubDate>") ?? 0 > 0)
     }
 
-    /// Feeds, die nie `pubDate` schreiben, datieren mit Dublin Core oder mit
-    /// Atoms `updated`. Vorher hatten alle ihre Folgen das Datum 0.
-    @Test("dc:date und Atom-updated werden gelesen, wenn pubDate fehlt")
+    /// Feeds that never write `pubDate` date with Dublin Core or with
+    /// Atom's `updated`. Before, all their episodes had the date 0.
+    @Test("dc:date and Atom updated are read when pubDate is missing")
     func dublinCoreAndAtomAreRead() {
         #expect(pubDate("<dc:date>2026-09-09T10:30:00Z</dc:date>") ?? 0 > 0)
         #expect(pubDate("<updated>2026-09-09T10:30:00Z</updated>") ?? 0 > 0)
     }
 
-    /// Die Wahl haengt NICHT an der Reihenfolge im XML: `pubDate` ist das
-    /// Veroeffentlichungsdatum, `updated` das der letzten Bearbeitung, und
-    /// ein Feed, der beide fuehrt, soll das erste behalten. Deshalb liegen
-    /// die zwei in getrennten Feldern und werden erst beim Bauen gewaehlt.
-    @Test("Traegt ein Feed beides, gewinnt pubDate, egal in welcher Reihenfolge")
+    /// The choice does NOT depend on the order in the XML: `pubDate` is the
+    /// publication date, `updated` that of the last edit, and
+    /// a feed that carries both should keep the first. That is why
+    /// the two lie in separate fields and are chosen only at build time.
+    @Test("If a feed carries both, pubDate wins, whatever the order")
     func publicationDateWinsRegardlessOfOrder() {
         let published = pubDate("<pubDate>Wed, 09 Sep 2026 10:30:00 +0000</pubDate>") ?? 0
         let bothWays = [
@@ -86,10 +85,10 @@ struct FeedDateParsingTests {
         }
     }
 
-    /// Gegenprobe, damit die Faelle oben nicht gruen sind, weil der Parser
-    /// inzwischen alles annimmt: unlesbares bleibt 0, und die Folge selbst
-    /// bleibt trotzdem da.
-    @Test("Ein unlesbares Datum bleibt null, die Folge bleibt")
+    /// Counter-check, so the cases above are not green because the parser
+    /// meanwhile accepts everything: unreadable stays 0, and the episode itself
+    /// stays there all the same.
+    @Test("An unreadable date stays zero, the episode stays")
     func anUnreadableDateStaysZero() {
         let show = RSSFeedParser(feedURL: "https://example.org/feed.xml")
             .parse(feed(itemDate: "<pubDate>irgendwann letzten Sommer</pubDate>"))

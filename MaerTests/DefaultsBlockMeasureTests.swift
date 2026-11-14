@@ -59,7 +59,7 @@ struct DefaultsBlockMeasureTests {
         print(text)
     }
 
-    @Test("Messung: die Bloecke der Voreinstellungen bei 22.000 Titeln, Groesse, Schluessel, Schreibdauer")
+    @Test("Measurement: the blocks of the defaults at 22,000 titles, size, keys, write time")
     func theBlocksAt22000Titles() throws {
         let suite = "e4mess-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -153,7 +153,7 @@ struct DefaultsBlockMeasureTests {
 
     /// The same mirror in rows: what one changed stand costs on the main
     /// thread, and until its row landed.
-    @Test("Messung: ein Abbild mit 22.000 Staenden in Zeilen, ein geaenderter Stand auf dem Hauptthread und bis er liegt")
+    @Test("Measurement: a mirror of 22,000 stands in rows, one changed stand on the main thread and until it lands")
     func theMirrorInRowsAt22000Stands() async throws {
         let suite = "e4mess-rows-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -183,7 +183,7 @@ struct DefaultsBlockMeasureTests {
     /// per identity: the choices of 22,000 titles and 500 shows, and 200
     /// playlists of 50 titles. Every `persist()` of the session sets both
     /// bodies again, also when only a stand changed.
-    @Test("Messung: die Dokumente der Wahlen und Playlisten des Mär-Sync, Groesse und das Setzen bei jedem persist")
+    @Test("Measurement: the documents of the choices and playlists of the Mär sync, size and the setting on every persist")
     func theServiceDocuments() throws {
         let suite = "e4mess-docs-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

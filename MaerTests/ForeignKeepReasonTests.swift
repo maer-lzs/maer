@@ -17,11 +17,11 @@ struct ForeignKeepReasonTests {
                               episodeTitle: nil, position: position, finished: finished, stampedAt: at)
     }
 
-    @Test("Unter einer Sekunde ohne lokalen Eintrag ist nichts zu uebernehmen, kein lokales Wissen")
+    @Test("Under one second without a local entry there is nothing to adopt, no local knowledge")
     func nothingToAdoptIsNotLocalKnowledge() {
         #expect(ForeignStateMerge.verdict(local: nil, foreign: state(0.5), duration: 3600) == .keep(.nothingToAdopt))
         #expect(ForeignStateMerge.verdict(local: nil, foreign: state(0), duration: 3600) == .keep(.nothingToAdopt))
-        // Rot-Probe of the old counting: the wrapper still says "keep" for
+        // Red probe of the old counting: the wrapper still says "keep" for
         // it, so a caller that only asks the wrapper cannot tell the reasons.
         #expect(ForeignStateMerge.adoption(local: nil, foreign: state(0.5), duration: 3600) == nil)
         // The three "knew better" reasons, each its own name.

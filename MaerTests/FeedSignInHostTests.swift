@@ -17,7 +17,7 @@ struct FeedSignInHostTests {
         try #require(URL(string: text))
     }
 
-    @Test("die Anmeldung eines Feeds geht nur an den Host des Feeds und nie von https hinunter auf http")
+    @Test("the sign-in of a feed goes only to the host of the feed and never down from https to http")
     func theSignInTravelsOnlyToTheFeedsOwnHost() throws {
         let feed = try Self.address("https://Feeds.Example.org/private/show.xml")
         #expect(PodcastFeedAuth.mayCarry(feed: feed, target: try Self.address("https://feeds.example.org/audio/1.mp3")))
@@ -37,7 +37,7 @@ struct FeedSignInHostTests {
                 "a feed whose address is not known binds its sign-in to no host")
     }
 
-    @Test("die Kopfzeilen einer Folge je Adresse: eigener Host mit Anmeldung, fremder ohne, unlesbar nur am eigenen Host unbekannt")
+    @Test("the headers of an episode per address: own host with sign-in, foreign without, unreadable unknown only at the own host")
     func theHeadersPerAddress() throws {
         let key = "feed-\(UUID().uuidString)"
         let episode = "rss:\(key):guid-1"
@@ -62,7 +62,7 @@ struct FeedSignInHostTests {
         }
     }
 
-    @Test("ueber das Protokoll: ohne Adresse nie die Anmeldung, mit Adresse nur am Host des Feeds")
+    @Test("through the protocol: without an address never the sign-in, with an address only at the host of the feed")
     func throughTheProtocol() throws {
         let key = "feed-\(UUID().uuidString)"
         let episode = "rss:\(key):guid-1"
@@ -85,7 +85,7 @@ struct FeedSignInHostTests {
         "AudioProvider.swift": (0, 1, reason: "the default of the form with the address answers with the item's own"),
     ]
 
-    @Test("das Token von Audiobookshelf geht nur an den eigenen Server, auch wenn der Server eine fremde Adresse nennt")
+    @Test("the token of Audiobookshelf goes only to the own server, even if the server names a foreign address")
     func theServersTokenStaysWithItsServer() throws {
         let server = try Self.address("https://abs.example.org/audiobookshelf")
         let client = APIClient(baseURL: server, token: "T")
@@ -100,7 +100,7 @@ struct FeedSignInHostTests {
         #expect(abs.streamAuthHeaders(forItemId: "book-1", to: downgraded) == [:], "the token went from https down to http")
     }
 
-    @Test("Pinchflat gibt seine Anmeldung nur Feeds auf dem eigenen Host", .needsTheSources)
+    @Test("Pinchflat gives its sign-in only to feeds on the own host", .needsTheSources)
     func pinchflatsSignInStaysWithItsHost() throws {
         let client = try FetchAnswerTests.squeezedSource("Sources/Networking/PinchflatClient.swift")
         #expect(client.contains("if let login, let address = PodcastFeedAddress.requestURL(feedURL), SignInReach.mayCarry(own: PinchflatClient.serverURL, target: address) {"),
@@ -110,7 +110,7 @@ struct FeedSignInHostTests {
         #expect(!SignInReach.mayCarry(own: server, target: try Self.address("https://other.example.org/feed.xml")))
     }
 
-    @Test("jeder Leser der Kopfzeilen fragt die Form mit der Adresse", .needsTheSources)
+    @Test("every reader of the headers asks the form with the address", .needsTheSources)
     func everyReaderAsksWithTheAddress() {
         var found: [String: (withAddress: Int, readableOnly: Int)] = [:]
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
@@ -128,7 +128,7 @@ struct FeedSignInHostTests {
         }
     }
 
-    @Test("die Form ohne Adresse traegt bei einem Feed nie die Anmeldung", .needsTheSources)
+    @Test("the form without an address never carries the sign-in for a feed", .needsTheSources)
     func theFormWithoutAnAddressNeverCarriesTheSignIn() throws {
         let rss = try FetchAnswerTests.squeezedSource("Sources/Providers/RSSProvider.swift")
         #expect(rss.contains("PodcastFeedAuth.streamHeaders(forItemId: itemId) == nil ? nil : [:]"))

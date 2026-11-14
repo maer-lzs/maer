@@ -21,7 +21,7 @@ struct FeedAddressStaysHomeTests {
                     description: nil, feedURL: feedURL, episodes: [])
     }
 
-    @Test("eine Feed-Adresse mit Geheimnis geht nicht an das Verzeichnis",
+    @Test("a feed address with a secret does not go to the directory",
           arguments: ["https://paid.example/feed.xml?token=abc123",
                       "https://paid.example/feed.xml?show=7&freebie=xyz",
                       "https://user:secret@paid.example/feed.xml",
@@ -36,7 +36,7 @@ struct FeedAddressStaysHomeTests {
         #expect(answer == nil, "not asked is no finding")
     }
 
-    @Test("eine freie Feed-Adresse wird gefragt")
+    @Test("a free feed address is asked")
     func aFreeAddressIsAsked() async throws {
         let address = "https://free.example/feed.xml?page=2"
         try #require(!PodcastSubscriptions.staysHome(address), "the free address counts as private here")
@@ -49,7 +49,7 @@ struct FeedAddressStaysHomeTests {
         #expect(answer?.isEmpty == true)
     }
 
-    @Test("die Regel: ein Geheimnis in der Adresse oder von Hand als bezahlt markiert bleibt, eine freie Adresse geht")
+    @Test("the rule: a secret in the address or one marked paid by hand stays, a free address goes")
     func theRule() throws {
         let name = "stays-home-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -69,7 +69,7 @@ struct FeedAddressStaysHomeTests {
         #expect(PodcastSubscriptions.staysHome(mirrored, defaults: defaults))
     }
 
-    @Test("der Export haelt auch eine Adresse mit Anmeldung vor dem Host zurueck")
+    @Test("the export also holds back an address with a sign-in before the host")
     func theExportHoldsAnAddressWithUserInfoBack() {
         let split = OPMLExport.partition(
             shows: [("Free", "https://free.example/feed.xml"), ("Login", "https://u:p@paid.example/feed.xml"),
@@ -79,7 +79,7 @@ struct FeedAddressStaysHomeTests {
         #expect(split.excluded.map(\.title) == ["Login", "Token"])
     }
 
-    @Test("nur ein Weg sendet eine Feed-Adresse an das Verzeichnis, und er fragt die Regel vor dem Senden; der Knopf steht unter derselben Regel",
+    @Test("only one path sends a feed address to the directory, and it asks the rule before sending; the button stands under the same rule",
           .needsTheSources)
     func oneWayOutAndItAsksFirst() throws {
         let root = SourceTree.root.appendingPathComponent("Sources")

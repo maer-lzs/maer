@@ -28,7 +28,7 @@ struct DownloadStallTests {
         return nil
     }
 
-    @Test("der gemessene Fall: jeder Lauf endet bei 50000, die Regel gibt auf, sobald der fuenfte Lauf beginnt")
+    @Test("the measured case: every run ends at 50000, the rule gives up as soon as the fifth run begins")
     func theMeasuredCaseFails() {
         #expect(Self.gaveUp(endingAt: Array(repeating: 50_000, count: 7), once: true) == 5,
                 "as measured: one report of 50000 per run; run 5 starting shows the third round without gain")
@@ -36,7 +36,7 @@ struct DownloadStallTests {
         #expect(DownloadStall.limit == 3)
     }
 
-    @Test("ein Lauf, der weiter kommt, beginnt die Zaehlung neu; ein frueher endender zaehlt nicht")
+    @Test("a run that gets further starts the count anew; one that ends earlier does not count")
     func progressAndWeakNetworksNeverFail() {
         #expect(Self.gaveUp(endingAt: (1...10).map { Int64($0) * 10_000 }) == nil, "every run reaches further")
         #expect(Self.gaveUp(endingAt: [50_000, 40_000, 30_000, 20_000, 45_000, 10_000, 49_000]) == nil,

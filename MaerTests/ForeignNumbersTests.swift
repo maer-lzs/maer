@@ -12,7 +12,7 @@ import Foundation
 /// server's chapter end) reaches no conversion to whole seconds: `Int(_:)`
 /// on 1e300 stops the app.
 struct ForeignNumbersTests {
-    @Test("Fremde Zahlen: eine Kapitelmarke 1e300 faellt weg, die gewoehnlichen bleiben")
+    @Test("Foreign numbers: a chapter mark 1e300 drops out, the ordinary ones stay")
     func aHugeChapterMarkIsLeftOut() throws {
         let json = #"{"chapters":[{"startTime":0,"title":"A"},{"startTime":1e300,"title":"B"},{"startTime":-5,"title":"C"},{"startTime":60,"title":"D"}]}"#
         let chapters = try #require(RSSProvider.chapters(from: Data(json.utf8), duration: 120))
@@ -22,7 +22,7 @@ struct ForeignNumbersTests {
         #expect(RSSProvider.chapters(from: Data(none.utf8), duration: 120) == nil)
     }
 
-    @Test("Fremde Zahlen: ganze Sekunden, Minuten und Reste aus riesigen oder nicht endlichen Laengen sind 0")
+    @Test("Foreign numbers: whole seconds, minutes and remainders from huge or non-finite lengths are 0")
     func theSinksTakeNoHugeNumber() {
         for raw in [1e300, -1e300, .infinity, -.infinity, .nan] {
             #expect(PodcastDuration.wholeSeconds(raw) == 0, "\(raw)")
@@ -34,7 +34,7 @@ struct ForeignNumbersTests {
         #expect(DurationText.length(seconds: 3_600) == DurationText.length(minutes: 60))
     }
 
-    @Test("Fremde Zahlen: eine Laenge von archive.org, die keine ist, gilt als unbekannt")
+    @Test("Foreign numbers: a length from archive.org that is none counts as unknown")
     func anArchiveLengthThatIsNoLength() {
         #expect(FreeCatalog.fileLength("1e300") == nil)
         #expect(FreeCatalog.fileLength("99999999999999999999:00:00") == nil)

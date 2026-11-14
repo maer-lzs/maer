@@ -8,16 +8,16 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Block der Feed-Zugaenge: seine Schrift, sein Siegel, seine
-/// Zusammenfuehrung und die eine Regel, die einen bezahlten Feed schuetzt.
+/// The block of feed accesses: its writing, its seal, its
+/// merge and the one rule that protects a paid feed.
 struct FeedAuthBlockTests {
     private func entry(_ user: String, _ password: String, at: Double) -> FeedAuthBlock.Entry {
         FeedAuthBlock.Entry(credentials: .init(user: user, password: password), at: at)
     }
 
-    // MARK: - Die Schrift
+    // MARK: - The writing
 
-    @Test("Rundlauf, und gleiche Eintraege geben gleiche Bytes")
+    @Test("Round trip, and equal entries give equal bytes")
     func roundTripIsStable() throws {
         let entries = ["feed-a": entry("anna", "geheim", at: 1000),
                        "feed-b": entry("bert", "auch geheim", at: 2000)]
@@ -26,32 +26,32 @@ struct FeedAuthBlockTests {
             Issue.record("nicht lesbar"); return
         }
         #expect(back == entries)
-        // Sortiert geschrieben: derselbe Zustand gibt dieselben Bytes, also
-        // heisst ein Unterschied wirklich eine Aenderung und nicht eine
-        // andere Woerterbuch-Reihenfolge.
+        // Written sorted: the same state gives the same bytes, so
+        // a difference really means a change and not a
+        // different dictionary order.
         #expect(FeedAuthBlock.encode(entries) == data)
     }
 
-    @Test("ein neueres Format wird als solches gemeldet, nicht als Schrott")
+    @Test("a newer format is reported as such, not as junk")
     func aNewerFormatIsNamed() throws {
         let document: [String: Any] = ["v": FeedAuthBlock.format + 5, "e": [:]]
         let data = try JSONSerialization.data(withJSONObject: document)
         #expect(FeedAuthBlock.decode(data) == .newerFormat(FeedAuthBlock.format + 5))
     }
 
-    @Test("Unlesbares ist nicht leer")
+    @Test("Unreadable is not empty")
     func unreadableIsNotEmpty() {
         #expect(FeedAuthBlock.decode(Data("kein json".utf8)) == .unreadable)
         #expect(FeedAuthBlock.decode(Data()) == .unreadable)
-        // Ein Block OHNE Eintragsfeld ist kaputt, nicht leer.
+        // A block WITHOUT an entries field is broken, not empty.
         let noEntries = try? JSONSerialization.data(withJSONObject: ["v": 1])
         #expect(FeedAuthBlock.decode(noEntries ?? Data()) == .unreadable)
-        // Aber ein leeres Eintragsfeld ist wirklich leer.
+        // But an empty entries field is really empty.
         let empty = try? JSONSerialization.data(withJSONObject: ["v": 1, "e": [:]])
         #expect(FeedAuthBlock.decode(empty ?? Data()) == .entries([:]))
     }
 
-    @Test("ein halber Eintrag wird uebersprungen, ein fehlender Moment nicht")
+    @Test("a half entry is skipped, a missing moment is not")
     func halfAnEntryIsSkippedButAMissingMomentIsNot() throws {
         let document: [String: Any] = ["v": 1, "e": [
             "ganz": ["u": "anna", "p": "geheim", "t": 1234.0],
@@ -68,34 +68,34 @@ struct FeedAuthBlockTests {
         #expect(back["ganz"]?.at == 1234)
     }
 
-    // MARK: - Das Siegel
+    // MARK: - The seal
 
-    @Test("der Dienst traegt, was er nicht lesen kann")
+    @Test("the service carries what it cannot read")
     func theServiceCarriesWhatItCannotRead() throws {
         let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let secret = Data("anna\ngeheim".utf8)
         let sealed = try #require(FeedAuthCrypto.seal(secret, code: code))
-        // Das Geheimnis steht nirgends im Umschlag.
+        // The secret stands nowhere in the envelope.
         let text = String(data: sealed, encoding: .utf8) ?? ""
         #expect(!text.contains("geheim"))
         #expect(!text.contains("anna"))
-        // Und der Umschlag ist JSON, weil das Tor des Dienstes nur lesbare
-        // Dokumente annimmt.
+        // And the envelope is JSON, because the service's gate accepts only readable
+        // documents.
         #expect((try? JSONSerialization.jsonObject(with: sealed)) != nil)
         #expect(FeedAuthCrypto.open(sealed, code: code, feed: nil) == .plaintext(secret))
     }
 
-    @Test("ein fremder Schluessel oeffnet nicht, und der Umschlag sagt das")
+    @Test("a foreign key does not open, and the envelope says so")
     func aForeignKeyDoesNotOpen() throws {
         let mine = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let theirs = try #require(DeviceLinkCode.normalized("ZYXW-VTSR-QPNM-KJHG-FEDC-BAZY"))
         let sealed = try #require(FeedAuthCrypto.seal(Data("geheim".utf8), code: mine))
         #expect(FeedAuthCrypto.open(sealed, code: theirs, feed: nil) == .sealedForAnother)
-        // Kein Umschlag ist etwas anderes als ein fremder Umschlag.
+        // No envelope is something other than a foreign envelope.
         #expect(FeedAuthCrypto.open(Data("kein json".utf8), code: mine, feed: nil) == .unreadable)
     }
 
-    @Test("zweimal dasselbe siegeln gibt zwei verschiedene Umschlaege")
+    @Test("sealing the same thing twice gives two different envelopes")
     func sealingTwiceGivesTwoEnvelopes() throws {
         let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let secret = Data("geheim".utf8)
@@ -106,13 +106,13 @@ struct FeedAuthBlockTests {
         #expect(FeedAuthCrypto.open(b, code: code, feed: nil) == .plaintext(secret))
     }
 
-    @Test("ein veraenderter Umschlag oeffnet nicht")
+    @Test("an altered envelope does not open")
     func atamperedEnvelopeDoesNotOpen() throws {
         let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let sealed = try #require(FeedAuthCrypto.seal(Data("geheim".utf8), code: code))
-        // Die werfenden Aufrufe stehen VOR dem Makro: ein `try` innerhalb
-        // von `#require` laesst die Makro-Ausdehnung auf sich selbst laufen
-        // und bricht den Bau, nicht den Fall.
+        // The throwing calls stand BEFORE the macro: a `try` inside
+        // `#require` makes the macro expansion run on itself
+        // and breaks the build, not the case.
         let parsed = try JSONSerialization.jsonObject(with: sealed)
         var document = try #require(parsed as? [String: Any])
         let bodyText = try #require(document["c"] as? String)
@@ -124,9 +124,9 @@ struct FeedAuthBlockTests {
         #expect(FeedAuthCrypto.open(broken, code: code, feed: nil) == .sealedForAnother)
     }
 
-    // MARK: - Die Zusammenfuehrung
+    // MARK: - The merge
 
-    @Test("je Feed gewinnt der neuere Schrieb, und beide Seiten ueberleben")
+    @Test("per feed the newer write wins, and both sides survive")
     func theNewerWriteWinsAndBothSidesSurvive() {
         let local = ["a": entry("anna", "alt", at: 1000),
                      "nur-hier": entry("carl", "geheim", at: 500)]
@@ -139,7 +139,7 @@ struct FeedAuthBlockTests {
         #expect(merged.count == 3)
     }
 
-    @Test("Gleichstand behaelt die lokale Seite, ohne Moment verliert man")
+    @Test("A tie keeps the local side, without a moment one loses")
     func tiesKeepTheLocalSideAndNoMomentLoses() {
         let local = ["a": entry("anna", "hier", at: 1000),
                      "b": entry("bert", "hier", at: 0)]
@@ -150,17 +150,17 @@ struct FeedAuthBlockTests {
         #expect(merged["b"]?.credentials.password == "dort")
     }
 
-    @Test("eine Loeschung reist in diesem Format NICHT")
+    @Test("a deletion does NOT travel in this format")
     func aRemovalDoesNotTravelInThisFormat() {
-        // Die Gegenseite kennt den Feed nicht mehr. Er bleibt trotzdem,
-        // und das ist die Entscheidung: ein bezahlter Zugang, den niemand
-        // je gesehen hat, darf nicht durch eine Abwesenheit verschwinden.
+        // The other side no longer knows the feed. It stays anyway,
+        // and that is the decision: a paid access that nobody
+        // has ever seen must not disappear through an absence.
         let local = ["bezahlt": entry("anna", "geheim", at: 1000)]
         let merged = FeedAuthMerge.union(local: local, remote: [:])
         #expect(merged["bezahlt"] != nil)
     }
 
-    @Test("gleiche Zugaenge mit neuem Moment loesen KEINEN Schrieb aus")
+    @Test("equal accesses with a new moment trigger NO write")
     func are_stampAloneIsNoTraffic() {
         let local = ["a": entry("anna", "geheim", at: 1000)]
         let merged = ["a": entry("anna", "geheim", at: 9999)]
@@ -171,22 +171,22 @@ struct FeedAuthBlockTests {
                                        "b": entry("b", "c", at: 1)], from: local))
     }
 
-    // MARK: - Die Regel, die einen bezahlten Feed schuetzt
+    // MARK: - The rule that protects a paid feed
 
-    @Test("ein fremd versiegelter Block wird NICHT ueberschrieben")
+    @Test("a block sealed by a foreign party is NOT overwritten")
     func aBlockSealedForAnotherIsNeverOverwritten() {
-        // Der gefaehrliche Fall sieht harmlos aus: ein fremd versiegelter
-        // Block ist voellig in Ordnung, er ist nur nicht unserer. Von hier
-        // sieht er aus wie Schaden, und der Reflex auf Schaden ist ein
-        // frischer Schrieb. Der wuerde jeden Zugang des anderen Geraets
-        // loeschen.
+        // The dangerous case looks harmless: a block sealed by a foreign party
+        // is perfectly fine, it is just not ours. From here
+        // it looks like damage, and the reflex on damage is a
+        // fresh write. That would delete every access of the other
+        // device.
         #expect(!FeedAuthStanding.mayWrite(.sealedForAnother))
         #expect(!FeedAuthStanding.mayWrite(.newerFormat(9)))
         #expect(FeedAuthStanding.mayWrite(.none), "die erste Einrichtung schreibt")
         #expect(FeedAuthStanding.mayWrite(.opens))
     }
 
-    @Test("die Seite sagt dasselbe, was die Schreib-Erlaubnis sagt")
+    @Test("the page says the same as the write permission says")
     func thePageAndThePermissionAreOneQuestion() {
         func standing(_ on: Bool, _ service: Bool,
                       _ block: FeedAuthStanding.Block) -> FeedAuthStanding.Standing {
@@ -198,40 +198,40 @@ struct FeedAuthBlockTests {
         #expect(standing(true, true, .opens) == .carrying)
         #expect(standing(true, true, .sealedForAnother) == .needsCode)
         #expect(standing(true, true, .newerFormat(9)) == .newerBuild(9))
-        // Und die Kopplung selbst: genau die Zustaende, die nicht schreiben
-        // duerfen, sind die, die der Seite etwas zu sagen geben.
+        // And the coupling itself: exactly the states that may not write
+        // are the ones that give the page something to say.
         for block: FeedAuthStanding.Block in [.none, .opens, .sealedForAnother, .newerFormat(9)] {
             #expect(FeedAuthStanding.mayWrite(block) == (standing(true, true, block) == .carrying),
                     "Seite und Erlaubnis laufen bei \(block) auseinander")
         }
     }
 
-    @Test("eine nackte http-Adresse wird BENANNT und nicht gesperrt")
+    @Test("a bare http address is NAMED and not blocked")
     func aPlainAddressIsNamedAndNotRefused() {
-        // Gebaut fuer die Leute, die kein Zertifikat hinbekommen: eine
-        // Sperre wuerde genau diese Zielgruppe aussperren. Also traegt es,
-        // und der Mensch erfaehrt vorher, was die Adresse bedeutet.
+        // Built for the people who cannot get a certificate: a
+        // block would lock out exactly this target group. So it carries,
+        // and the person learns beforehand what the address means.
         let carrying = FeedAuthStanding.standing(syncAcrossDevices: true, hasService: true,
                                                  block: .none)
         #expect(carrying == .carrying, "http aendert den Stand nicht")
         #expect(FeedAuthStanding.notice(addressIsSecure: false, standing: carrying) == .plainAddress)
         #expect(FeedAuthStanding.notice(addressIsSecure: true, standing: carrying) == nil)
-        // Wo nichts reist, gibt es auch nichts zu warnen.
+        // Where nothing travels, there is nothing to warn about either.
         #expect(FeedAuthStanding.notice(addressIsSecure: false, standing: .switchedOff) == nil)
         #expect(FeedAuthStanding.notice(addressIsSecure: false, standing: .noService) == nil)
-        // Und die Erlaubnis zu schreiben haengt NICHT an der Adresse.
+        // And the permission to write does NOT depend on the address.
         #expect(FeedAuthStanding.mayWrite(.none))
 
         #expect(FeedAuthStanding.addressIsSecure("https://sync.maer.fm"))
         #expect(FeedAuthStanding.addressIsSecure("HTTPS://SYNC.MAER.FM"))
         #expect(!FeedAuthStanding.addressIsSecure("http://sync.maer.fm"))
-        // Genau die zwei Adressformen, an denen die Plattform-Regel selbst
-        // aufhoert: eine nackte Adresse und ein .local-Name.
+        // Exactly the two address forms where the platform rule itself
+        // stops: a bare address and a .local name.
         #expect(!FeedAuthStanding.addressIsSecure("http://192.168.178.5:8099"))
         #expect(!FeedAuthStanding.addressIsSecure("http://tiny.local:8099"))
     }
 
-    // MARK: - Die Runde, und sie entscheidet alles Gefaehrliche
+    // MARK: - The round, and it decides everything dangerous
 
     private func plan(mine: [String: FeedAuthBlock.Entry] = [:],
                       theirs: [[String: FeedAuthBlock.Entry]] = [],
@@ -240,7 +240,7 @@ struct FeedAuthBlockTests {
         FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings, listed: listed)
     }
 
-    @Test("das erste Geraet schreibt, ohne dass etwas da ist")
+    @Test("the first device writes, without anything being there")
     func theFirstDeviceWrites() {
         let p = plan(mine: ["a": entry("anna", "geheim", at: 1000)])
         #expect(p.block == .none)
@@ -248,7 +248,7 @@ struct FeedAuthBlockTests {
         #expect(p.apply == nil, "lokal aendert sich nichts")
     }
 
-    @Test("oeffnet auch nur EIN fremder Block, gehoert der Code hierher")
+    @Test("if even ONE foreign block opens, the code belongs here")
     func oneOpeningBlockIsEnough() {
         let theirs = ["b": entry("bert", "geheim", at: 2000)]
         let p = plan(mine: ["a": entry("anna", "geheim", at: 1000)],
@@ -259,10 +259,10 @@ struct FeedAuthBlockTests {
         #expect(p.apply?["b"] != nil, "was ankam, wird gehalten")
     }
 
-    @Test("oeffnet KEINER, haelt das Geraet seinen eigenen Block zurueck")
+    @Test("if NONE opens, the device holds back its own block")
     func nothingOpensMeansHoldBack() {
-        // Der stille Schaden: zwei Haelften eines Kontos, die sich nie
-        // lesen koennen, und beide sehen von innen gesund aus.
+        // The silent damage: two halves of an account that can never
+        // read each other, and both look healthy from the inside.
         let p = plan(mine: ["a": entry("anna", "geheim", at: 1000)],
                      openings: [.sealedForAnother, .sealedForAnother])
         #expect(p.block == .sealedForAnother)
@@ -270,14 +270,14 @@ struct FeedAuthBlockTests {
         #expect(p.apply == nil)
     }
 
-    @Test("ein neueres Format haelt ebenfalls zurueck und wird benannt")
+    @Test("a newer format also holds back and is named")
     func aNewerFormatHoldsBackToo() {
         let p = plan(openings: [.newerFormat(9), .sealedForAnother])
         #expect(p.block == .newerFormat(9))
         #expect(p.putUp == nil)
     }
 
-    @Test("vor der ersten Auflistung geht nichts hoch, auch wenn der Speicher leer aussieht")
+    @Test("before the first listing nothing goes up, even if the store looks empty")
     func nothingGoesUpBeforeTheFirstListing() {
         // Measured on 24.09.: signed in, the session's store empty, and the
         // block went up 4 ms later, before a single foreign one was seen.
@@ -289,7 +289,7 @@ struct FeedAuthBlockTests {
         #expect(after.putUp?.count == 1 && after.hold == nil, "listed and empty: the first device writes")
     }
 
-    @Test("jeder Grund zurueckzuhalten hat seine eigenen Worte, ein neueres Format ist kein fremder Code")
+    @Test("every reason to hold back has its own words, a newer format is no foreign code")
     func eachHoldNamesItsReason() {
         #expect(plan(openings: [.sealedForAnother]).hold == .sealedForAnother)
         #expect(plan(openings: [.newerFormat(9), .sealedForAnother]).hold == .newerFormat(9))
@@ -299,7 +299,7 @@ struct FeedAuthBlockTests {
         #expect(FeedAuthRound.Hold.notListedYet.logReason == "the other devices' blocks are not listed yet")
     }
 
-    @Test("der Laeufer reicht die Auflistung weiter und schreibt den Grund aus dem Plan ins Log", .needsTheSources)
+    @Test("the runner passes the listing on and writes the reason from the plan into the log", .needsTheSources)
     func theRunnerWiresListingAndReason() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)
@@ -308,7 +308,7 @@ struct FeedAuthBlockTests {
         #expect(!text.contains("holding back, the code is not this account's"), "no fixed reason in the line")
     }
 
-    @Test("eine Runde, die nichts aendert, schreibt lokal nichts")
+    @Test("a round that changes nothing writes nothing locally")
     func aRoundThatChangesNothingWritesNothing() {
         let same = ["a": entry("anna", "geheim", at: 1000)]
         let p = plan(mine: same, theirs: [same], openings: [.plaintext(Data())])
@@ -316,7 +316,7 @@ struct FeedAuthBlockTests {
         #expect(p.putUp != nil, "hochgehen darf es trotzdem")
     }
 
-    @Test("mehrere fremde Bloecke werden untereinander verschmolzen, nicht der letzte gewinnt")
+    @Test("several foreign blocks are merged with each other, the last does not simply win")
     func severalForeignBlocksAreMergedAmongThemselves() {
         let one = ["a": entry("anna", "alt", at: 1000), "nur-eins": entry("x", "y", at: 5)]
         let two = ["a": entry("anna", "neu", at: 3000), "nur-zwei": entry("p", "q", at: 5)]
@@ -328,16 +328,16 @@ struct FeedAuthBlockTests {
         #expect(p.apply?.count == 3)
     }
 
-    @Test("der Preis der Vereinigung ist gemessen, nicht geschaetzt")
+    @Test("the price of the union is measured, not estimated")
     func thePriceOfTheUnionIsMeasured() throws {
-        // Hochgelegt wird die Vereinigung, also liegt sie einmal JE GERAET
-        // auf dem Dienst. Damit diese Entscheidung nicht ungeschrieben neu
-        // verhandelt wird, steht die Zahl hier und nicht in einer Schaetzung.
+        // The union is what gets uploaded, so it lies once PER DEVICE
+        // on the service. So that this decision is not renegotiated
+        // unwritten, the number stands here and not in an estimate.
         let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         var entries: [String: FeedAuthBlock.Entry] = [:]
         for index in 0..<25 {
-            // Ein Schluessel ist hoechstens 16 Zeichen (FNV-Hash der
-            // normalisierten Adresse), Nutzer und Passwort realistisch lang.
+            // A key is at most 16 characters (FNV hash of the
+            // normalized address), user and password realistically long.
             let key = String(format: "%016x", UInt64(index) &* 0x9E37_79B9_7F4A_7C15)
             entries[key] = FeedAuthBlock.Entry(
                 credentials: .init(user: "leser\(index)@example.invalid",
@@ -346,24 +346,24 @@ struct FeedAuthBlockTests {
         }
         let plain = try #require(FeedAuthBlock.encode(entries))
         let sealed = try #require(FeedAuthCrypto.seal(plain, code: code))
-        // Gemessen sind rund 3700 Byte. Die Schranke steht bei 8000, also
-        // bei Faktor 2,16: der Fall faengt eine VERDOPPLUNG und ausdruecklich
-        // nicht ein Wachstum um die Haelfte. Wer das aendert, soll wissen,
-        // was er dabei aufgibt.
+        // Measured are about 3700 bytes. The bound stands at 8000, so
+        // at a factor of 2.16: the case catches a DOUBLING and explicitly
+        // not a growth by half. Whoever changes that should know
+        // what they give up.
         #expect(sealed.count < 8_000, "versiegelt: \(sealed.count) Byte fuer 25 Feeds")
         #expect(sealed.count > plain.count, "der Umschlag kostet etwas")
-        // Die Einordnung, die den Entscheid traegt, und sie ist die ENGERE
-        // Schranke: zehn Geraete tragen die Vereinigung je einmal und
-        // bleiben unter einem Promille der Koerper-Grenze des Dienstes.
-        // Gegen die Grenze selbst zu pruefen waere eine Zusicherung, die bei
-        // gehaltener erster Schranke gar nicht reissen KANN, also eine
-        // Dokumentation im Gewand einer Messung.
+        // The classification that carries the decision, and it is the NARROWER
+        // bound: ten devices carry the union once each and
+        // stay below a thousandth of the service's body limit.
+        // Checking against the limit itself would be an assertion that, with
+        // the first bound held, CANNOT fail at all, so a
+        // documentation in the guise of a measurement.
         let tenDevices = sealed.count * 10
         #expect(tenDevices < 64 * 1024 * 1024 / 1000,
                 "zehn Geraete: \(tenDevices) Byte, ein Promille waeren \(64 * 1024 * 1024 / 1000)")
     }
 
-    // MARK: - Die Flaeche, und was sie NICHT selbst entscheidet
+    // MARK: - The surface, and what it does NOT decide itself
 
     @MainActor
     private func settingsPage() throws -> String {
@@ -372,23 +372,23 @@ struct FeedAuthBlockTests {
         return try String(contentsOf: file, encoding: .utf8)
     }
 
-    @Test("die Seite fragt die Regel, statt selbst zu entscheiden", .needsTheSources)
+    @Test("the page asks the rule instead of deciding itself", .needsTheSources)
     func thePageAsksTheRule() throws {
         let text = try settingsPage()
         #expect(text.contains("FeedAuthStanding.standing("), "die Seite baut den Stand selbst")
         #expect(text.contains("FeedAuthStanding.notice("), "die Seite entscheidet den Hinweis selbst")
     }
 
-    @Test("die Seite zeigt keinen Code mehr, und der Preis steht als Tatsache vorher", .needsTheSources)
+    @Test("the page shows no code any more, and the price stands as a fact beforehand", .needsTheSources)
     func thePageShowsNoCodeAndThePriceComesFirst() throws {
         let text = try settingsPage()
-        // Der Code ist abgeschafft: nichts zu kopieren, nichts zu tippen,
-        // nichts zu erzeugen.
+        // The code is abolished: nothing to copy, nothing to type,
+        // nothing to generate.
         #expect(!text.contains("UIPasteboard"), "ein Kopier-Weg fuer einen Code steht noch da")
         #expect(!text.contains("DeviceLinkCode"), "die Seite fasst den Code noch an")
         #expect(!text.contains("feed-auth-code"), "eine Code-Flaeche traegt noch ihre Kennung")
-        // Der Preis steht in der Fusszeile, also VORHER sichtbar, und als
-        // Tatsache, nicht als Verhalten.
+        // The price stands in the footer, so visible BEFOREHAND, and as a
+        // fact, not as behavior.
         #expect(text.contains("travel sealed with a key that comes from your account password, which the service never sees."))
         #expect(text.contains("If the password is forgotten and no device holds the credentials any more, they are gone."))
     }
@@ -401,7 +401,7 @@ struct FeedAuthBlockTests {
             .components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
-    @Test("nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends", .needsTheSources)
+    @Test("after the sign-in the runner starts with the feed key, no code is generated anywhere", .needsTheSources)
     func theRunnerFollowsTheSignIn() throws {
         let code = try settingsCode()
         // The sign-in reaches the runner through the one place that writes
@@ -412,7 +412,7 @@ struct FeedAuthBlockTests {
         #expect(!code.contains("ensure()") && !code.contains("adopt(typed:"), "a code still comes into being")
     }
 
-    @Test("der Block wird beobachtet, nicht gespiegelt", .needsTheSources)
+    @Test("the block is observed, not mirrored", .needsTheSources)
     func theBlockIsObservedNotMirrored() throws {
         let code = try settingsCode()
         #expect(code.contains("@ObservedObjectprivatevarfeedAuth=FeedAuthSync.shared"), "the page does not observe the runner")
@@ -424,7 +424,7 @@ struct FeedAuthBlockTests {
         #expect(text.contains("@Published private(set) var block"))
     }
 
-    @Test("der Schluesselwechsel gehoert zu seiner Adresse und faellt mit ihr", .needsTheSources)
+    @Test("the key change belongs to its address and falls with it", .needsTheSources)
     func theKeyChangeBelongsToItsAddress() throws {
         let change = MaerSyncSettingsView.KeyChange(held: "AAAA", offered: "BBBB", address: "https://one.example")
         #expect(change.stands(forAddress: "https://one.example"))
@@ -440,7 +440,7 @@ struct FeedAuthBlockTests {
 
     /// The page reads the session again after every change it makes,
     /// through ONE helper.
-    @Test("die Seite liest die Sitzung nach jeder eigenen Aenderung neu", .needsTheSources)
+    @Test("the page reads the session again after every change of its own", .needsTheSources)
     func thePageReadsTheSessionAgainAfterItsOwnChanges() throws {
         let code = try settingsCode()
         let helper = try #require(code.range(of: "privatefuncrefreshFromSession(){"))
@@ -455,7 +455,7 @@ struct FeedAuthBlockTests {
         #expect(code[signOut.upperBound...].prefix(200).contains("refreshFromSession()"), "signing out does not read the session again")
     }
 
-    @Test("waehrend ein neues Passwort gesetzt wird, steht das geltende zuerst im Abschnitt und oben nicht, ein Feld fuer einen Wert", .needsTheSources)
+    @Test("while a new password is being set, the current one stands first in the section and not at the top, one field for one value", .needsTheSources)
     func thePasswordInForceMovesIntoTheSection() throws {
         let code = try settingsCode()
         #expect(code.contains("if!settingNewPassword{CredentialField.secret(\"Password\",text:$secret,id:\"maer-sync-password\")}"),
@@ -467,7 +467,7 @@ struct FeedAuthBlockTests {
         #expect(code.components(separatedBy: "text:$secret").count - 1 == 2, "one value, one field that moves")
     }
 
-    @Test("Bei grosser Schrift steht der Titel eines Zugangsfelds ueber ihm, statt als Platzhalter geschrumpft zu werden, an allen drei Feldern", .needsTheSources)
+    @Test("At large type the title of an access field stands above it, instead of being shrunk as a placeholder, at all three fields", .needsTheSources)
     func credentialTitlesStandAboveAtLargeText() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "CredentialFields.swift" })
@@ -482,7 +482,7 @@ struct FeedAuthBlockTests {
         #expect(wrapper[large.upperBound...].prefix(300).contains("field(true)"))
     }
 
-    @Test("Geaenderte Zugangsdaten eines bekannten Feeds sind ein Eintreffen wie neue, gleiche nicht", .needsTheSources)
+    @Test("Changed credentials of a known feed count as an arrival like new ones, equal ones do not", .needsTheSources)
     func changedCredentialsArriveLikeNewOnes() throws {
         let mine = ["a": entry("u", "alt", at: 1)]
         #expect(FeedAuthRound.accessArrived(apply: ["a": entry("u", "neu", at: 2)], mine: mine), "a changed password")

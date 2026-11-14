@@ -21,10 +21,10 @@ final class CountingChoiceCloud: UserChoiceCloudStore {
     func removeObject(forKey key: String) { writes += 1; storage[key] = nil }
 }
 
-/// Die Folgen-Grenze ist weg: keine Anzahl nimmt einer Sendung eine Folge,
-/// ihre Schluessel reisen nicht mehr und verschwinden ohne Grabstein, eine
-/// fertig gehoerte automatische Folge geht nach einem Tag, und die ganze
-/// Geschichte laedt auch auf einer gestoeberten Sendung.
+/// The episode limit is gone: no count takes an episode from a show,
+/// its keys no longer travel and vanish without a tombstone, a
+/// fully heard automatic episode goes after one day, and the whole
+/// history also loads on a browsed show.
 @MainActor
 struct EpisodeLimitRetiredTests {
     static func show(_ url: URL, episodes: Range<Int>) -> PodcastShow {
@@ -70,7 +70,7 @@ struct EpisodeLimitRetiredTests {
         cloud.storage[UserChoiceCloudSync.blobKey] = document
     }
 
-    @Test("ein Auffrischen nimmt keiner Sendung eine Folge, auch mit einer alten Grenze auf dem Geraet, und eine angefangene bleibt")
+    @Test("a refresh takes no episode from a show, even with an old limit on the device, and a started one stays")
     func aRefreshTakesNothing() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("limit-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -106,7 +106,7 @@ struct EpisodeLimitRetiredTests {
         #expect(ListeningStore.backup(oldest.guid, in: defaults) != nil, "and its position is still there")
     }
 
-    @Test("Geschnittene Folgen kommen mit dem naechsten Auffrischen aus dem Feed zurueck")
+    @Test("Cut episodes come back from the feed with the next refresh")
     func aRefreshBringsTheFeedBack() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("limit-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -133,7 +133,7 @@ struct EpisodeLimitRetiredTests {
         #expect(subs.shows.first?.episodes.count == 30, "the feed carries all thirty, the union holds them")
     }
 
-    @Test("die Grenze reist nicht mehr, zwei Geraete raeumen sie ohne Grabstein und schreiben danach nichts")
+    @Test("the limit no longer travels, two devices clear it without a tombstone and write nothing afterwards")
     func twoDevicesRetireTheLimit() throws {
         let cloud = CountingChoiceCloud()
         let a = device(cloud, now: 10_000)
@@ -185,7 +185,7 @@ struct EpisodeLimitRetiredTests {
         #expect(blob(cloud)["freeCatalogsMasterEnabled"] == nil, "the retired master switch came back")
     }
 
-    @Test("die Schluessel der Grenze stehen nur noch im Ruhestand des Katalogs, kein Pfad schneidet", .needsTheSources)
+    @Test("the keys of the limit only remain in the catalog's retirement, no path cuts", .needsTheSources)
     func nothingTrimsAnyMore() throws {
         #expect(UserChoiceCatalog.isRetired("podcastEpisodeLimit.feed:x"))
         #expect(UserChoiceCatalog.isRetired("podcastEpisodeLimitAll"))
@@ -218,12 +218,12 @@ struct EpisodeLimitRetiredTests {
     /// downloads may go now.
     nonisolated static let expiry = SharedCases.cases("episode-expired")
 
-    @Test("gemeinsame Faelle: episode-expired traegt zwei Faelle")
+    @Test("shared cases: episode-expired carries two cases")
     func expiryCasesLoaded() {
         #expect(Self.expiry.count == 2)
     }
 
-    @Test("gemeinsame Faelle: eine fertig gehoerte automatische Folge geht je Fall wie die Datei sagt", arguments: expiry)
+    @Test("shared cases: a fully heard automatic episode goes per case as the file says", arguments: expiry)
     func expired(_ c: SharedCase) throws {
         switch c.ask {
         case "keepAfterFinish":
@@ -242,7 +242,7 @@ struct EpisodeLimitRetiredTests {
         }
     }
 
-    @Test("die ganze Geschichte einer gestoeberten Sendung liefert Folgen oder einen Fehlschlag, und schreibt nichts")
+    @Test("the whole history of a browsed show delivers episodes or a failure, and writes nothing")
     func browsedHistoryAnswers() async throws {
         let url = try #require(URL(string: "https://limit.example/browsed/feed.xml"))
         let key = PodcastIdentity.feedKey(url.absoluteString)
@@ -272,7 +272,7 @@ struct EpisodeLimitRetiredTests {
         #expect(failed == nil, "a failed lookup is no finding")
     }
 
-    @Test("die Seite laedt fuer eine gestoeberte Sendung ueber den Weg fuer den Besuch, nie ueber den Abo-Speicher", .needsTheSources)
+    @Test("the page loads for a browsed show through the path for the visit, never through the subscription store", .needsTheSources)
     func thePageLoadsTheBrowsedHistory() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))

@@ -19,7 +19,7 @@ import OSLog
 struct DownloadSilenceTests {
     // MARK: - The rule
 
-    @Test("die Regel: still fuer die Grenze, waehrend die App zusah und Netz da war")
+    @Test("the rule: silent for the limit, while the app was watching and a network was there")
     func theRule() {
         let start = Date(timeIntervalSince1970: 1_000)
         var silence = DownloadSilence(limit: 120, maxGap: 45)
@@ -164,7 +164,7 @@ struct DownloadSilenceTests {
         }
     }
 
-    @Test("ein Wirt, der schliesst oder schweigt, beendet seine Downloads nach der Grenze mit einer Zeile")
+    @Test("a host that closes or stays silent ends its downloads after the limit with one line")
     func aDeadHostEndsItsDownloads() async throws {
         Self.shortSilence()
         defer { Self.appSilence() }
@@ -188,7 +188,7 @@ struct DownloadSilenceTests {
     /// The watch may end a host between a download's entry and its count;
     /// the seam ends it right there. The download ends, and the watch
     /// counts nothing after it: a count without a download kept it looking.
-    @Test("die Wacht beendet einen Download gleich nach seinem Eintrag: danach zaehlt sie keinen Download")
+    @Test("the watch ends a download right after its entry: afterwards it counts no download")
     func aDownloadEndedRightAfterItsEntryIsNotCounted() async throws {
         let host = try Host { _ in .silent }
         try await host.start()
@@ -203,7 +203,7 @@ struct DownloadSilenceTests {
         #expect(!FileDownloader.shared.testWatchesAny, "the watch counts a download that does not run")
     }
 
-    @Test("acht Downloads an einen langsamen, antwortenden Wirt: keiner bricht ab, auch die wartenden nicht")
+    @Test("eight downloads to a slow, answering host: none aborts, not even the waiting ones")
     func eightDownloadsAtASlowHostAllFinish() async throws {
         let body = Data(repeating: 0x41, count: 6_000)
         let head = "HTTP/1.1 200 OK\r\nContent-Type: audio/mpeg\r\nContent-Length: 6000\r\nConnection: close\r\n\r\n"
@@ -232,7 +232,7 @@ struct DownloadSilenceTests {
         #expect(asked.withLock { $0 } == 8, "the precondition: eight asked, the host held the last four 4 s without a byte")
     }
 
-    @Test("ueber den Download-Weg: ein Wirt verstummt mitten in der Spur, der naechste Versuch fragt Range und die Spur ist ganz")
+    @Test("through the download path: a host falls silent in the middle of the track, the next attempt asks Range and the track is whole")
     func theNextAttemptContinuesWhereTheBytesStopped() async throws {
         let body = TrackFileSizeTests.audioBytes(100_000)
         let host = try Host { head in

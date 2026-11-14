@@ -18,7 +18,7 @@ struct FeedAdoptionPendingTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
-    @Test("jedes angebotene Abo nennt seinen Ausgang: gefolgt, Zwilling, markiert mit Grund", .needsTheSources)
+    @Test("every offered subscription names its outcome: followed, twin, marked with a reason", .needsTheSources)
     func eachOfferSaysItsOutcome() throws {
         #expect(FeedAdoptionPending.outcome(ok: true, held: true, reason: nil) == "followed")
         #expect(FeedAdoptionPending.outcome(ok: true, held: false, reason: nil) == "twin",
@@ -32,7 +32,7 @@ struct FeedAdoptionPendingTests {
         #expect(store.contains("not followed reason=\\(reason, privacy: .public)"), "a skip names the mark's reason")
     }
 
-    @Test("Merker traegt den Grund; kein zweiter Versuch, bis er geloescht ist; die alte Form wird als Anmeldung gelesen")
+    @Test("marker carries the reason; no second attempt until it is cleared; the old form is read as a sign-in")
     func markerCarriesTheReason() {
         let (d, name) = suite()
         defer { d.removePersistentDomain(forName: name) }
@@ -48,7 +48,7 @@ struct FeedAdoptionPendingTests {
         #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "k1", defaults: d), "no endless retry")
         #expect(FeedAdoptionPending.pending(defaults: d)["k1"] == .init(feedURL: "https://example.org/a.xml", reason: .server, status: 503))
         #expect(FeedAdoptionPending.pending(defaults: d)["k2"] == .init(feedURL: "https://example.org/b.xml", reason: .timeout, status: nil))
-        // Rot-Probe: another feed is untouched.
+        // Red probe: another feed is untouched.
         #expect(FeedAdoptionPending.shouldAttempt(feedKey: "k3", defaults: d))
         FeedAdoptionPending.clear(feedKey: "k1", defaults: d)
         #expect(FeedAdoptionPending.shouldAttempt(feedKey: "k1", defaults: d))
@@ -63,7 +63,7 @@ struct FeedAdoptionPendingTests {
     /// Dismissing is local: the marker answers ONE account statement (its
     /// stamp), keeps the adoption quiet for it, and a newer statement (the
     /// person subscribed again elsewhere) beats it.
-    @Test("Verwerfen ist lokal: Merker mit Stempel, neueres Statement holt den Feed zurueck")
+    @Test("Dismissing is local: marker with a stamp, a newer statement brings the feed back")
     func dismissedMarkerAnswersOneStatement() {
         let (d, name) = suite()
         defer { d.removePersistentDomain(forName: name) }
@@ -74,7 +74,7 @@ struct FeedAdoptionPendingTests {
         #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "k", statementT: 5000, defaults: d), "the same statement stays quiet")
         #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "k", statementT: 4000, defaults: d), "an older one too")
         #expect(FeedAdoptionPending.shouldAttempt(feedKey: "k", statementT: 6000, defaults: d), "a newer statement beats the marker")
-        // Rot-Probe: a marker without a stamp (a failed fetch) never expires by statement.
+        // Red probe: a marker without a stamp (a failed fetch) never expires by statement.
         FeedAdoptionPending.mark(feedKey: "f", feedURL: "https://example.org/f.xml", reason: .timeout, defaults: d)
         #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "f", statementT: 9000, defaults: d))
     }
@@ -82,7 +82,7 @@ struct FeedAdoptionPendingTests {
     /// The store end to end: dismissing writes NO tombstone into the
     /// account and offers nothing on the next reconcile; a newer statement
     /// is fetched again.
-    @Test("Verwerfen schreibt keinen Grabstein; naechster Reconcile bietet nichts; neueres Statement wird geholt")
+    @Test("Dismissing writes no tombstone; next reconcile offers nothing; a newer statement is fetched")
     @MainActor
     func dismissIsLocalAndANewerStatementReturns() async throws {
         let subs = PodcastSubscriptions.shared
@@ -123,7 +123,7 @@ struct FeedAdoptionPendingTests {
     /// dead feed, a timeout and a sign-in demand each mark with their
     /// reason, the next adoption fetches none of them again, and a retry
     /// with a working answer follows the feed.
-    @Test("Adoption: tot, Zeitlimit, 401 ⇒ je ein Merker mit Grund; kein zweiter Netzversuch; Wiederholen folgt")
+    @Test("Adoption: dead, timeout, 401 ⇒ one marker each with a reason; no second network attempt; retrying follows")
     @MainActor
     func adoptionMarksEveryReasonAndRetries() async throws {
         let subs = PodcastSubscriptions.shared
@@ -182,7 +182,7 @@ struct FeedAdoptionPendingTests {
         #expect(subs.feedsNotFollowed[keys[1]] != nil && subs.feedsNotFollowed[keys[2]] != nil)
     }
 
-    @Test("Ein neuer Link fuer denselben Feed nimmt das gerade gesagte Abo nicht zurueck", .needsTheSources)
+    @Test("A new link for the same feed does not withdraw the subscription just stated", .needsTheSources)
     func theSameFeedUnderANewLinkKeepsItsSubscription() throws {
         let old = "https://premium.example/feed.xml"
         #expect(!PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: old), "the same link")

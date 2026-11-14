@@ -12,7 +12,7 @@ import Testing
 /// a name is no part of the identity.
 struct FeedQueryPairTests {
 
-    @Test("ein Abfrageteil mit einem Paar ohne Namen bricht nicht ab und gehoert nicht zur Identitaet",
+    @Test("a query part with a pair without a name does not abort and does not belong to the identity",
           arguments: [("https://a.example/f?=", "a.example/f"), ("https://a.example/f?a=1&=", "a.example/f"),
                       ("https://a.example/f?&", "a.example/f"), ("https://a.example/f?=x", "a.example/f"),
                       ("https://a.example/f?=&token=abc&==", "a.example/f?token=abc"),

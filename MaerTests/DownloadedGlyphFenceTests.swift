@@ -39,7 +39,7 @@ struct DownloadedGlyphFenceTests {
         return found
     }
 
-    @Test("Kein Haken zeigt geladen, in keiner Datei", .needsTheSources)
+    @Test("No check shows loaded, in no file", .needsTheSources)
     func noCheckForStored() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -49,7 +49,7 @@ struct DownloadedGlyphFenceTests {
         #expect(offenders.isEmpty, "a check glyph shows a stored title: \(offenders)")
     }
 
-    @Test("Eichzeilen: der Zaun sieht den Haken nach einer Download-Frage und nur dort")
+    @Test("Calibration lines: the fence sees the check after a download question and only there")
     func calibration() {
         // The podcast control as it was.
         #expect(Self.checksAfterDownloadQuestions(in: """
@@ -84,7 +84,7 @@ struct DownloadedGlyphFenceTests {
         #expect(Self.checksAfterDownloadQuestions(in: far).isEmpty)
     }
 
-    @Test("EIN Geladen-Zeichen, das Symbol eine Konstante, an jeder Stelle dieselbe Komponente, nie grau", .needsTheSources)
+    @Test("ONE loaded glyph, the symbol a constant, the same component in every place, never grey", .needsTheSources)
     func oneDownloadedMark() throws {
         var literal: [String] = []
         var marks: [String: Int] = [:]
@@ -120,7 +120,7 @@ struct DownloadedGlyphFenceTests {
         return try String(contentsOf: file, encoding: .utf8)
     }
 
-    @Test("GT-11, GT-10: kein Lade-Pfeil als Zeichen; Laden und Loeschen am langen Druck der Cover und der Playlist-Karte", .needsTheSources)
+    @Test("GT-11, GT-10: no download arrow as a glyph; loading and deleting on the long press of the covers and the playlist card", .needsTheSources)
     func downloadingLivesOnTheLongPress() throws {
         // No arrow image offers a download on a surface. The one left is the
         // Audiobookshelf show's "keep on the server", which saves nothing here.

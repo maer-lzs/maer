@@ -12,7 +12,7 @@ import Foundation
 /// that lacks one fails and is not marked, and a title a build before
 /// marked without one is found at the start by the same count.
 struct DownloadWholeTests {
-    @Test("geladen heisst: jede Spur liegt da")
+    @Test("loaded means: every track lies here")
     func loadedMeansEveryTrack() {
         #expect(DownloadManager.isComplete(trackCount: 3, present: [0, 1, 2]))
         #expect(DownloadManager.isComplete(trackCount: 2, present: [0, 1, 7]), "a leftover file is no gap")
@@ -20,7 +20,7 @@ struct DownloadWholeTests {
         #expect(!DownloadManager.isComplete(trackCount: 0, present: []))
     }
 
-    @Test("beim Start: ein vermerkter Titel mit fehlender Spur zaehlt nicht als geladen und ist wieder ladbar", .needsAudio)
+    @Test("at start: a marked title with a missing track does not count as loaded and can be loaded again", .needsAudio)
     @MainActor
     func aMarkedTitleWithAGapIsFoundAtStart() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("whole-\(UUID().uuidString)", isDirectory: true)
@@ -42,7 +42,7 @@ struct DownloadWholeTests {
         #expect(DownloadManager.scanDownloads(downloadsDir: root, marked: ["li_gap"]).ids == ["li_gap"])
     }
 
-    @Test("der Download prueft die Spuren, bevor er den Titel vermerkt", .needsTheSources)
+    @Test("the download checks the tracks before it marks the title", .needsTheSources)
     func theDownloadCountsBeforeItMarks() throws {
         let manager = try FetchAnswerTests.squeezedSource("Sources/Networking/DownloadManager.swift")
         let check = try #require(manager.range(of: "guard Self.isComplete(trackCount: tracks.count, present: present) else {"),

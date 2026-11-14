@@ -19,7 +19,7 @@ struct DownloadKindTests {
         "radio:1", "lv:176",                // neither: no kind of download
     ]
 
-    @Test("das Loeschen einer Art erreicht keine andere")
+    @Test("deleting one kind reaches no other")
     func deletingOneKindNeverReachesAnother() {
         let recorded: [String: DownloadKind] = ["sub:song:1": .music, "jf:song:1": .music]
         #expect(Set(DownloadKind.audiobooks.ids(in: Self.downloaded, recorded: recorded, sole: { _ in nil }))
@@ -40,7 +40,7 @@ struct DownloadKindTests {
     /// (`sub:album:`). It belongs to the kind its download was started as,
     /// and without one to no kind at all: when in doubt, nothing is deleted.
     /// A Jellyfin book names itself (`jf:book:`) and is an audiobook anyway.
-    @Test("ein Buch mit Musik-Praefix folgt seiner festgehaltenen Art, ohne Art keiner")
+    @Test("a book with a music prefix follows its recorded kind, without a kind none")
     func aMusicPrefixedTitleFollowsItsRecordedKind() {
         let recorded: [String: DownloadKind] = [
             "sub:album:7": .audiobooks, "jf:book:2": .audiobooks,
@@ -63,7 +63,7 @@ struct DownloadKindTests {
     /// Downloads from before the kind was recorded: a source that serves
     /// only music gives music, one that serves both gives no kind. The
     /// source's roles decide at the time of deletion, never a stored guess.
-    @Test("Altbestand: nur Musik zaehlt als Musik, ein Server mit beiden Rollen laesst ihn ohne Zuordnung")
+    @Test("Old stock: only music counts as music, a server with both roles leaves it unassigned")
     func legacyDownloadsFollowASourceWithOneRoleOnly() {
         #expect(DownloadKind.sole(servedTypes: [.music]) == .music)
         #expect(DownloadKind.sole(servedTypes: [.audiobooks]) == .audiobooks)
@@ -88,7 +88,7 @@ struct DownloadKindTests {
 
     /// The kind survives a restart: it is written beside the downloads and
     /// read back by a new manager on the same folder.
-    @Test("die festgehaltene Art ueberlebt einen Neustart")
+    @Test("the recorded kind survives a restart")
     @MainActor
     func theRecordedKindSurvivesARestart() throws {
         let folder = FileManager.default.temporaryDirectory
@@ -110,7 +110,7 @@ struct DownloadKindTests {
     /// last destructive row of the storage section in the settings. Every
     /// other bulk deletion goes per kind, and the audiobook tab deletes
     /// nothing at once.
-    @Test("genau eine Ansicht loescht alle Downloads auf einmal, die Zeile in den Einstellungen", .needsTheSources)
+    @Test("exactly one view deletes all downloads at once, the row in the settings", .needsTheSources)
     func exactlyOneViewDeletesEverythingAtOnce() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
@@ -131,7 +131,7 @@ struct DownloadKindTests {
                 "alles auf einmal loeschen darf nur die eine Zeile in den Einstellungen: \(callers)")
     }
 
-    @Test("jede Art wird in ihrem eigenen Reiter geloescht, unter Allgemein Alle Downloads loeschen und eine Art nur, solange ihr Reiter fehlt", .needsTheSources)
+    @Test("every kind is deleted in its own tab, under General Delete all downloads and a kind only while its tab is missing", .needsTheSources)
     func eachKindIsDeletedInItsOwnPill() throws {
         let pills = SettingsView.Tab.allCases.compactMap(\.downloads)
         #expect(pills.sorted { $0.rawValue < $1.rawValue } == DownloadKind.allCases.sorted { $0.rawValue < $1.rawValue },
@@ -159,7 +159,7 @@ struct DownloadKindTests {
                 "Allgemein fragt die gezeigten Reiter, nicht eine eigene Liste")
     }
 
-    @Test("#271: eine Art, deren Reiter aus ist und die noch Downloads hat, ist unter Allgemein loeschbar; ohne Downloads steht dort nichts")
+    @Test("#271: a kind whose tab is off and which still has downloads can be deleted under General; without downloads nothing appears there")
     func aKindWithoutItsPillIsDeletableInGeneral() {
         let all = Set(DownloadKind.allCases)
         func holds(_ kinds: Set<DownloadKind>) -> (DownloadKind) -> Bool { { kinds.contains($0) } }

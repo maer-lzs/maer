@@ -36,7 +36,7 @@ struct DeviceIdHolderTests {
         DeviceIdHolder(account: "witness", reading: { keychain.read($0) }, saving: { keychain.save($0, $1) })
     }
 
-    @Test("unlesbar, dann lesbar: erst keine bleibende Kennung und eine des Prozesses, dann die feste im selben Prozess")
+    @Test("unreadable, then readable: first no lasting id and one of the process, then the fixed one in the same process")
     func theLastingIdArrivesInTheSameProcess() {
         let keychain = FakeKeychain()
         let held = holder(keychain)
@@ -52,7 +52,7 @@ struct DeviceIdHolderTests {
         #expect(keychain.saved.isEmpty, "an id that is there is never written over")
     }
 
-    @Test("unlesbare Bytes warten nicht: eine neue Kennung wird gespeichert und gilt")
+    @Test("unreadable bytes do not wait: a new id is stored and applies")
     func undecodableBytesAreReplaced() {
         let keychain = FakeKeychain()
         keychain.answer(.undecodable)
@@ -63,7 +63,7 @@ struct DeviceIdHolderTests {
         #expect(DeviceIdOrigin.of(.unreadable, fresh: { "f" }) == .forThisProcess("f"))
     }
 
-    @Test("eine neue Kennung, die sich nicht speichern laesst, gilt nur fuer diesen Prozess")
+    @Test("a new id that cannot be stored applies only to this process")
     func aFreshIdThatIsNotSavedDoesNotLast() {
         let keychain = FakeKeychain()
         keychain.answer(.missing)
@@ -71,7 +71,7 @@ struct DeviceIdHolderTests {
         #expect(holder(keychain).lasting == nil, "the next process would not find it")
     }
 
-    @Test("der echte Schluesselbund: ein Eintrag aus unlesbaren Bytes wird ersetzt, nicht verdoppelt")
+    @Test("the real keychain: an entry of unreadable bytes is replaced, not doubled")
     func theRealKeychainReplacesUnreadableBytes() throws {
         let account = "deviceIdWitness.\(UUID().uuidString)"
         defer { KeychainStore.delete(forKey: account) }
@@ -108,7 +108,7 @@ struct DeviceIdHolderTests {
 
     @MainActor final class Box { var id: String? }
 
-    @Test("die Statistik: ohne feste Kennung kein Topf; mit ihr zaehlt der eigene Topf von vorher nicht mehr doppelt")
+    @Test("the statistics: without a fixed id no pot; with it the own pot from before no longer counts twice")
     func theStatisticsWaitForTheLastingId() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -137,7 +137,7 @@ struct DeviceIdHolderTests {
         #expect(stats.data.secondsPerDay["2026-01-02"] == 900, "and counted once, not as foreign beside it")
     }
 
-    @Test("der Anspruch: ohne feste Kennung wird keiner geschrieben, mit ihr unter ihr")
+    @Test("the claim: without a fixed id none is written, with it one is written under it")
     func theClaimWaitsForTheLastingId() {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -152,7 +152,7 @@ struct DeviceIdHolderTests {
         #expect(carrier.written.map(\.deviceId) == ["fixed-id"])
     }
 
-    @Test("Mär Sync: ohne feste Kennung kein Bereich geschrieben oder gelistet, danach alles unter ihr")
+    @Test("Mär Sync: without a fixed id no area written or listed, afterwards everything under it")
     func theServiceWaitsForTheLastingId() async throws {
         let name = "device-id-service-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -175,7 +175,7 @@ struct DeviceIdHolderTests {
         #expect(carrier.hasDeliveredFirst)
     }
 
-    @Test("jeder bleibende Schreiber nimmt die bleibende Kennung, die Kennung des Prozesses nur, wer vergleicht", .needsTheSources)
+    @Test("every lasting writer takes the lasting id, the id of the process only whoever compares", .needsTheSources)
     func everyLastingWriterTakesTheLastingId() throws {
         // The files that read `SyncHistoryStore.deviceId` to tell own from
         // foreign, and the store itself; nothing else may.

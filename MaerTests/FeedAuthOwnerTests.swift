@@ -153,7 +153,7 @@ struct FeedAuthOwnerTests {
 
     /// The case from the decision, once sealed with the feed key and once
     /// with the code alone.
-    @Test("A's Zugang ruht im Schluesselbund, B's Block traegt nichts von A, auch mit dem Code versiegelt, der Rueckweg bringt A's Zugang ohne zweites Geraet zurueck",
+    @Test("A's credential rests in the keychain, B's block carries nothing of A, also sealed with the code, the way back brings A's credential back without a second device",
           arguments: [true, false])
     func theCredentialsRestUnderTheirAccount(sealedWithTheFeedKey: Bool) async throws {
         let rig = rig(feed: sealedWithTheFeedKey ? FeedKeySealingTests.feedK : nil,
@@ -209,7 +209,7 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keinen Zugang von A, A's ruht weiter bei A")
+    @Test("an open replacement of an earlier run and a third account: B's rest carries no credential of A, A's keeps resting with A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
@@ -235,7 +235,7 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
-    @Test("ein Wechsel ohne Halter uebergibt die Zugaenge auch vor dem Start des Laeufers: A's ruht unter A, B haelt keinen")
+    @Test("a switch without a holder hands over the credentials even before the runner starts: A's rests under A, B holds none")
     func aSwitchWithoutAHolder() throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
@@ -249,7 +249,7 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
-    @Test("ein ruhender Zugang, der fehlt, haelt nicht: Logzeile, der Name faellt vom Regal, die Uebergabe geht weiter; einer, der nicht lesbar ist, haelt")
+    @Test("a resting credential that is missing does not hold: log line, the name drops off the shelf, the hand-over goes on; one that is not readable holds")
     func aMissingRestGoesOnAnUnreadableOneHolds() throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
@@ -284,7 +284,7 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(fresh) {}
     }
 
-    @Test("bleibt beim Ersetzen ein Zugang des Kontos davor stehen, ersetzt nichts und die Runde haelt")
+    @Test("if a credential of the account before stays in place during the replacement, nothing is replaced and the round holds")
     func aRemovalThatDidNotLandHolds() {
         let suite = "feed-leave-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -304,7 +304,7 @@ struct FeedAuthOwnerTests {
             deleting: { items[$0] = nil }))
     }
 
-    @Test("bleibt beim Ersetzen ein Eintrag stehen, dessen Bytes nicht dekodieren, gilt er nicht als gegangen")
+    @Test("if an entry whose bytes do not decode stays in place during the replacement, it does not count as gone")
     func anUndecodableReadBackAfterARemovalHolds() {
         let suite = "feed-leave-undecodable-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -320,7 +320,7 @@ struct FeedAuthOwnerTests {
     /// How the incoming credential reads back after it was written.
     enum IncomingReadBack: CaseIterable { case missing, different, unreadable }
 
-    @Test("liest der eingehende Zugang nach dem Schreiben nicht zurueck, geht der lebende Zugang des Kontos davor nicht",
+    @Test("if the incoming credential does not read back after writing, the live credential of the account before does not go",
           arguments: IncomingReadBack.allCases)
     func anIncomingCredentialNotReadBackReplacesNothing(_ readBack: IncomingReadBack) {
         let suite = "feed-incoming-\(UUID().uuidString)"
@@ -347,7 +347,7 @@ struct FeedAuthOwnerTests {
         #expect(PodcastFeedAuth.moment(feedKey: "b-key", defaults: defaults) == nil, "the new one got a moment")
     }
 
-    @Test("liest die Ruecklese nach dem Entfernen nicht lesbar, gilt der Zugang nicht als gegangen: nichts ersetzt, kein Moment abgeraeumt")
+    @Test("if the read-back after the removal is unreadable, the credential does not count as gone: nothing replaced, no moment cleared away")
     func anUnreadableReadBackAfterARemovalHolds() {
         let suite = "feed-leave-unreadable-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -360,7 +360,7 @@ struct FeedAuthOwnerTests {
         #expect(PodcastFeedAuth.moment(feedKey: "a-key", defaults: defaults) == 1000, "the moment was cleared")
     }
 
-    @Test("liest ein ruhender Zugang nicht zurueck, wird nichts ersetzt und die Runde haelt")
+    @Test("if a resting credential does not read back, nothing is replaced and the round holds")
     func anUnreadRestReplacesNothing() async throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
@@ -377,7 +377,7 @@ struct FeedAuthOwnerTests {
         withExtendedLifetime(rig.runner) {}
     }
 
-    @Test("entfernt die Person einen Zugang, beruehrt das nur das lebende Konto; der Wechsel zum anderen bringt dessen Zugang")
+    @Test("if the person removes a credential, that touches only the live account; the switch to the other brings its credential")
     func thePersonsRemovalTouchesTheLiveAccountAlone() async throws {
         let rig = rig(feed: FeedKeySealingTests.feedK, code: nil)
         defer { rig.cleanup() }
@@ -413,7 +413,7 @@ struct FeedAuthOwnerTests {
         "replaceForNewOwner": "another account owns the device; the credential rests under the name of the account before, read back",
     ]
 
-    @Test("der Zugangs-Speicher kennt genau die benannten Entfernungen, der Kontowechsel ist eine, gerufen an einer Stelle", .needsTheSources)
+    @Test("the credential store knows exactly the named removals, the account switch is one, called in one place", .needsTheSources)
     func theCredentialStoreHasItsNamedRemovals() throws {
         let store = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/PodcastFeedAuth.swift"), encoding: .utf8))

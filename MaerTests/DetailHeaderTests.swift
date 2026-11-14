@@ -25,7 +25,7 @@ struct DetailHeaderTests {
         ("Sources/Views/Music/MusicLibraryPages.swift", 1),
     ]
 
-    @Test("jede Seite mit Cover-Kopf baut ihn ueber das eine Bauteil", .needsTheSources)
+    @Test("every page with a cover head builds it through the one component", .needsTheSources)
     func everyCoverPageTakesTheOneHead() throws {
         for page in Self.headedPages {
             let text = SyncContractFenceTests.stripped(
@@ -39,7 +39,7 @@ struct DetailHeaderTests {
         #expect(!book.contains("titleBlock(alignment:"), "the book page sets the title's alignment itself")
     }
 
-    @Test("der Kopf steht mittig, die Fakten lesen von der fuehrenden Kante", .needsTheSources)
+    @Test("the head stands centered, the facts read from the leading edge", .needsTheSources)
     func theHeadIsCentredAndTheFactsLead() throws {
         let head = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
@@ -63,7 +63,7 @@ struct DetailHeaderTests {
         ("Sources/Views/CatalogSourcePage.swift", 1),
     ]
 
-    @Test("ein Hauptknopf in einer Form auf jeder Seite mit Kopf", .needsTheSources)
+    @Test("one main button in one form on every page with a head", .needsTheSources)
     func oneMainButtonInOneForm() throws {
         for page in Self.playingPages {
             let text = SyncContractFenceTests.stripped(
@@ -75,7 +75,7 @@ struct DetailHeaderTests {
         }
     }
 
-    @Test("das Cover jeder Seite mit Kopf steht als Karte", .needsTheSources)
+    @Test("the cover of every page with a head stands as a card", .needsTheSources)
     func everyHeadCoverIsACard() throws {
         // The book page draws its cover in each of its three layouts: the
         // hero card itself, the other two through the book cover as a card,
@@ -98,7 +98,7 @@ struct DetailHeaderTests {
         #expect(look.contains("func coverCard() -> some View"), "the card can be switched off")
     }
 
-    @Test("die Verweise eines Kopfs stehen in einer Zeile, mittig, in einer Groesse", .needsTheSources)
+    @Test("the links of a head stand in one row, centered, in one size", .needsTheSources)
     func theLinksStandInOneRow() throws {
         for file in ["Sources/Views/Podcasts/PodcastShowView.swift",
                      "Sources/Views/Podcasts/PodcastEpisodeDetailView.swift",
@@ -119,7 +119,7 @@ struct DetailHeaderTests {
         "Sources/Views/Music/MusicLibraryPages.swift": (8, "the music library's list pages"),
     ]
 
-    @Test("eine Seite mit Kopf traegt oben keinen Titel", .needsTheSources)
+    @Test("a page with a head carries no title at the top", .needsTheSources)
     func aHeadedPageHasNoTitleAbove() throws {
         for page in Self.headedPages {
             let text = SyncContractFenceTests.stripped(
@@ -170,7 +170,7 @@ struct DetailHeaderTests {
             + text.components(separatedBy: ".catalogShuffleActions").count - 1
     }
 
-    @Test("eine Seite hat einen Ort fuer ihre Handlungen: das Menue oben, kein Zeichen daneben", .needsTheSources)
+    @Test("a page has one place for its actions: the menu at the top, no glyph beside it", .needsTheSources)
     func aPageHasOnePlaceForItsActions() throws {
         var found: [String: Int] = [:]
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views")) where url.pathExtension == "swift" {
@@ -202,7 +202,7 @@ struct DetailHeaderTests {
     /// What the menu changes stands in the head as a state without an action
     /// of its own (favorite, stored, loading), in one place: `DetailStates`,
     /// the last of the head's lines.
-    @Test("ein Zustand an einer Stelle im Kopf: Herz, Pfeil, Fortschritt, ohne eigene Handlung", .needsTheSources)
+    @Test("a state in one place in the head: heart, arrow, progress, without an action of its own", .needsTheSources)
     func aStateStandsInOnePlaceOfTheHead() throws {
         var builders: [String: Int] = [:]
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"]) {
@@ -230,7 +230,7 @@ struct DetailHeaderTests {
         #expect(!album.contains("\"heart.fill\"") && !album.contains("DownloadRing("), "the album draws a state of its own")
     }
 
-    @Test("grosses Cover nur zweispaltig, einspaltig das Mass der Seite", .needsTheSources)
+    @Test("large cover only in two columns, in one column the size of the page", .needsTheSources)
     func theCoverGrowsOnlyInTwoColumns() throws {
         let head = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/DetailHeader.swift"),
