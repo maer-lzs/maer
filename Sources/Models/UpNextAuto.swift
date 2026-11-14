@@ -40,10 +40,15 @@ nonisolated enum UpNextAuto {
     /// The episodes of `merged` whose ids `stored` did not hold. A show seen
     /// for the first time brings nothing: that is its backlog, not news.
     static func arrivals(stored: PodcastShow?, merged: PodcastShow) -> [Arrival] {
-        guard let stored else { return [] }
-        let known = Set(stored.episodes.map(\.guid))
-        return merged.episodes.filter { !known.contains($0.guid) }
-            .map { Arrival(id: $0.guid, showId: merged.id, pubDate: $0.pubDate) }
+        arrivals(known: stored.map { Set($0.episodes.map(\.guid)) }, show: merged)
+    }
+
+    /// The same with the ids a device kept of a show (`ABSKnownEpisodes`):
+    /// nil is a show met for the first time.
+    static func arrivals(known: Set<String>?, show: PodcastShow) -> [Arrival] {
+        guard let known else { return [] }
+        return show.episodes.filter { !known.contains($0.guid) }
+            .map { Arrival(id: $0.guid, showId: show.id, pubDate: $0.pubDate) }
     }
 
     /// Both conditions hold for every episode that goes in: its id arrived

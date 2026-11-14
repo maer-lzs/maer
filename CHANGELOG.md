@@ -10,6 +10,15 @@ without a network, then sends exactly that position once the server is
 reachable again. Before, the next start sent the position from up to
 five seconds earlier and dropped the newer one.
 
+**New episodes of Audiobookshelf shows go into Up Next.** A show on your
+Audiobookshelf server that is set to add new episodes to Up Next now does
+so, like your feeds. The app remembers which episodes it has seen of each
+show, so an episode that came out while the app was closed still counts
+as new; the first refresh after a show appears adds nothing. Subscribing
+again to a show you already follow adds its new episodes too. A title you
+finish on your Audiobookshelf, Jellyfin or Subsonic server leaves Up Next
+while Mär is open.
+
 ## v3.7 (Build 65)
 
 **A station link that does not load opens the station's page with

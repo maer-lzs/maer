@@ -27,14 +27,18 @@ struct FeedEpisode: Identifiable {
 /// across all devices.
 @MainActor
 final class ABSPodcastProvider: ObservableObject, AudioProvider {
-    static let shared: ABSPodcastProvider = ABSPodcastProvider(upNext: PlayQueue.shared)
-    private init(upNext: PlayQueue?) {
+    static let shared: ABSPodcastProvider = ABSPodcastProvider(upNext: PlayQueue.shared, known: ABSKnownEpisodes(database: .shared))
+    private init(upNext: PlayQueue?, known: ABSKnownEpisodes) {
         self.upNext = upNext
+        self.known = known
         archivedShowIds = Set(AppStorageKeys.stringArray(Self.archiveKey) ?? [])
     }
 
-    /// The Up Next an episode finished on the server leaves.
+    /// The Up Next an episode finished on the server leaves, and a new
+    /// episode of a show joins by the show's choice.
     private let upNext: PlayQueue?
+    /// The episode ids this device knew of each show, across starts.
+    private let known: ABSKnownEpisodes
 
     /// The server's progress replaces the held one; an episode it finished
     /// that it held as unfinished before leaves Up Next, its RSS twin with it
@@ -295,10 +299,15 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
         if ABSPodcastRefreshRule.adopts(everyFetchAnswered: fetched.failures == 0,
                                         loadedAny: !loaded.isEmpty, holdsShows: !shows.isEmpty) {
+            // Only an adopted refresh moves what the device knew.
+            let found = known.adopt(loaded)
             replaceShows(loaded, absToRSS: newAbsToRSS, rssToABS: newRSSToABS, handles: newHandles)
             lastRefreshAt = Date()
             afterShowsRead()
             failedAt = nil
+            // After the bridge is new, so a twin already queued by its feed
+            // is found.
+            UpNextArrivals.take(found: found, queue: upNext)
         } else if fetched.holdsBack {
             // Fetches failed and nothing came back: the stock stays, and the
             // loops that ask per feed wait out the holdback. Only a failure

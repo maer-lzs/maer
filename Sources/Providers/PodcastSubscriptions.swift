@@ -934,8 +934,14 @@ final class PodcastSubscriptions: ObservableObject {
         if let idx = shows.firstIndex(where: { $0.id == show.id }) {
             // Re-subscribe must not blindly replace: a weak parse (valid title,
             // few/zero episodes) would drop the cached episodes. Union instead.
-            shows[idx] = PodcastIdentity.merge(shows[idx], show)
+            let stored = shows[idx]
+            shows[idx] = PodcastIdentity.merge(stored, show)
+            // A show followed already: what arrived here would not arrive
+            // again at the next refresh.
+            UpNextArrivals.take([(stored: stored, merged: shows[idx])], queue: upNext, store: defaults)
         } else {
+            // The first subscription is the show's backlog, not news: it
+            // hands nothing to Up Next.
             shows.insert(show, at: 0)
             if PodcastSubscribeNotice.shouldTell(episodeCount: show.episodes.count,
                                                  isSingleUserAct: isSingleUserAct,

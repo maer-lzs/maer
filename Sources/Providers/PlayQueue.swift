@@ -42,13 +42,18 @@ final class PlayQueue: ObservableObject {
     /// takes out BOTH faces of the same episode. Injected → the core stays
     /// testable and uncoupled from ABSPodcastProvider.
     private let equivalents: (String) -> [String]
+    /// Whether an id can be heard at all: a text-only rss episode cannot.
+    /// Injected like `equivalents`, so a witness asks its own store.
+    private let isPlayable: (String) -> Bool
 
     init(persists: Bool = false,
          database: MaerDatabase? = nil,
-         equivalents: @escaping (String) -> [String] = { [$0] }) {
+         equivalents: @escaping (String) -> [String] = { [$0] },
+         isPlayable: @escaping (String) -> Bool = { PodcastSubscriptions.shared.isPlayableEpisode(itemId: $0) }) {
         self.persists = persists
         self.keeper = persists ? database.map { RowKeeper(database: $0, table: .playQueue, label: "QUEUE") } : nil
         self.equivalents = equivalents
+        self.isPlayable = isPlayable
         if persists { load() }
     }
 
@@ -120,7 +125,7 @@ final class PlayQueue: ObservableObject {
     /// Text-only rss episodes never enter the queue.
     /// Even if some future call site forgets its own gate.
     private func isQueueable(_ id: String) -> Bool {
-        PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)
+        isPlayable(id)
     }
 
     func playNext(_ id: String) {

@@ -36,6 +36,7 @@ struct CounterTablesFenceTests {
         "carrier_document": (.wholeValue, "one body per owner, the document as the service holds it"),
         "item_jump_ring": (.wholeValue, "the last five backward jumps of one title"),
         "item_bookmark": (.wholeValue, "the offline copy of one title's bookmarks"),
+        "abs_known_episodes": (.wholeValue, "the episode ids this device knew of one Audiobookshelf show"),
     ]
 
     @Test("every table is sorted, no sort without a table")

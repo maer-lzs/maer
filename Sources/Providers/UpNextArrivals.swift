@@ -102,18 +102,26 @@ enum UpNextArrivals {
                      queue: PlayQueue?,
                      store: UserDefaults? = nil,
                      now: Double = Date().timeIntervalSince1970 * 1000) {
+        take(found: pairs.map { (show: $0.merged, arrivals: UpNextAuto.arrivals(stored: $0.stored, merged: $0.merged)) },
+             queue: queue, store: store, now: now)
+    }
+
+    /// The same with the arrivals already found, each with its show as it
+    /// is now (the Audiobookshelf shows, against the ids the device kept).
+    static func take(found: [(show: PodcastShow, arrivals: [UpNextAuto.Arrival])],
+                     queue: PlayQueue?,
+                     store: UserDefaults? = nil,
+                     now: Double = Date().timeIntervalSince1970 * 1000) {
         guard let queue else { return }
         var arrivals: [UpNextAuto.Arrival] = []
         var episodes: [String: (show: PodcastShow, episode: PodcastEpisode)] = [:]
-        for pair in pairs {
-            let found = UpNextAuto.arrivals(stored: pair.stored, merged: pair.merged)
-            guard !found.isEmpty else { continue }
+        for entry in found where !entry.arrivals.isEmpty {
             // A moment noted now holds for later refreshes; what arrives in
             // this one appeared before it and stays out.
-            UpNextAutoChoice.noteMissingSince(pair.merged.id, now: now, store: store)
-            arrivals += found
-            let byId = Dictionary(pair.merged.episodes.map { ($0.guid, $0) }) { first, _ in first }
-            for arrival in found { if let episode = byId[arrival.id] { episodes[arrival.id] = (pair.merged, episode) } }
+            UpNextAutoChoice.noteMissingSince(entry.show.id, now: now, store: store)
+            arrivals += entry.arrivals
+            let byId = Dictionary(entry.show.episodes.map { ($0.guid, $0) }) { first, _ in first }
+            for arrival in entry.arrivals { if let episode = byId[arrival.id] { episodes[arrival.id] = (entry.show, episode) } }
         }
         guard !arrivals.isEmpty else { return }
         // The one judgement per episode the automatic download asks too:

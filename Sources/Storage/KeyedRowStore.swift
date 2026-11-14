@@ -38,6 +38,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case carrierDocument = "carrier_document"
         case itemJumpRing = "item_jump_ring"
         case itemBookmark = "item_bookmark"
+        case absKnownEpisodes = "abs_known_episodes"
     }
 
     private let connection: SQLiteConnection
