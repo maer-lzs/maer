@@ -51,13 +51,13 @@ struct CoverPeakMeasureTests {
 
     /// Each case runs alone in its own process (`-only-testing`), so no case
     /// starts with the caches of another.
-    @Test("Messung: Speicherspitze, 40 JPEG-Cover, acht zugleich")
+    @Test("Measure: memory peak, 40 JPEG covers, eight at a time")
     func jpegEight() async throws { try await measure(jpeg: true, together: 8) }
 
-    @Test("Messung: Speicherspitze, 40 JPEG-Cover, eines nach dem anderen")
+    @Test("Measure: memory peak, 40 JPEG covers, one after the other")
     func jpegOne() async throws { try await measure(jpeg: true, together: 1) }
 
-    @Test("Messung: Speicherspitze, 40 PNG-Cover, acht zugleich")
+    @Test("Measure: memory peak, 40 PNG covers, eight at a time")
     func pngEight() async throws { try await measure(jpeg: false, together: 8) }
 
     private func measure(jpeg: Bool, together: Int) async throws {

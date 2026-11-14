@@ -13,7 +13,7 @@ import Foundation
 /// family takes its store from the door, and every start of the UI harness
 /// says so with an argument.
 struct CloudKeyValueTests {
-    @Test("Auf dem Simulator fuehrt die Tuer in den Speicher, nicht ins Konto")
+    @Test("On the simulator the door leads to memory, not to the account")
     @MainActor
     func theDoorLeadsToMemoryOnTheSimulator() {
         #if targetEnvironment(simulator)
@@ -25,7 +25,7 @@ struct CloudKeyValueTests {
         #endif
     }
 
-    @Test("Der Speicher hinter der Tuer spricht das Protokoll wie der echte")
+    @Test("The store behind the door speaks the protocol like the real one")
     @MainActor
     func theMemoryStoreSpeaksTheProtocol() {
         let store = InMemoryCloudStore()
@@ -43,7 +43,7 @@ struct CloudKeyValueTests {
     // MARK: - Fences
 
     /// The only file that may name the real store is the door itself.
-    @Test("Den echten Speicher nennt nur die Tuer", .needsTheSources)
+    @Test("Only the door names the real store", .needsTheSources)
     func onlyTheDoorNamesTheRealStore() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CloudKeyValue.swift" {
@@ -68,7 +68,7 @@ struct CloudKeyValueTests {
         return count
     }
 
-    @Test("Jede Startstelle der UI-Tests setzt ein Harness-Argument", .needsTheUITests)
+    @Test("Every launch site of the UI tests sets a harness argument", .needsTheUITests)
     func everyUILaunchCarriesTheMarker() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let files = SourceTree.files(under: root.appendingPathComponent("MaerUITests"))

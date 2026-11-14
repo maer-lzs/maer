@@ -16,7 +16,7 @@ import Foundation
 /// fence reads its source.
 struct ContinueListeningWidgetFenceTests {
 
-    @Test("das Widget Weiterhoeren zeichnet das Cover in beiden Groessen bis an den Rand, der Text steht darueber", .needsTheSources)
+    @Test("the Continue Listening widget draws the cover to the edge in both sizes, the text is over it", .needsTheSources)
     func theCoverReachesEveryEdge() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains(".containerBackground(for: .widget) { if isAccessory { Color.clear } else if face == .oneTitle { coverBackground } else {"),
@@ -31,7 +31,7 @@ struct ContinueListeningWidgetFenceTests {
                 "the medium text no longer stands white at the bottom over the cover")
     }
 
-    @Test("die Zeilen teilen sich die ganze Hoehe unter der Ueberschrift, das Cover waechst quadratisch mit der Zeile", .needsTheSources)
+    @Test("the rows share the whole height under the heading, the cover grows square with the row", .needsTheSources)
     func theRowsShareTheWholeHeight() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         let start = try #require(widget.range(of: "private func rowsFace(")).upperBound
@@ -53,7 +53,7 @@ struct ContinueListeningWidgetFenceTests {
                         isLive: false, kindSymbol: "book", cover: nil, playedAt: playedAt)
     }
 
-    @Test("mittel waehrend der Wiedergabe: links der laufende Titel, rechts die Zeilen ohne ihn; sonst die ganze Breite")
+    @Test("medium during playback: the playing title on the left, the rows without it on the right; otherwise the full width")
     func theMediumSplitsWhilePlaying() {
         let rows = [Self.row("playing", .audiobooks, at: 3), Self.row("episode", .podcasts, at: 2),
                     Self.row("album", .music, at: 1)]
@@ -68,7 +68,7 @@ struct ContinueListeningWidgetFenceTests {
                 "nothing beside the title: the one face")
     }
 
-    @Test("das Widget fragt die Regel der Teilung und zeichnet links den Titel, rechts die Zeilen", .needsTheSources)
+    @Test("the widget asks the split rule and draws the title on the left, the rows on the right", .needsTheSources)
     func theWidgetDrawsTheSplit() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains("if let split = playingSplit { HStack(spacing: 12) { playingHalf(split.snapshot) rowsFace(split.beside, covers: false) } }"))

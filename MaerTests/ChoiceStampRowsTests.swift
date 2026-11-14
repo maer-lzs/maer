@@ -54,7 +54,7 @@ struct ChoiceStampRowsTests {
         return try KeyedRowStore<Double>.loadNow(table: .choiceStamp, reader: reader).rows
     }
 
-    @Test("die Stempel ziehen einmal aus den Voreinstellungen in die Zeilen des Halters der Wahlen")
+    @Test("the stamps move once from the defaults into the rows of the holder of the choices")
     func theBlobMovesToTheHolder() async throws {
         let place = try place()
         defer { place.cleanup() }
@@ -73,7 +73,7 @@ struct ChoiceStampRowsTests {
     /// The invariant: no account dates its choices with another account's
     /// stamps. Each account's stamps are its own rows; a session built anew
     /// in the middle of a hand-over reads only the holder's.
-    @Test("kein Konto traegt fremde Stempel: B liest A's nicht, auch nicht nach einem Neustart, und A bekommt seine zurueck")
+    @Test("no account carries foreign stamps: B does not read A's, not even after a restart, and A gets its own back")
     func noAccountCarriesAnothersStamps() async throws {
         let place = try place()
         defer { place.cleanup() }
@@ -107,7 +107,7 @@ struct ChoiceStampRowsTests {
         #expect(sync.localStamps()?["librarySortOption"] == stampOfA, "A's stamp did not come back")
     }
 
-    @Test("eine Ruhe eines frueheren Baus traegt die Stempel als Schluessel: sie gehen in die Zeilen des Kontos, das zurueckkommt")
+    @Test("a rest left by an earlier build carries the stamps as keys: they go into the rows of the account that comes back")
     func aRestOfAnEarlierBuildBringsItsStamps() async throws {
         let place = try place()
         defer { place.cleanup() }
@@ -128,7 +128,7 @@ struct ChoiceStampRowsTests {
 
     /// Stamps nobody could read are unknown, not empty: a round over them
     /// would date every choice here from nothing.
-    @Test("kann der Start die Stempel nicht lesen, wartet die Runde; gelesen laeuft sie mit den gelesenen Stempeln")
+    @Test("if the start cannot read the stamps, the round waits; once read, it runs with the stamps read")
     func anUnreadStartHoldsTheRound() async throws {
         let place = try place()
         defer { place.cleanup() }
@@ -175,7 +175,7 @@ struct ChoiceStampRowsTests {
 
     /// Every caller of the stamps says what it does while they are unknown:
     /// the source answers nil, not an empty set.
-    @Test("ungelesen antwortet die Quelle nil; das Umschluesseln bewegt nichts, die Frage nach Musik-Kennungen antwortet nicht")
+    @Test("unread, the source answers nil; re-keying moves nothing, the question for music identifiers is not answered")
     func everyCallerWaitsForUnreadStamps() async throws {
         let place = try place()
         defer { place.cleanup() }
@@ -191,7 +191,7 @@ struct ChoiceStampRowsTests {
         #expect(place.defaults.object(forKey: "playbackRate.sub:song:neu-1") == nil)
     }
 
-    @Test("Wahlen ueber ungelesenen Stempeln stempeln sich selbst und behalten einander, die gelesenen kommen dazu")
+    @Test("choices over unread stamps stamp themselves and keep each other, the read ones are added")
     func aNoteOverUnreadStampsKeepsTheRead() async throws {
         let place = try place()
         defer { place.cleanup() }
@@ -220,7 +220,7 @@ struct ChoiceStampRowsTests {
 
     /// The standby asks the stamps through the shared sync, which a witness
     /// cannot start unread; held at the form: unknown stamps keep it.
-    @Test("der Bereitschaftsplayer bleibt stehen, solange die Stempel nicht gelesen sind", .needsTheSources)
+    @Test("the standby player stays put as long as the stamps are not read", .needsTheSources)
     func theStandbyKeepsOverUnreadStamps() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift"), encoding: .utf8))
@@ -230,7 +230,7 @@ struct ChoiceStampRowsTests {
         #expect(body.contains("STANDBY kept: the stamps of the choices are not read"))
     }
 
-    @Test("keine Quelle liest oder schreibt die Stempel in den Voreinstellungen", .needsTheSources)
+    @Test("no source reads or writes the stamps in the defaults", .needsTheSources)
     func noSourceReadsTheStampsFromTheDefaults() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var named: [String: Int] = [:]

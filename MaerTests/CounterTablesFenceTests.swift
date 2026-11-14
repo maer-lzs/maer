@@ -38,7 +38,7 @@ struct CounterTablesFenceTests {
         "item_bookmark": (.wholeValue, "the offline copy of one title's bookmarks"),
     ]
 
-    @Test("jede Tabelle ist eingeordnet, keine Einordnung ohne Tabelle")
+    @Test("every table is sorted, no sort without a table")
     func everyTableIsSorted() {
         let tables = Set(KeyedRowStore<Int>.Table.allCases.map(\.rawValue))
         #expect(tables.subtracting(Self.kinds.keys).isEmpty,
@@ -47,7 +47,7 @@ struct CounterTablesFenceTests {
                 "a sort without a table: \(Set(Self.kinds.keys).subtracting(tables).sorted())")
     }
 
-    @Test("jede summierende Tabelle wird nur hinter der Lesesperre geschrieben", .needsTheSources)
+    @Test("every summing table is written only behind the read lock", .needsTheSources)
     func summingTablesHoldTheLock() {
         let summed = KeyedRowStore<Int>.Table.allCases.filter { Self.kinds[$0.rawValue]?.kind == .summed }
         #expect(!summed.isEmpty, "the fence knows no summing table")

@@ -37,7 +37,7 @@ struct CoverFetchLeaveTests {
         }
     }
 
-    @Test("eine Kachel, die allein wartet und geht, bricht die Abfrage ab")
+    @Test("a tile that waits alone and leaves cancels the fetch")
     func theOnlyTileThatLeavesCancelsTheFetch() async throws {
         let address = url()
         let started = ContinuousClock.now
@@ -49,7 +49,7 @@ struct CoverFetchLeaveTests {
         #expect(ContinuousClock.now - started < .seconds(2), "the tile that left waited for the whole fetch")
     }
 
-    @Test("zwei Kacheln teilen die Abfrage, eine geht: die andere bekommt die Antwort")
+    @Test("two tiles share the fetch, one leaves: the other gets the answer")
     func aSharedFetchGoesOnWhileATileWaits() async throws {
         let address = url()
         let left = Task { @MainActor in await CoverFetchCoalescer.fetch(address, work: slow(.milliseconds(300))) }

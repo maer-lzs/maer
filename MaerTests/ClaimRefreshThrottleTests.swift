@@ -13,7 +13,7 @@ import Foundation
 /// device's push may land after the first), then at most one per minute
 /// per item; heartbeats in between trigger nothing.
 struct ClaimRefreshThrottleTests {
-    @Test("Erster Durchgang sofort, zweiter beim ersten Herzschlag nach 15 s, danach alle 60 s")
+    @Test("First pass at once, second at the first heartbeat after 15 s, then every 60 s")
     func firstThenSecondThenEveryMinute() {
         var gate = ClaimRefreshThrottle(intervalMs: 60_000, secondPassMs: 15_000)
         let first = gate.admittedPass(itemId: "book-1", nowMs: 1_000)
@@ -34,7 +34,7 @@ struct ClaimRefreshThrottleTests {
         #expect(other == 1, "another item is its own gate")
     }
 
-    @Test("Bleiben die Herzschlaege aus, laeuft der zweite Durchgang beim naechsten Anspruch")
+    @Test("If the heartbeats stop, the second pass runs at the next claim")
     func secondPassWaitsForTheNextClaim() {
         var gate = ClaimRefreshThrottle(intervalMs: 60_000, secondPassMs: 15_000)
         let first = gate.admittedPass(itemId: "book-1", nowMs: 1_000)
@@ -43,7 +43,7 @@ struct ClaimRefreshThrottleTests {
         #expect(muchLater == 2)
     }
 
-    @Test("Nur Bibliotheks-Items mit Server-Stand loesen einen Refresh aus")
+    @Test("Only library items with a server state trigger a refresh")
     func onlyLibraryItemsRefresh() {
         #expect(ClaimRefreshThrottle.library(of: "5f3a-abs-book") == .books)
         #expect(ClaimRefreshThrottle.library(of: "abspod:ep-9") == .serverPodcasts)

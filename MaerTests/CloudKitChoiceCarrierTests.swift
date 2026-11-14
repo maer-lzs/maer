@@ -87,7 +87,7 @@ struct CloudKitChoiceCarrierTests {
          "cleared": UserChoiceEntry(value: nil, t: 3000).plist]
     }
 
-    @Test("der Blob wird einmal in Datensaetze gefaltet, danach nur gelesen; der Spiegel traegt Wert und Grabstein")
+    @Test("the blob is folded into records once, then only read; the mirror carries value and tombstone")
     func theBlobIsFoldedOnce() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -110,7 +110,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(zone.modifies == before)
     }
 
-    @Test("store schreibt nur den Unterschied; ein gefallener Schluessel verlaesst die Wolke; ein fremder Datensatz weckt den Laeufer")
+    @Test("store writes only the difference; a dropped key leaves the cloud; a foreign record wakes the runner")
     func storeWritesTheDifference() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -156,7 +156,7 @@ struct CloudKitChoiceCarrierTests {
     /// service) has no record payload, so the store makes no record for it.
     /// Read as "the runner dropped it", its record would leave the cloud,
     /// and that record is a newer device's statement.
-    @Test("ein Eintrag unbekannter Art ohne Nutzlast des Datensatzes loescht den Datensatz nicht")
+    @Test("an entry of an unknown kind without a record payload does not delete the record")
     func anUnknownEntryWithoutAPayloadDeletesNoRecord() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -194,7 +194,7 @@ struct CloudKitChoiceCarrierTests {
     /// When it does not finish, or the person changes something while it
     /// runs, the runner stores a state that never held those keys: they
     /// are not its to remove.
-    @Test("was ein unfertiger Abruf in den Spiegel brachte, wird nie zur Loeschung; ein Schluessel, den der Laeufer hielt, schon")
+    @Test("what an unfinished fetch put into the mirror never becomes a deletion; a key the runner held does")
     func whatAnUnfinishedFetchBroughtIsNeverARemoval() {
         func record(_ key: String) -> CloudChoiceRecord {
             CloudChoiceRecord(key: key, payload: CloudChoicePayload.encode(.double(1.5)), t: 500, tombstone: false)
@@ -215,7 +215,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(settled.remove == ["playbackRate.b"], "\(settled.remove.sorted())")
     }
 
-    @Test("der Traeger kennt einen Schluessel erst nach einem ganzen Abruf oder einem eigenen Schrieb", .needsTheSources)
+    @Test("the carrier knows a key only after a whole fetch or a write of its own", .needsTheSources)
     func theCarrierKnowsAKeyOnlyAfterAWholeFetch() throws {
         let carrier = try FetchAnswerTests.squeezedSource("Sources/Networking/CloudKitChoiceCarrier.swift")
         #expect(carrier.contains("let changes = Self.changes(desired: desired, mirror: mirror, held: held, known: known) known.formUnion(desired.keys)"),
@@ -232,7 +232,7 @@ struct CloudKitChoiceCarrierTests {
     /// The same entry in the service's form: after a switch from the Mär
     /// sync service to iCloud the blob carries an unknown value as the
     /// service's tag (`rawWire`), not as an unknown "v". It is held too.
-    @Test("ein Eintrag unbekannter Art in der Form des Dienstes loescht den Datensatz ebenso nicht")
+    @Test("an entry of an unknown kind in the service's form does not delete the record either")
     func anUnknownEntryInTheServiceFormDeletesNoRecord() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -256,7 +256,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(zone.deleted[CloudStandNaming.recordName(for: "sort.books")] == nil, "no removal went out")
     }
 
-    @Test("ein gekappter Schluessel kommt nicht aus dem eingefrorenen Blob zurueck; was ein aelterer Bau danach schreibt, kommt an")
+    @Test("a capped key does not come back from the frozen blob; what an older build writes afterwards arrives")
     func aPrunedKeyDoesNotReturnFromTheFrozenBlob() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -300,7 +300,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(entries(again.loadBlob())["playbackRate.a"] == nil)
     }
 
-    @Test("ohne Konto traegt der Schluessel-Speicher das Ganze")
+    @Test("without an account the key-value store carries the whole")
     func withoutAnAccountTheKeyValueStoreCarries() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -317,7 +317,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(zone.records.isEmpty)
     }
 
-    @Test("ein abgewiesener Schrieb bleibt in der Warteschlange und ueberlebt den Neustart, die Faltung bleibt offen")
+    @Test("a refused write stays in the queue and survives the restart, the fold stays open")
     func aRefusedWriteStaysQueued() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -349,7 +349,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(second.name == "cloudkit")
     }
 
-    @Test("Datensaetze, Blob und Tuer-Zeilen gehen verlustfrei hin und zurueck, jeder Werttyp exakt")
+    @Test("records, blob and door rows go there and back without loss, every value type exactly")
     func recordsAndBlobRoundTrip() {
         let every: [String: Any] = [
             "s": UserChoiceEntry(value: .string("x"), t: 1).plist,
@@ -380,7 +380,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(CloudChoiceCodec.recordName(for: CloudChoiceRecord(key: long, payload: Data(), t: 1, tombstone: false)).count == 64)
     }
 
-    @Test("die Vereinigung: je Schluessel gewinnt die juengere Ereigniszeit, Gleichstand die Wolke") @MainActor
+    @Test("the union: per key the younger event time wins, a tie goes to the cloud") @MainActor
     func unionAndLegacy() {
         let cloud: [String: Any] = ["k": UserChoiceEntry(value: .string("cloud"), t: 10).plist,
                                     "only.cloud": UserChoiceEntry(value: .bool(true), t: 1).plist,

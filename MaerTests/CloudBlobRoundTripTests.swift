@@ -22,7 +22,7 @@ struct CloudBlobRoundTripTests {
         return out
     }
 
-    @Test("1700 importierte Staende mit Stempel 0 reisen in den leeren Topf und landen auf Geraet B")
+    @Test("1700 imported states with stamp 0 travel into the empty pot and land on device B")
     func importedStockTravels() throws {
         let local = stock(1_700)
         let first = PodcastCloudSync.merge(local: local, cloud: [:])
@@ -38,7 +38,7 @@ struct CloudBlobRoundTripTests {
         #expect(again.toLocal.isEmpty && again.toCloud.isEmpty)
     }
 
-    @Test("der Blob bleibt weit unter dem Deckel des Schluesselwert-Speichers")
+    @Test("the blob stays far under the cap of the key-value store")
     func blobStaysSmall() throws {
         let blob = stock(1_700) as [String: Any]
         let data = try PropertyListSerialization.data(fromPropertyList: blob, format: .binary, options: 0)

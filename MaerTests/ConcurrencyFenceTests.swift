@@ -43,20 +43,19 @@ struct ConcurrencyFenceTests {
     }
 
     nonisolated static let uncheckedStock: [String: Int] = ["PlayerViewModel.swift": 1]
-    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("queue because") und wird vom
-    // Fall darunter erzwungen; ein Abbild hier waere eine zweite Stelle zum
-    // Abdriften.
+    // BESTAND OHNE EINZELGRUENDE: the reason is AT THE SITE ("queue because") and is enforced by
+    // the case below; a copy here would be a second place to drift.
     nonisolated static let queueStock: [String: Int] = ["PlayerViewModel.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "NetworkStatus.swift": 1, "NetworkMonitor.swift": 1]
-    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("detached because") und wird vom
-    // Fall darunter erzwungen.
+    // BESTAND OHNE EINZELGRUENDE: the reason is AT THE SITE ("detached because") and is enforced by
+    // the case below.
     nonisolated static let detachedStock: [String: Int] = ["AppShortcuts.swift": 2, "ImageCache.swift": 5, "LibraryViewModel.swift": 2, "DownloadManager.swift": 1, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1, "ListenHistory.swift": 2]
-    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("unsafe because") und wird vom
-    // Fall darunter erzwungen; gemessen am 27.09.2026, 18 Stellen in 8 Dateien, seit
-    // `ServerTimestamp` 15 in 6, seit dem Zuhoerer je Bestand 13 in 6.
+    // BESTAND OHNE EINZELGRUENDE: the reason is AT THE SITE ("unsafe because") and is enforced by
+    // the case below; measured on 27.09.2026, 18 sites in 8 files, since
+    // `ServerTimestamp` 15 in 6, since the per-stock listener 13 in 6.
     nonisolated static let unsafeStock: [String: Int] = ["PlayerViewModel.swift": 5, "ListeningStore.swift": 2, "FileDownloader.swift": 3, "ForeignMarks.swift": 1, "PodcastRefreshService.swift": 1, "SQLiteConnection.swift": 1]
-    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar der Ticks, Warten und Polls ueber 30
-    // Dateien; hier gibt es keinen Marker am Fundort, und 30 abgeschriebene
-    // Saetze waeren 30 Stellen zum Abdriften.
+    // BESTAND OHNE EINZELGRUENDE: a plain inventory of the ticks, waits and polls across 30
+    // files; there is no marker at the site here, and 30 copied
+    // sentences would be 30 places to drift.
     nonisolated static let sleepStock: [String: Int] = ["Retry.swift": 2, "HostCourtesy.swift": 1, "LibraryView.swift": 2, "BottomBarState.swift": 3, "UITestSeed.swift": 2, "PodcastsView.swift": 2, "PlayerViewModel+Sync.swift": 2, "WaitWindow.swift": 1, "PlaybackNotices.swift": 1, "SubsonicClient.swift": 1, "SourceBudget.swift": 1, "SearchModels.swift": 1, "TileDwell.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSourceView.swift": 1, "PodcastShowView.swift": 1, "PodcastServerSave.swift": 1, "StandCarrier.swift": 1, "PlayerViewModel+SleepTimer.swift": 1, "PlayerCoordinator.swift": 2, "NavigationBarNudge.swift": 1, "MusicViewModel.swift": 1, "MusicView.swift": 1, "MusicPageBody.swift": 1, "GPodderClient.swift": 1, "GlobalSearchModel.swift": 1, "DriveMode.swift": 1, "Artwork.swift": 1, "AuthViewModel.swift": 1, "JamendoLoader.swift": 1, "FileDownloader.swift": 1]
 
     /// Every file against a stock: no file may hold more sites than the
@@ -85,7 +84,7 @@ struct ConcurrencyFenceTests {
     /// The tests keep stand-ins of their own (counters, clocks, wires), so
     /// there is no stock there; each one still says why it is unchecked,
     /// on its line or in the four above, the sentence may start a comment.
-    @Test("@unchecked Sendable in den Tests nur mit Grund", .needsTheSources)
+    @Test("@unchecked Sendable in the tests only with a reason", .needsTheSources)
     func uncheckedInTheTestsCarriesItsReason() {
         var unreasoned: [String] = []
         var sites = 0
@@ -99,7 +98,7 @@ struct ConcurrencyFenceTests {
         #expect(unreasoned.isEmpty, "a stand-in in the tests says not why it is unchecked: \(unreasoned.sorted())")
     }
 
-    @Test("@unchecked Sendable nur mit Grund und nur im Bestand", .needsTheSources)
+    @Test("@unchecked Sendable only with a reason and only in the stock", .needsTheSources)
     func uncheckedSendableIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "@unchecked Sendable", marker: "unchecked because", stock: Self.uncheckedStock)
         #expect(offenders.isEmpty, "unchecked past the fence: \(offenders)")
@@ -109,7 +108,7 @@ struct ConcurrencyFenceTests {
         #expect(Self.unreasoned(token: "@unchecked Sendable", marker: "unchecked because", in: "/// unchecked because far above\n///\n///\n///\n///\nfinal class A: @unchecked Sendable {}") == 1)
     }
 
-    @Test("DispatchQueue nur, wo eine API eine Queue verlangt, mit Grund und im Bestand", .needsTheSources)
+    @Test("DispatchQueue only where an API wants a queue, with a reason and in the stock", .needsTheSources)
     func dispatchQueueIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "DispatchQueue", marker: "queue because", stock: Self.queueStock)
         #expect(offenders.isEmpty, "DispatchQueue past the fence: \(offenders)")
@@ -117,7 +116,7 @@ struct ConcurrencyFenceTests {
         #expect(Self.unreasoned(token: "DispatchQueue", marker: "queue because", in: "// queue because the API wants one\nmonitor.start(queue: DispatchQueue.global())") == 0)
     }
 
-    @Test("Task.detached traegt einen Grund, und der Bestand darf nur fallen", .needsTheSources)
+    @Test("Task.detached carries a reason, and the stock may only fall", .needsTheSources)
     func detachedIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "Task.detached", marker: "detached because", stock: Self.detachedStock)
         #expect(offenders.isEmpty, "detached past the fence: \(offenders)")
@@ -125,7 +124,7 @@ struct ConcurrencyFenceTests {
         #expect(Self.unreasoned(token: "Task.detached", marker: "detached because", in: "// detached because the write must finish\nTask.detached { work() }") == 0)
     }
 
-    @Test("nonisolated(unsafe) traegt einen Grund, und der Bestand darf nur fallen", .needsTheSources)
+    @Test("nonisolated(unsafe) carries a reason, and the stock may only fall", .needsTheSources)
     func unsafeIsCountedAndReasoned() throws {
         let offenders = try Self.offenders(token: "nonisolated(unsafe)", marker: "unsafe because", stock: Self.unsafeStock)
         #expect(offenders.isEmpty, "nonisolated(unsafe) past the fence: \(offenders)")
@@ -137,7 +136,7 @@ struct ConcurrencyFenceTests {
                 "a comment that names it is no site")
     }
 
-    @Test("Task.sleep-Stellen (Ticks, Warten, Polls) sind inventarisiert und werden nur weniger", .needsTheSources)
+    @Test("Task.sleep sites (ticks, waits, polls) are inventoried and only get fewer", .needsTheSources)
     func sleepSitesOnlyShrink() throws {
         let offenders = try Self.offenders(token: "Task.sleep", marker: nil, stock: Self.sleepStock)
         #expect(offenders.isEmpty, "sleep sites past the inventory: \(offenders)")
@@ -181,7 +180,7 @@ struct ConcurrencyFenceTests {
         return found
     }
 
-    @Test("kein Merker wird geprueft, waehrend dieselbe Bedingung wartet", .needsTheSources)
+    @Test("no flag is checked while the same condition waits", .needsTheSources)
     func noFlagIsCheckedAcrossAnAwait() throws {
         var offenders: [String] = []
         var read = 0

@@ -18,7 +18,7 @@ struct CategoryDeckTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("eine einzelne Kachel in der letzten Zeile nimmt die volle Breite, und das Raster fragt die Regel", .needsTheSources)
+    @Test("a single tile in the last row takes the full width, and the grid asks the rule", .needsTheSources)
     func aLoneLastTileSpansTheRow() throws {
         #expect(DeckRows.lastSpansAll(count: 3, columns: 2), "the books tab deck: series, authors, local files")
         #expect(!DeckRows.lastSpansAll(count: 4, columns: 2), "a full last row spans nothing")
@@ -32,7 +32,7 @@ struct CategoryDeckTests {
                 "the deck lays its last tile out without the rule")
     }
 
-    @Test("Suchseite und Musik-Tab rendern dieselbe Kachel-Liste mit denselben Eintraegen", .needsTheSources)
+    @Test("search page and music tab render the same tile list with the same entries", .needsTheSources)
     func bothHostsRenderTheOneDeck() throws {
         let search = try sourceText("Sources/Views/SearchScreen.swift")
         let music = try sourceText("Sources/Views/Music/MusicView.swift")
@@ -43,8 +43,8 @@ struct CategoryDeckTests {
         // rule, so the comparison asks the RULE for its titles instead of
         // grepping the file. The tab still writes them out.
         let searchTitles = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).map(\.title))
-        // SECHS auf beiden Flaechen: steht „Geladen“ nur auf dem Tab, prueft
-        // der Zaun fuenf und behauptet sechs.
+        // SIX on both surfaces: if „Geladen“ stands only on the tab, the
+        // fence checks five and claims six.
         #expect(searchTitles.count == 6, "das Such-Deck traegt nicht sechs Eintraege")
         for title in ["Artists", "Albums", "Songs", "Playlists", "Genres", "Downloads list"] {
             #expect(searchTitles.contains(String(localized: String.LocalizationValue(title))),
@@ -55,7 +55,7 @@ struct CategoryDeckTests {
 
     /// The radio genres were a hand-built copy of the tile. They render the
     /// one deck now and keep their journey handles.
-    @Test("Die Radio-Genres rendern dasselbe Kachel-Raster, kein eigenes", .needsTheSources)
+    @Test("The radio genres render the same tile grid, not one of their own", .needsTheSources)
     func theRadioGenresRenderTheOneDeck() throws {
         let radio = try sourceText("Sources/Views/Radio/RadioView.swift")
         #expect(radio.contains("CategoryDeckGrid(entries: RadioCatalog.genres"), "the radio genres left the deck")
@@ -66,7 +66,7 @@ struct CategoryDeckTests {
     /// At AX3 on a 393 pt phone two columns cut even a short title
     /// ("Nac…", "Mu…", measured in the picture). Every grid of category
     /// tiles takes its columns from the one rule.
-    @Test("Kachel-Raster: zwei Spalten, in den Bedienhilfe-Groessen eine, und jedes Raster fragt dieselbe Regel", .needsTheSources)
+    @Test("tile grid: two columns, one in the accessibility sizes, and every grid asks the same rule", .needsTheSources)
     @MainActor
     func everyTileGridTakesTheOneColumnRule() throws {
         #expect(CategoryDeckGrid.columns(for: .large).count == 2)
@@ -89,24 +89,24 @@ struct CategoryDeckTests {
         }
     }
 
-    /// Die Kennungen, die eine Journey wörtlich nennt, entstehen ZUSAMMEN-
-    /// GESETZT: das Raster stellt `deck-tier-` vor die Kennung der Kachel.
-    /// Eine Textsuche in den Quellen findet sie deshalb nicht, und ein
-    /// Prüfer, der Zeichenketten zählt, hält sie für tot. Sie sind es
-    /// nicht, und dieser Fall hält beide Hälften fest, damit die Zusage
-    /// auch dann steht, wenn keine Journey läuft.
-    @Test("Die zusammengesetzten Kachel-Kennungen entstehen wirklich", .needsTheSources)
+    /// The identifiers a journey names literally are COMPOSED: the grid puts
+    /// `deck-tier-` in front of the tile's identifier.
+    /// A text search in the sources therefore does not find them, and a
+    /// checker that counts strings takes them for dead. They are not, and
+    /// this case holds both halves so that the promise
+    /// stands even when no journey runs.
+    @Test("The composed tile identifiers really come into being", .needsTheSources)
     func theComposedTileIdentifiersExist() throws {
-        // Erste Haelfte, am Verhalten: die Kachel traegt die Kennung, aus
-        // der die Journey ihre baut.
-        // Der Zeuge haengt an einer Kachel, die es noch gibt: die
-        // freie Klassik-Kachel ist auf beiden Flaechen gefallen, die Zusage
-        // ueber die zusammengesetzte Kennung gilt unveraendert weiter.
+        // First half, at the behaviour: the tile carries the identifier the
+        // journey builds its own from.
+        // The witness hangs on a tile that still exists: the
+        // free classical tile is gone on both surfaces, the promise
+        // about the composed identifier holds unchanged.
         let ids = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).map(\.id))
         #expect(ids.contains("music-downloaded"))
         #expect(!ids.contains("music-free-classical"), "die freie Kachel ist zurueck")
-        // Zweite Haelfte, am Quelltext: das Raster setzt genau dieses
-        // Praefix davor, wenn die Kachel keine eigene Kennung mitbringt.
+        // Second half, at the source text: the grid puts exactly this
+        // prefix in front when the tile brings no identifier of its own.
         let grid = try sourceText("Sources/Views/CategoryTile.swift")
             .split(separator: "\n", omittingEmptySubsequences: false)
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
@@ -114,7 +114,7 @@ struct CategoryDeckTests {
         #expect(grid.contains("entry.accessibilityId ?? \"deck-tier-\\(entry.id)\""))
     }
 
-    @Test("Eine Zahl steht nur, wo sie bekannt ist")
+    @Test("A number is shown only where it is known")
     func countOnlyWhereKnown() {
         let entry = CategoryDeckEntry(id: "songs", title: "Songs", systemImage: "music.note", count: nil) {}
         #expect(entry.count == nil)
@@ -122,7 +122,7 @@ struct CategoryDeckTests {
     }
 
     /// The search tile carries the short title; VoiceOver says the full one.
-    @Test("die Such-Kachel heisst kurz Hoerbuecher und nennt VoiceOver den vollen Titel", .needsTheSources)
+    @Test("the search tile is called Hoerbuecher in short and gives VoiceOver the full title", .needsTheSources)
     func theSearchTileSaysTheFullTitle() throws {
         let search = try sourceText("Sources/Views/SearchScreen.swift")
         #expect(search.contains("CategoryTile(title: String(localized: \"Audiobooks\")"))
@@ -132,7 +132,7 @@ struct CategoryDeckTests {
     /// Every list of downloaded titles is called "Downloads" in English, the
     /// state on a cover stays "Downloaded"; German says "Geladen" for both.
     /// At XXXL the count stands under the title in every tile of a deck.
-    @Test("jede Liste geladener Titel heisst englisch Downloads, der Zustand am Cover Downloaded; bei XXXL steht die Zahl in jeder Kachel unter dem Titel", .needsTheSources)
+    @Test("every list of downloaded titles is called Downloads in English, the state on the cover Downloaded; at XXXL the count sits under the title in every tile", .needsTheSources)
     func downloadListsAreCalledDownloads() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -165,7 +165,7 @@ struct CategoryDeckTests {
     /// Every tile of a deck in the same size: a long title takes a second
     /// line instead of shrinking (seen at the standard size: "Listening
     /// History" stood smaller than its neighbours).
-    @Test("ein Kacheltitel schrumpft nie: mehrere Woerter brechen am Leerzeichen, neben einem einzelnen Wort darf die Zahl unter den Titel ruecken", .needsTheSources)
+    @Test("a tile title never shrinks: several words break at the space, next to a single word the count may move under the title", .needsTheSources)
     func aLongTitleWrapsInsteadOfShrinking() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])

@@ -17,7 +17,7 @@ struct ContinueBySourceTests {
                         isLive: false, kindSymbol: "waveform", cover: nil, playedAt: playedAt)
     }
 
-    @Test("die Quelle einer Zeile ist der Reiter der App, je Praefix und Form")
+    @Test("the source of a row is the app's tab, per prefix and form")
     func theSourceIsTheTab() {
         let lvaAlbum = FreeCatalog.archivePrefix + "concert"
         let table: [(String, ProgressMark.StartedForm?, WidgetSource?)] = [
@@ -46,12 +46,12 @@ struct ContinueBySourceTests {
         }
     }
 
-    @Test("jede Quelle ist ein Reiter der App und jeder Reiter ausser Start eine Quelle")
+    @Test("every source is a tab of the app and every tab except Start is a source")
     func everySourceIsATab() {
         #expect(Set(WidgetSource.allCases.map(\.rawValue)) == Set(MediaType.allCases.filter { $0 != .home }.map(\.rawValue)))
     }
 
-    @Test("ein neuer Titel: einmal in den Zeilen, je Quelle der neueste und die zwei zuletzt gehoerten bleiben")
+    @Test("a new title: once in the rows, per source the newest and the two most recently listened stay")
     func aNewTitleReplacesWhatNoWidgetShows() {
         var rows: [WidgetSourceRow] = []
         rows = WidgetRows.merged(row("book-a", .audiobooks, at: 1), into: rows)
@@ -70,7 +70,7 @@ struct ContinueBySourceTests {
         BookProgress(fraction: fraction, isFinished: false, lastUpdate: ms, currentTime: time)
     }
 
-    @Test("ein Durchgang der Startseite wird zu Zeilen, je Art aus dem, was die Startseite liest")
+    @Test("a pass of the home page becomes rows, per kind from what the home page reads")
     func theHomePassBecomesRows() {
         let song = CatalogSongID.make(album: FreeCatalog.archivePrefix + "album", index: 1)
         let cards: [String: ContinueBySource.Card] = [
@@ -101,7 +101,7 @@ struct ContinueBySourceTests {
         #expect(rows.map(\.playedAt) == rows.map(\.playedAt).sorted(by: >), "heard last first")
     }
 
-    @Test("ein Album ohne begonnenen Fortschritt zeigt keinen Balken und keine Restzeit, ohne Stand wie mit 0 vom Server")
+    @Test("an album without started progress shows no bar and no remaining time, without a stand as with 0 from the server")
     func anAlbumNobodyStartedShowsNoProgress() {
         let cards: [String: ContinueBySource.Card] = [
             "sub:album:none": .init(title: "Album", subtitle: "Band", kindSymbol: "music.note", markedForm: nil, isLive: false,
@@ -121,7 +121,7 @@ struct ContinueBySourceTests {
         #expect(rows.first { $0.itemId == "sub:album:zero" }?.subtitle == "Band", "the row keeps who made it")
     }
 
-    @Test("die Karte des Schreibers: ein Sender ist live, ein Buch traegt Titel, Autorin, Laenge und den Stand des Servers")
+    @Test("the writer's card: a station is live, a book carries title, author, length and the server's stand")
     @MainActor
     func theWritersCard() throws {
         let stationId = "radio:rb:card-\(UUID().uuidString)"
@@ -142,7 +142,7 @@ struct ContinueBySourceTests {
                                         serverProgress: nil) == nil, "a title nothing resolves has no card")
     }
 
-    @Test("nichts eines frueheren Durchgangs bleibt: ein Titel, den die Startseite nicht mehr zeigt, geht")
+    @Test("nothing of an earlier pass stays: a title the home page no longer shows goes")
     func aTitleTheHomeNoLongerShowsLeaves() {
         let card = ContinueBySource.Card(title: "t", subtitle: nil, kindSymbol: "book.closed", markedForm: nil, isLive: false)
         let first = ContinueBySource.rows(of: [("li_a", 2), ("li_gone", 1)]) { _ in card }
@@ -151,7 +151,7 @@ struct ContinueBySourceTests {
         #expect(second.map(\.itemId) == ["li_a"], "a title of a removed server or another account stayed")
     }
 
-    @Test("die Startseite ruft den einen Schreiber mit dem, was ihre Zeilen zeigen; nur er schreibt die Zeilen", .needsTheSources)
+    @Test("the home page calls the one writer with what its rows show; only it writes the rows", .needsTheSources)
     func theHomePassCallsTheOneWriter() throws {
         let home = try FetchAnswerTests.squeezedSource("Sources/Views/HomeView.swift")
         #expect(home.contains("writeWidgetRows(continueMoments: books + episodesShown, episodeProgress: episodeProgress)"),
@@ -170,7 +170,7 @@ struct ContinueBySourceTests {
         #expect(writers == ["ContinueRowsWriter.swift"], "the rows have another writer: \(writers)")
     }
 
-    @Test("gross: je eingeschaltete Quelle der neueste Titel in der Reihenfolge der Reiter, in Bedienungshilfen-Groessen ebenso vier")
+    @Test("large: per enabled source the newest title in the order of the tabs, in accessibility sizes likewise four")
     func theLargeWidget() {
         let rows = [row("station", .radio, at: 9), row("book-b", .audiobooks, at: 8), row("book-a", .audiobooks, at: 7),
                     row("song", .music, at: 6), row("ep", .podcasts, at: 5)]
@@ -186,7 +186,7 @@ struct ContinueBySourceTests {
         #expect(WidgetRows.limit(large: true, accessibilitySize: true) == WidgetRows.limit(large: true, accessibilitySize: false))
     }
 
-    @Test("mittel: die zwei zuletzt gehoerten Titel oder je eine von zwei Quellen, in Bedienungshilfen-Groessen eine Zeile")
+    @Test("medium: the two most recently listened titles or one each of two sources, in accessibility sizes one row")
     func theMediumWidget() {
         let rows = [row("book-a", .audiobooks, at: 7), row("station", .radio, at: 5), row("book-b", .audiobooks, at: 8),
                     row("ep", .podcasts, at: 6)]
@@ -200,7 +200,7 @@ struct ContinueBySourceTests {
                 == ["ep"], "a source without a title has no row")
     }
 
-    @Test("die Einstellung je Groesse: gross die eingeschalteten Quellen, mittel zuletzt gehoert oder zwei Quellen")
+    @Test("the setting per size: large the enabled sources, medium most recently listened or two sources")
     @MainActor
     func theSettingsAskForTheirRows() {
         var settings = ContinueWidgetSettings()
@@ -216,7 +216,7 @@ struct ContinueBySourceTests {
         #expect(settings.layout(large: true) == .large([.audiobooks, .podcasts]), "the medium choice leaves the large one alone")
     }
 
-    @Test("jeder Text der Einstellung steht englisch und deutsch im Katalog", .needsTheSources)
+    @Test("every text of the setting is in the catalog in English and German", .needsTheSources)
     func theSettingsSpeakGerman() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let catalog = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -235,7 +235,7 @@ struct ContinueBySourceTests {
         }
     }
 
-    @Test("der Schnappschuss traegt die Quelle seines Titels, keine Zeilen; ein Schnappschuss ohne Quelle liest sich wie vorher")
+    @Test("the snapshot carries the source of its title, no rows; a snapshot without a source reads as before")
     func theSnapshotCarriesItsSource() throws {
         let old = Data(#"{"itemId":"li_1","title":"Buch","fraction":0.5,"isPlaying":false}"#.utf8)
         let read = try JSONDecoder().decode(WidgetSnapshot.self, from: old)
@@ -251,7 +251,7 @@ struct ContinueBySourceTests {
         #expect(try JSONDecoder().decode(ContinueRows.self, from: JSONEncoder().encode(rows)) == rows)
     }
 
-    @Test("eine Zeile anderer Form faellt heraus, die anderen lesen sich")
+    @Test("a row of another form drops out, the others read")
     func aRowOfAnotherFormIsLeftOut() throws {
         let file = Data("""
             {"rows":[
@@ -272,7 +272,7 @@ struct ContinueBySourceTests {
                        heardAtMs: heardAtMs ?? seconds * 1000)
     }
 
-    @Test("gehoert ist die letzte Position, nicht das Schreiben: ein Schnappschuss, neu geschrieben ohne Hoeren, bleibt draussen")
+    @Test("listened is the last position, not the writing: a snapshot rewritten without listening stays out")
     func writtenIsNotHeard() {
         let pass = [row("book-before", .audiobooks, at: 4_000)]
         let restored = snapshot("hidden", .audiobooks, savedAt: 20, heardAtMs: 6_000)
@@ -288,7 +288,7 @@ struct ContinueBySourceTests {
         #expect(WidgetRows.withTitle(of: station, at: Date(), in: pass, passAtMs: 10_000) == pass)
     }
 
-    @Test("ueber den echten Player: ein Titel, den der Durchgang ausliess und der wieder laeuft, steht waehrend des Hoerens in seiner Zeile", .needsAudio)
+    @Test("through the real player: a title the pass left out and that plays again is in its row while listening", .needsAudio)
     func aTitleHeardAgainStandsInItsRow() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)
@@ -312,7 +312,7 @@ struct ContinueBySourceTests {
         model.stop()
     }
 
-    @Test("ueber den echten Player: ein Titel, den die Wiederherstellung ohne Hoeren laedt, legt sich nicht ueber den Durchgang zurueck", .needsAudio)
+    @Test("through the real player: a title the restore loads without listening does not lie back over the pass", .needsAudio)
     func aRestoredTitleStaysOut() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)
@@ -342,14 +342,14 @@ struct ContinueBySourceTests {
     /// The witness above loads as the restore at start does; this one holds
     /// that the restore still loads without playing. Its own case, so the
     /// run over the real player stands without the source tree.
-    @Test("die Wiederherstellung beim Start laedt ohne Hoeren, wie der Zeuge davor sie nachstellt", .needsTheSources)
+    @Test("the restore at start loads without listening, as the witness before it reproduces it", .needsTheSources)
     func theRestoreAtStartLoadsWithoutPlaying() throws {
         let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("await open(item: item, autoplay: false, preservesContext: true, origin: .restore)"),
                 "the restore at start plays, so the witness before no longer stands for it")
     }
 
-    @Test("gleiche Zeilen, aber der neue Durchgang laesst den Titel des Schnappschusses aus: das Widget laedt neu")
+    @Test("same rows, but the new pass leaves out the snapshot's title: the widget reloads")
     func aPassThatLeavesTheTitleOutReloads() {
         let heard = snapshot("x", .audiobooks, savedAt: 30, heardAtMs: 15_000)
         #expect(WidgetRows.passMovesTitle(oldPassAtMs: 10_000, newPassAtMs: 20_000, snapshot: heard))
@@ -359,7 +359,7 @@ struct ContinueBySourceTests {
         #expect(!WidgetRows.passMovesTitle(oldPassAtMs: 10_000, newPassAtMs: 20_000, snapshot: nil))
     }
 
-    @Test("eine geaenderte Quelle nimmt nur die Zeilen ihrer Titel, ohne auf einen Durchgang zu warten", .needsTheSources)
+    @Test("a changed source takes only the rows of its titles, without waiting for a pass", .needsTheSources)
     func aSourceChangeKeepsWhatIsStillThere() throws {
         let track = FreeCatalog.jamendoPrefix + "t1"
         let freeBook = FreeCatalog.librivoxPrefix + "b1"
@@ -397,7 +397,7 @@ struct ContinueBySourceTests {
     /// The one place a sign out calls (`theFormerServerIsForgottenInOnePlace`
     /// holds that `logout` calls it), with a player of its own: the
     /// session's client, flags and sources stay as the next test finds them.
-    @Test("nach dem Abmelden vom Server stehen keine Zeilen mehr da, ueber die eine Stelle, die das Abmelden ruft")
+    @Test("after signing out of the server no rows remain, through the one place that the sign out calls")
     @MainActor
     func aSignOutForgetsTheRows() async throws {
         let before = ContinueRows.load()
@@ -415,7 +415,7 @@ struct ContinueBySourceTests {
     /// player on a title of the server ends before the rows forget, so no
     /// snapshot of that title comes back; a station plays on and keeps its
     /// snapshot.
-    @Test("das Abmelden vergisst den Schnappschuss samt Cover nur bei einem Titel dieses Servers und beendet dessen Player zuerst; ein Sender bleibt")
+    @Test("the sign out forgets the snapshot with its cover only for a title of this server and ends its player first; a station stays")
     @MainActor
     func aSignOutForgetsOnlyThisServersSnapshot() async throws {
         let ids: [(String, Bool)] = [("li_book", true), ("abspod:show#ep", true), ("radio:rb:x", false), ("rss:feed#ep", false),
@@ -454,7 +454,7 @@ struct ContinueBySourceTests {
     /// A Jellyfin or Subsonic server whose address changes takes its titles
     /// out of the widget's rows, and the player's snapshot with them, at
     /// the family's one place; the same address changes nothing.
-    @Test("ein Wechsel der Adresse bei Jellyfin oder Subsonic nimmt Zeilen und Schnappschuss des alten Servers aus dem Widget, dieselbe Adresse nichts")
+    @Test("a change of address for Jellyfin or Subsonic takes rows and snapshot of the old server out of the widget, the same address nothing")
     @MainActor
     func anAddressSwitchForgetsTheFormerServersRows() async throws {
         let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
@@ -529,7 +529,7 @@ struct ContinueBySourceTests {
     /// address asks its family's one place right before, and that place
     /// forgets the former server's titles by the family's namespace. A new
     /// writer of an address fails here until it names its family.
-    @Test("wer die Adresse eines Musikservers schreibt, fragt vorher die eine Stelle der Familie, und die vergisst die Zeilen des alten Servers", .needsTheSources)
+    @Test("whoever writes a music server's address asks the family's one place first, and it forgets the rows of the old server", .needsTheSources)
     func anAddressWriterForgetsTheFormerServer() throws {
         let families: [String: (writer: String, place: String, owns: String)] = [
             "subsonicServerURLValue": ("SubsonicSourceView.swift", "SubsonicProvider", "ItemNamespace.isSubsonic, covers: .subsonic"),
@@ -589,7 +589,7 @@ struct ContinueBySourceTests {
                 "the rows keep the former server's titles")
     }
 
-    @Test("zwei Schreiber, kein Verlust: was der Durchgang herausnahm, legt der Player nicht zurueck", .needsTheSources)
+    @Test("two writers, no loss: what the pass took out, the player does not put back", .needsTheSources)
     func thePlayerNeverWritesTheRows() throws {
         let home = [row("book", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
         let shown = WidgetRows.withTitle(of: snapshot("song", .music, savedAt: 2), at: Date(timeIntervalSince1970: 3),
@@ -601,7 +601,7 @@ struct ContinueBySourceTests {
                 "the player's title carries no source, so it joins no row")
     }
 
-    @Test("zwei Schreiber, kein Verlust: der laufende Titel steht in seiner Zeile, auch wenn der Durchgang ihn nicht kennt")
+    @Test("two writers, no loss: the playing title is in its row, even if the pass does not know it")
     func thePlayingTitleStandsInItsRow() {
         let home = [row("book-old", .audiobooks, at: 1_000), row("ep", .podcasts, at: 900)]
         let playing = snapshot("book-now", .audiobooks, savedAt: 5)
@@ -616,7 +616,7 @@ struct ContinueBySourceTests {
                 "a file without the moment of its pass takes the snapshot's title in")
     }
 
-    @Test("ein Titel, den der juengste Durchgang ausliess (beendet, ausgeblendet, Konto weg), steht in keiner Zeile, auch wenn der Schnappschuss ihn traegt")
+    @Test("a title the latest pass left out (finished, hidden, account gone) is in no row, even if the snapshot carries it")
     func aTitleThePassLeftOutStaysOut() {
         let pass = [row("book-before", .audiobooks, at: 4_000), row("ep", .podcasts, at: 3_000)]
         // Finished, hidden or no longer this account's: the pass at 10 s left X out, the snapshot of X is older.
@@ -637,7 +637,7 @@ struct ContinueBySourceTests {
                                      in: newer, passAtMs: 14_500) == newer)
     }
 
-    @Test("ohne Zeilen zeigt auch gross den einen Titel, „Noch nichts gehört“ nur ohne Schnappschuss")
+    @Test("without rows large also shows the one title, „Noch nichts gehört“ only without a snapshot")
     func theFaceWithoutRows() {
         typealias Row = (wide: Bool, rows: Bool, snapshot: Bool, want: ContinueFace)
         let table: [Row] = [
@@ -655,7 +655,7 @@ struct ContinueBySourceTests {
         }
     }
 
-    @Test("gross und mittel zeigen die Zeilen der Regel, je Zeile ein Link und ein Knopf mit ihrem Titel", .needsTheSources)
+    @Test("large and medium show the rows of the rule, per row a link and a button with its title", .needsTheSources)
     func theWidgetShowsTheRows() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains("WidgetRows.shown(WidgetRows.withTitle(of: entry.snapshot, at: entry.date, in: entry.homeRows, passAtMs: entry.passAtMs), layout: entry.layout, accessibilitySize: dynamicTypeSize.isAccessibilitySize)"),
@@ -685,7 +685,7 @@ struct ContinueBySourceTests {
     /// Every row of Continue draws its kind before its title with the
     /// symbol and the name the app's mark of a mixed row uses; Up Next shows
     /// only episodes and draws none.
-    @Test("jede Zeile von Weiterhoeren zeigt das Zeichen ihrer Art vor dem Titel, wie das Zeichen der App, Als Naechstes keins", .needsTheSources)
+    @Test("every row of Continue Listening shows the mark of its kind before the title, like the app's mark, Up Next none", .needsTheSources)
     func everyRowShowsItsKindMark() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains("HStack(alignment: .firstTextBaseline, spacing: 4) { rowKind(row) Text(row.title)"),
@@ -701,7 +701,7 @@ struct ContinueBySourceTests {
 
     /// The kind of a row is the tab of its title, the kind the app's mark of
     /// a mixed row asks, and its symbol the one the writer stores.
-    @Test("das Zeichen je Art: Buch, Folge, Album und Sender tragen die Art ihres Reiters, dieselbe wie das Zeichen der App")
+    @Test("the mark per kind: book, episode, album and station carry the kind of their tab, the same as the app's mark")
     func theKindOfEachRow() throws {
         let kinds: [(id: String, kind: MediaType)] = [("li_book", .audiobooks), ("rss:feed#ep", .podcasts),
                                                       ("sub:album:1", .music), ("radio:station", .radio)]
@@ -715,7 +715,7 @@ struct ContinueBySourceTests {
         }
     }
 
-    @Test("das Widget liest seine Einstellung je Groesse und gibt jedem Eintrag seine Zeilen", .needsTheSources)
+    @Test("the widget reads its setting per size and gives each entry its rows", .needsTheSources)
     func theWidgetReadsItsSettings() throws {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains("AppIntentConfiguration( kind: \"ContinueListeningWidget\", intent: ContinueWidgetSettings.self,"),

@@ -21,7 +21,7 @@ struct ContinueSeedWitnessTests {
             duration: 3600, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    @Test("die Regel stellt die begonnenen Buecher des Seeds in Weiterhoeren, das gehoerte nicht")
+    @Test("the rule puts the started books of the seed into Continue Listening, the finished one not")
     func theSeedsStartedBooksStandInContinue() {
         let now = Date().timeIntervalSince1970 * 1000
         let items = [Self.book("seed-book-old", "Seed Book Old"), Self.book("seed-book-3", "Der Leuchtturmwärter"),
@@ -43,7 +43,7 @@ struct ContinueSeedWitnessTests {
         #expect(ids == ["seed-book-old", "seed-book-4", "seed-book-6"], "the rule counts \(ids.sorted())")
     }
 
-    @Test("ein wartendes 0, das der Abgleich verwirft, ueberdeckt den Serverstand nicht: das Buch bleibt in Weiterhoeren")
+    @Test("a waiting 0 that the sync discards does not cover the server state: the book stays in Continue Listening")
     func aQueuedZeroTheFlushDropsCoversNothing() {
         let now = Date().timeIntervalSince1970 * 1000
         let progress = ["seed-book-old": BookProgress(fraction: 0.4, isFinished: false,
@@ -66,7 +66,7 @@ struct ContinueSeedWitnessTests {
         #expect(shown.progress?.currentTime == 2000)
     }
 
-    @Test("Abgleich und Anzeige fragen die eine Regel ueber wartende Staende", .needsTheSources)
+    @Test("sync and display ask the one rule about waiting states", .needsTheSources)
     func flushAndDisplayAskTheOneRule() throws {
         let read = { (path: String) in
             SyncContractFenceTests.stripped(

@@ -58,7 +58,7 @@ struct CompletedResumeTests {
 
     /// The advance at a title's end asks the sleep before it opens the next
     /// title: a sleep until the end of the chapter or track ends there.
-    @Test("das Weiterschalten am Titelende fragt den Schlaf bis Kapitelende, bevor es den naechsten oeffnet", .needsTheSources)
+    @Test("the advance at the end of a title asks the sleep until chapter end before it opens the next", .needsTheSources)
     func theAdvanceAsksTheSleepFirst() throws {
         let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         let asked = try #require(coordinator.range(of: "if let model = viewModel, Self.sleepEndsWithTitle(untilChapterEnd: model.sleepUntilChapterEnd,"),

@@ -1892,7 +1892,6 @@ extension ProjectFileIntegrityTests {
     /// BESTAND OHNE EINZELGRUENDE: one sentence covers every entry, each is
     /// the count that stood on the day of measuring, none chosen on its own.
     nonisolated static let testDecisionStock: [String: Int] = [
-        "CatalogStoreReadFenceTests.swift": 2,
         "DownloadProviderFenceTests.swift": 1,
         "ExternalSourcesTests.swift": 2,
         "ExternalSourcesWitnessFenceTests.swift": 1,

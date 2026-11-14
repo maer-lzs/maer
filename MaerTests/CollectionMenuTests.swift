@@ -17,7 +17,7 @@ struct CollectionMenuTests {
             .components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
-    @Test("nur ein Archiv-Album hat Lieder zum Mischen, ein Lied und ein Jamendo-Titel nicht")
+    @Test("only an archive album has songs to shuffle, a song and a Jamendo title do not")
     func onlyAnArchiveAlbumShuffles() {
         #expect(CollectionMenuItems.shuffles(catalog: "lva:some-release"))
         #expect(!CollectionMenuItems.shuffles(catalog: CatalogSongID.make(album: "lva:some-release", index: 2)))
@@ -25,7 +25,7 @@ struct CollectionMenuTests {
         #expect(!CollectionMenuItems.shuffles(catalog: "lv:123"))
     }
 
-    @Test("die Eintraege stehen einmal und in einer Folge, jede Album- und Playlist-Kachel nimmt sie", .needsTheSources)
+    @Test("the entries stand once and in one order, every album and playlist tile takes them", .needsTheSources)
     func everyTileTakesTheOneMenu() throws {
         let music = try Self.flat("Sources/Views/Music/MusicView.swift")
         guard let start = music.range(of: "structCollectionMenuItems:View{"),

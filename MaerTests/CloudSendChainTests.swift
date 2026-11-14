@@ -24,7 +24,7 @@ struct CloudSendChainTests {
         for _ in 0..<200 { await Task.yield() }
     }
 
-    @Test("Wahlen: ein Schrieb waehrend eines laufenden modify landet nach dem aelteren; danach sendet der Traeger nichts mehr")
+    @Test("Choices: a write during a running modify lands after the older one; after that the carrier sends nothing more")
     func choicesGoOneAfterAnother() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -57,7 +57,7 @@ struct CloudSendChainTests {
         #expect(zone.modifies == settled, "the carrier sends again after settling")
     }
 
-    @Test("Playlisten: ein Schrieb waehrend eines laufenden modify landet nach dem aelteren; danach sendet der Traeger nichts mehr")
+    @Test("Playlists: a write during a running modify lands after the older one; after that the carrier sends nothing more")
     func playlistsGoOneAfterAnother() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -91,7 +91,7 @@ struct CloudSendChainTests {
         #expect(zone.modifies == settled, "the carrier sends again after settling")
     }
 
-    @Test("Statistik: ein Topf waehrend eines laufenden modify landet nach dem aelteren; danach sendet der Traeger nichts mehr")
+    @Test("Statistics: a pot during a running modify lands after the older one; after that the carrier sends nothing more")
     func statsGoOneAfterAnother() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -123,7 +123,7 @@ struct CloudSendChainTests {
 
     /// Every carrier that writes to the cloud holds the one chain and sends
     /// through it; no carrier keeps a chain of its own.
-    @Test("jeder Wolken-Traeger sendet ueber die eine Kette, keiner baut eine eigene", .needsTheSources)
+    @Test("every cloud carrier sends through the one chain, none builds its own", .needsTheSources)
     func everyCarrierSendsThroughTheChain() throws {
         var writers: [String] = []
         var unchained: [String] = []

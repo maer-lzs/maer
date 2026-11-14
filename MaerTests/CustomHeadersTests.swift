@@ -17,7 +17,7 @@ struct CustomHeadersTests {
     typealias Keys = ServerHeadersWayTests.MemoryKeys
     typealias Host = HeaderRedirectMeasureTests.RecordingHost
 
-    @Test("Eingabe: reservierte Namen, Namen ausser einem Token und Werte mit Steuerzeichen werden abgewiesen, Leerzeichen am Rand beschnitten")
+    @Test("Input: reserved names, names that are not a token and values with control characters are rejected, spaces at the edge are trimmed")
     func theEntryRule() {
         func refusal(_ name: String, _ value: String) -> ServerHeaderRule.Refusal? {
             ServerHeaderRule.refusal(of: ServerHeaderRule.cleaned(name: name, value: value))
@@ -34,7 +34,7 @@ struct CustomHeadersTests {
         #expect(pasted == .init(name: "X-Gate", value: "secret-value"), "the spaces of a pasted value stayed")
     }
 
-    @Test("Eingabe: die Adresse des Feldes wird die Adresse der Tabelle, ohne Schema https")
+    @Test("Input: the address of the field becomes the address of the table, https without a scheme")
     func theTypedAddress() {
         #expect(ServerHeaderRule.base(typed: "music.example.com")?.absoluteString == "https://music.example.com")
         #expect(ServerHeaderRule.base(typed: " http://10.0.0.2:4533/navidrome ")?.absoluteString == "http://10.0.0.2:4533/navidrome")
@@ -42,7 +42,7 @@ struct CustomHeadersTests {
         #expect(ServerHeaderRule.base(typed: "ftp://files.example.com") == nil)
     }
 
-    @Test("Eingabe: der Satz unter einer abgewiesenen Zeile, keiner unter einer halb ausgefuellten")
+    @Test("Input: the sentence under a rejected row, none under a half-filled one")
     @MainActor
     func theSentenceUnderARow() {
         var row = CustomHeadersSection.Row()
@@ -55,7 +55,7 @@ struct CustomHeadersTests {
         #expect(CustomHeadersSection.sentence(for: row) == String(localized: "The app sets this header itself."))
     }
 
-    @Test("Umzug: aendert sich die Adresse, wandern die Header mit, unter der alten bleibt nichts, und eine Anfrage an die alte traegt nichts")
+    @Test("Move: when the address changes, the headers move along, nothing is left under the old one, and a request to the old one carries nothing")
     func theHeadersMoveWithTheAddress() throws {
         let keys = Keys()
         let old = try #require(URL(string: "https://old-\(UUID().uuidString.prefix(6)).example/abs"))
@@ -74,7 +74,7 @@ struct CustomHeadersTests {
         #expect(keys.state.withLock { $0.bases } == [ServerHeaders.address(new)])
     }
 
-    @Test("Umzug: auf einen Server mit eigenen Headern zieht nichts, beide behalten ihre, und eine Anfrage an das Ziel traegt seine")
+    @Test("Move: onto a server with its own headers nothing moves, both keep theirs, and a request to the target carries its own")
     func noMoveOntoAServerWithItsOwnHeaders() throws {
         let keys = Keys()
         let old = try #require(URL(string: "https://old-\(UUID().uuidString.prefix(6)).example"))
@@ -94,7 +94,7 @@ struct CustomHeadersTests {
         }
     }
 
-    @Test("Ein Schluessel: zwei Schreibweisen eines Servers sind ein Eintrag, und beide lesen dieselben Zeilen")
+    @Test("One key: two spellings of a server are one entry, and both read the same rows")
     func twoSpellingsAreOneEntry() throws {
         let keys = Keys()
         let host = "music-\(UUID().uuidString.prefix(6).lowercased()).example.com"
@@ -116,7 +116,7 @@ struct CustomHeadersTests {
         #expect(keys.state.withLock { $0.bases } == ["https://\(host)"])
     }
 
-    @Test("Ein Schluessel: ein Eintrag unter alter Schreibweise wird beim ersten Lesen einmal gehoben, von zweien bleibt der unter dem Schluessel")
+    @Test("One key: an entry under an old spelling is lifted once on the first read, of two the one under the key stays")
     func oldSpellingsAreLiftedOnce() throws {
         let host = "abs-\(UUID().uuidString.prefix(6).lowercased()).example"
         let prefix = ServerHeaders.accountPrefix
@@ -142,7 +142,7 @@ struct CustomHeadersTests {
                 "a spelling left out of the table was removed from the keychain")
     }
 
-    @Test("Ein Schluessel: von zwei alten Schreibweisen ohne Eintrag unter dem Schluessel wird die gehoben, die das Register nennt, nicht die erste")
+    @Test("One key: of two old spellings with no entry under the key, the one the register names is lifted, not the first")
     func theRegisteredSpellingIsLifted() throws {
         let host = "gate-\(UUID().uuidString.prefix(6).lowercased()).example"
         let prefix = ServerHeaders.accountPrefix
@@ -162,7 +162,7 @@ struct CustomHeadersTests {
         #expect(plain.dropped == 1)
     }
 
-    @Test("Ein Schluessel: ein IPv6-Server und ein kodierter Pfad lesen sich als derselbe Schluessel zurueck")
+    @Test("One key: an IPv6 server and an encoded path read back as the same key")
     func theKeyReadsBack() throws {
         for raw in ["https://[fd00::1]:8443/abs/", "https://[::1]/my%20abs", "HTTPS://Demo.Example:443/", "http://x.example:80/a/b//"] {
             let address = try #require(URL(string: raw))
@@ -181,7 +181,7 @@ struct CustomHeadersTests {
         }
     }
 
-    @Test("Speichern: nimmt der Schluesselbund nichts, sagt set nein und das Register bleibt; ein Umzug ueber einen unlesbaren ist nicht genommen")
+    @Test("Saving: when the keychain takes nothing, set says no and the register stays; a move over an unreadable one is not taken")
     func aWriteNotTakenSaysSo() throws {
         let keys = Keys(.init(takes: false))
         let base = try #require(URL(string: "https://refused-\(UUID().uuidString.prefix(6).lowercased()).example"))
@@ -196,7 +196,7 @@ struct CustomHeadersTests {
         }
     }
 
-    @Test("Speichern: das Blatt sagt, wenn die Header nicht gespeichert sind, und behaelt die Adresse davor", .needsTheSources)
+    @Test("Saving: the sheet says when the headers are not saved, and keeps the address before them", .needsTheSources)
     func theSectionSaysWhenNotKept() throws {
         let section = try FetchAnswerTests.squeezedSource("Sources/Views/CustomHeadersSection.swift")
         #expect(section.contains("case .notTaken: notKept = true return"), "a move not taken passes in silence")
@@ -207,7 +207,7 @@ struct CustomHeadersTests {
         #expect(store.contains("SERVERHEADERS not moved host=\\(new.host ?? \"-\", privacy: .public): the keychain cannot be read"))
     }
 
-    @Test("Lesen: unlesbar ist nicht leer")
+    @Test("Reading: unreadable is not empty")
     func unreadableIsNotEmpty() throws {
         let keys = Keys(.init(readable: false))
         let base = try #require(URL(string: "https://locked.example"))
@@ -216,7 +216,7 @@ struct CustomHeadersTests {
         }
     }
 
-    @Test("Schutz: eine Antwort von einem anderen Host oder 401/403 als Webseite ist ein Schutz, die Antwort des Servers nicht")
+    @Test("Guard: an answer from another host or 401/403 as a web page is a guard, the answer of the server is not")
     func theGuardRule() throws {
         let server = try #require(URL(string: "https://music.example.com/rest/ping"))
         let login = try #require(URL(string: "https://team.cloudflareaccess.com/cdn-cgi/access/login"))
@@ -229,7 +229,7 @@ struct CustomHeadersTests {
         #expect(!AccessGuard.standsAhead(requested: server, final: nil, status: nil, contentType: nil))
     }
 
-    @Test("Schutz: ein Server, dessen Adresse zu einem anderen Host umleitet, bekommt den Satz; einer, der selbst antwortet, behaelt seinen")
+    @Test("Guard: a server whose address redirects to another host gets the sentence; one that answers itself keeps its own")
     func theGuardSentenceAtTheLoopback() async throws {
         let body = try HeaderRedirectMeasureTests.tone()
         let guarded = try Host(body: body, contentType: "text/html")
@@ -257,7 +257,7 @@ struct CustomHeadersFenceTests {
     static let sheets = ["SetupView.swift", "SubsonicSourceView.swift", "JellyfinSourceView.swift",
                          "GPodderSettingsView.swift", "PodcastSourceView.swift", "MaerSyncSettingsView.swift"]
 
-    @Test("Eigene Header: jedes Server-Blatt traegt die eine Komponente, das Blatt eines Feeds nicht", .needsTheSources)
+    @Test("Custom headers: every server sheet carries the one component, the sheet of a feed does not", .needsTheSources)
     func everyServerSheetCarriesTheSection() {
         var carriers: [String: Int] = [:]
         var forms: [String: Int] = [:]
@@ -273,7 +273,7 @@ struct CustomHeadersFenceTests {
         #expect(Set(forms.keys) == Set(Self.sheets), "a server form without the headers: \(forms)")
     }
 
-    @Test("Eigene Header: jede Verbindungspruefung der sechs Blaetter fragt den einen Schutz", .needsTheSources)
+    @Test("Custom headers: every connection check of the six sheets asks the one guard", .needsTheSources)
     func everyCheckAsksTheGuard() {
         var askers: Set<String> = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts()

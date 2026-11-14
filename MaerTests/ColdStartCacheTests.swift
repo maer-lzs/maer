@@ -91,7 +91,7 @@ struct ColdStartCacheTests {
 
     /// A load runs to its end while the cached render reads the disk (CarPlay
     /// at a cold start): the disk state does not lie down over the fresh one.
-    @Test("ein Laden waehrend des Cache-Lesens: der Platten-Stand legt sich nicht ueber den frischen")
+    @Test("a load during the cache read: the disk state does not lie over the fresh one")
     func aLoadDuringTheCachedReadWins() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }
@@ -112,7 +112,7 @@ struct ColdStartCacheTests {
 
     /// The same with a load that found an empty library: `entries` stays
     /// empty, so a second look at it alone would let the disk state through.
-    @Test("ein Laden mit leerer Bibliothek waehrend des Cache-Lesens: auch dann bleibt der Platten-Stand liegen")
+    @Test("a load with an empty library during the cache read: the disk state stays down then too")
     func anEmptyLoadDuringTheCachedReadWinsToo() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }
@@ -135,7 +135,7 @@ struct ColdStartCacheTests {
     /// CarPlay cold start, then the phone): counted before the cached render
     /// looked, it finds an empty library, and the disk state does not lie
     /// down in between.
-    @Test("ein Laden, das vor dem Cache-Weg begann und danach endet: der Platten-Stand legt sich nicht hin")
+    @Test("a load that began before the cache path and ends after it: the disk state does not lie down")
     func aLoadBegunBeforeTheCachedRenderWins() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }
@@ -160,7 +160,7 @@ struct ColdStartCacheTests {
     /// A load ran to its end before the cached render and found an empty
     /// library: `entries` is empty and no load is in flight, and still the
     /// disk state does not lie down; the load brought its own fallback.
-    @Test("ein Laden, das vor dem Cache-Weg ganz lief und leer fand: der Platten-Stand legt sich nicht hin")
+    @Test("a load that ran fully before the cache path and found it empty: the disk state does not lie down")
     func anEmptyLoadBeforeTheCachedRenderWins() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }
@@ -177,7 +177,7 @@ struct ColdStartCacheTests {
     /// A load without an available source (switched off) brings no fallback
     /// to the cache: it rebuilds empty and counts as a load, so the cached
     /// render after it shows nothing.
-    @Test("ein Laden ohne verfuegbare Quelle faellt auf leer, danach zeigt der Cache-Weg nichts")
+    @Test("a load without an available source falls to empty, afterwards the cache path shows nothing")
     func aLoadWithoutAnAvailableSourceLeavesTheLibraryEmpty() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }
@@ -195,7 +195,7 @@ struct ColdStartCacheTests {
     /// A load while the source's access could not be read yet is no load:
     /// the cached render still lays its state down, and a load once the
     /// access reads replaces it.
-    @Test("ein Laden mit noch nicht lesbarem Zugang zaehlt nicht, der Cache-Weg zeigt danach den Stand")
+    @Test("a load with access not yet readable does not count, the cache path then shows the state")
     func aLoadWithAnUnknownAccessDoesNotCount() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }
@@ -259,7 +259,7 @@ struct ColdStartCacheTests {
     /// The rows are an image of the servers. After a start that could not
     /// read them, a write reads them first, so a title the fetch no longer
     /// has leaves the rows instead of staying under a base nobody knew.
-    @Test("Bibliothek nach gescheitertem Start: ein Schrieb liest zuerst, ein Titel, den es am Server nicht mehr gibt, faellt")
+    @Test("Library after a failed start: a write reads first, a title the server no longer has falls")
     func aWriteAfterAFailedStartReadsFirst() async throws {
         let home = try tempDatabase()
         defer { try? FileManager.default.removeItem(at: home.folder) }

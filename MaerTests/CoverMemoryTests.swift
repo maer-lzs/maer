@@ -30,7 +30,7 @@ struct CoverMemoryTests {
         Int(max(image.size.width, image.size.height) * image.scale)
     }
 
-    @Test("ein grosses Cover wird vor dem Halten auf Anzeigegroesse gebracht, ein kleines bleibt")
+    @Test("a large cover is brought to display size before it is held, a small one stays")
     func aLargeCoverIsReducedBeforeItIsHeld() async throws {
         let limit = ImageCache.shared.displayPixelSize
         let (large, largeBytes) = try #require(try await ImageCache.displaySized(png(3000), maxPixelSize: limit))
@@ -44,7 +44,7 @@ struct CoverMemoryTests {
 
     /// A cell that asked for a thumbnail gets one from a fresh fetch, not
     /// the cover at display size.
-    @Test("ein frisch geladenes Cover kommt in eine Zelle in der Groesse, die sie anfragt")
+    @Test("a freshly loaded cover reaches a cell at the size it asks for")
     func aFreshCoverReachesACellAtItsSize() async throws {
         let (display, _) = try #require(try await ImageCache.displaySized(png(3000), maxPixelSize: 2000))
         let thumb = await ImageCache.reduced(display, maxPixelSize: 400)
@@ -53,7 +53,7 @@ struct CoverMemoryTests {
         #expect(await ImageCache.reduced(small, maxPixelSize: 400) === small, "a picture already as small stays")
     }
 
-    @Test("die Bild-Tuer gibt einer Vorschau-Zelle nach dem Netz eine Vorschau", .needsTheSources)
+    @Test("the image door gives a preview cell a preview after the network", .needsTheSources)
     func theDoorSizesTheNetworkAnswer() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/Artwork.swift"), encoding: .utf8))
@@ -65,7 +65,7 @@ struct CoverMemoryTests {
     /// Memory pressure releases the full covers and leaves the thumbnails,
     /// so the cells on screen stay warm. The system's own notification, as
     /// the device sends it.
-    @Test("Speicherdruck gibt die grossen Cover frei, die Vorschauen bleiben warm")
+    @Test("memory pressure releases the large covers, the previews stay warm")
     func memoryPressureReleasesTheFullCovers() async throws {
         let cache = ImageCache.shared
         let url = URL(string: "https://covers.example.invalid/pressure-\(UUID().uuidString).png")!
@@ -90,7 +90,7 @@ struct CoverMemoryTests {
     /// caller of `set` hands it the picture and the bytes `displaySized`
     /// gave, whatever their names: `let (image, data) = reduced ?? (…)`,
     /// where `reduced` is what `displaySized` returned.
-    @Test("kein Weg im Netz-Ordner legt ein frisch geladenes Cover unverkleinert ab", .needsTheSources)
+    @Test("no path in the network folder stores a freshly loaded cover unreduced", .needsTheSources)
     func noPathStoresTheOriginal() throws {
         // Not `\b`: by Unicode's word rules `tiers.set` is one word.
         let call = try Regex(#"(?:^|\W)set\((\w+), data: (\w+), for:"#)
@@ -119,7 +119,7 @@ struct CoverMemoryTests {
 
     /// The one network path reduces before it stores and hands on: the
     /// picture `set` gets and the fetch returns is the reduced one.
-    @Test("der Netzweg legt nur die verkleinerte Fassung ab und gibt nur sie weiter", .needsTheSources)
+    @Test("the network path stores only the reduced version and passes on only that", .needsTheSources)
     func theNetworkPathHoldsTheReducedCover() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/Artwork.swift"), encoding: .utf8))

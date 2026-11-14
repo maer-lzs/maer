@@ -99,7 +99,7 @@ struct CatalogStoreReadFenceTests {
     /// turned that into three full network passes, i.e. a spinner that never
     /// stops. Cancellations still leave the pass incomplete (retryable).
     @MainActor
-    @Test("ein gebuchter Fehlschlag zaehlt als Antwort — der Lauf ist komplett")
+    @Test("a booked failure counts as an answer, so the pass is complete")
     func aBookedFailureCompletesThePass() {
         var rows = FreeCatalogLoader.Rows()
         rows.problems[.books] = "URLError -1001"
@@ -112,13 +112,13 @@ struct CatalogStoreReadFenceTests {
         // so the gate may reopen (bounded) instead of freezing the session.
         #expect(!FreeCatalogLoader.passIsComplete(FreeCatalogLoader.Rows()))
     }
-    /// Ein Fach mit 102 Eintraegen zeigte EINE Kachel und nie ein Chevron,
-    /// also keinen Weg in die Genre-Bibliothek. Die Chevron-Regel
-    /// (`total > shown`) war richtig. Sie
-    /// bekam die Zahl des zufaellig geladenen Vorrats statt des Bestands.
-    /// Der Bestand steht in der Antwort; dieser Zaun haelt fest, dass er dort
-    /// auch abgeholt wird.
-    @Test("die Bestandszahl der Quelle wird gelesen, nicht geschaetzt")
+    /// A shelf with 102 entries showed ONE tile and never a chevron,
+    /// so no way into the genre library. The chevron rule
+    /// (`total > shown`) was right. It
+    /// got the count of the randomly loaded stock instead of the total.
+    /// The total is in the response; this fence pins that it is
+    /// also picked up from there.
+    @Test("the source's total count is read, not estimated")
     func stockCountIsReadFromTheResponse() throws {
         let wire = Data("""
         {"response":{"numFound":102,"start":0,"docs":[
@@ -126,11 +126,11 @@ struct CatalogStoreReadFenceTests {
         """.utf8)
         #expect(try ArchiveOrgClient.decodeTotal(wire) == 102)
         #expect(try ArchiveOrgClient.decodePopular(wire).count == 2)
-        // Mit dem Vorrat statt dem Bestand waere 2 > 2 falsch. Kein Chevron,
-        // genau der gemeldete Zustand. Mit dem Bestand ist 102 > 2 wahr.
+        // With the stock instead of the total, 2 > 2 would be false. No chevron,
+        // exactly the reported state. With the total, 102 > 2 is true.
         #expect(102 > 2)
-        // Eine Antwort ohne die Zahl erfindet keine: dann traegt die Reihe
-        // die Existenz-Form des Chevrons, nie eine geratene Menge.
+        // A response without the count invents none: then the row carries
+        // the existence form of the chevron, never a guessed amount.
         let ohne = Data("{\"response\":{\"docs\":[]}}".utf8)
         #expect(try ArchiveOrgClient.decodeTotal(ohne) == nil)
     }
@@ -140,15 +140,15 @@ struct CatalogStoreReadFenceTests {
     /// whether a tile has a picture, measured at 43 s per
     /// pass. This fence holds the construction: picking is a pure cut, and
     /// no surface may reintroduce a per-tile probe on the way to a row.
-    @Test("das Bauen einer Reihe fragt das Netz NICHT je Kachel", .needsTheSources)
+    @Test("building a row does NOT ask the network per tile", .needsTheSources)
     func buildingARowDoesNotProbePerTile() throws {
         let cut = FreeCatalogLoader.picksWithoutProbing(
             (1...30).map { LibraryItem(id: "arch:item-\($0)", media: nil, addedAt: nil) },
             cap: RowPreview.limit)
         #expect(cut.count == RowPreview.limit)
         #expect(cut.first?.id == "arch:item-1", "die Ordnung der Quelle bleibt")
-        // Rot-Probe der Konstruktion: die Probe-Namen sind aus dem Bauweg
-        // verschwunden. Kehrt einer zurueck, faellt es hier auf.
+        // Red probe of the construction: the probe names are gone from the
+        // build path. If one returns, it shows up here.
         // The build path is the two loaders; both are read.
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -162,11 +162,11 @@ struct CatalogStoreReadFenceTests {
                 "eine Cover-Probe je Kachel ist zurueck im Bauweg")
     }
 
-    /// Eine Reihe holt keine Kapitel. Der alte Vollabruf war zu 95 %
-    /// Kapitelliste (291 kB fuer 20 Buecher, gemessen am Endpunkt); die
-    /// Feldliste laesst sie weg und traegt dafuer `genres`. Der Zaun haelt
-    /// beide Haelften fest. Was die Reihe holt UND was sie nicht holt.
-    @Test("die Reihen-Feldliste laesst die Kapitel weg und traegt die Gattungen")
+    /// A row fetches no chapters. The old full fetch was 95 % chapter
+    /// list (291 kB for 20 books, measured at the endpoint); the
+    /// field list leaves them out and carries `genres` instead. The fence pins
+    /// both halves. What the row fetches AND what it does not fetch.
+    @Test("the row field list leaves out the chapters and carries the genres")
     func rowFieldsCarryGenresAndNoChapters() {
         let fields = LibriVoxClient.rowFields
         #expect(fields.contains("genres"), "die Gattungen sind der Grund fuer den Umbau")
@@ -177,24 +177,24 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// Die gemessenen OTR-Begriffe liegen auf der EINEN Achse.
-    @Test("die nachgemessenen OTR-Begriffe sind einsortiert")
+    /// The measured OTR terms lie on the ONE axis.
+    @Test("the re-measured OTR terms are sorted in")
     func measuredOTRTermsAreOnTheAxis() {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective"]) == ["crime"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["mystery"]) == ["crime"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Crime Drama"]) == ["crime"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Drama"]) == ["drama"])
-        // Rot-Probe: die Zuordnung bleibt EXAKT, kein Teilstring.
+        // Red probe: the assignment stays EXACT, no substring.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Western Electric"]).isEmpty)
     }
 
-    /// Der Durchlauf veroeffentlicht in der Reihenfolge, in der die Quellen
-    /// FERTIG werden.
-    /// `async let` plus sequenzielles `await` wartet in STARTreihenfolge. Die
-    /// drei schnellen Reihen (je rund 1 s) hingen damit an der langsamsten
-    /// (LibriVox, gemessen 7-35 s), und das Veroeffentlichen je Reihe konnte
-    /// gar nicht wirken. Rot-Probe: die alte Form stand genau hier.
-    @Test("der Durchlauf wartet auf Fertigstellung, nicht auf die Startreihenfolge", .needsTheSources)
+    /// The pass publishes in the order in which the sources
+    /// FINISH.
+    /// `async let` plus a sequential `await` waits in START order. The
+    /// three fast rows (about 1 s each) thus hung on the slowest
+    /// (LibriVox, measured 7-35 s), and publishing per row could not
+    /// work at all. Red probe: the old form stood exactly here.
+    @Test("the pass waits for completion, not for the start order", .needsTheSources)
     func theLoadWaitsForCompletionNotForStartOrder() throws {
         let text = try String(contentsOf: sourceFile("Sources/ViewModels/CatalogSourceLoader.swift"),
                               encoding: .utf8)
@@ -206,12 +206,12 @@ struct CatalogStoreReadFenceTests {
                 "eine Quelle wird wieder in Startreihenfolge abgewartet")
         #expect(body.contains("withTaskGroup"),
                 "das Ergebnis-orientierte Warten ist aus dem Durchlauf verschwunden")
-        // Und die zweite Haelfte: eine abgeschaltete Quelle erzeugt keinen
-        // Abruf mehr, statt gestartet und weggeworfen zu werden.
+        // And the second half: a switched-off source creates no
+        // fetch any more, instead of being started and thrown away.
         #expect(!body.contains("_ = await "),
                 "eine abgeschaltete Quelle wird wieder gestartet und verworfen")
-        // Rot-Probe am Instrument selbst: gegen die ALTE Fassung schlaegt es
-        // an. Ein Zaun, der nur nichts findet, beweist nichts.
+        // Red probe on the instrument itself: against the OLD version it
+        // trips. A fence that merely finds nothing proves nothing.
         let alt = """
             @MainActor
             enum Alt {
@@ -228,13 +228,13 @@ struct CatalogStoreReadFenceTests {
         #expect(alteForm.contains("async let"), "die Rot-Probe sieht die alte Form nicht")
         #expect(alteForm.contains("_ = await "), "die Rot-Probe sieht das Wegwerfen nicht")
         #expect(!alteForm.contains("withTaskGroup"))
-        // Und die Gegenrichtung: ein KOMMENTAR, der die alte Form erklaert,
-        // darf den Zaun nicht ausloesen. Genau daran ist er einmal gerissen.
+        // And the opposite direction: a COMMENT that explains the old form
+        // must not trigger the fence. That is exactly where it once broke.
         let erklaert = """
             @MainActor
             enum Neu {
                 static func load(onRow: RowSink? = nil) async -> SourceRows {
-                    // `async let` plus sequenzielles `await` wartete in Startreihenfolge.
+                    // `async let` plus a sequential `await` waited in start order.
                     await withTaskGroup(of: Fetched.self) { group in }
                     return rows
                 }
@@ -245,17 +245,17 @@ struct CatalogStoreReadFenceTests {
                 "ein Treffer im Kommentar wird als Treffer im Code gewertet")
     }
 
-    /// Am Endpunkt gemessen: der Server rechnet die ganze Antwort
-    /// fertig, bevor er das erste Byte sendet (22-25 s bis zum ersten Byte).
-    /// Gegen das gemeinsame Zeitlimit von 20 s konnte diese Abfrage nur ueber
-    /// die Wiederhol-Leiter verlieren. 20+20+20 und dann FEHLSCHLAG. Sie
-    /// braucht also ihr eigenes Limit, wie gutendex es hat.
+    /// Measured at the endpoint: the server computes the whole response
+    /// before it sends the first byte (22-25 s to the first byte).
+    /// Against the shared timeout of 20 s, this query could only lose through
+    /// the retry ladder. 20+20+20 and then FAILURE. So it
+    /// needs its own limit, as gutendex has.
     ///
-    /// `extended=1` wegzulassen wuerde die Zeit halbieren und ist trotzdem
-    /// falsch: es ist der einzige Weg zu `url_iarchive`, und daran haengt das
-    /// COVER jeder LibriVox-Kachel (gemessen: weder `fields=` noch die nackte
-    /// Form liefern es). Der Zaun haelt genau diese Abwaegung fest.
-    @Test("die langsame Quelle hat ihr eigenes Zeitlimit, und die Cover-Quelle bleibt", .needsTheSources)
+    /// Dropping `extended=1` would halve the time and is still
+    /// wrong: it is the only way to `url_iarchive`, and the
+    /// COVER of every LibriVox tile hangs on it (measured: neither `fields=` nor the bare
+    /// form delivers it). The fence pins exactly this trade-off.
+    @Test("the slow source has its own timeout, and the cover source stays", .needsTheSources)
     func theSlowSourceCarriesItsOwnTimeout() throws {
         let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
                               encoding: .utf8)
@@ -264,45 +264,45 @@ struct CatalogStoreReadFenceTests {
                 "die Reihe faellt wieder ins geteilte 20-s-Limit und damit in die Wiederhol-Leiter")
         #expect(new.contains("\"extended\""),
                 "ohne den Parameter fehlt url_iarchive — die Kacheln verlieren ihre Cover")
-        // Und die Feldliste muss die Cover-Quelle ueberhaupt anfragen.
+        // And the field list must request the cover source at all.
         #expect(LibriVoxClient.rowFields.contains("url_iarchive"))
-        // Die zweite Haelfte dieses Zauns pruefte den
-        // LibriVox-Gattungsfeed. Der ist GELOESCHT (er lieferte `lv:`-Buecher
-        // fuer eine Flaeche aus `lva:`-Dokumenten, also zwei Kennungen fuer
-        // dieselben Titel). Der Zaun haelt jetzt fest, dass er nicht
-        // zurueckkommt, statt seine Parameter zu bewachen.
+        // The second half of this fence checked the
+        // LibriVox genre feed. It is DELETED (it delivered `lv:` books
+        // for a surface made of `lva:` documents, so two identifiers for
+        // the same titles). The fence now pins that it does not
+        // come back, instead of guarding its parameters.
         #expect(!text.contains("func books(genre:"),
                 "der LibriVox-Gattungsfeed ist zurueck — zwei Kennungen fuer dieselben Titel")
     }
 
-    /// Zwei von vier Quellen hatten ihre Kachelreihen verloren: `shelves` las
-    /// nur noch `shelfStock`, und das fuellte sich
-    /// ausschliesslich ueber `archiveBaseQuery`, die fuer LibriVox und
-    /// Gutenberg `nil` lieferte. Die Flaeche versprach die Faecher
-    /// (`hasChips`) und lieferte sie nie.
+    /// Two of four sources had lost their tile rows: `shelves` read
+    /// only `shelfStock` any more, and that was filled
+    /// exclusively through `archiveBaseQuery`, which returned `nil` for LibriVox and
+    /// Gutenberg. The surface promised the shelves
+    /// (`hasChips`) and never delivered them.
     ///
-    /// Der Zaun haelt die INVARIANTE, nicht den Einzelfall: jede Quelle, die
-    /// Faecher verspricht, kann sie auch erfragen. Und umgekehrt.
-    @Test("keine Quelle verspricht Faecher, die sie nicht erfragen kann")
+    /// The fence pins the INVARIANT, not the single case: every source that
+    /// promises shelves can also query them. And the other way round.
+    @Test("no source promises shelves that it cannot query")
     func everyShelfPromiseIsBackedByAQuery() {
         for source in CatalogSource.allCases where CatalogShelfSource.canServeShelves(source) {
-            // Entweder es gibt eine archive.org-Basis. Oder die Quelle hat
-            // ihren EIGENEN Weg im geteilten Fach-Abruf.
+            // Either there is an archive.org base. Or the source has
+            // its OWN path in the shared shelf fetch.
             let ownWay = source == .gutenberg
             #expect(ArchiveOrgClient.archiveBaseQuery(for: source) != nil || ownWay,
                     "\(source.rawValue) verspricht Faecher ohne Abfrage dahinter")
         }
-        // Rot-Probe: die Regression war genau das Fehlen dieser Basis.
+        // Red probe: the regression was exactly the absence of this base.
         #expect(ArchiveOrgClient.archiveBaseQuery(for: .librivox) != nil,
                 "LibriVox ist wieder ohne Fach-Abfrage — das war R53")
-        // Und die Quellen ohne Achse versprechen auch nichts.
+        // And the sources without an axis promise nothing either.
         #expect(!CatalogShelfSource.canServeShelves(.oerr))
     }
 
-    /// Zwei Klassen in einem Zaun: das Tor darf den Lauf nicht buchen,
-    /// BEVOR er stattfand, und ein
-    /// Fehlschlag ist eine ANTWORT, nicht ein stilles Fehlen.
-    @Test("das Faecher-Tor bucht nach dem Lauf, und ein Fehlschlag ist unterscheidbar", .needsTheSources)
+    /// Two classes in one fence: the gate must not book the pass
+    /// BEFORE it took place, and a
+    /// failure is an ANSWER, not a silent absence.
+    @Test("the shelf gate books after the pass, and a failure is distinguishable", .needsTheSources)
     func theShelfGateBooksAfterwardsAndFailuresAreVisible() throws {
         let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
@@ -318,12 +318,12 @@ struct CatalogStoreReadFenceTests {
         #expect(body.contains("CatalogPageFailure.sentence(for:"), "der Grund wird nicht mehr benannt")
     }
 
-    /// Die Faecher werden je Tag einmal geholt, fuer JEDE Quelle.
-    /// Der Speicher liegt in dem Mechanismus, der einen Ablauf schon HAT.
-    /// Und dessen Gruendungsregel genau die ist, die hier zaehlt: ein
-    /// Fehlschlag wird nie aufgeschrieben (sonst waere die Seite den Rest des
-    /// Tages kaputt). Der Zaun prueft beide Invarianten am Verhalten.
-    @Test("der Tages-Speicher laeuft am Tageswechsel ab und nimmt nie einen Fehlschlag auf")
+    /// The shelves are fetched once per day, for EVERY source.
+    /// The store lives in the mechanism that already HAS an expiry.
+    /// And its founding rule is exactly the one that counts here: a
+    /// failure is never written down (otherwise the page would be broken for the rest of
+    /// the day). The fence checks both invariants on behavior.
+    @Test("the day store expires at the day change and never takes in a failure")
     func theDayStoreExpiresAndNeverKeepsAFailure() throws {
         let suite = "shelfstore-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -334,31 +334,31 @@ struct CatalogStoreReadFenceTests {
 
         #expect(store.store(.found(shelf), for: "adventure", defaults: defaults, now: heute))
         #expect(store.load(defaults: defaults, now: heute)["adventure"] != nil, "der Treffer fehlt")
-        // Ein Fehlschlag schreibt NICHTS. Auch nicht ueber einen Treffer.
+        // A failure writes NOTHING. Not even over a hit.
         #expect(store.store(.failed, for: "crime", defaults: defaults, now: heute) == false)
         #expect(store.load(defaults: defaults, now: heute)["crime"] == nil,
                 "ein Fehlschlag ist im Tages-Speicher gelandet")
-        // Ein sauberer Lauf ohne Inhalt IST eine Antwort und darf bleiben.
+        // A clean pass without content IS an answer and may stay.
         #expect(store.store(.absent, for: "poetry", defaults: defaults, now: heute))
-        // Der Ablauf haengt am TAGESWECHSEL, derselbe wie bei der Rotation.
-        // Eine rollende Frist waere eine zweite Uhr: ein Eintrag von 23:50
-        // antwortete am naechsten Abend noch mit der Seite von gestern.
+        // The expiry hangs on the DAY CHANGE, the same as for the rotation.
+        // A rolling deadline would be a second clock: an entry from 23:50
+        // would still answer the next evening with yesterday's page.
         let morgen = heute.addingTimeInterval(24 * 3600)
         #expect(CatalogRotation.dayIndex(on: morgen) == CatalogRotation.dayIndex(on: heute) + 1)
         #expect(store.load(defaults: defaults, now: morgen).isEmpty,
                 "der Tages-Speicher ueberlebt den Tageswechsel")
-        // Rot-Probe am Instrument: derselbe Eintrag, wenige Minuten spaeter,
-        // steht selbstverstaendlich noch. Sonst pruefte der Fall nur, dass
-        // `load` ueberhaupt etwas verwirft.
+        // Red probe on the instrument: the same entry, a few minutes later,
+        // naturally still stands. Otherwise the case would only check that
+        // `load` discards anything at all.
         #expect(store.load(defaults: defaults, now: heute.addingTimeInterval(600))["adventure"] != nil)
     }
 
-    /// JEDER Weg, der Faecher holt, geht durch die eine Tuer. Der Auftrag
-    /// nennt Netlabels und Schellack ausdruecklich; die Jahrzehnte und die
-    /// Beliebt-Reihen der Schellack-Flaechen liefen an ihr vorbei, weil sie
-    /// eigene Ladewege sind. Ohne diesen Zaun faellt der naechste neue
-    /// Ladeweg genauso durch, und niemand sieht es.
-    @Test("jeder Faecher-Ladeweg geht durch die eine Tuer, nicht am Speicher vorbei", .needsTheSources)
+    /// EVERY path that fetches shelves goes through the one door. The brief
+    /// names netlabels and shellac explicitly; the decades and the
+    /// popular rows of the shellac surfaces bypassed it, because they are
+    /// their own load paths. Without this fence the next new
+    /// load path falls through just the same, and nobody sees it.
+    @Test("every shelf load path goes through the one door, not past the store", .needsTheSources)
     func everyShelfPathGoesThroughTheOneDoor() throws {
         let seite = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
@@ -378,21 +378,21 @@ struct CatalogStoreReadFenceTests {
                 "die Schellack-Schleife fragt den Client wieder direkt")
     }
 
-    /// Der WARME Besuch darf keinen Platzhalter aufblitzen lassen. Liegt der
-    /// Tag im Speicher, kommen die Kacheln sofort; ein Skelett, das dann
-    /// kurz aufleuchtet, IST der Layout-Shift, gegen den es gebaut wurde.
-    /// Die Bedingung dafuer ist, dass der Platzhalter am leeren
-    /// Tages-Speicher haengt, nicht nur an der Wartezeit.
-    @Test("ein gespeicherter Tag verhindert den Platzhalter, statt ihn aufblitzen zu lassen", .needsTheSources)
+    /// The WARM visit must not flash a placeholder. If the
+    /// day is in the store, the tiles come at once; a skeleton that then
+    /// briefly lights up IS the layout shift it was built against.
+    /// The condition for this is that the placeholder hangs on the empty
+    /// day store, not only on the wait time.
+    @Test("a stored day prevents the placeholder instead of flashing it", .needsTheSources)
     func aStoredDayPreventsThePlaceholder() throws {
         let suite = "warmday-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
 
-        // Kalt: der Speicher weiss von keinem Fach.
+        // Cold: the store knows of no shelf.
         #expect(CatalogShelfSource.knownShelfKeys(for: .librivox, defaults: defaults).isEmpty)
 
-        // Warm: genau die Faecher, die im Tag stehen, und nur die.
+        // Warm: exactly the shelves that are in the day, and only those.
         let id = CatalogShelfSource.stockId(surface: CatalogSource.librivox.rawValue,
                                             shelf: "crime")
         CatalogShelfSource.shelfStore.store(
@@ -403,12 +403,12 @@ struct CatalogStoreReadFenceTests {
                                          year: nil, subject: nil)])),
             for: id, rule: CatalogShelfSource.shelfRule(forId: id), defaults: defaults)
         #expect(CatalogShelfSource.knownShelfKeys(for: .librivox, defaults: defaults) == ["crime"])
-        // Und der Tag der einen Quelle beantwortet nicht die andere.
+        // And the day of one source does not answer for the other.
         #expect(CatalogShelfSource.knownShelfKeys(for: .oldTimeRadio, defaults: defaults).isEmpty)
 
-        // Die Flaeche haengt den Platzhalter an genau diese Antwort. Ohne
-        // diese Klausel zeigte der warme Besuch erst ein Skelett und danach
-        // die Kacheln, die schon dalagen.
+        // The surface hangs the placeholder on exactly this answer. Without
+        // this clause the warm visit would first show a skeleton and then
+        // the tiles that were already there.
         let seite = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                                encoding: .utf8)
         let body = try #require(functionBody(of: "private var showsShelfPlaceholder: Bool {",
@@ -416,18 +416,18 @@ struct CatalogStoreReadFenceTests {
         #expect(body.contains("knownShelfKeys.isEmpty"),
                 "der Platzhalter blitzt beim warmen Besuch auf")
 
-        // Dieselbe Klausel auf den beiden Musik-Flaechen. Sie lesen den Tag
-        // ueber den Bereichs-Schluessel, also steht dort `storedDay`.
+        // The same clause on the two music surfaces. They read the day
+        // through the area key, so `storedDay` is there.
         let musik = try String(contentsOf: sourceFile("Sources/Views/Music/ArchiveMusicPages.swift"),
                                encoding: .utf8)
         let kopf = "private var showsShelfPlaceholder: Bool {"
         var rest = Substring(musik)
         var gefunden = 0
         while let treffer = rest.range(of: kopf) {
-            // Leerraum zusammenziehen, bevor gesucht wird: ein Aufruf, der
-            // ueber zwei Zeilen laeuft, ist derselbe Aufruf. Sonst pruefte
-            // der Zaun die Zeilenlaenge statt der Aussage, und genau daran
-            // ist er beim ersten Lauf gerissen.
+            // Collapse whitespace before searching: a call that spans
+            // two lines is the same call. Otherwise the fence would check
+            // the line length instead of the statement, and that is exactly where
+            // it broke on the first run.
             let rumpf = try #require(functionBody(of: kopf, in: String(rest)))
                 .split(whereSeparator: \.isWhitespace).joined()
             #expect(rumpf.contains("storedDay(surface:"),
@@ -440,20 +440,20 @@ struct CatalogStoreReadFenceTests {
         #expect(gefunden == 2, "beide Musik-Flaechen tragen die Klausel nicht")
     }
 
-    /// Und die Tuer LIEST den Speicher auch. Ein Zaun am Quelltext allein
-    /// zeigte nur, dass der Aufruf dasteht.
-    @Test("ein niedergeschriebener Tag beantwortet die Abfrage, ohne zu fragen")
+    /// And the door also READS the store. A fence on the source text alone
+    /// only showed that the call is there.
+    @Test("a written-down day answers the query without asking")
     func aStoredDayAnswersWithoutAsking() async throws {
         let stock = CatalogShelfSource.ShelfStock(
             total: 7, books: nil,
             docs: [ArchivePopularDoc(identifier: "gunsmoke", title: nil, creator: nil,
                                      downloads: nil, runtime: nil, licenseurl: nil,
                                      year: nil, subject: nil)])
-        // Jahrzehnt: der gespeicherte Tag traegt die Antwort.
+        // Decade: the stored day carries the answer.
         let (jahrzehnt, weg) = try await CatalogShelfSource.decadePreview(
             source: .oldTimeRadio, decade: "1950s", rows: 12, storedDay: ["1950s": stock])
         #expect(weg == .day, "das Jahrzehnt fragte am gespeicherten Tag vorbei")
-        // Die Zeile eines Durchgangs nennt jeden Weg, auch den mit null.
+        // The line of a pass names every path, also the one with zero.
         #expect(CatalogShelfSource.Way.tally([.stock, .day, .stock]) == "stock=2 day=1 network=0")
         guard case .archive(let docs, let total) = jahrzehnt else {
             Issue.record("das Jahrzehnt antwortet nicht mit Archive-Kacheln"); return
@@ -461,19 +461,19 @@ struct CatalogStoreReadFenceTests {
         #expect(docs.first?.identifier == "gunsmoke")
         #expect(total == 7)
 
-        // Beliebt-Reihe einer Flaeche: dieselbe Antwort aus demselben Tag.
+        // Popular row of a surface: the same answer from the same day.
         let beliebt = try await CatalogShelfSource.areaPopular(
             area: ArchiveMusicCatalog.shellacShelves[0], rows: 12, page: 1,
             storedDay: [CatalogShelfSource.popularShelf: stock])
         #expect(beliebt.first?.identifier == "gunsmoke")
     }
 
-    /// Der Speicher schreibt jetzt Archive-Dokumente nieder, also muss der
-    /// Eintrag seinen eigenen Leseweg ueberleben. Geprueft wird gegen die
-    /// SERVER-Form: `creator` als blanke Zeichenkette, `year` als ZAHL, wie
-    /// archive.org es liefert. Ein Rundlauf allein bewiese nur, dass mein
-    /// Schreiber zu meinem Leser passt.
-    @Test("ein niedergeschriebenes Archive-Dokument ueberlebt seinen eigenen Leseweg")
+    /// The store now writes down archive documents, so the
+    /// entry must survive its own read path. The check runs against the
+    /// SERVER form: `creator` as a bare string, `year` as a NUMBER, as
+    /// archive.org delivers it. A round trip alone would only prove that my
+    /// writer fits my reader.
+    @Test("a written-down archive document survives its own read path")
     func aStoredArchiveDocSurvivesItsOwnReading() throws {
         let serverForm = Data("""
         {"identifier":"gunsmoke","title":"Gunsmoke","creator":"CBS","downloads":42,
@@ -496,10 +496,10 @@ struct CatalogStoreReadFenceTests {
         #expect(wieder.downloads == vomServer.downloads)
     }
 
-    /// Ein Eintrag wird unter Quelle UND Fach abgelegt. Ohne die Quelle im
-    /// Schluessel wuerden sechs Flaechen dieselben Fach-Namen auf denselben
-    /// Platz schreiben, und LibriVox bekaeme die Kacheln von Old Time Radio.
-    @Test("der Schluessel traegt die Quelle, nicht nur das Fach")
+    /// An entry is filed under source AND shelf. Without the source in the
+    /// key, six surfaces would write the same shelf names to the same
+    /// place, and LibriVox would get the tiles of Old Time Radio.
+    @Test("the key carries the source, not only the shelf")
     func theStoreKeyCarriesTheSurface() throws {
         let suite = "shelfstore-surface-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -516,21 +516,21 @@ struct CatalogStoreReadFenceTests {
         #expect(store.load(defaults: defaults, now: heute)[otr] == nil,
                 "der Eintrag der einen Quelle beantwortet die andere")
 
-        // Und die Regel je Eintrag unterscheidet die Quellen ebenfalls: sie
-        // traegt die Abfrage, nicht nur die Begriffe. Sonst haette der
-        // Wechsel der Eltern-Abfrage einer Flaeche den Speicher der anderen
-        // gueltig gelassen.
+        // And the rule per entry distinguishes the sources as well: it
+        // carries the query, not only the terms. Otherwise the
+        // change of one surface's parent query would have left the store of the other
+        // valid.
         #expect(CatalogShelfSource.shelfRule(forId: lv)
                 != CatalogShelfSource.shelfRule(forId: otr))
     }
 
-    /// Hoerbuecher-Bibliothek, Start und Podcast-Bibliothek zeigten dieselbe
-    /// Kachelreihe. Der Kommentar in `PodcastsView` behauptete die
-    /// Disjunktheit, der Code darunter stellte sie nie her. Der Test, auf den
-    /// er sich berief (`Catalog sources split disjointly …`,
-    /// `FreeCatalogTests`), ist nicht falsch: er teilt die QUELLEN-
-    /// Aufzaehlung, nicht die Kacheln. Das ist der fehlende Satz.
-    @Test("Podcast-Tab zeigt keine Katalog-Kachel, Hoerbuecher-Tab keinen Feed")
+    /// Audiobook library, Start and podcast library showed the same
+    /// tile row. The comment in `PodcastsView` claimed
+    /// disjointness, the code below never established it. The test it
+    /// appealed to (`Catalog sources split disjointly …`,
+    /// `FreeCatalogTests`) is not wrong: it splits the SOURCE
+    /// enumeration, not the tiles. That is the missing sentence.
+    @Test("podcast tab shows no catalog tile, audiobook tab no feed")
     func theTwoTabRowsAreDisjointAtTheTiles() {
         let rows = Self.filledRows()
         let podcasts = CatalogMix.tiles(for: .podcasts, rows: rows)
@@ -547,11 +547,11 @@ struct CatalogStoreReadFenceTests {
                 #expect(Bool(false), Comment(rawValue: "Feed im Buecher-Tab: \(entry.feedURL)"))
             }
         }
-        // Und keine Kachel steht in BEIDEN.
+        // And no tile is in BOTH.
         #expect(Set(podcasts.map(\.id)).isDisjoint(with: Set(books.map(\.id))))
-        // Rot-Probe: das Instrument SIEHT beide Sorten. Start mischt sie, und
-        // genau so sah die Podcast-Reihe bis heute aus. Ohne diesen Nachweis
-        // waere ein blinder Zaun von einem leeren Ergebnis nicht zu trennen.
+        // Red probe: the instrument SEES both kinds. Start mixes them, and
+        // that is exactly how the podcast row looked until now. Without this proof
+        // a blind fence could not be told from an empty result.
         let home = CatalogMix.tiles(for: .home, rows: rows)
         var sahFeed = false, sahItem = false
         for tile in home {
@@ -562,11 +562,11 @@ struct CatalogStoreReadFenceTests {
                 "die Rot-Probe sieht die gemischte Form nicht — der Zaun beweist nichts")
     }
 
-    /// Start darf beide Welten zeigen, aber nie kachelgleich
-    /// mit einer Tab-Reihe sein. Der geteilte Sitzungs-Startwert garantierte
-    /// bisher das GEGENTEIL. Seine Absicht (innerhalb einer Sitzung sortiert
-    /// sich nichts um) bleibt und wird je Flaeche abgeleitet.
-    @Test("Start ist keine Zwillingsreihe, und der Startwert bleibt je Sitzung stabil")
+    /// Start may show both worlds, but must never be tile-identical
+    /// to a tab row. The shared session seed guaranteed
+    /// the OPPOSITE until now. Its intent (within a session nothing is
+    /// re-sorted) stays and is derived per surface.
+    @Test("Start is no twin row, and the seed stays stable per session")
     func homeIsNeverATwinOfATabRow() {
         for a in CatalogMix.Surface.allCases {
             for b in CatalogMix.Surface.allCases where a != b {
@@ -574,9 +574,9 @@ struct CatalogStoreReadFenceTests {
                         "\(a.rawValue) und \(b.rawValue) teilen ihren Startwert")
             }
         }
-        // Stabil: derselbe Sitzungswert ergibt denselben Flaechenwert.
+        // Stable: the same session value yields the same surface value.
         #expect(CatalogMix.seed(for: .home, session: 7) == CatalogMix.seed(for: .home, session: 7))
-        // Und am Ergebnis: Start ist nicht kachelgleich mit einer Tab-Reihe.
+        // And on the result: Start is not tile-identical to a tab row.
         let rows = Self.filledRows()
         let home = CatalogMix.tiles(for: .home, rows: rows).map(\.id)
         #expect(!home.isEmpty, "die Probe misst nichts")
@@ -584,17 +584,17 @@ struct CatalogStoreReadFenceTests {
         #expect(home != CatalogMix.tiles(for: .books, rows: rows).map(\.id))
     }
 
-    /// Ein Fach mit 2829 Eintraegen zeigte ZWEI Kacheln. Die Ursache war kein
-    /// duenner Bestand, sondern ein Trennfilter auf seiner EIGENEN Quelle:
-    /// `isNotLibriVoxDuplicate` verwirft jedes Dokument, das den Namen
-    /// LibriVox enthaelt. Auf der LibriVox-Seite also fast alles.
-    /// Am lebenden Endpunkt mit der Abfrage der Flaeche gemessen: **12 von 12
-    /// verworfen** (LibriVox), **0 von 12** bei Archive-Hoerbuechern und OTR,
-    /// **0 von 50** im breiten Abzug der Archive-Hoerbuecher.
+    /// A shelf with 2829 entries showed TWO tiles. The cause was not a
+    /// thin stock, but a separating filter on its OWN source:
+    /// `isNotLibriVoxDuplicate` discards every document that contains the name
+    /// LibriVox. So on the LibriVox side almost everything.
+    /// Measured at the live endpoint with the surface's query: **12 of 12
+    /// discarded** (LibriVox), **0 of 12** for archive audiobooks and OTR,
+    /// **0 of 50** in the broad pull of the archive audiobooks.
     ///
-    /// INVARIANTE: ein Filter, der zwei Quellen voneinander trennt, laeuft
-    /// nie auf der Quelle, die er definiert.
-    @Test("der Trennfilter laeuft nie auf der Quelle, die er definiert")
+    /// INVARIANT: a filter that separates two sources from each other never
+    /// runs on the source it defines.
+    @Test("the separating filter never runs on the source it defines")
     func theSeparationNeverRunsOnItsOwnSource() {
         #expect(!FreeCatalog.separatesFromLibriVox(.librivox),
                 "die LibriVox-Seite filtert wieder gegen sich selbst")
@@ -602,53 +602,53 @@ struct CatalogStoreReadFenceTests {
             #expect(FreeCatalog.separatesFromLibriVox(other),
                     "\(other.rawValue) trennt nicht mehr von LibriVox")
         }
-        // Am VERHALTEN, nicht nur an der Regel. Ein echter Titel aus der
-        // gemessenen Verworfen-Liste.
+        // On BEHAVIOR, not only on the rule. A real title from the
+        // measured discard list.
         let doc = ArchivePodDoc.librivoxAnniversary
         #expect(!FreeCatalog.isCuratedArchiveDoc(doc, separatingFromLibriVox: true),
                 "die Rot-Probe sieht den Filter nicht — er wirft nichts weg")
         #expect(FreeCatalog.isCuratedArchiveDoc(doc, separatingFromLibriVox: false),
                 "der Titel faellt weiterhin auf seiner eigenen Quelle")
-        // Die Sperrliste gilt UNABHAENGIG davon weiter, auf beiden Wegen.
+        // The block list keeps applying INDEPENDENTLY of this, on both paths.
         let gesperrt = ArchivePodDoc.denied
         #expect(!FreeCatalog.isCuratedArchiveDoc(gesperrt, separatingFromLibriVox: false),
                 "die Sperrliste ist mit der Trennung mitgefallen")
     }
 
-    /// Der Platzhalter gegen den Layout-Shift haengt an der GEMESSENEN
-    /// Wartezeit, nicht am Quellennamen. Sonst steht in einem Monat ein
-    /// `== .gutenberg` da, dessen Grund niemand mehr kennt.
+    /// The placeholder against the layout shift hangs on the MEASURED
+    /// wait time, not on the source name. Otherwise in a month there is a
+    /// `== .gutenberg` whose reason nobody knows any more.
     ///
-    /// Die GROESSE hat gewechselt, nicht die Toleranz: gemessen wird der
-    /// DURCHGANG, auf den die Flaeche wartet, nicht die einzelne Abfrage.
-    /// An der Einzelabfrage sahen die Archive-Quellen schnell aus (1,2 s)
-    /// und bekamen keinen Platzhalter, waehrend ihr kalter Durchgang acht
-    /// Sekunden lang Luecken stehen liess, ohne etwas zu sagen. Gemessen:
-    /// archive.org 8,4-17,8 s je Durchgang, gutendex 454 s kalt / 41 s warm.
-    @Test("der Platzhalter haengt an der Wartezeit des DURCHGANGS, nicht am Quellennamen", .needsTheSources)
+    /// The MEASURE has changed, not the tolerance: what is measured is the
+    /// PASS the surface waits for, not the single query.
+    /// On the single query the archive sources looked fast (1,2 s)
+    /// and got no placeholder, while their cold pass left gaps standing for eight
+    /// seconds without saying anything. Measured:
+    /// archive.org 8,4-17,8 s per pass, gutendex 454 s cold / 41 s warm.
+    @Test("the placeholder hangs on the wait time of the PASS, not on the source name", .needsTheSources)
     func thePlaceholderHangsOnTheMeasuredWait() throws {
-        // Jede Quelle, die Faecher bedient, wartet laenger als die Schwelle
-        // und sagt es deshalb.
+        // Every source that serves shelves waits longer than the threshold
+        // and therefore says so.
         for langsam in [CatalogSource.gutenberg, .librivox, .archiveBooks, .oldTimeRadio] {
             #expect(CatalogShelfSource.showsLoadingPlaceholder(langsam),
                     "\(langsam.rawValue) laesst den kalten Durchgang stumm stehen")
         }
-        // Rot-Probe am Instrument: eine Quelle ohne Faecher wartet nicht und
-        // bekommt auch nichts. Ohne sie meldete eine Regel, die IMMER wahr
-        // ist, genauso gruen.
+        // Red probe on the instrument: a source without shelves does not wait and
+        // gets nothing either. Without it, a rule that is ALWAYS true
+        // would report green just the same.
         for ohne in CatalogSource.allCases where !CatalogShelfSource.canServeShelves(ohne) {
             #expect(!CatalogShelfSource.showsLoadingPlaceholder(ohne),
                     "\(ohne.rawValue) zeigt ein Skelett fuer eine Wartezeit, die es nicht gibt")
         }
-        // Die Entscheidung MUSS aus der Zahl folgen. Sonst ist es doch ein
-        // Sonderfall mit anderem Namen.
+        // The decision MUST follow from the number. Otherwise it is a
+        // special case under another name after all.
         for source in CatalogSource.allCases {
             #expect(CatalogShelfSource.showsLoadingPlaceholder(source)
                     == (CatalogShelfSource.coldPassSeconds(source) >= CatalogShelfSource.visibleWaitSeconds))
         }
-        // Die MUSIK-Flaechen laufen ueber Bereichs-Schluessel und fielen
-        // durch eine Pruefung, die nur `CatalogSource.allCases` kennt. Sie
-        // warten am selben Endpunkt und sagen es deshalb auch.
+        // The MUSIC surfaces run through area keys and would fall
+        // through a check that knows only `CatalogSource.allCases`. They
+        // wait on the same endpoint and therefore say so too.
         for flaeche in [ArchiveMusicCatalog.netlabels, ArchiveMusicCatalog.shellacAll] {
             #expect(CatalogShelfSource.showsLoadingPlaceholder(surface: flaeche.key),
                     "\(flaeche.key) laesst den kalten Durchgang stumm stehen")
@@ -657,22 +657,22 @@ struct CatalogStoreReadFenceTests {
                         >= CatalogShelfSource.visibleWaitSeconds),
                     "die Musik-Flaeche entscheidet an einer zweiten Regel")
         }
-        // Rot-Probe: ein Name, den es als Flaeche nicht gibt, wartet auf
-        // nichts. Ohne sie meldete eine Regel, die JEDER Zeichenkette einen
-        // Platzhalter gibt, genauso gruen.
+        // Red probe: a name that does not exist as a surface waits for
+        // nothing. Without it, a rule that gives EVERY string a
+        // placeholder would report green just the same.
         #expect(!CatalogShelfSource.showsLoadingPlaceholder(surface: "gibt-es-nicht"))
 
-        // Und die Groesse ist die des Durchgangs: an der Einzelabfrage
-        // gemessen faellt die Entscheidung fuer die Archive-Quellen anders
-        // aus. Ohne diesen Satz koennte jemand die Zahl zurueckdrehen, ohne
-        // dass ein Fall es merkt. Die Einzelabfrage, am Endpunkt gemessen:
-        // archive.org antwortet ein Fach in 0,99 bis 1,49 s, Median 1,13 s.
+        // And the measure is that of the pass: measured on the single query,
+        // the decision comes out differently for the archive sources. Without this
+        // sentence someone could turn the number back without
+        // a case noticing. The single query, measured at the endpoint:
+        // archive.org answers a shelf in 0,99 to 1,49 s, median 1,13 s.
         let einzelabfrage = 1.2
         #expect(einzelabfrage < CatalogShelfSource.visibleWaitSeconds,
                 "die Einzelabfrage ist nicht mehr die kleinere Zahl — die Probe traegt nicht")
         #expect(CatalogShelfSource.coldPassSeconds(.librivox) > einzelabfrage,
                 "ein Durchgang kostet nicht mehr als seine Einzelabfrage")
-        // Rot-Probe am Quelltext: kein Sonderfall auf den Namen in der Regel.
+        // Red probe on the source text: no special case on the name in the rule.
         let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
                               encoding: .utf8)
         let body = try #require(functionBody(of: "static func showsLoadingPlaceholder(_ source: CatalogSource)", in: text))
@@ -680,69 +680,69 @@ struct CatalogStoreReadFenceTests {
                 "die Ausnahme ist zur Regel geworden — Schwelle statt Sonderfall")
     }
 
-    /// Der Titel laeuft, der Mini-Player bleibt bei der Startformulierung.
-    /// Die Zeile beobachtet die Zeit sehr wohl. Erfunden war das KAPITEL:
-    /// fuer ein Stueck ohne Kapitel legte `withTimeMarks`
-    /// EINE Marke an, benannt nach Sekunde null und ueber das ganze Stueck.
-    /// Damit stand die Startformulierung fest, waehrend die Wiedergabe lief.
-    /// Ohne Kapitel faellt der Untertitel auf die laufende Uhr zurueck.
-    @Test("ein Stueck ohne Kapitel bekommt keine erfundene Marke")
+    /// The title plays, the mini player stays with the start wording.
+    /// The line does observe the time. What was invented was the CHAPTER:
+    /// for a piece without chapters, `withTimeMarks` created
+    /// ONE mark, named after second zero and spanning the whole piece.
+    /// That fixed the start wording while playback was running.
+    /// Without chapters, the subtitle falls back to the running clock.
+    @Test("a piece without chapters gets no invented mark")
     func aPieceWithoutChaptersGetsNoInventedMark() {
-        // Ein Katalog-Titel: keine Kapitel, drei Minuten.
+        // A catalog title: no chapters, three minutes.
         #expect(ChapterModel.withTimeMarks([], duration: 222).isEmpty,
                 "die Startformulierung ist zurueck — eine Marke ueber das ganze Stueck")
         #expect(ChapterModel.resolved(chapters: [], tracks: [], duration: 222).chapters.isEmpty)
-        // Rot-Probe: ein LANGES Stueck ohne Kapitel bekommt weiterhin
-        // Sprungmarken. Das Instrument sieht den Unterschied.
+        // Red probe: a LONG piece without chapters still gets
+        // jump marks. The instrument sees the difference.
         let lang = ChapterModel.withTimeMarks([], duration: 4 * ChapterModel.step)
         #expect(lang.count > 1, "die Sprungmarken sind fuer lange Stuecke mitgestorben")
-        // Und der eigentliche Zweck bleibt: eine TEILweise Kapitelliste wird
-        // weiterhin bis zum Ende aufgefuellt.
+        // And the actual purpose stays: a PARTIAL chapter list is
+        // still filled up to the end.
         let teil = [ABSChapter(id: 0, start: 0, end: 600, title: "Eins")]
         #expect(ChapterModel.withTimeMarks(teil, duration: 3600).count > teil.count,
                 "der eigentliche Zweck der Marken ist mitgefallen")
     }
 
-    /// Musik-Achse (kleine Toepfe in grosse falten,
-    /// Deckel ~30 Faecher). Und die INVARIANTE: die Achse ist mit JAMENDO
-    /// GETEILT, also muss die Deckung BEIDER Quellen gemessen sein.
+    /// Music axis (fold small pots into large ones,
+    /// cap ~30 shelves). And the INVARIANT: the axis is SHARED
+    /// with JAMENDO, so the coverage of BOTH sources must be measured.
     ///
-    /// Gemessen vor dem Bau (1.000 Netlabel-Titel, 200 Jamendo-Titel):
-    /// Netlabels 36,0 % → **70,4 %**, Jamendo 81,0 % → **96,5 %**. Beide
-    /// steigen; die Faltung nimmt Jamendo nichts weg.
-    @Test("die gefaltete Musik-Achse traegt beide Quellen")
+    /// Measured before the build (1.000 netlabel titles, 200 Jamendo titles):
+    /// netlabels 36,0 % → **70,4 %**, Jamendo 81,0 % → **96,5 %**. Both
+    /// rise; the folding takes nothing away from Jamendo.
+    @Test("the folded music axis carries both sources")
     func theFoldedMusicAxisCarriesBothSources() {
-        // Das Fach eines Tags, aus der Tabelle gelesen, wie die Fach-Abfrage
-        // sie baut: Trennzeichen zaehlen nicht; nil heisst unbekannt.
+        // The shelf of a tag, read from the table, as the shelf query
+        // builds it: separators do not count; nil means unknown.
         func shelf(forTag tag: String) -> String? {
             let wanted = CatalogGenreAxis.normalizedMusicTerm(tag)
             return CatalogGenreAxis.musicAxis.first { CatalogGenreAxis.normalizedMusicTerm($0.key) == wanted }?.value
         }
         #expect(CatalogGenreAxis.musicShelves.count <= 30,
                 "der Deckel von rund 30 Faechern ist gerissen")
-        // Die Schreibfamilien beider Quellen treffen dasselbe Fach.
+        // The spelling families of both sources hit the same shelf.
         #expect(shelf(forTag: "trip-hop") == "electronic")
         #expect(shelf(forTag: "triphop") == "electronic")
         #expect(shelf(forTag: "Trip Hop") == "electronic")
-        // Der Begriff, der ganz fehlte und der zweithaeufigste der Sammlung ist.
+        // The term that was missing entirely and is the second most frequent of the collection.
         #expect(shelf(forTag: "jazz") == "jazz")
         #expect(shelf(forTag: "experimental") == "experimental")
-        // Jamendos meistgenutzte Tags bleiben zugeordnet. Die Faltung darf
-        // ihm nichts nehmen (die Invariante, an Beispielen festgehalten).
+        // Jamendo's most used tags stay assigned. The folding must not
+        // take anything from it (the invariant, pinned by examples).
         for tag in ["pop", "electropop", "singersongwriter", "indiepop", "rnb", "filmscore"] {
             #expect(shelf(forTag: tag) != nil,
                     "Jamendo-Tag \(tag) faellt aus der Achse")
         }
-        // Unbekanntes bleibt unbekannt. Nie geraten.
+        // Unknown stays unknown. Never guessed.
         #expect(shelf(forTag: "Voellig Unbekannt") == nil)
-        // Jede Fach-Kennung der Browse-Liste wird von der Achse auch gefuellt.
+        // Every shelf identifier of the browse list is also filled by the axis.
         let gefuellt = Set(CatalogGenreAxis.musicShelves.map(\.key))
         for shelf in gefuellt {
             #expect(!CatalogGenreAxis.musicSubjects(forShelf: shelf).isEmpty,
                     "Fach \(shelf) steht in der Liste, aber kein Begriff faellt darauf")
         }
-        // Jamendo fragt OHNE Trennzeichen. Die Archive-Schreibweisen wuerden
-        // die fuzzytags-Abfrage nur verlaengern.
+        // Jamendo asks WITHOUT separators. The archive spellings would
+        // only lengthen the fuzzytags query.
         for shelf in gefuellt {
             for tag in CatalogGenreAxis.musicTags(forShelf: shelf) {
                 #expect(CatalogGenreAxis.normalizedMusicTerm(tag) == tag,
@@ -751,154 +751,154 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// Dieselbe Klasse ein zweites Mal: die Musik-Reihe auf Start und der
-    /// Musik-Tab schoepfen aus DEMSELBEN Topf.
-    /// Sie bekommen jetzt je Flaeche ihre eigene Ordnung. Dieselbe Antwort
-    /// wie bei den Buch-Reihen, nur an einem anderen Ort.
-    @Test("die beiden Musik-Reihen zeigen denselben Topf nicht in derselben Folge")
+    /// The same class a second time: the music row on Start and the
+    /// music tab draw from the SAME pot.
+    /// They now get their own order per surface. The same answer
+    /// as for the book rows, only in another place.
+    @Test("the two music rows do not show the same pot in the same sequence")
     func theTwoMusicRowsAreNotTwins() {
         let topf = (1...20).map { LibraryItem(id: "jam:t\($0)", media: nil, addedAt: nil) }
         let start = CatalogMix.ordered(topf, for: .musicHome, session: 99)
         let tab = CatalogMix.ordered(topf, for: .musicTab, session: 99)
         #expect(start.map(\.id) != tab.map(\.id), "die beiden Reihen sind Zwillinge")
-        // Nichts geht verloren und nichts kommt dazu. Es ist eine Ordnung,
-        // kein Filter.
+        // Nothing is lost and nothing is added. It is an order,
+        // not a filter.
         #expect(Set(start.map(\.id)) == Set(topf.map(\.id)))
         #expect(start.count == topf.count && tab.count == topf.count)
-        // Innerhalb einer Sitzung sortiert sich nichts um.
+        // Within a session nothing is re-sorted.
         #expect(CatalogMix.ordered(topf, for: .musicHome, session: 99).map(\.id) == start.map(\.id))
-        // Rot-Probe: mit DEMSELBEN Startwert waeren sie identisch. Das
-        // Instrument sieht den Unterschied also nur wegen der Ableitung.
+        // Red probe: with the SAME seed they would be identical. So the
+        // instrument sees the difference only because of the derivation.
         var gen = RediscoverSections.SplitMix64(seed: CatalogMix.seed(for: .musicHome, session: 99))
         _ = gen.next()
         #expect(CatalogMix.seed(for: .musicHome, session: 99)
                 != CatalogMix.seed(for: .musicTab, session: 99))
-        // Und eine Liste mit einem Eintrag bleibt, wie sie ist.
+        // And a list with one entry stays as it is.
         #expect(CatalogMix.ordered(Array(topf.prefix(1)), for: .musicTab).count == 1)
     }
 
-    /// Die Lizenz-Oeffnung mit ihrer Grenze: anzeigen und streamen auch OHNE
-    /// Deklaration, herunterladen NUR mit.
-    /// Und: eine fehlende Angabe ist sichtbar, nie gar nichts und nie eine
-    /// Behauptung.
-    @Test("anzeigen ohne Deklaration, laden nur mit — und die Luecke ist sichtbar")
+    /// The licence opening with its limit: show and stream even WITHOUT a
+    /// declaration, download ONLY with one.
+    /// And: a missing statement is visible, never nothing at all and never a
+    /// claim.
+    @Test("show without a declaration, download only with one, and the gap is visible")
     func displayIsOpenButCopyingStaysLicensed() {
-        // Der ANZEIGE-Weg traegt den Filter nicht mehr.
+        // The DISPLAY path no longer carries the filter.
         for source in [CatalogSource.oldTimeRadio, .archiveBooks] {
             let query = try? #require(ArchiveOrgClient.archiveBaseQuery(for: source))
             #expect(query?.contains("licenseurl") == false,
                     "\(source.rawValue) filtert die ANZEIGE wieder nach Lizenz")
         }
         #expect(!ArchiveMusicCatalog.netlabels.query.contains("licenseurl"))
-        // Der LADE-Weg tut es sehr wohl.
+        // The DOWNLOAD path does carry it.
         #expect(!FreeCatalog.mayDownload(licenceURL: nil))
         #expect(!FreeCatalog.mayDownload(licenceURL: ""))
         #expect(!FreeCatalog.mayDownload(licenceURL: "   "))
         #expect(FreeCatalog.mayDownload(licenceURL: "https://creativecommons.org/licenses/by/4.0/"))
-        // Und die Kachel sagt es, statt zu schweigen.
+        // And the tile says so, instead of staying silent.
         #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights)
         #expect(FreeCatalog.licenceLabel("") == FreeCatalog.unstatedRights)
-        // Rot-Probe: eine echte Angabe wird weiterhin als solche gelesen.
+        // Red probe: a real statement is still read as such.
         #expect(FreeCatalog.licenceLabel("https://creativecommons.org/licenses/by-nc-nd/3.0/") == "CC BY-NC-ND")
     }
 
-    /// Die Jahrzehnte-Achse. Einzeljahre falten, bereits gefaltete
-    /// Angaben bleiben, und was kein Jahr nennt, faellt HERAUS statt in ein
-    /// Sammelfach. Dieselbe positive Zuordnung wie bei den Gattungen.
-    @Test("Einzeljahre falten auf ihr Jahrzehnt, Jahrloses faellt heraus")
+    /// The decades axis. Single years fold, already folded
+    /// statements stay, and what names no year drops OUT instead of into a
+    /// catch-all shelf. The same positive assignment as for the genres.
+    @Test("single years fold to their decade, yearless entries drop out")
     func singleYearsFoldOntoTheirDecade() {
         #expect(CatalogGenreAxis.decade(forSubject: "1943") == "1940s")
         #expect(CatalogGenreAxis.decade(forSubject: "1949") == "1940s")
         #expect(CatalogGenreAxis.decade(forSubject: "1950") == "1950s")
         #expect(CatalogGenreAxis.decade(forSubject: "1940s") == "1940s")
         #expect(CatalogGenreAxis.decade(forSubject: " 1950S ") == "1950s")
-        // Kein Jahr = kein Fach. Nie geraten, nie gesammelt.
+        // No year = no shelf. Never guessed, never collected.
         #expect(CatalogGenreAxis.decade(forSubject: "detective") == nil)
         #expect(CatalogGenreAxis.decade(forSubject: "otrr set") == nil)
         #expect(CatalogGenreAxis.decade(forSubject: "19") == nil)
-        // Mehrere Jahre → mehrere Faecher, dedupliziert, in Browse-Ordnung.
+        // Several years → several shelves, deduplicated, in browse order.
         #expect(CatalogGenreAxis.decades(forSubjects: ["1955", "1943", "1949", "drama"])
                 == ["1940s", "1950s"])
         #expect(CatalogGenreAxis.decades(forSubjects: ["detective"]).isEmpty)
     }
 
-    /// Kachelreihen warfen ihre Bilder beim seitlichen Scrollen sofort wieder
-    /// weg. Drei Ursachen, alle im Bild-Zwischenspeicher. Der Zaun haelt die
-    /// beiden, die sich rechnen
-    /// lassen. Die dritte (Zellen holen den warmen Treffer ab) haengt an
-    /// Aufrufstellen und steht im Inventar.
-    @Test("beide Speichergrenzen meinen dieselbe Zahl, und eine Ungueltigkeit raeumt nur ihren Eintrag", .needsTheSources)
+    /// Tile rows threw their images away again at once when scrolling sideways.
+    /// Three causes, all in the image cache. The fence pins the
+    /// two that can be
+    /// computed. The third (cells pick up the warm hit) hangs on
+    /// call sites and is in the inventory.
+    @Test("both store limits mean the same number, and an invalidation clears only its entry", .needsTheSources)
     func theCacheLimitsAgreeAndInvalidationIsTargeted() throws {
-        // Die Kostenrechnung, an der die alte Konfiguration scheiterte:
-        // 400 x 400 x 4 = 640 kB je Vorschau. 40 MB fassten davon ~62, waehrend
-        // `countLimit` 600 versprach. Die kleinere Grenze band unsichtbar.
-        // 400 x 400 x 4 = 640.000 Bytes je Vorschau (dezimal. Nicht 640 KiB;
-        // an dieser Verwechslung ist mein erster Anlauf gerissen).
+        // The cost calculation on which the old configuration failed:
+        // 400 x 400 x 4 = 640 kB per preview. 40 MB held about 62 of them, while
+        // `countLimit` promised 600. The smaller limit bound invisibly.
+        // 400 x 400 x 4 = 640.000 bytes per preview (decimal. Not 640 KiB;
+        // my first attempt broke on this mix-up).
         let vorschauKosten: Int = 400 * 400 * 4
         #expect(vorschauKosten == 640_000)
-        // 40 MB fassten davon rund 62, waehrend `countLimit` 600 versprach.
+        // 40 MB held about 62 of them, while `countLimit` promised 600.
         let altesBudget: Int = 40 * 1024 * 1024
         #expect(altesBudget / vorschauKosten < 70)
         let text = try String(contentsOf: sourceFile("Sources/Networking/ImageCache.swift"),
                               encoding: .utf8)
-        // Beide Grenzen je Speicher sagen jetzt dieselbe Zahl. Sonst ist eine
-        // von beiden wieder Zierde.
+        // Both limits per store now say the same number. Otherwise one
+        // of the two is decoration again.
         #expect(text.contains("thumbCache.countLimit = Self.thumbBudget"),
                 "die Stueckzahl steht wieder als eigene Zahl neben der Kostengrenze")
         #expect(text.contains("thumbCache.totalCostLimit = Self.thumbBudget"),
                 "die Kostengrenze wird nicht mehr aus der Stueckzahl abgeleitet")
         #expect(text.contains("memoryCache.countLimit = Self.fullCoverBudget"))
         #expect(text.contains("memoryCache.totalCostLimit = Self.fullCoverBudget"))
-        // Und die Vorschauen bekommen mehr als die Vollbilder. Sie sind das,
-        // was JEDE Reihe und JEDES Raster braucht.
+        // And the previews get more than the full images. They are what
+        // EVERY row and EVERY grid needs.
         #expect(ImageCache.thumbBudget > ImageCache.fullCoverBudget * 10)
-        // Ursache 2: eine Ungueltigkeit raeumt ihre Groessenvarianten, nicht
-        // den ganzen Speicher.
+        // Cause 2: an invalidation clears its size variants, not
+        // the whole store.
         let body = try #require(functionBody(of: "func invalidate(url: URL)", in: text))
         #expect(!body.contains("thumbCache.removeAllObjects()"),
                 "eine einzelne URL leert wieder alle Vorschauen der App")
         #expect(body.contains("thumbnailVariants"),
                 "die Groessenvarianten werden nicht mehr benannt")
-        // Die Varianten muessen die WIRKLICH angefragten sein. Sonst raeumt
-        // die gezielte Fassung an der Sache vorbei.
+        // The variants must be the ones ACTUALLY requested. Otherwise the
+        // targeted version clears past the point.
         #expect(Set(ImageCache.thumbnailVariants) == Set([400, 600]))
     }
 
-    /// Das Krimi-Fach zeigte drei Titel: die Faecher fragten die ALPHABETISCH
-    /// ersten Begriffe. Krimi bekam `crime` (5 Treffer) statt `mystery` (49)
-    /// und `detective` (47). 4 statt 141
-    /// Titel; Science-Fiction fragte zwei Begriffe mit zusammen NULL.
+    /// The crime shelf showed three titles: the shelves asked the ALPHABETICALLY
+    /// first terms. Crime got `crime` (5 hits) instead of `mystery` (49)
+    /// and `detective` (47). 4 instead of 141
+    /// titles; science fiction asked two terms with ZERO together.
     ///
-    /// Dieselbe Klasse, die der Zaun beim alphabetischen Deckel der
-    /// Musik-Achse gefangen hat. Dort gefangen, hier live auf der Flaeche.
-    @Test("ein Fach fragt seine ergiebigsten Begriffe, nie die alphabetisch ersten")
+    /// The same class that the fence caught at the alphabetical cap of the
+    /// music axis. Caught there, here live on the surface.
+    @Test("a shelf asks its most productive terms, never the alphabetically first")
     func aShelfAsksItsRichestTermsNotItsFirstAlphabetically() {
         let krimi = CatalogGenreAxis.subjects(forShelf: "crime")
         #expect(krimi.count >= 3, "die Probe misst nichts")
-        // Die drei, die gefragt werden, sind die gemessen ergiebigsten.
+        // The three that are asked are the measured most productive.
         let gefragt = Array(krimi.prefix(3))
         #expect(gefragt.contains("mystery"), "der ergiebigste Krimi-Begriff faellt wieder weg")
         #expect(gefragt.contains("detective"))
-        // Rot-Probe: alphabetisch waere `crime` vorn. Genau der schwache.
+        // Red probe: alphabetically `crime` would be first. Exactly the weak one.
         #expect(krimi.sorted().first == "crime")
         #expect(gefragt.first != "crime", "die Sortierung ist wieder alphabetisch")
-        // Und die Ordnung faellt monoton mit der gemessenen Ergiebigkeit.
+        // And the order falls monotonically with the measured yield.
         let ertrag = krimi.map { CatalogGenreAxis.measuredGutenbergYield[$0] ?? 0 }
         #expect(ertrag == ertrag.sorted(by: >), "die Reihenfolge folgt nicht der Messung")
-        // Das Fach, das heute LEER war: seine Spitze traegt jetzt.
+        // The shelf that was EMPTY today: its top term carries now.
         let scifi = CatalogGenreAxis.subjects(forShelf: "scifi")
         #expect(scifi.first == "science fiction",
                 "Science-Fiction fragt wieder zwei Begriffe mit null Treffern")
         #expect((CatalogGenreAxis.measuredGutenbergYield["science fiction"] ?? 0) > 0)
     }
 
-    /// Bei archive.org faellt der Deckel auf der Begriffsliste ganz. Gemessen
-    /// am Endpunkt (Netlabels, Elektronik-Fach): mit den ersten sechs
-    /// Begriffen **3.395** Eintraege in 0,52 s, mit allen fuenfunddreissig
-    /// **31.338** in 0,58 s. Faktor 9 fuer fuenf Hundertstelsekunden. Der
-    /// Deckel kostete fast alles und sparte nichts. Er galt fuer Jamendos
-    /// UNSCHARFE `fuzzytags`, nicht fuer `subject:`, das exakt trifft.
-    @Test("die archive.org-Faecher kuerzen ihre Begriffsliste nicht mehr", .needsTheSources)
+    /// For archive.org the cap on the term list is dropped entirely. Measured
+    /// at the endpoint (netlabels, electronic shelf): with the first six
+    /// terms **3.395** entries in 0,52 s, with all thirty-five
+    /// **31.338** in 0,58 s. Factor 9 for five hundredths of a second. The
+    /// cap cost almost everything and saved nothing. It applied to Jamendo's
+    /// FUZZY `fuzzytags`, not to `subject:`, which matches exactly.
+    @Test("the archive.org shelves no longer shorten their term list", .needsTheSources)
     func theArchiveShelvesDoNotCapTheirTerms() throws {
         for path in ["Sources/Networking/FreeCatalogClients.swift",
                      "Sources/Views/Music/ArchiveMusicPages.swift"] {
@@ -906,11 +906,11 @@ struct CatalogStoreReadFenceTests {
             #expect(!text.contains("prefix(6).map { \"subject:"),
                     "\(path) kuerzt die Begriffe wieder alphabetisch")
         }
-        // Die Musik-Faecher, bei denen der Fach-Name selbst herausfiel.
+        // The music shelves where the shelf name itself dropped out.
         for shelf in ["electronic", "rock", "world", "pop", "folk", "soul"] {
             let terms = CatalogGenreAxis.musicSubjects(forShelf: shelf)
             #expect(terms.contains(shelf), "\(shelf) traegt seinen eigenen Namen nicht")
-            // Rot-Probe: mit dem alten Deckel waere genau das passiert.
+            // Red probe: with the old cap exactly that would have happened.
             if terms.count > 6 {
                 #expect(!terms.sorted().prefix(6).contains(shelf),
                         "die Rot-Probe traegt nicht — hier haette der Deckel nichts gekostet")
@@ -918,51 +918,51 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// Zwei benachbarte Faecher begannen mit exakt denselben zwei Kacheln.
-    /// Jedes Fach fragte seine
-    /// Quelle mit derselben Sortierung, Seite 1. Ein Titel, der beide
-    /// Faecher traegt, stand also in beiden oben. Die Ueberschneidung ist
-    /// richtig, der gleiche AUSSCHNITT nicht.
-    @Test("benachbarte Faecher greifen an verschiedenen Stellen ihres Bestands")
+    /// Two neighboring shelves began with exactly the same two tiles.
+    /// Every shelf asked its
+    /// source with the same sort order, page 1. A title that belongs to both
+    /// shelves therefore stood at the top of both. The overlap is
+    /// right, the same SLICE is not.
+    @Test("neighboring shelves reach into their stock at different places")
     func neighbouringShelvesDoNotShowTheSameExcerpt() {
         let tag = Date(timeIntervalSince1970: 1_756_000_000)
         let geschichte = CatalogShelfSource.shelfPage(shelf: "history", rows: 12, on: tag)
         let biografien = CatalogShelfSource.shelfPage(shelf: "biography", rows: 12, on: tag)
         #expect(geschichte != biografien,
                 "zwei Faecher fragen wieder dieselbe Seite — die Zwillinge sind zurueck")
-        // INVARIANTE 2: innerhalb EINES Tages stabil. Eine Reihe, die sich
-        // unter den Fingern umsortiert, ist ein Layout-Sprung in Zeitlupe.
+        // INVARIANT 2: stable within ONE day. A row that re-sorts
+        // under the fingers is a layout jump in slow motion.
         #expect(CatalogShelfSource.shelfPage(shelf: "history", rows: 12, on: tag) == geschichte)
         #expect(CatalogShelfSource.shelfPage(shelf: "history", rows: 12,
                                              on: tag.addingTimeInterval(3600)) == geschichte)
-        // Und am naechsten Tag bewegt sie sich.
+        // And on the next day it moves.
         let morgen = tag.addingTimeInterval(86_400)
         #expect(CatalogShelfSource.shelfPage(shelf: "history", rows: 12, on: morgen) != geschichte)
-        // Der Startwert haengt am Namen, nicht am Prozess. `hashValue` waere
-        // je Start ein anderer und die Mischung damit nie stabil.
+        // The seed hangs on the name, not on the process. `hashValue` would be
+        // different on every launch and the shuffle thus never stable.
         #expect(CatalogRotation.salt(forShelf: "history")
                 == CatalogRotation.salt(forShelf: "history"))
         #expect(CatalogRotation.salt(forShelf: "history")
                 != CatalogRotation.salt(forShelf: "biography"))
-        // Rot-Probe: ohne Startwert waeren beide gleich. Das Instrument
-        // sieht den Unterschied also nur wegen des Salzes.
+        // Red probe: without a seed both would be equal. So the instrument
+        // sees the difference only because of the salt.
         #expect(CatalogRotation.page(total: 600, rowSize: 12, on: tag, salt: 0)
                 == CatalogRotation.page(total: 600, rowSize: 12, on: tag, salt: 0))
     }
 
-    /// Eine Kachel in der Fortsetzen-Reihe trug keinen Namen und lief nicht.
-    /// Der Fund liegt nicht in der
-    /// Zelle: der Tot-Vermerk wurde NUR beim Bauen der Katalogreihen gelesen,
-    /// und diese Reihe liest den HOERVERLAUF. Lernen und Lesen waren nicht
-    /// verbunden.
-    @Test("ein totes Stueck verlaesst die Reihe, sein Hoerstand bleibt")
+    /// A tile in the continue row carried no name and did not play.
+    /// The finding is not in the
+    /// cell: the dead mark was read ONLY when building the catalog rows,
+    /// and this row reads the LISTENING HISTORY. Learning and reading were not
+    /// connected.
+    @Test("a dead piece leaves the row, its listening state stays")
     func aDeadItemLeavesTheRowButKeepsItsProgress() throws {
         let suite = "r59-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
         let tot = FreeCatalog.jamendoPrefix + "1234"
         let lebt = FreeCatalog.jamendoPrefix + "5678"
-        // Zwei angefangene Katalog-Titel im Verlauf (Album-Form, positionslos).
+        // Two started catalog titles in the history (album form, without position).
         let verlauf: [String: Any] = [
             "localPosition.\(tot)": [12.0, 1_756_000_000_000.0, 180.0, 1.0],
             "localPosition.\(lebt)": [30.0, 1_756_000_000_000.0, 200.0, 1.0],
@@ -975,39 +975,39 @@ struct CatalogStoreReadFenceTests {
         let nachher = ContinueSources.positionless(in: verlauf, serverKnows: [],
                                                    deadStore: defaults)
         #expect(nachher.map(\.id) == [lebt], "das tote Stueck steht weiter in der Reihe")
-        // INVARIANTE: der EINTRAG bleibt. Ein Hoerstand ist Nutzerbesitz.
+        // INVARIANT: the ENTRY stays. A listening state is user property.
         #expect(verlauf["localPosition.\(tot)"] != nil,
                 "der Hoerstand wurde still geloescht")
     }
 
-    /// Ein Transportfehler und ein klares Weg sind zwei verschiedene
-    /// Antworten. Nur die zweite vermerkt. Sonst raeumt ein Funkloch die
-    /// Reihe.
-    @Test("nur ein klares Weg vermerkt, ein Transportfehler nie")
+    /// A transport error and a clear "gone" are two different
+    /// answers. Only the second one is marked. Otherwise a dead zone clears the
+    /// row.
+    @Test("only a clear gone is marked, a transport error never")
     func onlyAClearGoneIsRecorded() {
         #expect(FreeCatalog.isGone(URLError(.resourceUnavailable)))
         #expect(FreeCatalog.isGone(APIError.http(404, "")))
         #expect(FreeCatalog.isGone(APIError.http(410, "")), "ein endgueltiges Weg (410) vermerkte nicht")
-        // Das Funkloch, der Abbruch, das ueberlastete Netz: kein Urteil.
+        // The dead zone, the abort, the overloaded network: no verdict.
         #expect(!FreeCatalog.isGone(URLError(.notConnectedToInternet)))
         #expect(!FreeCatalog.isGone(URLError(.timedOut)))
         #expect(!FreeCatalog.isGone(URLError(.cancelled)))
         #expect(!FreeCatalog.isGone(APIError.http(503, "")))
-        // Und vermerkt wird nur, was uns gehoert. Ein Server-Buch nicht.
+        // And only what belongs to us is marked. A server book is not.
         #expect(FreeCatalog.isCatalogId(FreeCatalog.jamendoPrefix + "1"))
         #expect(FreeCatalog.isCatalogId(FreeCatalog.archivePrefix + "x"))
         #expect(!FreeCatalog.isCatalogId("abs-item-id"))
     }
 
-    /// Stimmung und Tempo sind FILTER auf
-    /// der Vollseite eines Fachs, Instrumental ein SCHALTER. Keine eigenen
-    /// Reihen-Familien. Alle drei filtert Jamendo SERVER-seitig, am Endpunkt
-    /// verprobt; die Seite wirft nichts nachtraeglich weg.
+    /// Mood and tempo are FILTERS on
+    /// the full page of a shelf, instrumental a SWITCH. No row families
+    /// of their own. Jamendo filters all three SERVER-side, probed at the endpoint;
+    /// the page throws nothing away afterwards.
     ///
-    /// Gemessen an 200 populaeren Titeln (26.08.): vocal 179 / instrumental
-    /// 21 · speed medium 142, high 38, low 12, verylow 2 · Stimmungen in den
+    /// Measured on 200 popular titles (26.08.): vocal 179 / instrumental
+    /// 21 · speed medium 142, high 38, low 12, verylow 2 · moods in the
     /// vartags (energetic 58, love 52, happy 24, emotional 18, upbeat 11).
-    @Test("die Jamendo-Filter reisen in der Abfrage, nicht im Nachhinein")
+    @Test("the Jamendo filters travel in the query, not afterwards")
     func theJamendoFiltersTravelInTheQuery() {
         #expect(!JamendoFilter.none.isActive)
         #expect(JamendoFilter.none.queryItems.isEmpty)
@@ -1020,33 +1020,32 @@ struct CatalogStoreReadFenceTests {
 
         filter.tempo = .fast
         #expect(filter.queryItems.contains { $0.name == "speed" && $0.value == "high" })
-        // `verylow` faellt mit `low` zusammen. Zwei von zweihundert Titeln
-        // rechtfertigen kein eigenes Fach, aber sie duerfen nicht verloren
-        // gehen.
+        // `verylow` merges with `low`. Two of two hundred titles
+        // do not justify a shelf of their own, but they must not be lost.
         filter.tempo = .slow
         let langsam = try? #require(filter.queryItems.first { $0.name == "speed" }?.value)
         #expect(langsam?.contains("low") == true)
         #expect(langsam?.contains("verylow") == true)
 
-        // Die Stimmung laeuft ueber die Tags, weil Jamendo sie dort fuehrt.
+        // The mood runs through the tags, because Jamendo keeps it there.
         filter.mood = .energetic
         #expect(filter.extraTags == ["energetic"])
         #expect(!filter.queryItems.contains { $0.name == "mood" },
                 "die Stimmung wandert in ein Feld, das die Quelle nicht kennt")
-        // Jede angebotene Stufe hat auch einen Wert fuer die Quelle.
+        // Every offered level also has a value for the source.
         for tempo in JamendoFilter.Tempo.allCases {
             #expect(!tempo.apiValues.isEmpty, "\(tempo.rawValue) hat keinen Quellwert")
         }
     }
 
-    /// Der Tages-Speicher war allein nach dem FACH-Namen abgelegt. Werden die
-    /// Begriffe eines Fachs ausgetauscht, liefert er bis zu 24 h weiter die
-    /// Antwort der ALTEN Regel. Nach einem Update saehe jeder Nutzer einen
-    /// Tag lang die alten Faecher.
+    /// The day store was filed by the SHELF name alone. If the
+    /// terms of a shelf are swapped, it keeps returning for up to 24 h the
+    /// answer of the OLD rule. After an update every user would see the old
+    /// shelves for a day.
     ///
-    /// Die Klasse in allgemeiner Form: ein Ergebnis ueberlebt die Berechnung,
-    /// die es hervorgebracht hat.
-    @Test("ein gespeichertes Ergebnis gilt nur, solange seine Regel gilt")
+    /// The class in general form: a result outlives the computation
+    /// that produced it.
+    @Test("a stored result is valid only as long as its rule is")
     func aStoredResultOnlyHoldsWhileItsRuleHolds() throws {
         let suite = "r60-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -1056,25 +1055,25 @@ struct CatalogStoreReadFenceTests {
         let id = CatalogShelfSource.stockId(surface: CatalogSource.gutenberg.rawValue,
                                             shelf: "crime")
 
-        // Gespeichert unter der Regel von GESTERN.
+        // Stored under YESTERDAY's rule.
         #expect(store.store(.found(shelf), for: id, rule: "crime|crime & mystery fiction",
                             defaults: defaults))
         #expect(store.load(defaults: defaults)[id] != nil,
                 "die Probe misst nichts — nichts wurde gespeichert")
 
-        // Mit der Regel von HEUTE ist der Eintrag nicht mehr auffindbar.
+        // With TODAY's rule the entry can no longer be found.
         let heute = CatalogShelfSource.shelfRule(forId: id)
         #expect(heute != "crime|crime & mystery fiction",
                 "die Rot-Probe traegt nicht — die Regel hat sich gar nicht geaendert")
         #expect(store.load(defaults: defaults, rule: { _ in heute })[id] == nil,
                 "der Eintrag der alten Regel wird weiter ausgeliefert")
 
-        // Und unter DERSELBEN Regel bleibt er selbstverstaendlich gueltig.
-        // Der Abdruck darf den Speicher nicht wertlos machen.
+        // And under the SAME rule it naturally stays valid.
+        // The fingerprint must not make the store worthless.
         #expect(store.store(.found(shelf), for: id, rule: heute, defaults: defaults))
         #expect(store.load(defaults: defaults, rule: { _ in heute })[id] != nil)
 
-        // Der Abdruck ist die WIRKLICH gefragte Auswahl, nicht der Fach-Name.
+        // The fingerprint is the selection ACTUALLY asked, not the shelf name.
         #expect(heute.contains("mystery"), "der Abdruck kennt die Begriffe nicht")
         #expect(CatalogShelfSource.shelfRule(forId: id)
                 != CatalogShelfSource.shelfRule(
@@ -1082,15 +1081,15 @@ struct CatalogStoreReadFenceTests {
                                                       shelf: "horror")))
     }
 
-    /// Der Debug-Hebel raeumt NUR Abgeleitetes. Die Grenze zwischen neu
-    /// holen und Datenverlust steht am Code, nicht in der Beschriftung.
-    @Test("der Hebel raeumt Abgeleitetes und fasst Nutzerbesitz nie an")
+    /// The debug lever clears ONLY derived data. The line between fetching
+    /// anew and data loss is drawn in the code, not in the label.
+    @Test("the lever clears derived data and never touches user property")
     func theLeverClearsOnlyDerivedStores() throws {
         let suite = "r60-lever-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
 
-        // Kein Schluessel des Hebels darf wie Nutzerbesitz aussehen.
+        // No key of the lever may look like user property.
         for entry in DerivedStores.all {
             for besitz in DerivedStores.userOwnedPrefixes {
                 #expect(!entry.key.hasPrefix(besitz),
@@ -1099,7 +1098,7 @@ struct CatalogStoreReadFenceTests {
             #expect(!entry.label.isEmpty, "der Hebel muss sagen, was er raeumt")
         }
 
-        // Am VERHALTEN: Abgeleitetes geht, Besitz bleibt.
+        // On BEHAVIOR: derived data goes, property stays.
         for entry in DerivedStores.all { defaults.set(["x": 1.0], forKey: entry.key) }
         defaults.set([12.0, 1.0], forKey: "localPosition.jam:1")
         defaults.set(["meine"], forKey: "maerPlaylists")
@@ -1115,39 +1114,39 @@ struct CatalogStoreReadFenceTests {
         #expect(defaults.object(forKey: "maerPlaylists") != nil,
                 "eine PLAYLIST wurde geraeumt — das ist Datenverlust")
 
-        // Nichts zu raeumen ist eine Antwort, keine leere Meldung.
+        // Nothing to clear is an answer, not an empty message.
         #expect(DerivedStores.clear(defaults: defaults).isEmpty)
     }
 
-    /// Sammelbaende werden nach hinten sortiert. Die Zahl der Schlagworte
-    /// taugt nicht als Signal: gemessen an 150 LibriVox-Eintraegen haben
-    /// Sammelbaende im Mittel 6,2, die uebrigen 6,4. Der TITEL auch nicht.
-    /// `Vanished Arizona: Recollections` enthaelt `collection` und ist ein
-    /// einzelnes Werk.
+    /// Collections are sorted to the back. The number of keywords
+    /// is no good as a signal: measured on 150 LibriVox entries, collections
+    /// average 6,2, the others 6,4. The TITLE is no good either.
+    /// `Vanished Arizona: Recollections` contains `collection` and is a
+    /// single work.
     ///
-    /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
-    /// `Various`. Exakte Gleichheit, also kann kein Teilstring hineinrutschen.
+    /// What carries is LibriVox's own convention: `creator` is EXACTLY
+    /// `Various`. Exact equality, so no substring can slip in.
     @MainActor
-    @Test("Sammelbaende erkennt die Konvention, nicht der Titel", .needsTheSources)
+    @Test("the convention recognises collections, not the title", .needsTheSources)
     func collectionsAreRecognisedByConventionNotByTitle() throws {
         func doc(_ creator: String, _ title: String) throws -> ArchivePopularDoc {
             let json = "{\"identifier\":\"x\",\"title\":\"\(title)\",\"creator\":\"\(creator)\"}"
             return try JSONDecoder().decode(ArchivePopularDoc.self, from: Data(json.utf8))
         }
-        // Die gemessenen echten Faelle.
+        // The measured real cases.
         #expect(FreeCatalog.isMultiAuthorCollection(try doc("Various", "Children's Short Works, Vol. 031")))
         #expect(FreeCatalog.isMultiAuthorCollection(try doc("various", "La Lecture, tome 8")))
-        // Rot-Probe: die Titel-Falle, die eine Wortsuche gefangen haette.
+        // Red probe: the title trap that a word search would have fallen into.
         #expect(!FreeCatalog.isMultiAuthorCollection(
             try doc("Martha Summerhayes", "Vanished Arizona: Recollections of the Army")),
                 "ein einzelnes Werk wird als Sammelband einsortiert")
-        // Und ein Urheber, der `various` nur ENTHAELT, ist keiner.
+        // And an author who merely CONTAINS `various` is not one.
         #expect(!FreeCatalog.isMultiAuthorCollection(try doc("Various Artists Ensemble", "X")))
         #expect(!FreeCatalog.isMultiAuthorCollection(try doc("", "X")))
-        // Der Malus ORDNET, er wirft nichts weg. Das ist der Unterschied
-        // zwischen nach hinten sortieren und ausschliessen. Gefragt wird die
-        // eine Stelle, die die Buch-Regale eintraegt, und die Seite verlangt
-        // die Ordnung dort.
+        // The penalty ORDERS, it throws nothing away. That is the difference
+        // between sorting to the back and excluding. The question goes to the
+        // one place that enters the book shelves, and the page demands
+        // the order there.
         let sammlung = ArchivePopularDoc(
             identifier: "collection-\(UUID().uuidString)", title: ArchiveStringList(["S"]),
             creator: ArchiveStringList(["Various"]), downloads: 1, runtime: nil, licenseurl: nil,
@@ -1167,15 +1166,15 @@ struct CatalogStoreReadFenceTests {
                 "die Buch-Regale verlangen die Ordnung nicht mehr")
     }
 
-    /// Eine Sendungsseite blieb ohne Bild, obwohl der Feed sein Bild ZWEIMAL
-    /// nennt: die RSS-Form `<image><url>…</url></image>` las der Leser gar
-    /// nicht, und die itunes-Form OHNE `href` fiel durch, weil das Attribut
-    /// leer ist. `FeedArtworkLookup` kannte die RSS-Form bereits. Zwei
-    /// Leser, eine Schreibweise, einer kann mehr.
+    /// A show page stayed without an image although the feed names its image TWICE:
+    /// the reader did not read the RSS form `<image><url>…</url></image>` at all,
+    /// and the itunes form WITHOUT `href` fell through because the attribute
+    /// is empty. `FeedArtworkLookup` already knew the RSS form. Two
+    /// readers, one spelling, one can do more.
     ///
-    /// Gemessen ueber die 21 kuratierten Feeds: zwei schreiben die
-    /// itunes-Textform, es sind also zwei fehlende Bilder, nicht eines.
-    @Test("der Feed-Leser versteht jede Schreibweise des Sendungsbilds")
+    /// Measured over the 21 curated feeds: two write the
+    /// itunes text form, so there are two missing images, not one.
+    @Test("the feed reader understands every spelling of the show image")
     func theFeedReaderUnderstandsEverySpelling() {
         func bild(_ kanal: String) -> String? {
             let xml = """
@@ -1188,16 +1187,16 @@ struct CatalogStoreReadFenceTests {
             return RSSFeedParser(feedURL: "https://example.org/feed.xml")
                 .parse(Data(xml.utf8))?.artworkURL
         }
-        // Die Form, die schon ging.
+        // The form that already worked.
         #expect(bild("<itunes:image href=\"https://example.org/a.jpg\"/>") == "https://example.org/a.jpg")
-        // Die beiden, die durchfielen. Der gemessene Feed nennt BEIDE.
+        // The two that fell through. The measured feed names BOTH.
         #expect(bild("<itunes:image>https://example.org/b.jpg</itunes:image>") == "https://example.org/b.jpg",
                 "die itunes-Textform faellt wieder durch")
         #expect(bild("<image><title>T</title><url>https://example.org/c.jpg</url></image>") == "https://example.org/c.jpg",
                 "die RSS-Form faellt wieder durch")
-        // Rot-Probe: ohne Bild wird keines erfunden.
+        // Red probe: without an image none is invented.
         #expect(bild("") == nil)
-        // Und ein ITEM-Bild wird nicht zum Sendungsbild.
+        // And an ITEM image does not become the show image.
         let ausItem = """
         <?xml version="1.0"?><rss version="2.0"><channel><title>T</title>
         <item><title>E</title><guid>g1</guid>
@@ -1219,8 +1218,8 @@ struct CatalogStoreReadFenceTests {
             from: Data(#"{"identifier":"HMSUlyssesAM","title":"HMS Ulysses"}"#.utf8))
     }
 
-    /// Genug Bestand in JEDER Katalog-Bahn, damit die Proben oben wirklich
-    /// etwas messen (ein gruener Lauf ohne Messung ist der teuerste Ausgang).
+    /// Enough stock in EVERY catalog lane, so that the probes above really
+    /// measure something (a green run without a measurement is the most expensive outcome).
     private static func filledRows() -> CatalogSourceLoader.SourceRows {
         func lane(_ prefix: String) -> [LibraryItem] {
             (1...8).map { LibraryItem(id: "\(prefix)-\($0)", media: nil, addedAt: nil) }

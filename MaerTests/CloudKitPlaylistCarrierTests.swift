@@ -77,7 +77,7 @@ struct CloudKitPlaylistCarrierTests {
         return (CloudKitPlaylistCarrier(database: zone, fallback: keyValue, defaults: defaults), keyValue)
     }
 
-    @Test("der Blob wird einmal in Datensaetze gefaltet, danach nur gelesen; der Spiegel traegt Liste und Grabstein")
+    @Test("the blob is folded into records once, then only read; the mirror carries list and tombstone")
     func theBlobIsFoldedOnce() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -101,7 +101,7 @@ struct CloudKitPlaylistCarrierTests {
         #expect(held.tombstones["gone"] == 1_699_000_000)
     }
 
-    @Test("store schreibt nur den Unterschied; eine Loeschung reist als Grabstein; eine fremde Liste weckt den Laeufer")
+    @Test("store writes only the difference; a deletion travels as a tombstone; a foreign list wakes the runner")
     func storeWritesTheDiffAndForeignWakes() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -138,7 +138,7 @@ struct CloudKitPlaylistCarrierTests {
     /// The runner stamps its own device name on every list it hands over.
     /// A change to one list writes one record, not every list whose name
     /// stamp changed.
-    @Test("eine Aenderung an einer Liste schreibt einen Datensatz, auch wenn jede Liste einen anderen Geraetenamen traegt")
+    @Test("a change to one list writes one record, even if every list carries a different device name")
     func oneChangedListWritesOneRecord() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -170,7 +170,7 @@ struct CloudKitPlaylistCarrierTests {
         #expect(MaerPlaylistEntryWire.decode(written.payload)?.itemIds == ["rss:f:e", "rss:f:e2"])
     }
 
-    @Test("ein Datensatz ist nur dann zu schreiben, wenn sein Eintrag sich ausser im Namen unterscheidet")
+    @Test("a record is to be written only if its entry differs in more than the name")
     func theRecordComparison() {
         func record(_ entry: MaerPlaylistMerge.Entry) -> CloudPlaylistRecord {
             CloudPlaylistRecord(listId: "l", payload: MaerPlaylistEntryWire.encode(entry), t: entry.updatedAt, tombstone: false)
@@ -187,7 +187,7 @@ struct CloudKitPlaylistCarrierTests {
         #expect(CloudKitPlaylistCarrier.needsWrite(record(mine), over: record(theirs)), "a real change is written")
     }
 
-    @Test("ohne Konto traegt der Schluessel-Speicher das Ganze")
+    @Test("without an account the key-value store carries the whole")
     func noAccountFallsBack() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -206,7 +206,7 @@ struct CloudKitPlaylistCarrierTests {
         #expect(carrier.held().lists["l1"] != nil)
     }
 
-    @Test("ein abgewiesener Schrieb bleibt in der Warteschlange und ueberlebt den Neustart, die Faltung bleibt offen")
+    @Test("a refused write stays in the queue and survives the restart, the fold stays open")
     func aRefusedWriteStaysQueued() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -227,7 +227,7 @@ struct CloudKitPlaylistCarrierTests {
         #expect(again.held().lists["l1"]?.itemIds == ["jam:1"])
     }
 
-    @Test("die Datensaetze und der Snapshot gehen verlustfrei hin und zurueck")
+    @Test("the records and the snapshot go there and back without loss")
     func recordsAndSnapshotRoundTrip() {
         var snap = MaerPlaylistMerge.Snapshot()
         snap.lists["l1"] = entry("Mix", 1_700_000_000, ["jam:1", "lva:x"])

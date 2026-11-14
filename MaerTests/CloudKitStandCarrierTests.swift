@@ -115,7 +115,7 @@ struct CloudKitStandCarrierTests {
         return (CloudKitStandCarrier(database: database, fallback: keyValue, defaults: defaults), keyValue)
     }
 
-    @Test("der Blob faltet sich einmal in Datensaetze, danach ist die Wolke der Topf und der Blob wird nur gelesen")
+    @Test("the blob folds into records once, after that the cloud is the pot and the blob is only read")
     func migratesOnceThenReadsTheBlob() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -150,7 +150,7 @@ struct CloudKitStandCarrierTests {
     /// The way back: an older build reads the token and the blobs under
     /// their old names. After a round of this build neither stands there,
     /// so an older build fetches from the start; the migration mark stands.
-    @Test("nach einem Durchgang stehen Token und Abbild nicht unter den alten Namen, die Marke der Einfaltung steht")
+    @Test("after a pass the token and the image are not under the old names, the mark of the fold is set")
     func theOldNamesStayEmpty() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -168,7 +168,7 @@ struct CloudKitStandCarrierTests {
         carrier.stop()
     }
 
-    @Test("eine fremde Aenderung kommt ueber das Token und weckt den Laeufer; ohne Aenderung kein Ereignis")
+    @Test("a foreign change comes in by token and wakes the runner; no change, no event")
     func foreignChangeArrivesByToken() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -190,7 +190,7 @@ struct CloudKitStandCarrierTests {
         #expect(carrier.stands()["rss:x"] == nil)
     }
 
-    @Test("ein abgewiesener Schrieb bleibt in der Warteschlange, ueberlebt den Neustart und geht beim naechsten Durchgang")
+    @Test("a refused write stays in the queue, survives the restart and goes out on the next pass")
     func queueSurvivesARefusal() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -225,7 +225,7 @@ struct CloudKitStandCarrierTests {
     /// queue while the mirror said "stored", and the runner never re-sent
     /// it. The fake holds `modify` open so the second write demonstrably
     /// lands inside the window.
-    @Test("ein Schrieb, der waehrend eines laufenden modify ankommt, wird nicht mit weggewischt, sondern geht im naechsten Stapel")
+    @Test("a write that arrives during a running modify is not wiped away with it, but goes out in the next batch")
     func aWriteDuringAFlightIsNotWipedWithIt() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -252,7 +252,7 @@ struct CloudKitStandCarrierTests {
         #expect(db.modifies[1].save.map(\.entry) == [[20, 4_000]])
     }
 
-    @Test("weist die Wolke jeden Schrieb ab, bleibt die Einfaltung offen und der Blob traegt weiter; erst die Annahme schliesst sie")
+    @Test("if the cloud refuses every write, the fold stays open and the blob keeps carrying; only acceptance closes it")
     func refusedFoldKeepsTheBlobAsThePot() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -293,7 +293,7 @@ struct CloudKitStandCarrierTests {
         #expect(db.records["rss:c"] != nil)
     }
 
-    @Test("der Push ist ein Beschleuniger: einmal bestellt, ueberlebt den Neustart, und ohne ihn laeuft alles weiter")
+    @Test("the push is an accelerator: ordered once, it survives the restart, and without it everything keeps running")
     func theSilentPushIsAnAccelerator() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -324,7 +324,7 @@ struct CloudKitStandCarrierTests {
         #expect(!third.fellBack, "a refused push is not a missing account")
     }
 
-    @Test("ein Push traegt nichts: er weckt nur den Abruf")
+    @Test("a push carries nothing: it only wakes the fetch")
     func aPushCarriesNothing() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -340,7 +340,7 @@ struct CloudKitStandCarrierTests {
         #expect(changes == 1)
     }
 
-    @Test("ohne Konto traegt der Schluessel-Speicher, wie heute")
+    @Test("without an account the key-value store carries, as today")
     func noAccountFallsBack() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -357,7 +357,7 @@ struct CloudKitStandCarrierTests {
         #expect(carrier.stands()["rss:k"] == [1, 2])
     }
 
-    @Test("ein abgelaufenes Token beginnt von vorn, nichts geht verloren")
+    @Test("an expired token starts over, nothing is lost")
     func expiredTokenStartsOver() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -371,7 +371,7 @@ struct CloudKitStandCarrierTests {
         #expect(carrier.stands()["rss:e"] == [3, 4])
     }
 
-    @Test("die Vereinigung: je Item gewinnt der neuere Moment, bei Gleichstand die Wolke")
+    @Test("the union: per item the newer moment wins, on a tie the cloud")
     func unionPrefersTheNewerMoment() {
         let cloud: [String: [Double]] = ["a": [1, 100], "b": [2, 200], "c": [3, 300]]
         let legacy: [String: [Double]] = ["a": [9, 50], "b": [8, 200], "d": [7, 400]]
@@ -382,14 +382,14 @@ struct CloudKitStandCarrierTests {
         #expect(out["d"] == [7, 400], "only the blob knows d")
     }
 
-    @Test("der Datensatz: Eintrag hin und zurueck, Name ist ein Hash")
+    @Test("the record: entry there and back, name is a hash")
     func recordRoundTrip() {
         #expect(CloudStandNaming.recordName(for: "rss:x").count == 64)
         #expect(CloudStandNaming.recordName(for: "rss:x") != CloudStandNaming.recordName(for: "rss:y"))
         #expect(CloudZoneFailures.failure(from: CloudStandFailure.transport("x")) == .transport("x"))
     }
 
-    @Test("der Fehleruebersetzer: ein Teilfehler nennt den Fehler des ersten Datensatzes, samt Satz des Servers; ein abgewiesener Datensatz ist ein Fehler des Schriebs")
+    @Test("the error translator: a partial failure names the error of the first record, with the server's sentence; a refused record is an error of the write")
     func failureTranslation() {
         let missingType = CKError(.invalidArguments, userInfo: ["ServerErrorDescription": "Cannot create new type Stand in production schema"])
         #expect(CloudZoneFailures.failure(from: missingType) == .transport("ck 12 Cannot create new type Stand in production schema"))

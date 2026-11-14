@@ -31,7 +31,7 @@ struct ClaimCarrierTests {
         func stop() {}
     }
 
-    @Test("der Laeufer schreibt, liest und hoert nur ueber den Traeger") @MainActor
+    @Test("the runner writes, reads and listens only through the carrier") @MainActor
     func runnerTalksOnlyToTheCarrier() {
         let carrier = RecordingCarrier()
         var clock: Double = 1_000_000
@@ -68,7 +68,7 @@ struct ClaimCarrierTests {
     /// The runner is the timekeeper of the hint: a surface that resolved
     /// the claim at render time kept an aged hint on screen, because no
     /// value changed when the freshness ran out.
-    @Test("der Hinweis faellt mit der Frische ohne neuen Anspruch, binnen eines Polls; der Stand fuer die Uebernahme bleibt") @MainActor
+    @Test("the hint falls with the freshness without a new claim, within one poll; the state for the takeover stays") @MainActor
     func theHintAgesOutByThePoll() {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -97,7 +97,7 @@ struct ClaimCarrierTests {
         #expect(sync.hint == nil)
     }
 
-    @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher", .needsTheSources) @MainActor
+    @Test("the fence: only the key carrier names the store", .needsTheSources) @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/PlaybackClaimSync.swift"), encoding: .utf8)
@@ -109,7 +109,7 @@ struct ClaimCarrierTests {
         #expect(KeyValueClaimCarrier.key(for: "dev-a") == "playbackClaim.dev-a")
     }
 
-    @Test("der Schluessel-Traeger liest je Geraet") @MainActor
+    @Test("the key carrier reads per device") @MainActor
     func keyValueCarrierReadsEveryDevice() {
         let store = InMemoryCloudStore()
         let carrier = KeyValueClaimCarrier(cloud: store)

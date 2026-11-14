@@ -73,7 +73,7 @@ struct CloudKitStatsCarrierTests {
         return (CloudKitStatsCarrier(database: zone, fallback: keyValue, defaults: defaults), keyValue)
     }
 
-    @Test("bis die Wolke den eigenen Datensatz nimmt, traegt der Schluessel-Topf mit Deckel; danach die Wolke ohne")
+    @Test("until the cloud takes the own record, the key-value pot carries with a ceiling; after that the cloud without one")
     func theCeilingGoesWithTheFirstAcceptedRecord() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -105,7 +105,7 @@ struct CloudKitStatsCarrierTests {
         #expect(MaerSyncStatsWire.decode(zone.records["dev-a"]!.record.payload) == bigger)
     }
 
-    @Test("ein fremder Datensatz kommt per Token und weckt; ein Geraet auf einem aelteren Bau wird aus dem Schluessel-Topf gelesen; die Wolke gewinnt je Geraet")
+    @Test("a foreign record comes in by token and wakes; a device on an older build is read from the key-value pot; the cloud wins per device")
     func foreignRecordsAndLegacyPots() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -137,7 +137,7 @@ struct CloudKitStatsCarrierTests {
         #expect(woken == 1, "nothing new, no event")
     }
 
-    @Test("ohne Konto traegt der Schluessel-Speicher die ganze Arbeit")
+    @Test("without an account the key-value store does all the work")
     func noAccountMeansTheKeyValueCarrier() async {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -153,7 +153,7 @@ struct CloudKitStatsCarrierTests {
         #expect(zone.modifies.isEmpty, "nothing reaches a cloud without an account")
     }
 
-    @Test("ein abgewiesener Schrieb bleibt in der Warteschlange und ueberlebt den Neustart")
+    @Test("a refused write stays in the queue and survives the restart")
     func aRefusedWriteSurvivesTheRestart() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -171,7 +171,7 @@ struct CloudKitStatsCarrierTests {
         #expect(MaerSyncStatsWire.decode(zone.records["dev-a"]!.record.payload) == pot)
     }
 
-    @Test("der Codec: Datensatz hin und zurueck, Name ist die Geraete-Kennung")
+    @Test("the codec: record there and back, name is the device identifier")
     func codecRoundTrip() throws {
         let record = CloudStatsRecord(deviceId: "dev-a", payload: try MaerSyncStatsWire.encode(pot), t: 42)
         #expect(CloudStatsCodec.recordName(for: record) == "dev-a")

@@ -8,27 +8,27 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Groesse des Cover-Caches zu erfragen heisst, das ganze
-/// Verzeichnis aufzuzaehlen und je Datei eine Groesse zu lesen. Gemessen im
-/// Simulator: 3,1 ms bei tausend Covern, 6,6 ms bei zweitausend (die Groesse,
-/// die das Geraetelog zeigte), 13,8 ms bei viertausend, gegen ein Bild von
-/// 16,7 ms.
+/// Asking for the size of the cover cache means listing the whole
+/// directory and reading a size per file. Measured in the
+/// simulator: 3.1 ms at a thousand covers, 6.6 ms at two thousand (the size
+/// the device log showed), 13.8 ms at four thousand, against a frame of
+/// 16.7 ms.
 ///
-/// Bis eben stand genau diese Frage als „billige Pruefung" vor dem
-/// zusaetzlichen Fegelauf und wurde AUF DEM HAUPTSTRANG bei jedem
-/// Zurueckkommen in die App gestellt, um eine Frage zu beantworten, deren
-/// Antwort fast immer nein ist (`evicted=0` im Geraetelog, immer wieder).
-/// Die Wache kostete mehr als das, was sie bewachte.
+/// Until just now exactly this question stood as a „billige Pruefung" before the
+/// additional sweep run and was asked ON THE MAIN THREAD on every
+/// return to the app, to answer a question whose
+/// answer is almost always no (`evicted=0` in the device log, again and again).
+/// The guard cost more than what it guarded.
 ///
-/// Der Zaun haelt, dass sie nicht zurueckkommt: die Frage darf nur dort
-/// stehen, wo ihre Antwort das ANGEZEIGTE ist.
+/// The fence holds that it does not come back: the question may only
+/// stand where its answer is the DISPLAYED one.
 struct CoverSweepCostFenceTests {
-    /// Die teure SACHE ist die Verzeichnis-Aufzaehlung, nicht der Name, den
-    /// sie gerade traegt. Sie hat zwei: den gebundenen (`cacheSizeBytes`,
-    /// auf den Cover-Cache festgelegt) und den allgemeinen
-    /// (`directoryBytes`, nimmt jedes Verzeichnis). Der allgemeine ist der
-    /// naheliegendere Griff, also muss er im Zaun stehen, sonst waere
-    /// dieselbe Regression unter neuem Namen gruen.
+    /// The expensive THING is the directory listing, not the name it
+    /// currently carries. It has two: the bound one (`cacheSizeBytes`,
+    /// fixed to the cover cache) and the general one
+    /// (`directoryBytes`, takes any directory). The general one is the
+    /// more obvious grip, so it must stand in the fence, or
+    /// the same regression under a new name would be green.
     private static let names = ["cacheSizeBytes", "directoryBytes"]
 
     static func asks(in text: String) -> Int {
@@ -39,7 +39,7 @@ struct CoverSweepCostFenceTests {
             }.count
     }
 
-    /// Wer nach der Groesse fragen darf, mit Grund im Eintrag.
+    /// Who may ask for the size, with the reason in the entry.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
         "ImageCache.swift":
             (3, "die Aufzaehlung selbst wohnt hier: ihre Deklaration, ihr Rufer im Fegelauf und "
@@ -52,7 +52,7 @@ struct CoverSweepCostFenceTests {
                 + "Leeren; dort ist die Antwort das Angezeigte, also ist der Preis der Zweck"),
     ]
 
-    @Test("Nach der Cache-Groesse fragt nur, wer die Antwort zeigt", .needsTheSources)
+    @Test("Only who shows the answer asks for the cache size", .needsTheSources)
     func onlyTheSurfaceThatShowsItAsks() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -60,23 +60,23 @@ struct CoverSweepCostFenceTests {
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
         #expect(drift.isEmpty, "a surface asks for the size again, or a stock above the count: \(drift)")
-        // Rot-Probe in beide Richtungen, ueber BEIDE Namen: der Pruefer
-        // saehe den gebundenen…
+        // Red probe in both directions, over BOTH names: the checker
+        // sees the bound one…
         #expect(Self.asks(in: "if cacheSizeBytes() > cap { sweep() }") == 1)
-        // …und den allgemeinen, der die eigentliche Sache ist.
+        // …and the general one, which is the actual thing.
         #expect(Self.asks(in: "let n = ImageCache.directoryBytes(someDir)") == 1)
-        // Ein Kommentar darueber loest nicht aus.
+        // A comment about it does not trigger.
         #expect(Self.asks(in: "// war cacheSizeBytes()") == 0)
     }
 
-    @Test("Die Zaehlung liest, was da ist, und ein fehlendes Verzeichnis ist null")
+    @Test("The count reads what is there, and a missing directory is zero")
     func theCountReadsWhatIsThere() throws {
         let fm = FileManager.default
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("cover-sweep-fence-\(UUID().uuidString)")
-        // Ein fehlendes Verzeichnis gibt null und nicht etwa einen Fehler,
-        // der als „leer" durchgeht: die Zusicherung, die eine Gegenmessung
-        // schon einmal still hat scheitern lassen.
+        // A missing directory gives zero and not an error
+        // that passes as „leer": the assertion that a counter-measurement
+        // once let fail silently.
         #expect(ImageCache.directoryBytes(dir) == 0)
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: dir) }
@@ -87,17 +87,17 @@ struct CoverSweepCostFenceTests {
         #expect(ImageCache.directoryBytes(dir) == 3_000)
     }
 
-    @Test("Der Deckel und sein Ueberschuss entscheiden den zusaetzlichen Lauf")
+    @Test("The cap and its excess decide the additional run")
     func theCapAndItsOvershootDecide() {
-        // Die Regel hinter dem Tor, pur und ohne Dateien: der zusaetzliche
-        // Lauf kommt erst, wenn der Cache den Deckel um die Haelfte
-        // ueberschritten hat, nicht schon beim Erreichen.
+        // The rule behind the gate, pure and without files: the additional
+        // run comes only when the cache has exceeded the cap by half,
+        // not already on reaching it.
         let cap = ImageCache.cacheCapBytes(freeBytes: 100 * 1024 * 1024 * 1024)
         let trigger = Int64(Double(cap) * ImageCache.enforcementOvershoot)
         #expect(trigger > cap)
         #expect(ImageCache.enforcementOvershoot == 1.5)
-        // Und der Deckel selbst bleibt zwischen Boden und Obergrenze, auch
-        // auf einer vollen Platte.
+        // And the cap itself stays between floor and ceiling, even
+        // on a full disk.
         #expect(ImageCache.cacheCapBytes(freeBytes: 0) == 150 * 1024 * 1024)
         #expect(ImageCache.cacheCapBytes(freeBytes: .max) == 500 * 1024 * 1024)
     }

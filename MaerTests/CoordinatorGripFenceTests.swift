@@ -34,7 +34,7 @@ struct CoordinatorGripFenceTests {
         return receivers.reduce(0) { $0 + code.components(separatedBy: "\($1).playerCoordinator").count - 1 }
     }
 
-    @Test("der Zaehler sieht Namen, Alias und Umbruch")
+    @Test("the counter sees name, alias and line break")
     func theCounterSeesNameAliasAndBreak() {
         #expect(Self.grips(in: "AppSession.shared.playerCoordinator.open(x)") == 1)
         #expect(Self.grips(in: "private static let session = AppSession.shared\nf(Self.session.playerCoordinator)") == 1)
@@ -42,7 +42,7 @@ struct CoordinatorGripFenceTests {
         #expect(Self.grips(in: "PlayQueueSheet(playerCoordinator: coordinator)") == 0)
     }
 
-    @Test("Ansichten bekommen den Koordinator gereicht, der Bestand faellt nur", .needsTheSources)
+    @Test("views get the coordinator handed in, the stock only falls", .needsTheSources)
     func viewsGetTheCoordinatorHandedIn() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")

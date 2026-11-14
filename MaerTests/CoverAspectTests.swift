@@ -12,43 +12,43 @@ import Foundation
 /// one where NOTHING changes: almost every cover in the app is square or
 /// nearly so, and those must keep behaving exactly as before.
 struct CoverAspectTests {
-    @Test("ein quadratisches Cover bleibt beim Fuellen, wie bisher")
+    @Test("a square cover stays filled, as before")
     func squareKeepsFilling() {
         #expect(!CoverAspect.needsFitting(width: 1400, height: 1400))
         #expect(CoverAspect.distanceFromSquare(width: 1400, height: 1400) == 0)
     }
 
-    /// Die Rot-Probe des Auftrags: 99 % der Kacheln sehen schon gut aus
-    /// und duerfen sich NICHT aendern. Ein leicht schief gescanntes Cover
-    /// liegt weit unter der Schwelle.
-    @Test("leicht abweichende Cover bleiben unveraendert")
+    /// The red probe of the order: 99 % of the tiles already look good
+    /// and must NOT change. A slightly skewed scanned cover
+    /// is far below the threshold.
+    @Test("slightly deviating covers stay unchanged")
     func nearlySquareKeepsFilling() {
         #expect(!CoverAspect.needsFitting(width: 1000, height: 1050))
         #expect(!CoverAspect.needsFitting(width: 1200, height: 1000))
-        // Genau auf der Schwelle wird noch gefuellt, erst darueber gefittet.
+        // Exactly at the threshold it is still filled, only above it fitted.
         #expect(!CoverAspect.needsFitting(width: 1200, height: 1000, tolerance: 0.2))
     }
 
-    @Test("ein 16:9-Bild wird eingepasst statt beschnitten")
+    @Test("a 16:9 picture is fitted instead of cropped")
     func wideNeedsFitting() {
         #expect(CoverAspect.needsFitting(width: 1280, height: 720))
         let distance = CoverAspect.distanceFromSquare(width: 1280, height: 720)
         #expect(abs(distance - 0.7777) < 0.001)
     }
 
-    /// Die Regel kennt keine Vorliebe fuer Querformat: dieselbe
-    /// Abweichung hochkant wird genauso behandelt.
-    @Test("hochkant wird genauso eingepasst wie quer")
+    /// The rule has no preference for landscape: the same
+    /// deviation in portrait is treated the same way.
+    @Test("portrait is fitted the same as landscape")
     func tallNeedsFittingToo() {
         #expect(CoverAspect.needsFitting(width: 720, height: 1280))
         #expect(CoverAspect.distanceFromSquare(width: 720, height: 1280)
                 == CoverAspect.distanceFromSquare(width: 1280, height: 720))
     }
 
-    /// Ein Bild ohne gemeldete Masse darf die Kachel NICHT umstellen.
-    /// Die sichere Richtung ist das heutige Verhalten; ein falsches
-    /// „einpassen" wuerde ein Cover aendern, das schon richtig war.
-    @Test("ohne Masse bleibt es beim heutigen Verhalten")
+    /// A picture without reported dimensions must NOT switch the tile.
+    /// The safe direction is today's behaviour; a wrong
+    /// „einpassen" would change a cover that was already right.
+    @Test("without dimensions it stays at today's behaviour")
     func degenerateSizeChangesNothing() {
         #expect(!CoverAspect.needsFitting(width: 0, height: 0))
         #expect(!CoverAspect.needsFitting(width: 0, height: 720))

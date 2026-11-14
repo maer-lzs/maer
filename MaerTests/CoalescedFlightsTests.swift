@@ -45,7 +45,7 @@ struct CoalescedFlightsTests {
         try? await Task.sleep(for: .milliseconds(20))
     }
 
-    @Test("sechs gleichzeitige Anrufer ergeben einen Abruf, und alle bekommen dieselbe Antwort")
+    @Test("six simultaneous callers yield one fetch, and all get the same answer")
     func sixCallersOneFetch() async throws {
         let flights = CoalescedFlights<Int>(capacity: .none)
         let stand = Stand()
@@ -63,7 +63,7 @@ struct CoalescedFlightsTests {
         #expect(answers == Array(repeating: 42, count: 6))
     }
 
-    @Test("ein gegangener Anrufer beendet nur sein Warten; der Abruf laeuft zu Ende, der zweite bekommt die Antwort")
+    @Test("a caller who left ends only its wait; the fetch runs to the end, the second gets the answer")
     func aLeavingCallerOnlyStopsItsWait() async throws {
         let left = Left()
         let flights = CoalescedFlights<Int>(capacity: .none, onLeft: { _ in left.add() })
@@ -80,7 +80,7 @@ struct CoalescedFlightsTests {
         #expect(await stand.runs == 1)
     }
 
-    @Test("nach dem Ende ist die Kennung frei, und ein Fehlschlag wird nicht behalten")
+    @Test("after the end the key is free, and a failure is not kept")
     func afterTheEndTheKeyIsFree() async throws {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 8, bytes: 100))
         let stand = Stand()
@@ -93,7 +93,7 @@ struct CoalescedFlightsTests {
         #expect(await stand.runs == 2, "nach dem Fehlschlag fragt die naechste Frage neu")
     }
 
-    @Test("die zweite Frage nach dem Ende kommt aus der Ablage, ohne Abruf")
+    @Test("the second question after the end comes from the store, without a fetch")
     func theSecondQuestionAfterTheEndComesFromTheStore() async throws {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 8, bytes: 100))
         let stand = Stand()
@@ -103,7 +103,7 @@ struct CoalescedFlightsTests {
         #expect(await stand.runs == 1, "die Ablage antwortet ohne Abruf")
     }
 
-    @Test("eine Antwort, deren Anrufer schon ging, landet trotzdem in der Ablage")
+    @Test("an answer whose caller already left still lands in the store")
     func anAnswerWhoseCallerLeftIsStillKept() async throws {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 8, bytes: 100))
         let stand = Stand()
@@ -118,7 +118,7 @@ struct CoalescedFlightsTests {
         #expect(await stand.runs == 1, "die wieder erscheinende Zelle fragt nicht neu")
     }
 
-    @Test("die Ablage ist gedeckelt, nach Zahl und nach Groesse, die aelteste geht zuerst")
+    @Test("the store is capped, by count and by size, the oldest goes first")
     func theStoreIsCapped() async throws {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 2, bytes: 100))
         for (index, key) in ["a", "b", "c"].enumerated() {
@@ -138,7 +138,7 @@ struct CoalescedFlightsTests {
     /// Every metadata request of archive.org goes through the one fetch, and
     /// that fetch only runs inside a flight. Named exception: `liveness`,
     /// which must stay fresh (a withdrawn item) and never reads the store.
-    @Test("jeder Metadaten-Abruf laeuft durch den Flug, benannte Ausnahme liveness", .needsTheSources)
+    @Test("every metadata fetch runs through the flight, named exception liveness", .needsTheSources)
     func everyMetadataFetchFlies() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/Networking/FreeCatalogClients.swift"), encoding: .utf8)

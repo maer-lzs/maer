@@ -27,7 +27,7 @@ struct ChapterModelTests {
                           userMediaProgress: nil)
     }
 
-    @Test("Die Spurenliste der Album-Seite: Kapitel wenn genannt, sonst eine je Spur mit ihrem Namen, sonst leer und benannt (E89)")
+    @Test("The track list of the album page: chapters when stated, otherwise one per track with its name, otherwise empty and named (E89)")
     func albumTrackListHasAnEndStateForEveryAnswer() {
         // A server album states chapters: they are the list.
         let stated = MusicAlbumView.trackList(of: detail(chapters: [ch(0, 0, 100), ch(1, 100, 200)], tracks: [track(0, 100), track(1, 100)]))

@@ -31,7 +31,7 @@ private final class FakeChoiceCarrier: ChoiceCarrier {
 /// runner.
 struct ChoiceCarrierTests {
 
-    @Test("der Schluessel-Traeger traegt den Blob hin und zurueck") @MainActor
+    @Test("the key carrier carries the blob there and back") @MainActor
     func keyValueCarrierRoundTrip() {
         let store = InMemoryCloudStore()
         let carrier = KeyValueChoiceCarrier(store: store)
@@ -46,7 +46,7 @@ struct ChoiceCarrierTests {
         #expect(carrier.name == "kvs")
     }
 
-    @Test("ein Beobachter, nie zwei") @MainActor
+    @Test("one observer, never two") @MainActor
     func oneObserverOnly() {
         let carrier = KeyValueChoiceCarrier(store: InMemoryCloudStore())
         carrier.start {}
@@ -54,7 +54,7 @@ struct ChoiceCarrierTests {
         #expect(carrier.observerRegistrations == 1)
     }
 
-    @Test("die Fabrik stellt die Wahlen auf den Dienst, sobald ein Zugang da ist, sonst auf den Schluessel") @MainActor
+    @Test("the factory puts the choices on the service as soon as an access exists, otherwise on the key") @MainActor
     func factoryChoosesByAccess() {
         #expect(ChoiceCarriers.make(access: nil) is KeyValueChoiceCarrier)
         let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
@@ -75,7 +75,7 @@ struct ChoiceCarrierTests {
          "cleared": UserChoiceEntry(value: nil, t: 3000).plist]
     }
 
-    @Test("der Dienst-Traeger: der Blob reist als EIN Dokument, eine fremde Fassung weckt den Laeufer") @MainActor
+    @Test("the service carrier: the blob travels as ONE document, a foreign version wakes the runner") @MainActor
     func serviceCarrierWritesOneWholeDocument() async throws {
         let name = "choice-svc-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))
@@ -111,7 +111,7 @@ struct ChoiceCarrierTests {
         #expect(session.claims.isEmpty)
     }
 
-    @Test("der Draht traegt jeden Werttyp exakt hin und zurueck; Unlesbares ist kein Blob, ein unbekannter Tag kein Grabstein") @MainActor
+    @Test("the wire carries every value type exactly there and back; unreadable data is no blob, an unknown tag is no tombstone") @MainActor
     func theServiceWireRoundTrips() throws {
         let every: [String: Any] = [
             "s": UserChoiceEntry(value: .string("x"), t: 1).plist,
@@ -143,7 +143,7 @@ struct ChoiceCarrierTests {
         #expect(try MaerSyncChoiceWire.encode(read) == unknown)
     }
 
-    @Test("der Laeufer notiert und uebernimmt ueber einen eingereichten Traeger") @MainActor
+    @Test("the runner notes and adopts through a handed-in carrier") @MainActor
     func runnerRunsOverTheCarrier() throws {
         let suite = "choice-carrier-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -171,7 +171,7 @@ struct ChoiceCarrierTests {
     /// primitive. What it may still say is the protocol's name in its
     /// `init`, which turns a witness's dictionary fake into the key-value
     /// carrier.
-    @Test("der Zaun: der Laeufer nennt kein Speicher-Primitiv", .needsTheSources) @MainActor
+    @Test("the fence: the runner names no store primitive", .needsTheSources) @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/UserChoiceCloudSync.swift"),

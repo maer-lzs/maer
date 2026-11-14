@@ -24,7 +24,7 @@ struct CoListenedTests {
     /// Every view that lists the co-listened shows recomputes on the
     /// notification, so "Don't show this show" acts at once on every
     /// surface, the full page included (it used to wait for a tab switch).
-    @Test("Jede Flaeche mit mitgehoerten Sendungen hoert auf coListenedChanged", .needsTheSources)
+    @Test("Every surface with co-listened shows listens to coListenedChanged", .needsTheSources)
     func everySurfaceListens() throws {
         var deaf: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -35,7 +35,7 @@ struct CoListenedTests {
         #expect(deaf.isEmpty, "these surfaces list co-listened shows but never hear the change: \(deaf)")
     }
 
-    @Test("Eine voll gehoerte Folge im Fenster macht die Sendung mitgehoert")
+    @Test("A fully listened episode in the window makes the show co-listened")
     func oneObservedPlayThroughInsideTheWindow() {
         let shows = CoListened.shows(listened: [Self.row("a", playedAt: Self.now - 2 * Self.day)],
                                      subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
@@ -43,7 +43,7 @@ struct CoListenedTests {
         #expect(shows.first?.feedURL == "https://a/feed")
     }
 
-    @Test("Nach sechzig Tagen ohne weitere Folge steigt die Sendung von selbst aus")
+    @Test("After sixty days without another episode the show drops out by itself")
     func leavesAfterTheWindow() {
         let inside = Self.row("a", playedAt: Self.now - 59 * Self.day)
         let outside = Self.row("b", playedAt: Self.now - 61 * Self.day)
@@ -53,7 +53,7 @@ struct CoListenedTests {
         #expect(CoListened.windowDays == 60)
     }
 
-    @Test("Die Zaehlung nennt, warum eine Zeile fiel: nicht beobachtet, Fenster, abonniert, ausgeblendet")
+    @Test("The count names why a row fell: not observed, window, subscribed, hidden")
     func tallyNamesEveryDrop() {
         let rows = [Self.row("kept", playedAt: Self.now - Self.day),
                     Self.row("old", playedAt: Self.now - 61 * Self.day),
@@ -68,7 +68,7 @@ struct CoListenedTests {
                                           subscribedDropped: 1, hiddenDropped: 1))
     }
 
-    @Test("Nachgebuchte Zeit zaehlt nicht, ein Grabstein auch nicht")
+    @Test("Time booked afterwards does not count, nor does a tombstone")
     func bookkeepingAndTombstonesDoNotCount() {
         let synthesized = Self.row("a", playedAt: Self.now - Self.day, observed: false)
         let unplayed = Self.row("b", playedAt: Self.now - Self.day, played: false)
@@ -77,7 +77,7 @@ struct CoListenedTests {
         #expect(shows.isEmpty)
     }
 
-    @Test("Abonniert oder ausgeblendet ist nie mitgehoert")
+    @Test("Subscribed or hidden is never co-listened")
     func subscribedAndHiddenAreOut() {
         let rows = [Self.row("subscribed", playedAt: Self.now - Self.day),
                     Self.row("hidden", playedAt: Self.now - Self.day),
@@ -87,7 +87,7 @@ struct CoListenedTests {
         #expect(shows.map(\.feedKey) == ["free"])
     }
 
-    @Test("Kein Deckel: alle Sendungen im Fenster, die zuletzt gehoerten zuerst, je Sendung das juengste Vollhoeren")
+    @Test("No cap: all shows in the window, the most recently listened first, per show the latest full listen")
     func noCapAndOrder() {
         var rows: [CoListened.Listened] = []
         for i in 0..<12 {
@@ -101,7 +101,7 @@ struct CoListenedTests {
         #expect(shows.first?.lastPlayedAt == Self.now)
     }
 
-    @Test("Die Sendung zaehlt ihre gehoerten Folgen, unabhaengig von der Reihenfolge")
+    @Test("The show counts its listened episodes, regardless of order")
     func showCountsItsPlayedEpisodes() {
         let rows = [Self.row("a", playedAt: Self.now - Self.day),
                     Self.row("a", playedAt: Self.now),
@@ -111,17 +111,17 @@ struct CoListenedTests {
                                      hiddenFeedKeys: [], now: Self.now)
         let a = shows.first { $0.feedKey == "a" }
         #expect(a?.playedEpisodes == 3)
-        // Der juengste Eintrag bleibt der, der die anderen Felder setzt.
+        // The latest entry stays the one that sets the other fields.
         #expect(a?.lastPlayedAt == Self.now)
         #expect(shows.first { $0.feedKey == "b" }?.playedEpisodes == 1)
     }
 
-    @Test("Eine Folge ist ein Blick, zwei sind Geschmack")
+    @Test("One episode is a glance, two are taste")
     func oneEpisodeDoesNotCountForTaste() {
         let one = CoListened.shows(listened: [Self.row("a", playedAt: Self.now)],
                                    subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
         #expect(one.first.map(CoListened.countsForTaste) == false)
-        // Die REIHE traegt sie trotzdem: dort ist die Frage eine andere.
+        // The ROW carries it anyway: there the question is a different one.
         #expect(one.count == 1)
         let two = CoListened.shows(listened: [Self.row("a", playedAt: Self.now),
                                               Self.row("a", playedAt: Self.now - Self.day)],
@@ -129,7 +129,7 @@ struct CoListenedTests {
         #expect(two.first.map(CoListened.countsForTaste) == true)
     }
 
-    @Test("Eine ausgeblendete mitgehoerte Sendung zaehlt auch im Geschmack nicht")
+    @Test("A hidden co-listened show does not count in taste either")
     func hiddenShowNeverCountsForTaste() {
         let shows = CoListened.shows(listened: [Self.row("a", playedAt: Self.now),
                                                 Self.row("a", playedAt: Self.now - Self.day)],
@@ -137,22 +137,22 @@ struct CoListenedTests {
         #expect(shows.isEmpty, "ausgeblendet faellt vor der Zaehlung")
     }
 
-    @Test("Ein Abo wiegt doppelt so schwer wie eine mitgehoerte Sendung derselben Hoerzeit")
+    @Test("A subscription weighs twice as much as a co-listened show of the same listening time")
     func subscriptionWeighsTwiceTheCoListened() {
         typealias Taste = PodcastRecommendationsStore.TasteShow
         let listening = ["own": 100.0, "heard": 100.0]
         let shows = [Taste(id: "own", author: "Verlag A", categories: ["History"], share: 1),
                      Taste(id: "heard", author: "Verlag B", categories: ["Comedy"],
                            share: CoListened.tasteShare)]
-        // Gleiche Hoerzeit, gleiche eine Sendung: der Autor des Abos fuehrt.
+        // Same listening time, same single show: the subscription's author leads.
         #expect(PodcastRecommendationsStore.weightedAuthors(shows, listening: listening)
                 == ["Verlag A", "Verlag B"])
         #expect(PodcastRecommendationsStore.weightedCategories(shows, listening: listening)
                 == ["History", "Comedy"])
-        // Und zwar genau doppelt. Der Faktor sitzt am ganzen Gewicht, nicht
-        // an der Hoerzeit allein (jede Sendung traegt eine Eins als Sockel,
-        // damit ein neues Abo ueberhaupt zaehlt): bei 201 s steht es gleich,
-        // erst darueber gewinnt die mitgehoerte Sendung.
+        // Exactly twice. The factor applies to the whole weight, not to the
+        // listening time alone (every show carries a one as base, so that a
+        // new subscription counts at all): at 201 s it is level, only above
+        // that does the co-listened show win.
         let tie = [shows[0], Taste(id: "heard", author: "Verlag B", categories: [],
                                    share: CoListened.tasteShare)]
         #expect(PodcastRecommendationsStore.weightedAuthors(tie, listening: ["own": 100, "heard": 202])
@@ -161,27 +161,27 @@ struct CoListenedTests {
                 .first == "Verlag A")
     }
 
-    @Test("Eine mitgehoerte Sendung hebt einen Autor, ohne selbst ein Abo zu sein")
+    @Test("A co-listened show lifts an author without itself being a subscription")
     func coListenedLiftsAnAuthorWithoutSubscribing() {
         typealias Taste = PodcastRecommendationsStore.TasteShow
         let onlyOwn = [Taste(id: "own", author: "Verlag A", categories: [], share: 1)]
         #expect(PodcastRecommendationsStore.weightedAuthors(onlyOwn, listening: [:]) == ["Verlag A"])
-        // Dieselbe Menge plus eine mitgehoerte Sendung eines anderen
-        // Verlags: der neue Verlag steht in der Liste, das Abo bleibt vorn.
+        // The same set plus a co-listened show of another publisher: the
+        // new publisher is in the list, the subscription stays in front.
         let withHeard = onlyOwn + [Taste(id: "heard", author: "Verlag B", categories: [],
                                          share: CoListened.tasteShare)]
         #expect(PodcastRecommendationsStore.weightedAuthors(withHeard, listening: [:])
                 == ["Verlag A", "Verlag B"])
     }
 
-    @Test("Ein Eintrag ohne Feed-Adresse traegt keine Sendung")
+    @Test("An entry without a feed address carries no show")
     func emptyFeedKeyIsIgnored() {
         let shows = CoListened.shows(listened: [Self.row("", playedAt: Self.now)],
                                      subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
         #expect(shows.isEmpty)
     }
 
-    @Test("Die Ausschlussliste ist des Nutzers und bleibt")
+    @Test("The exclusion list belongs to the user and stays")
     func hiddenStoreKeeps() {
         CoListenedHiddenStore._resetForTest()
         defer { CoListenedHiddenStore._resetForTest() }
@@ -192,9 +192,9 @@ struct CoListenedTests {
         #expect(CoListenedHiddenStore.feedKeys() == ["a", "b"])
     }
 
-    /// Kein Abo durch die Hintertuer: die Sitzungshaelfte kennt eine Sendung,
-    /// der Abo-Bestand nicht, und das bleibt so, was immer die Regel sagt.
-    @Test("Mitgehoert erreicht den Abo-Bestand nicht")
+    /// No subscription through the back door: the session half knows a show,
+    /// the subscription stock does not, and that stays so, whatever the rule says.
+    @Test("Co-listened does not reach the subscription stock")
     @MainActor
     func noSubscriptionThroughTheBackDoor() {
         BrowsedEpisodes.shared._testReset()
@@ -214,7 +214,7 @@ struct CoListenedTests {
     /// or in two, a second copy could miss a source and put a followed show
     /// back. Every call that folds shows into feed addresses is counted, in
     /// whatever spelling, and only the sources' own file may make one.
-    @Test("die Menge der eigenen Feeds steht einmal, unter ihrem Namen", .needsTheSources)
+    @Test("the set of own feeds stands once, under its name", .needsTheSources)
     func theOwnedFeedsHaveOneName() throws {
         var texts: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {

@@ -17,7 +17,7 @@ struct CloudMergeTests {
     /// A receive-only pass finds the local side "newer" while this device
     /// plays; that is not a change and writes no ring entry. Only what was
     /// taken in or actually pushed counts.
-    @Test("Ein Abgleich ohne Bewegung schreibt keinen Ring-Eintrag")
+    @Test("A sync without movement writes no ring entry")
     func ringEntryOnlyForWhatMoved() {
         #expect(PodcastCloudSync.ringCounters(down: 0, up: 3, pushing: false) == nil)
         #expect(PodcastCloudSync.ringCounters(down: 0, up: 0, pushing: true) == nil)
@@ -57,7 +57,7 @@ struct CloudMergeTests {
         #expect(sends == 1, "the cadence sends once in sixty seconds")
         // A deliberate occasion sends at once, even right after a send.
         #expect(CloudSendRules.shouldSend(deliberate: true, lastSentAtMs: 60_000, nowMs: 60_500, cadenceSeconds: 60))
-        // Rot-Probe: the old form (send on every occasion) would have
+        // Red probe: the old form (send on every occasion) would have
         // sent twelve times.
         #expect(!CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: 60_000, nowMs: 60_500, cadenceSeconds: 60))
     }
@@ -75,7 +75,7 @@ struct CloudMergeTests {
         for id in ["radio:rb:x", "sub:song:1", "jf:item", "abs:book"] {
             #expect(!PodcastCloudSync.potCarries(id), "\(id) has its own truth or none")
         }
-        // Rot-Probe: the old two-prefix check missed every catalogue class.
+        // Red probe: the old two-prefix check missed every catalogue class.
         let old: (String) -> Bool = { $0.hasPrefix("rss:") || $0.hasPrefix("abspod:") }
         #expect(!old("lv:123") && PodcastCloudSync.potCarries("lv:123"))
     }
@@ -92,7 +92,7 @@ struct CloudMergeTests {
         #expect(abs(rest - 0.4) < 0.001)
         // After the spacing: at once again.
         #expect(CloudSendRules.trailingWait(lastWriteAtMs: 100_000, nowMs: 105_000) == nil)
-        // Rot-Probe: the old form wrote every time, i.e. never waited.
+        // Red probe: the old form wrote every time, i.e. never waited.
         #expect(CloudSendRules.trailingWait(lastWriteAtMs: 100_000, nowMs: 100_001) != nil)
     }
 
@@ -203,10 +203,10 @@ struct CloudMergeTests {
         #expect(sync.observerRegistrations <= 1)
     }
 
-    /// Die Reise-Regel der KVS-Raeumung: fertig UND abbestellt verlaesst
-    /// den Reise-Topf, sonst NIE. Der bindende Zaun woertlich: nie faellt
-    /// ein Stand einer abonnierten oder unfertigen Folge.
-    @Test("nur fertige Folgen abbestellter Shows verlassen den Reise-Topf")
+    /// The travel rule of the KVS cleanup: finished AND unsubscribed leaves
+    /// the travel pot, otherwise NEVER. The binding fence, verbatim: the
+    /// stand of a subscribed or unfinished episode never falls out.
+    @Test("only finished episodes of unsubscribed shows leave the travel pot")
     func travelMembershipIsDerived() {
         let abonniert: (String) -> Bool = { $0 == "aboKey" }
         let fertig: [Double] = [ProgressMark.playedSentinel, 1_000]
@@ -219,38 +219,37 @@ struct CloudMergeTests {
                                          isSubscribedShow: abonniert))
         #expect(!PodcastCloudSync.travels(id: "rss:weg:g4", entry: fertig,
                                           isSubscribedShow: abonniert))
-        // Zweifel (weder Sentinel noch gespeicherte Dauer): bleibt.
+        // Doubt (neither sentinel nor stored duration): it stays.
         #expect(PodcastCloudSync.travels(id: "rss:weg:g5", entry: [5_000, 1_000],
                                          isSubscribedShow: abonniert))
-        // Nicht-Podcast-Klassen reisen immer (kein Abo-Begriff).
+        // Non-podcast classes always travel (no subscription notion).
         for id in ["abspod:x:y", "lv:123", "local:datei", "gut:9"] {
             #expect(PodcastCloudSync.travels(id: id, entry: fertig,
                                              isSubscribedShow: { _ in false }))
         }
     }
 
-    /// Die Grabstein-Frage, beantwortet durch ABLEITUNG statt Grabstein:
-    /// geraeumt und wieder abonniert heisst, der lokale Stand reist beim
-    /// naechsten Abgleich einfach wieder; nichts blockiert die Rueckkehr,
-    /// und die Raeumung fasst nur den Cloud-Topf an.
-    /// Jeder Schreibweg laeuft durch die Regel: was der Einzelweg
-    /// hochschreiben will (pushLocal), muss reisen duerfen. Sonst legte
-    /// ein spaeter Anfass einer fertigen Folge einer abbestellten Show
-    /// den geraeumten Eintrag zurueck in den Topf.
-    @Test("auch der Einzel-Schreibweg respektiert die Reise-Regel")
+    /// The tombstone question, answered by DERIVATION instead of a tombstone:
+    /// cleaned up and subscribed again means the local stand simply travels
+    /// again at the next sync; nothing blocks the return, and the cleanup
+    /// touches only the cloud pot.
+    /// Every write path runs through the rule: what the single path wants
+    /// to write up (pushLocal) must be allowed to travel. Otherwise a late
+    /// touch of a finished episode of an unsubscribed show would put the
+    /// cleaned-up entry back into the pot.
+    @Test("the single write path also respects the travel rule")
     func singleKeyPathHonoursTravelRule() {
         let fertig: [Double] = [ProgressMark.playedSentinel, 9_000]
-        // mergeSingle wuerde hochschreiben (lokal neuer, Cloud leer) ...
+        // mergeSingle would write up (local newer, cloud empty) ...
         let outcome = PodcastCloudSync.mergeSingle(local: fertig, cloud: nil)
         #expect(outcome == .pushLocal(fertig))
-        // ... aber die Reise-Regel verneint, und der Weg bricht ab (die
-        // Verdrahtung steht im pushLocal-Zweig; hier steht die Regel, die
-        // er fragt).
+        // ... but the travel rule says no, and the path stops (the wiring
+        // is in the pushLocal branch; here is the rule it asks).
         #expect(!PodcastCloudSync.travels(id: "rss:weg:g9", entry: fertig,
                                           isSubscribedShow: { _ in false }))
     }
 
-    @Test("Wieder-Abonnieren bringt den geraeumten Stand von selbst zurueck")
+    @Test("Subscribing again brings the cleaned-up stand back by itself")
     func resubscribeBringsTheStandBack() {
         let fertig: [Double] = [ProgressMark.playedSentinel, 2_000]
         let geraeumt = PodcastCloudSync.cleaned(cloud: ["rss:weg:g1": fertig],
