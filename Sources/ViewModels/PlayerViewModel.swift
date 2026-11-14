@@ -1019,7 +1019,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         guard startIndex >= 0, startIndex < tracks.count else { return false }
         // The route this queue will play on is noted, and its setting is the
         // one the new items' filters start with.
-        followSoundRoute(notingRoute: true)
+        followSoundRoute(notingRoute: true, hangsQueued: false)
         // A new queue holds new items: a noted load failure is healed by it.
         loadFailureNoted = false
 

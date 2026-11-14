@@ -131,16 +131,12 @@ nonisolated enum SoundReach {
     /// Worth hanging a filter in: not a station, and a setting that does
     /// something. A station's stream reports no audio track the filter
     /// could hang on, so it is left out before it is asked.
+    /// The rest is the item's: the filter hangs only where the asset reports
+    /// an audio track, a file or a stream the server sends with byte ranges.
+    /// A stream the server converts on the fly reports none (measured on
+    /// Navidrome and Jellyfin) and plays without it (`SoundTap.attach`).
     static func shouldTry(isRadio: Bool, setting: SoundSetting) -> Bool {
         !isRadio && !setting.isOff
-    }
-
-    /// The filter works only on an item whose asset reports an audio track:
-    /// a file, or a stream the server sends with byte ranges. A stream the
-    /// server converts on the fly reports none (measured on Navidrome and
-    /// Jellyfin), and the title plays without the filter.
-    static func filterApplies(isRadio: Bool, hasAudioTrack: Bool, setting: SoundSetting) -> Bool {
-        shouldTry(isRadio: isRadio, setting: setting) && hasAudioTrack
     }
 }
 

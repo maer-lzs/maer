@@ -13,8 +13,9 @@ extension PlayerViewModel {
     /// `notingRoute` a device not in the book yet joins it. When the new
     /// setting does something, the items that have no filter yet get one;
     /// a setting that does nothing leaves hung filters to pass the sound as
-    /// it comes.
-    func followSoundRoute(notingRoute: Bool) {
+    /// it comes. Without `hangsQueued` only the setting moves: a queue
+    /// about to be built new takes its filters item by item.
+    func followSoundRoute(notingRoute: Bool, hangsQueued: Bool = true) {
         let route = SoundTap.currentRoute()
         var book = AppStorageKeys.soundBookValue
         if notingRoute, let route {
@@ -27,7 +28,7 @@ extension PlayerViewModel {
         }
         let setting = book.setting(for: route)
         soundState.set(setting)
-        guard !setting.isOff, let player else { return }
+        guard hangsQueued, !setting.isOff, let player else { return }
         let isRadio = ItemNamespace.isRadio(item?.id ?? "")
         for queued in player.items() { hangSound(on: queued, isRadio: isRadio) }
     }
@@ -39,8 +40,8 @@ extension PlayerViewModel {
         let state = soundState
         guard SoundReach.shouldTry(isRadio: isRadio, setting: state.setting), item.audioMix == nil else { return }
         Task { @MainActor in
-            let hung = await SoundTap.attach(state, to: item)
-            Logger.player.notice("SOUND filter \(hung ? "hung" : "not reachable, the item reports no audio track", privacy: .public)")
+            let outcome = await SoundTap.attach(state, to: item)
+            Logger.player.notice("SOUND filter \(outcome.rawValue, privacy: .public)")
         }
     }
 }

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import AVFoundation
 import Foundation
 import Testing
 @testable import Maer
@@ -84,14 +85,38 @@ struct SoundCoreTests {
         #expect(SoundBook().setting(for: phonak).isOff)
     }
 
-    @Test("no filter on a station, without an audio track, or with a setting that does nothing")
+    @Test("no filter on a station or with a setting that does nothing")
     func reach() {
         let speech = SoundSetting(presetID: "speech", gain: 1)
-        #expect(SoundReach.filterApplies(isRadio: false, hasAudioTrack: true, setting: speech))
-        #expect(!SoundReach.filterApplies(isRadio: true, hasAudioTrack: true, setting: speech), "a station")
-        #expect(!SoundReach.filterApplies(isRadio: false, hasAudioTrack: false, setting: speech), "a stream converted on the fly")
-        #expect(!SoundReach.filterApplies(isRadio: false, hasAudioTrack: true, setting: .off), "off")
-        #expect(!SoundReach.shouldTry(isRadio: true, setting: speech))
+        #expect(SoundReach.shouldTry(isRadio: false, setting: speech))
+        #expect(!SoundReach.shouldTry(isRadio: true, setting: speech), "a station")
+        #expect(!SoundReach.shouldTry(isRadio: false, setting: .off), "off")
+    }
+
+    @MainActor
+    @Test("an item without an audio track takes no filter and says so", .needsAudio)
+    func noTrackNoFilter() async throws {
+        let state = SoundTapState()
+        state.set(SoundSetting(presetID: "speech", gain: 1))
+        let empty = AVPlayerItem(asset: AVMutableComposition())
+        #expect(await SoundTap.attach(state, to: empty) == .noAudioTrack)
+        #expect(empty.audioMix == nil)
+    }
+
+    @MainActor
+    @Test("an item with a track takes the filter once; a second attach finds the mix and leaves it", .needsAudio)
+    func attachOnce() async throws {
+        let file = try TickWorkTests().tone(seconds: 2)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let state = SoundTapState()
+        state.set(SoundSetting(presetID: "speech", gain: 1))
+        let item = AVPlayerItem(url: file)
+        let first = Task { @MainActor in await SoundTap.attach(state, to: item) }
+        let second = Task { @MainActor in await SoundTap.attach(state, to: item) }
+        let outcomes = [await first.value, await second.value]
+        #expect(outcomes.filter { $0 == .hung }.count == 1, "two calls at once hang one filter: \(outcomes)")
+        #expect(outcomes.contains(.alreadyHung))
+        #expect(item.audioMix != nil)
     }
 
     @Test("a band at 0 dB passes the signal, a band at 6 dB lifts its centre by 6 dB")
@@ -130,8 +155,49 @@ struct SoundCoreTests {
     func stateGenerations() {
         let state = SoundTapState()
         #expect(state.setting == .off)
+        #expect(state.generation == 0)
+        let speech = SoundSetting(presetID: "speech", gain: 1)
+        state.set(speech)
+        #expect(state.setting == speech)
+        #expect(state.generation == 1)
+        state.set(speech)
+        #expect(state.generation == 1, "the same setting again is no new generation")
+        state.set(SoundSetting(presetID: "speech", gain: 1.5))
+        #expect(state.generation == 2)
+    }
+
+    @Test("chains are built per tap and per new setting, never for the same setting again")
+    func chainsAreBuiltOffTheAudioThread() {
+        let state = SoundTapState()
+        let first = SoundSlot(sampleRate: 44100, channels: 2)
+        let second = SoundSlot(sampleRate: 48000, channels: 1)
+        state.register(first)
+        state.register(second)
+        #expect(state.builds == 2, "each tap gets its chain when it learns its format")
+        #expect(first.load() != nil)
+        let before = first.load()
         state.set(SoundSetting(presetID: "speech", gain: 1))
-        #expect(state.setting.presetID == "speech")
+        #expect(state.builds == 4, "a new setting builds one chain for every tap")
+        #expect(first.load() != before, "the tap's slot holds the new chain")
+        state.set(SoundSetting(presetID: "speech", gain: 1))
+        #expect(state.builds == 4, "the same setting builds nothing")
+        state.unregister(first)
+        state.set(SoundSetting(presetID: "louder", gain: 1))
+        #expect(state.builds == 5, "a tap that left gets no chain")
+        #expect(first.load() == nil)
+        state.unregister(second)
+    }
+
+    @Test("a chain takes over the filter memory of the one before when the shape fits")
+    func chainContinues() {
+        let before = SoundChain(setting: SoundSetting(presetID: "speech", gain: 1), sampleRate: 44100, channels: 2)
+        for index in 0..<(2 * before.delaysPerChannel) { before.delays[index] = Float(index) }
+        let after = SoundChain(setting: SoundSetting(presetID: "louder", gain: 1.2), sampleRate: 44100, channels: 2)
+        after.continueFrom(before)
+        #expect((0..<(2 * after.delaysPerChannel)).allSatisfy { after.delays[$0] == Float($0) })
+        let mono = SoundChain(setting: .off, sampleRate: 44100, channels: 1)
+        mono.continueFrom(before)
+        #expect((0..<mono.delaysPerChannel).allSatisfy { mono.delays[$0] == 0 }, "another shape starts clean")
     }
 
     @Test("the book stays on the device")
@@ -150,5 +216,17 @@ struct SoundCoreTests {
         let player = try #require(files.first { $0.name == "PlayerViewModel.swift" }?.text)
         #expect(player.contains("hangSound(on: item, isRadio: isRadio)"), "every queue item passes the sound door")
         #expect(player.contains("followSoundRoute(notingRoute: self.isPlaying)"), "a route change takes the new route's setting")
+        #expect(player.contains("followSoundRoute(notingRoute: true, hangsQueued: false)"),
+                "a queue about to be built new takes no filters on the old items")
+        let tap = try #require(files.first { $0.name == "SoundTap.swift" }?.text)
+        let start = try #require(tap.range(of: "process: { tap, numberFrames"))
+        let end = try #require(tap.range(of: "var tap: MTAudioProcessingTap?", range: start.upperBound..<tap.endIndex))
+        let perBuffer = String(tap[start.lowerBound..<end.lowerBound])
+        // The shared state sits behind a lock, so the loop does not touch it at all.
+        for forbidden in ["withLock", "Mutex", ".state", "SoundChain(", "allocate", "Array(", "[Float]", ".set(", "register("] {
+            #expect(!perBuffer.contains(forbidden), "the audio thread's buffer loop holds \(forbidden)")
+        }
+        #expect(perBuffer.contains("context.slot?.load()"), "the buffer loop reads its chain without a lock")
+        #expect(tap.contains("address.load(ordering: .acquiring)"), "the slot's read is atomic")
     }
 }
