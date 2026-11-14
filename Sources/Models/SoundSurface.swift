@@ -91,8 +91,9 @@ nonisolated enum SoundSurface {
 
     /// Whether the player's button shows a setting at work, as the speed
     /// button does when it is not 1×.
-    static func isActive(_ setting: SoundSetting) -> Bool {
-        !setting.isOff
+    /// It shows what works on the title now: nothing under any block.
+    static func isActive(_ setting: SoundSetting, block: Block?) -> Bool {
+        !setting.isOff && block == nil
     }
 }
 

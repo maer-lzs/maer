@@ -922,9 +922,13 @@ struct PlayerView: View {
         .padding(.top, 4)
     }
 
-    /// The speed, and the sound effects directly beside it.
+    /// The speed, and the sound effects directly beside it. At the
+    /// accessibility sizes the two do not fit side by side in the narrow
+    /// cell (the rate breaks), so the effects stand under the speed there.
     private var speedControl: some View {
-        HStack(spacing: 16) {
+        let layout = isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                                         : AnyLayout(HStackLayout(spacing: 16))
+        return layout {
             SpeedMenu(viewModel: viewModel)
             EffectsButton(viewModel: viewModel)
         }

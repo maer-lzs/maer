@@ -163,7 +163,7 @@ struct EffectsButton: View {
                     Label("Effects", systemImage: "slider.vertical.3")
                 }
             }
-            .foregroundStyle(SoundSurface.isActive(viewModel.soundSetting) ? AnyShapeStyle(AppTheme.accent)
+            .foregroundStyle(SoundSurface.isActive(viewModel.soundSetting, block: viewModel.soundBlock) ? AnyShapeStyle(AppTheme.accent)
                                                                           : AnyShapeStyle(.white))
         }
         .accessibilityIdentifier("player-effects")
@@ -249,9 +249,8 @@ struct SoundSettingsView: View {
                 }
                 .onDelete { offsets in
                     let keys = offsets.map { book.devices[$0].route.key }
-                    var next = book
-                    for key in keys { next = next.removing(key: key) }
-                    SoundSettingsWrite.save(next, into: $book, coordinator: coordinator)
+                    SoundSettingsWrite.save({ fresh in keys.reduce(fresh) { $0.removing(key: $1) } },
+                                            into: $book, coordinator: coordinator)
                 }
             } header: {
                 Text("Devices")
@@ -273,7 +272,9 @@ struct SoundDefaultView: View {
         Form {
             SoundChoiceSections(setting: Binding(
                 get: { book.fallback },
-                set: { SoundSettingsWrite.save(SoundBookEdit.defaulting($0, in: book), into: $book, coordinator: coordinator) }))
+                set: { setting in
+                    SoundSettingsWrite.save({ SoundBookEdit.defaulting(setting, in: $0) }, into: $book, coordinator: coordinator)
+                }))
         }
         .navigationTitle("Other devices")
     }
@@ -294,11 +295,13 @@ struct SoundDeviceView: View {
             if let device {
                 SoundChoiceSections(setting: Binding(
                     get: { device.setting ?? book.fallback },
-                    set: { SoundSettingsWrite.save(SoundBookEdit.choosing($0, forDevice: key, in: book),
-                                                   into: $book, coordinator: coordinator) }))
+                    set: { setting in
+                        SoundSettingsWrite.save({ SoundBookEdit.choosing(setting, forDevice: key, in: $0) },
+                                                into: $book, coordinator: coordinator)
+                    }))
                 Section {
                     Button("Remove device", role: .destructive) {
-                        SoundSettingsWrite.save(book.removing(key: key), into: $book, coordinator: coordinator)
+                        SoundSettingsWrite.save({ $0.removing(key: key) }, into: $book, coordinator: coordinator)
                         dismiss()
                     }
                 } footer: {
@@ -313,7 +316,10 @@ struct SoundDeviceView: View {
 /// The one write of the settings pages: the book is kept, the page shows
 /// it, and the player takes the setting of its route at once.
 enum SoundSettingsWrite {
-    static func save(_ book: SoundBook, into binding: Binding<SoundBook>, coordinator: PlayerCoordinator) {
+    /// The edit applies to the book as it stands now, not to the page's
+    /// copy: a device noted while the page is open stays in the book.
+    static func save(_ edit: (SoundBook) -> SoundBook, into binding: Binding<SoundBook>, coordinator: PlayerCoordinator) {
+        let book = edit(AppStorageKeys.soundBookValue)
         AppStorageKeys.soundBookValue = book
         binding.wrappedValue = book
         coordinator.viewModel?.followSoundRoute(notingRoute: false)

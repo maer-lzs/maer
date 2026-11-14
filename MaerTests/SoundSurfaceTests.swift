@@ -43,6 +43,13 @@ struct SoundSurfaceTests {
         #expect(SoundSurface.block(isRadio: false, lastAttach: .alreadyHung) == nil)
         #expect(SoundSurface.Block.station.locks && SoundSurface.Block.convertedStream.locks)
         #expect(!SoundSurface.Block.tracksUnread.locks, "unread tracks lock a choice that still applies to the next title")
+        // The button shows what works on the title now.
+        let speech = SoundSetting(presetID: "speech", gain: 1)
+        #expect(SoundSurface.isActive(speech, block: nil))
+        #expect(!SoundSurface.isActive(.off, block: nil))
+        for block in [SoundSurface.Block.station, .convertedStream, .tracksUnread] {
+            #expect(!SoundSurface.isActive(speech, block: block), "the button lights up while nothing works: \(block)")
+        }
     }
 
     @Test("a tap on Off takes the gain back to 100 percent, every other preset keeps it")
@@ -98,10 +105,12 @@ struct SoundSurfaceTests {
             #expect(body.contains("SoundChoiceSections(setting:"), "\(head) does not draw the one choice")
         }
         #expect(views.components(separatedBy: "soundBookValue = ").count - 1 == 1, "a view writes the book past the one write")
-        let write = try #require(functionBody(of: "static func save(_ book: SoundBook, into binding: Binding<SoundBook>, coordinator: PlayerCoordinator) {", in: views))
+        let write = try #require(functionBody(of: "static func save(_ edit: (SoundBook) -> SoundBook, into binding: Binding<SoundBook>, coordinator: PlayerCoordinator) {", in: views))
         #expect(write.contains("AppStorageKeys.soundBookValue = book")
                 && write.contains("coordinator.viewModel?.followSoundRoute(notingRoute: false)"),
                 "the settings keep the book without the player taking it at once")
+        #expect(write.contains("let book = edit(AppStorageKeys.soundBookValue)"),
+                "a page writes its own copy and drops a device noted while it was open")
         let sound = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel+Sound.swift"), encoding: .utf8))
         #expect(sound.contains("SoundBookEdit.choosing(setting, for: soundRoute, in: book)"))
@@ -113,6 +122,8 @@ struct SoundSurfaceTests {
         let speed = try #require(functionBody(of: "private var speedControl: some View {", in: player))
         #expect(speed.contains("SpeedMenu(viewModel: viewModel)") && speed.contains("EffectsButton(viewModel: viewModel)"),
                 "the effects do not stand beside the speed")
+        #expect(speed.contains("isAccessibilitySize ? AnyLayout(VStackLayout("),
+                "at the accessibility sizes speed and effects share one line and the rate breaks")
     }
 }
 #endif
