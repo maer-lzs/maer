@@ -93,8 +93,9 @@ struct ResumeStandTests {
         let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
         #expect(text.contains("position: PlaybackClaimRules.releasePosition(wasPlaying: wasPlaying, currentTime: currentTime),"),
                 "the pause's release carries the position without asking")
-        #expect(text.contains("if wasPlaying { ownStandMs = Date().timeIntervalSince1970 * 1000 }"),
+        #expect(text.contains("if wasPlaying { recordHaltStand() }"),
                 "a pause makes the stand its own without having played")
+        #expect(text.contains("ownStandMs = nowMs"), "the hold's stand is the device's own")
     }
 
     @Test("Playing on asks the rule and not a bare distance of the positions", .needsTheSources)

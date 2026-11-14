@@ -173,7 +173,15 @@ extension PlayerViewModel {
                     Logger.player.notice("SYNC post-write refresh failed item=\(item.id, privacy: .private(mask: .hash)) knownMs kept=\(Int(self.lastKnownServerUpdate))")
                 }
             }
-            await queue.remove(itemId: item.id, ifStill: queuedBefore)
+            // A queued stand newer than the one written stays for its own
+            // flush. The flush of a restored stand writes at that stand's
+            // moment, every other write at the moment now.
+            if plan.retiresQueued(queuedBefore, writtenTime: currentTime,
+                                  writtenAtMs: restoredStandMs ?? Date().timeIntervalSince1970 * 1000) {
+                await queue.remove(itemId: item.id, ifStill: queuedBefore)
+            } else {
+                Logger.player.notice("SYNC kept a newer queued stand origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
+            }
             // The library model holds the book's moment for the Continue
             // rows; it learns the written position now (state only, the
             // rows rebuild on the next listening event, never per tick).

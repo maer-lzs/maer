@@ -115,6 +115,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// the load. A stand in the store stamped at or before it never moves
     /// the player (`SyncRules.storedStand`).
     var ownStandMs: Double?
+    /// The moment of the local stand a start restored, set for the flush of
+    /// that stand only: a queued stand newer than it is not retired by that
+    /// write.
+    var restoredStandMs: Double?
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
@@ -577,6 +581,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
         var startTime = serverProgress
         var restoredFromLocal = false
+        restoredStandMs = nil
         // Crash safety: if the per-second local backup is NEWER than the server
         // state and differs noticeably (the app died before the next sync),
         // continue there and flush it right away.
@@ -588,6 +593,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
            ) {
             startTime = saved[0]
             restoredFromLocal = true
+            restoredStandMs = saved[1]
         }
         // The flushed witness. What THIS device last pushed. For a
         // downloaded book it is usually the ONLY local source: the crash
@@ -711,6 +717,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             suppressConflictForNextSync = true
             await syncProgress(.restoreFlush)
         }
+        // Only the flush of the restored stand writes at its moment.
+        restoredStandMs = nil
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward
@@ -1426,6 +1434,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if isPlaying { pause(caller: "account switch") }
     }
 
+    /// A hold of a running piece (pause, stop) records its stand on the
+    /// device before any write to the server is tried: the local stand and
+    /// a stand the failing write queues are one value. The tick records only
+    /// every five seconds, so the local stand would otherwise lag behind the
+    /// queued one, and the flush of the next start would write the older.
+    func recordHaltStand() {
+        let nowMs = Date().timeIntervalSince1970 * 1000
+        if let id = item?.id {
+            ListeningStore.record(id, position: currentTime, duration: duration,
+                                  atMs: nowMs, epoch: standEpoch)
+        }
+        ownStandMs = nowMs
+    }
+
     /// The longest a start waits for the reconcile with the server.
     nonisolated static let reconcileWaitLimit: Duration = .milliseconds(1500)
 
@@ -1439,7 +1461,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Only a pause of a running piece is the device's own stand; on a
         // device that only held the item (a pause from the lock screen or
         // a media key) a stand from another device keeps its weight.
-        if wasPlaying { ownStandMs = Date().timeIntervalSince1970 * 1000 }
+        if wasPlaying { recordHaltStand() }
         // Pausing withdraws the claim actively, with the final stand for
         // the device that takes over, when there is one. The other device's
         // hint line dies in delivery seconds, the 90-s ageing stays the
@@ -2159,6 +2181,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         ListeningStatsStore.shared.flush()
         // Session end withdraws the claim like a pause does.
         if isPlaying, let item {
+            recordHaltStand()
             PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
                                              duration: duration, epoch: standEpoch)
             pauseRecordPending = true

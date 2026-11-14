@@ -68,6 +68,14 @@ nonisolated struct SyncPlan: Equatable, Sendable {
     /// When the episode state is recorded, the pot is sent at once rather
     /// than within its cadence.
     var potDeliberate: Bool
+    /// Whether the landed write retires the stand queued before it
+    /// (`SyncRules.writeRetiresQueued`), with the moment of the stand it
+    /// wrote. Nothing queued has nothing to retire.
+    func retiresQueued(_ queued: SyncQueue.PendingUpdate?, writtenTime: Double, writtenAtMs: Double) -> Bool {
+        guard let queued else { return true }
+        return SyncRules.writeRetiresQueued(queuedAtMs: queued.queuedAt, queuedTime: queued.currentTime,
+                                            writtenAtMs: writtenAtMs, writtenTime: writtenTime)
+    }
 
     /// The local write after a landed write. `eventSinceLoad` is read by the
     /// caller at THAT moment, as it always was: a play or a seek during the

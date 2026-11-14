@@ -744,8 +744,9 @@ struct StandOwnerTests {
             sites += Self.playerSites(in: SyncContractFenceTests.stripped(
                 try String(contentsOf: folder.appendingPathComponent(file), encoding: .utf8)))
         }
-        // Seven: the hold at a change of account records with the epoch too.
-        #expect(sites.count == 7, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
+        // Eight: the hold at a change of account and the stand of a pause
+        // or a stop record with the epoch too.
+        #expect(sites.count == 8, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
         for site in sites where !site.carriesEpoch {
             #expect(Self.epochExceptions[site.function] != nil, "\(site.function) writes or claims without the epoch")
         }

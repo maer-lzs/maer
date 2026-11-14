@@ -165,6 +165,18 @@ nonisolated enum SyncRules {
         return serverTime > queuedTime + tolerance ? .drop : .send
     }
 
+    /// A landed write retires the queued stand of the same title only when
+    /// that stand is not newer than the one written: queued at or before the
+    /// written stand's moment, or at the same position. A newer queued stand
+    /// stays for its own flush; newer by time, not by a larger position, so a
+    /// rewind is newer too. An entry from before the queue kept its moment
+    /// carries none and goes, as it always did.
+    static func writeRetiresQueued(queuedAtMs: Double?, queuedTime: Double,
+                                   writtenAtMs: Double, writtenTime: Double) -> Bool {
+        guard let queuedAtMs else { return true }
+        return queuedAtMs <= writtenAtMs || abs(queuedTime - writtenTime) < 0.5
+    }
+
     /// Crash safety: use the local tick backup instead of the server state?
     /// Only if it is NEWER than the server entry and differs noticeably.
     static func shouldRestoreLocalPosition(
