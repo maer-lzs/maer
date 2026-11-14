@@ -59,20 +59,21 @@ struct AppTextDashFenceTests {
         return literals.filter { $0.contains(where: { dashes.contains($0) }) }
     }
 
-    @Test("No catalog key and no German value carries an em dash", .needsTheSources)
+    @Test("No catalog key and no value in any language carries an em dash", .needsTheSources)
     func catalogCarriesNoDash() throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let data = try Data(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let strings = try #require(json["strings"] as? [String: Any])
         var offenders: [String] = []
-        for (key, value) in strings {
-            if key.contains(where: { Self.dashes.contains($0) }) { offenders.append("en: \(key.prefix(60))") }
-            let de = ((value as? [String: Any])?["localizations"] as? [String: Any])?["de"] as? [String: Any]
-            if let text = (de?["stringUnit"] as? [String: Any])?["value"] as? String,
-               text.contains(where: { Self.dashes.contains($0) }) {
-                offenders.append("de: \(text.prefix(60))")
-            }
+        for key in strings.keys where key.contains(where: { Self.dashes.contains($0) }) {
+            offenders.append("en: \(key.prefix(60))")
+        }
+        // Every language, plural form and phrase of the three catalogs, so a
+        // translation that comes back is held like German.
+        let values = try CatalogValues.all()
+        #expect(values.contains { $0.language == "de" }, "the fence read no German text")
+        for value in values where value.text.contains(where: { Self.dashes.contains($0) }) {
+            offenders.append("\(value.language): \(value.text.prefix(60))")
         }
         #expect(offenders.isEmpty, "dashes in the catalog: \(offenders.sorted())")
     }

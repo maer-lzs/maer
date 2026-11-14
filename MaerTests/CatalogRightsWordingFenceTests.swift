@@ -22,14 +22,18 @@ struct CatalogRightsWordingFenceTests {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let strings = try #require(json["strings"] as? [String: [String: Any]])
+        // The same claim in every language the project knows.
         let banned = ["free catalog", "free music (jamendo)", "public-domain readings", "free labels",
-                      "freie kataloge", "freien katalog", "freie musik", "gemeinfreie lesungen", "freie labels"]
+                      "freie kataloge", "freien katalog", "freie musik", "gemeinfreie lesungen", "freie labels",
+                      "catálogo libre", "catálogos libres", "música libre", "catálogo gratuito",
+                      "catalogue libre", "catalogues libres", "musique libre", "catalogue gratuit",
+                      "catalogo libero", "cataloghi liberi", "musica libera", "catalogo gratuito"]
         var hits: [String] = []
-        for (key, entry) in strings {
-            let german = ((entry["localizations"] as? [String: Any])?["de"] as? [String: Any])
-                .flatMap { $0["stringUnit"] as? [String: Any] }?["value"] as? String ?? ""
-            let text = (key + " " + german).lowercased()
-            if banned.contains(where: text.contains) { hits.append(key) }
+        for key in strings.keys where banned.contains(where: key.lowercased().contains) { hits.append(key) }
+        let values = try CatalogValues.all().filter { $0.catalog == "Localizable" }
+        #expect(values.contains { $0.language == "de" }, "the fence read no German text")
+        for value in values where banned.contains(where: value.text.lowercased().contains) {
+            hits.append("\(value.language): \(value.key)")
         }
         #expect(hits.isEmpty, "a text says free about the catalogs: \(hits.sorted())")
         // Red probe of the reader.
