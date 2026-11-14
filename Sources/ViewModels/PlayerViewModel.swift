@@ -721,6 +721,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             suppressConflictForNextSync = true
             await syncProgress(.restoreFlush)
         }
+        // The restored moment ends with its flush: the restart's write below
+        // writes at the moment now.
+        restoredStandMs = nil
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward

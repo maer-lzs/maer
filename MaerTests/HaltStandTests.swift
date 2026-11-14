@@ -154,8 +154,14 @@ struct HaltStandTests {
     func theRestoredMomentIsClearedOnEveryExit() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
         #expect(text.contains("defer { restoredStandMs = nil }"), "an early exit of the load leaves the moment standing")
-        #expect(text.components(separatedBy: "restoredStandMs = nil").count - 1 == 2,
-                "the moment is cleared at the start and on the way out, nowhere else")
+        #expect(text.components(separatedBy: "restoredStandMs = nil").count - 1 == 3,
+                "the moment is cleared at the start, after its flush and on the way out, nowhere else")
+        // The flush of the restored stand is the only write at its moment:
+        // the moment is gone before the restart writes.
+        let flush = try #require(text.range(of: "await syncProgress(.restoreFlush)"))
+        let cleared = try #require(text.range(of: "restoredStandMs = nil", range: flush.upperBound..<text.endIndex))
+        let restart = try #require(text.range(of: "await syncProgress(.restart)", range: flush.upperBound..<text.endIndex))
+        #expect(cleared.lowerBound < restart.lowerBound, "the restart writes at the restored stand's moment")
     }
 
     @Test("a rewind before the stop: the server gets the smaller, newer stand", .needsAudio)
