@@ -34,7 +34,7 @@ struct JamendoTrackByIdTests {
         return (provider, { asked.ids }, directory)
     }
 
-    @Test("Die Adresse eines Titels nach Kennung: dieselbe Form wie die Reihe, nur Ziffern")
+    @Test("The address of a title by id: the same form as the row, digits only")
     func theAddressOfOneTrack() throws {
         let url = try #require(JamendoClient.trackURL(id: "1848357", clientId: "key"))
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -47,7 +47,7 @@ struct JamendoTrackByIdTests {
         }
     }
 
-    @Test("Ein unbekannter Titel von Jamendo wird einmal nach Kennung gefragt, solange die Quelle an ist")
+    @Test("An unknown Jamendo title is asked for once by id, as long as the source is on")
     func anUnknownTrackIsAskedForOnce() async throws {
         let (provider, asked, directory) = try makeProvider(allowed: true, answer: Self.track)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -62,7 +62,7 @@ struct JamendoTrackByIdTests {
         #expect(asked() == ["1848357"], "a known track was asked for again")
     }
 
-    @Test("Die Spur eines Titels von Jamendo traegt seinen Namen, nie einen Teil der Stromadresse")
+    @Test("The track of a Jamendo title carries its name, never a part of the stream address")
     func theTrackOfAJamendoTitleCarriesItsName() async throws {
         let (provider, _, directory) = try makeProvider(allowed: true, answer: Self.track)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -72,7 +72,7 @@ struct JamendoTrackByIdTests {
         #expect(track.metadata?.title == "Abendlicht", "the track has no name of its own: \(String(describing: track.metadata?.title))")
     }
 
-    @Test("Der Zeilentitel eines Titels von Jamendo ist sein Name, sonst der Titel der Seite; andere Titel wie bisher")
+    @Test("The row title of a Jamendo title is its name, otherwise the title of the page; other titles as before")
     func theRowTitleOfAJamendoTrackIsItsName() {
         let stream = "https://prod-1.storage.jamendo.com/?trackid=1848357&format=mp32&from=AAAA==|BBBB=="
         for series in [true, false] {
@@ -96,7 +96,7 @@ struct JamendoTrackByIdTests {
                 == FreeCatalog.otrEpisode(fromFileName: FreeCatalog.trackDisplayTitle(contentUrl: file)).title)
     }
 
-    @Test("Zaun: der Name aus der Adresse wird nur in FreeCatalog gefragt, und fuer einen Titel von Jamendo nie", .needsTheSources)
+    @Test("Fence: the name from the address is asked only in FreeCatalog, and never for a Jamendo title", .needsTheSources)
     func theAddressNameIsNeverAskedForAJamendoTrack() throws {
         var callers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -113,7 +113,7 @@ struct JamendoTrackByIdTests {
         #expect(jamendo.lowerBound < address.lowerBound, "the rule reads the address before it asks for Jamendo")
     }
 
-    @Test("Mit der Quelle aus wird nichts gefragt, und der Titel oeffnet nicht")
+    @Test("With the source off nothing is asked, and the title does not open")
     func theSourceOffAsksNothing() async throws {
         let (provider, asked, directory) = try makeProvider(allowed: false, answer: Self.track)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -121,7 +121,7 @@ struct JamendoTrackByIdTests {
         #expect(asked().isEmpty, "the switched off source was asked")
     }
 
-    @Test("Ein Titel, den Jamendo nicht kennt oder unter anderer Kennung gibt, oeffnet nicht")
+    @Test("A title that Jamendo does not know or gives under another id does not open")
     func anUnknownOrOtherTrackDoesNotOpen() async throws {
         let (none, askedNone, first) = try makeProvider(allowed: true, answer: nil)
         defer { try? FileManager.default.removeItem(at: first) }

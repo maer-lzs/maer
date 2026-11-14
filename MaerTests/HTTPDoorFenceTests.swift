@@ -18,9 +18,9 @@ import Foundation
 /// (`StockDrift`).
 struct HTTPDoorFenceTests {
 
-    /// Die Heimaten der Tuer, jede mit ihrem Grund IM Eintrag. Der Kopf
-    /// nannte frueher drei davon als Datei und zwei als Typ, also genau die
-    /// Form, in der eine Begruendung von ihrer Liste abdriftet.
+    /// The homes of the door, each with its reason IN the entry. The head
+    /// used to name three of them as a file and two as a type, exactly the
+    /// form in which a justification drifts away from its list.
     nonisolated static let homes: [(path: String, reason: String)] = [
         ("/HTTP.swift", "die Tuer selbst"),
         ("/URLSession+Maer.swift", "die Sitzungen, die die Tuer haelt"),
@@ -85,7 +85,7 @@ struct HTTPDoorFenceTests {
         return count
     }
 
-    @Test("URLSession nur hinter der HTTP-Tuer", .needsTheSources)
+    @Test("URLSession only behind the HTTP door", .needsTheSources)
     func onlyTheDoorNamesTheSession() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
@@ -100,12 +100,12 @@ struct HTTPDoorFenceTests {
 
     /// The stock of `try?` without a reason in Networking and Providers,
     /// measured; it is the count, a file below it is red as much as above.
-    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar ueber 32 Dateien, gleich der
-    // Zaehlung. Warum ein einzelnes `try?` tragbar ist, gehoert laut
-    // Inventar-Konvention an die Stelle selbst.
+    // BESTAND OHNE EINZELGRUENDE: a pure inventory over 32 files, equal to the
+    // count. Why a single `try?` is bearable belongs at the spot itself,
+    // by the inventory convention.
     nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 16, "SubsonicProvider.swift": 13, "ImageCache.swift": 17, "JellyfinProvider.swift": 12, "LocalLibrary.swift": 13, "LibriVoxImporter.swift": 8, "JellyfinClient.swift": 6, "MaerPlaylists.swift": 6, "PodcastRecommendationsStore.swift": 5, "GPodderClient.swift": 4, "GPodderSync.swift": 4, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 1, "CatalogStockStore.swift": 3, "PodcastSubscriptions.swift": 3, "ResolutionCacheStore.swift": 3, "APIClient.swift": 2, "ArtistPortraitService.swift": 2, "FreeCatalogClients.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "CatalogShuffle.swift": 1, "DeadCatalogItems.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioArtworkService.swift": 1, "Retry.swift": 1, "SourceBudget.swift": 1]
 
-    @Test("try? in Networking und Providers traegt einen Grund, oder der Bestand schrumpft", .needsTheSources)
+    @Test("try? in Networking and Providers carries a reason, or the stock shrinks", .needsTheSources)
     func tryCarriesAReasonOrShrinks() throws {
         var counts: [String: Int] = [:]
         var seen: Set<String> = []
@@ -137,11 +137,11 @@ struct HTTPDoorFenceTests {
     /// the surfaces that showed a failure as empty were healed. It is the
     /// count; a new swallowed error in a view carries its reason at the line
     /// or is not written, and a healed one is written back.
-    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar ueber 20 Dateien, gleich der
-    // Zaehlung; der Grund eines einzelnen `try?` gehoert an die Stelle selbst.
+    // BESTAND OHNE EINZELGRUENDE: a pure inventory over 20 files, equal to the
+    // count; the reason of a single `try?` belongs at the spot itself.
     nonisolated static let viewTryStock: [String: Int] = ["Lyrics.swift": 7, "MusicViewModel.swift": 1, "RadioView.swift": 3, "AddToPlaylistSheet.swift": 4, "BookmarkMeasure.swift": 3, "BottomBarState.swift": 3, "LibraryView.swift": 1, "PodcastsView.swift": 2, "RadioStationDetailView.swift": 2, "BookFeaturedCard.swift": 1, "DriveMode.swift": 1, "FreeAudiobooksPage.swift": 1, "MusicBrowseViews.swift": 1, "MusicView.swift": 1, "NavigationBarNudge.swift": 1, "PlayQueueView.swift": 1, "PodcastShowView.swift": 1, "PodcastSourceView.swift": 1, "RadioComponents.swift": 1, "RadioGenreView.swift": 1]
 
-    @Test("try? in den Ansichten traegt einen Grund, oder der Bestand schrumpft", .needsTheSources)
+    @Test("try? in the views carries a reason, or the stock shrinks", .needsTheSources)
     func viewTryCarriesAReasonOrShrinks() throws {
         var counts: [String: Int] = [:]
         var seen: Set<String> = []

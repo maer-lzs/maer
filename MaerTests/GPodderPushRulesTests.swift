@@ -13,7 +13,7 @@ import Foundation
 /// push must not eat, and the batch cursor that must not skip a position
 /// written while the batch was on its way.
 struct GPodderPushRulesTests {
-    @Test("ein gescheiterter Push verbraucht das Fenster nicht: der naechste innerhalb 8 s geht durch")
+    @Test("a failed push does not use up the window: the next one within 8 s goes through")
     func aFailedPushDoesNotEatTheWindow() {
         var throttle = GPodderPushRules.Throttle()
         #expect(throttle.shouldPush("rss:a", position: 100, nowMs: 10_000))
@@ -25,7 +25,7 @@ struct GPodderPushRulesTests {
         #expect(throttle.shouldPush("rss:a", position: 101, nowMs: 13_000), "the next one within 8 s goes out")
     }
 
-    @Test("ein gelungener Push haelt das Fenster, ein grosser Sprung oeffnet es")
+    @Test("a successful push holds the window, a big jump opens it")
     func aSuccessfulPushKeepsTheWindow() {
         var throttle = GPodderPushRules.Throttle()
         throttle.noteAttempt("rss:a", position: 100, nowMs: 10_000)
@@ -35,7 +35,7 @@ struct GPodderPushRulesTests {
         #expect(throttle.shouldPush("rss:b", position: 100, nowMs: 10_000), "another episode has its own window")
     }
 
-    @Test("die Ruecknahme trifft nur den eigenen Versuch, nicht einen neueren")
+    @Test("the rollback hits only its own attempt, not a newer one")
     func takingBackOnlyRemovesTheOwnMark() {
         var throttle = GPodderPushRules.Throttle()
         throttle.noteAttempt("rss:a", position: 100, nowMs: 10_000)
@@ -45,7 +45,7 @@ struct GPodderPushRulesTests {
         #expect(!throttle.shouldPush("rss:a", position: 151, nowMs: 12_000))
     }
 
-    @Test("der Zeiger rueckt auf die Sammelzeit: ein Stand, der waehrend des Stapels entstand, geht im naechsten")
+    @Test("the pointer moves to the gathering time: a state that arose during the batch goes in the next")
     func theCursorMovesToTheGatheringMoment() {
         let gatheredAt = 1_000.0                      // seconds: the batch is gathered
         let writtenDuringTheBatchMs = 1_001.0 * 1000  // a position lands while it is on its way
@@ -63,7 +63,7 @@ struct GPodderPushRulesTests {
 
     /// A source fence beside the rule: the runner uses the rule, and the
     /// bare `try?` around the real-time upload is gone.
-    @Test("der Laeufer nutzt die Regel, und der Echtzeit-Push verwirft keinen Fehler mehr stumm", .needsTheSources)
+    @Test("the runner uses the rule, and the real-time push no longer discards an error silently", .needsTheSources)
     func theRunnerUsesTheRule() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "GPodderSync.swift" })

@@ -10,7 +10,7 @@ import Foundation
 
 /// The register of which server a library id belongs to, and its file.
 struct ItemOwnersTests {
-    @Test("das Register: eine volle Ladung macht ihre Kennungen zu ihren, die letzte gewinnt, Namensraeume bleiben draussen")
+    @Test("the register: a full load makes its ids its own, the last wins, namespaces stay out")
     func aFullLoadOwnsItsIds() {
         var owners = ItemOwners()
         let first = owners.noteFullLoad(ids: ["a", "both", "jf:book:1"], server: "https://A.example:443/")
@@ -24,7 +24,7 @@ struct ItemOwnersTests {
         #expect(owners.owner(of: "never") == nil)
     }
 
-    @Test("das Register: geraeumt wird nur, was dem geladenen Server gehoert und seine Liste nicht mehr nennt")
+    @Test("the register: only what belongs to the loaded server and is no longer named by its list is cleared")
     func aServerCleansOnlyItsOwn() {
         let owners = ItemOwners(owners: ["a-left": "https://a.example", "a-here": "https://a.example",
                                          "b-left": "https://b.example"])
@@ -40,7 +40,7 @@ struct ItemOwnersTests {
         #expect(!none)
     }
 
-    @Test("die Datei des Registers: gelesen wie geschrieben, eine unlesbare wird nicht durch ein leeres ersetzt")
+    @Test("the file of the register: read as written, an unreadable one is not replaced by an empty one")
     func theShelfKeepsAnUnreadableRegister() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("owners-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -62,7 +62,7 @@ struct ItemOwnersTests {
     /// The register stays on this device: no catalog of synced choices and
     /// no carrier names it, only the load that writes it, the queue that
     /// reads it and the outward tag that hashes its names.
-    @Test("das Register reist nicht: nur der Ladeweg, die Warteschlange und das Etikett nach aussen nennen es",
+    @Test("the register does not travel: only the load path, the queue and the outward label name it",
           .needsTheSources)
     func theRegisterNeverTravels() throws {
         var namers: [String] = []

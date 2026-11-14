@@ -11,7 +11,7 @@ import Foundation
 /// The import guides promise only what a source gives, end in the right
 /// action, and tick themselves only when an import brought something.
 struct ImportGuidesTests {
-    @Test("Jede Anleitung endet in der richtigen Handlung")
+    @Test("Every guide ends in the right action")
     func actions() {
         #expect(ImportGuide.applePodcasts.action == .pickFile(.applePodcasts))
         #expect(ImportGuide.overcast.action == .pickFile(.opml))
@@ -21,7 +21,7 @@ struct ImportGuidesTests {
         #expect(ImportGuide.spotify.action == .none)
     }
 
-    @Test("Was eine Quelle nicht hergibt, wird nicht versprochen")
+    @Test("What a source does not provide is not promised")
     func honestCarries() {
         #expect(ImportGuide.otherOPML.carries.subscriptions && !ImportGuide.otherOPML.carries.positions)
         #expect(ImportGuide.pocketCasts.carries.positions && !ImportGuide.pocketCasts.carries.moments)
@@ -34,7 +34,7 @@ struct ImportGuidesTests {
         #expect(ImportGuide.applePodcasts.carries.moments == ForeignSource.applePodcasts.carriesMoments)
     }
 
-    @Test("Jede Anleitung mit Handlung hat Schritte, Spotify hat nur den Satz warum")
+    @Test("Every guide with an action has steps, Spotify has only the sentence why")
     func steps() {
         for guide in ImportGuide.allCases {
             if guide.action == .none {
@@ -61,7 +61,7 @@ struct ImportGuidesTests {
     /// The password sentence is ONE key: the guide carries it as its own
     /// note sentence, and the sign-in sheet renders the same constant. A
     /// second wording on either surface would drift.
-    @Test("Der Pocket-Casts-Passwortsatz ist ein Schluessel an beiden Flaechen", .needsTheSources)
+    @Test("The Pocket Casts password sentence is a key on both surfaces", .needsTheSources)
     func pocketCastsPrivacyLineIsShared() throws {
         #expect(ImportGuide.pocketCasts.notes.contains(ImportGuide.pocketCastsPrivacyLine))
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -70,7 +70,7 @@ struct ImportGuidesTests {
         #expect(!sheet.contains("are sent to Pocket Casts only"), "the sheet carries its own wording of the sentence")
     }
 
-    @Test("Das Haekchen ist gemessen: nur ein Import, der etwas brachte, setzt es")
+    @Test("The checkmark is measured: only an import that brought something sets it")
     func doneIsMeasured() {
         ImportGuidesDone._resetForTest()
         defer { ImportGuidesDone._resetForTest() }

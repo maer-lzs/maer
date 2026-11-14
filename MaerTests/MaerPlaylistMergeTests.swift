@@ -14,7 +14,7 @@ struct MaerPlaylistMergeTests {
         .init(name: name, updatedAt: at, itemIds: ids)
     }
 
-    @Test("zwei Ergaenzungen auf zwei Geraeten vereinigen sich, ohne Kopie")
+    @Test("two additions on two devices unite, without a copy")
     func twoAdditionsUnite() {
         // The list had [a, b]; A added x (at 200), B added y (at 300).
         let a = entry("Test2", 200, ["a", "b", "x"])
@@ -29,7 +29,7 @@ struct MaerPlaylistMergeTests {
         #expect(mirrored.lists["l"]?.itemIds == ["a", "b", "y", "x"])
     }
 
-    @Test("ein Entfernen reist als Grabstein je Eintrag; der Titel kommt nicht zurueck")
+    @Test("a removal travels as a tombstone per entry; the title does not come back")
     func aRemovalTravels() {
         // A removed z at 250; B (unchanged since 100) still carries z and added y at 300.
         var a = entry("Abend", 250, ["a", "b"])
@@ -48,7 +48,7 @@ struct MaerPlaylistMergeTests {
                 "B added y after the removal but never re-added z: z stays out, y comes in")
     }
 
-    @Test("ein Eintrag, den eine Seite NACH dem Entfernen wieder hinzufuegt, bleibt")
+    @Test("an entry that a side adds again AFTER the removal stays")
     func aReAddSpendsTheMark() {
         var a = entry("Abend", 250, ["a"])
         a.removed = ["z": 250]
@@ -65,7 +65,7 @@ struct MaerPlaylistMergeTests {
         #expect(kept.lists["l"]?.itemIds == ["a"])
     }
 
-    @Test("Umbenennung auf A und Ergaenzung auf B ergeben neuen Namen mit Eintrag")
+    @Test("Rename on A and addition on B give the new name with the entry")
     func renameAndAdditionUnite() {
         let a = MaerPlaylistMerge.Entry(name: "Test2", updatedAt: 200, itemIds: ["a"], nameUpdatedAt: 200)
         let b = MaerPlaylistMerge.Entry(name: "Test", updatedAt: 300, itemIds: ["a", "y"], nameUpdatedAt: nil)
@@ -75,7 +75,7 @@ struct MaerPlaylistMergeTests {
         #expect(out.rescued.isEmpty)
     }
 
-    @Test("alte Blobs ohne Grabsteine lesen wie eine Vereinigung")
+    @Test("old blobs without tombstones read like a union")
     func legacyBlobsUnite() {
         let local = entry("Alt", 100, ["x", "y"])
         let cloud = entry("Alt", 200, ["x"])
@@ -87,7 +87,7 @@ struct MaerPlaylistMergeTests {
     /// A removal mark travels ninety days and then falls: every device
     /// that will ever merge it has seen it by then, and the blob must not
     /// grow with every title ever removed.
-    @Test("Grabsteine je Eintrag altern: nach 90 Tagen fallen sie, juengere bleiben")
+    @Test("Tombstones per entry age: after 90 days they drop, younger ones stay")
     func removalMarksAge() {
         let now: Double = 100 * 86_400
         var a = entry("Abend", now - 10, ["a"])
@@ -100,7 +100,7 @@ struct MaerPlaylistMergeTests {
         #expect(alone.lists["l"]?.removed.keys.sorted() == ["fresh"], "a one-sided list ages its marks too")
     }
 
-    @Test("eine Teilmenge wird nie gerettet; nur ein echter Verlust")
+    @Test("a subset is never rescued; only a real loss")
     func aSubsetIsNeverRescued() {
         #expect(!MaerPlaylistMerge.needsRescue(entry("T", 1, ["a", "b"]), existing: [["a", "b", "c"]]))
         #expect(!MaerPlaylistMerge.needsRescue(entry("T", 1, ["b", "a"]), existing: [["a", "b", "c"]]),
@@ -176,10 +176,10 @@ struct MaerPlaylistMergeTests {
                 "an empty version is nothing worth rescuing")
     }
 
-    /// Der Name hat seine eigene Uhr. Vorher starb eine Umbenennung auf der
-    /// Seite, die die Liste am Inhalt verlor, still, und wurde nicht einmal
-    /// gerettet, weil die Rettungskopie am INHALT feuert.
-    @Test("eine Umbenennung ueberlebt, auch wenn ihre Seite die Liste verliert")
+    /// The name has its own clock. Before, a rename on the
+    /// side that lost the list on content died silently, and was not even
+    /// rescued, because the rescue copy fires on CONTENT.
+    @Test("a rename survives even if its side loses the list")
     func aRenameSurvivesLosingTheList() {
         let a = MaerPlaylistMerge.Entry(name: "Abendrunde", updatedAt: 100,
                                         itemIds: ["x"], nameUpdatedAt: 100)
@@ -195,8 +195,8 @@ struct MaerPlaylistMergeTests {
                 "ohne die mitreisende Uhr stirbt der Name im naechsten Lauf")
     }
 
-    /// Rot-Probe in die Gegenrichtung, und der Alt-Bestand bleibt sich treu.
-    @Test("die juengere Namens-Uhr gewinnt, und ohne Uhren gilt das Alte")
+    /// Red probe in the opposite direction, and the old stock stays true to itself.
+    @Test("the younger name clock wins, and without clocks the old applies")
     func theYoungerNameClockWins() {
         let alt = MaerPlaylistMerge.Entry(name: "Alt", updatedAt: 100,
                                           itemIds: ["x"], nameUpdatedAt: 50)
@@ -224,7 +224,7 @@ struct MaerPlaylistMergeTests {
 
     /// `differs` compares every stored field but the device name, and the
     /// list of compared fields is the list of stored fields.
-    @Test("jedes gespeicherte Feld ausser dem Geraetenamen ist ein Unterschied, und die Liste der Felder ist vollstaendig")
+    @Test("every stored field except the device name is a difference, and the list of fields is complete")
     func differsSeesEveryFieldButTheDevice() {
         let stored = Set(Mirror(reflecting: Self.full).children.compactMap(\.label))
         #expect(stored == MaerPlaylistMerge.comparedFields.union(["device"]),
@@ -271,7 +271,7 @@ struct MaerPlaylistMergeTests {
     /// `differs` over a snapshot compares every stored field of `Snapshot`,
     /// and the list of compared fields is the list of stored fields; the
     /// round trip helper of the carrier witnesses asks the same question.
-    @Test("jedes gespeicherte Feld eines Snapshots ist ein Unterschied, und die Liste der Felder ist vollstaendig")
+    @Test("every stored field of a snapshot is a difference, and the list of fields is complete")
     func snapshotDiffersSeesEveryField() {
         let stored = Set(Mirror(reflecting: Self.fullSnapshot).children.compactMap(\.label))
         #expect(stored == MaerPlaylistMerge.comparedSnapshotFields,
@@ -295,7 +295,7 @@ struct MaerPlaylistMergeTests {
 
     /// The removal marks of two snapshots are compared in one place: no
     /// source outside the rule compares them by hand.
-    @Test("die Loeschmarken zweier Snapshots vergleicht nur die Regel", .needsTheSources)
+    @Test("the removal marks of two snapshots are compared only by the rule", .needsTheSources)
     func onlyTheRuleComparesRemovalMarks() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var offenders: [String] = []
@@ -317,7 +317,7 @@ struct MaerPlaylistMergeTests {
 
     /// The id a rescued loser came from: the local side first, then the
     /// cloud side, and only the very version, device name included.
-    @Test("die Kennung einer geretteten Fassung ist die Liste, unter der genau diese Fassung stand")
+    @Test("the id of a rescued version is the list under which exactly this version stood")
     func theRescuedLoserNamesItsList() {
         var other = Self.full; other.name = "Andere"
         var elsewhere = Self.full; elsewhere.device = "tablet"
@@ -330,7 +330,7 @@ struct MaerPlaylistMergeTests {
     }
 
     /// No version compares with `==`; the compiler refuses it.
-    @Test("weder Fassung noch Momentaufnahme noch Ergebnis sind vergleichbar mit ==")
+    @Test("neither version nor snapshot nor result are comparable with ==")
     func noVersionIsEquatable() {
         #expect(!(MaerPlaylistMerge.Entry.self is any Equatable.Type))
         #expect(!(MaerPlaylistMerge.Snapshot.self is any Equatable.Type))

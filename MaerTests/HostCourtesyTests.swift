@@ -8,14 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Hoeflichkeit gegenueber fremden Diensten: hoechstens vier Anfragen
-/// gleichzeitig je Host, MusicBrainz und das Cover Art Archive gemeinsam
-/// hoechstens eine je Sekunde, und nach 429 oder 503 ruht der ganze Host so
-/// lange, wie er verlangt, auch ein eigener Server.
+/// Courtesy toward third-party services: at most four requests
+/// at once per host, MusicBrainz and the Cover Art Archive together
+/// at most one per second, and after 429 or 503 the whole host rests as
+/// long as it asks, an own server too.
 struct HostCourtesyTests {
-    // MARK: - Die Regel, rein
+    // MARK: - The rule, pure
 
-    @Test("Regel: MusicBrainz und das Cover Art Archive sind eine Gruppe, Wikidata und Commons eine zweite, jeder andere Host seine eigene")
+    @Test("Rule: MusicBrainz and the Cover Art Archive are one group, Wikidata and Commons a second, every other host its own")
     func groups() {
         #expect(HostCourtesyRule.group(of: "musicbrainz.org") == "musicbrainz")
         #expect(HostCourtesyRule.group(of: "coverartarchive.org") == "musicbrainz")
@@ -26,7 +26,7 @@ struct HostCourtesyTests {
         #expect(HostCourtesyRule.group(of: "archive.org") == "archive.org")
     }
 
-    @Test("Regel: fremd vier gleichzeitig, MusicBrainz eine je Sekunde, Wikimedia eine nach der anderen, eigene Server ohne Deckel")
+    @Test("Rule: third-party four at once, MusicBrainz one per second, Wikimedia one after the other, own servers without a cap")
     func allowances() {
         #expect(HostCourtesyRule.allowance(group: "archive.org", isOwnServer: false)
                 == .init(concurrent: 4, spacing: nil))
@@ -40,7 +40,7 @@ struct HostCourtesyTests {
         #expect(!HostCourtesyRule.asksToRest(status: 500) && !HostCourtesyRule.asksToRest(status: 404))
     }
 
-    @Test("Regel: Retry-After in Sekunden oder als Datum, sonst 2, 4, 8 bis 60 Sekunden, hoechstens eine Stunde")
+    @Test("Rule: Retry-After in seconds or as a date, otherwise 2, 4, 8 up to 60 seconds, at most one hour")
     func rests() {
         let now = Date(timeIntervalSince1970: 1_790_000_000)
         #expect(HostCourtesyRule.rest(retryAfter: "120", restsInARow: 0, now: now) == .seconds(120))
@@ -57,12 +57,12 @@ struct HostCourtesyTests {
         #expect(HostCourtesyRule.rest(retryAfter: nil, restsInARow: 9, now: now) == .seconds(60))
     }
 
-    @Test("Regel: nur eine abgewiesene Verbindung laesst den Host ruhen, 30 Sekunden, innerhalb der Wartegrenze")
+    @Test("Rule: only a refused connection lets the host rest, 30 seconds, within the wait limit")
     func onlyARefusalRests() {
         #expect(HostCourtesyRule.isRefusal(URLError(.cannotConnectToHost)))
-        // Ein Verbindungsabbruch (-1005) kommt auch vom Netzwechsel des
-        // Geraets; Zeitueberschreitung, Abbruch, fremde Fehler sagen nichts
-        // ueber einen ueberrannten Host.
+        // A dropped connection (-1005) also comes from the device's network
+        // change; timeout, cancellation, foreign errors say nothing
+        // about an overrun host.
         #expect(!HostCourtesyRule.isRefusal(URLError(.networkConnectionLost)))
         #expect(HostCourtesyRule.restsAfterRefusal(isOwnServer: false))
         #expect(!HostCourtesyRule.restsAfterRefusal(isOwnServer: true))
@@ -74,7 +74,7 @@ struct HostCourtesyTests {
         #expect(HostCourtesyRule.refusalRest <= HostCourtesyRule.longestWait, "a refusal is waited out, not failed")
     }
 
-    @Test("Regel: eine Anfrage, die ungefragt endet, ist kein Fehlschlag, kein Rueckhalt und kein Satz")
+    @Test("Rule: a request that ends unasked is no failure, no holdback and no sentence")
     func anUnaskedEndIsNoFailure() {
         let resting = HostCourtesy.Resting(host: "archive.org", remaining: .seconds(60))
         for error in [resting as Error, FetchHeldBack()] {
@@ -87,9 +87,9 @@ struct HostCourtesyTests {
         #expect(FetchHoldback.starts(after: URLError(.timedOut)))
     }
 
-    // MARK: - Der Aktor, eigene Instanz
+    // MARK: - The actor, own instance
 
-    @Test("Aktor: eine abgewiesene Verbindung laesst den ganzen Host ruhen, fuer jeden Weg")
+    @Test("Actor: a refused connection lets the whole host rest, for every path")
     func aRefusalRestsTheHost() async throws {
         let courtesy = HostCourtesy(ownHosts: { [] })
         let pass = try await courtesy.enter(Self.url("archive.org"))
@@ -101,7 +101,7 @@ struct HostCourtesyTests {
                 "a file server is a machine of its own")
     }
 
-    @Test("Aktor: eine abgewiesene Verbindung laesst einen eigenen Server NICHT ruhen, die naechste Anfrage geht sofort")
+    @Test("Actor: a refused connection does NOT let an own server rest, the next request goes at once")
     func aRefusalDoesNotRestAnOwnServer() async throws {
         let courtesy = HostCourtesy(ownHosts: { ["abs.home.example", "sync.home.example"] })
         let clock = ContinuousClock()
@@ -121,7 +121,7 @@ struct HostCourtesyTests {
         #expect(await courtesy.restRemaining(group: "abs.home.example") != nil)
     }
 
-    @Test("Aktor: nach einer abgewiesenen Verbindung geht eine absichtliche Frage sofort, eine unmarkierte wartet, ein 429 haelt beide")
+    @Test("Actor: after a refused connection a deliberate question goes at once, an unmarked one waits, a 429 holds both")
     func aDeliberateQuestionPassesTheRefusalRest() async throws {
         let courtesy = HostCourtesy(ownHosts: { [] })
         let clock = ContinuousClock()
@@ -153,7 +153,7 @@ struct HostCourtesyTests {
         await courtesy.leave(afterRest, status: 200, retryAfter: nil)
     }
 
-    @Test("Aktor: eine Antwort aus einer Abweisungs-Ruhe beendet sie, die naechste unmarkierte Frage geht sofort")
+    @Test("Actor: an answer from a refusal rest ends it, the next unmarked question goes at once")
     func anAnswerEndsTheRefusalRest() async throws {
         let courtesy = HostCourtesy(ownHosts: { [] })
         let clock = ContinuousClock()
@@ -170,7 +170,7 @@ struct HostCourtesyTests {
         #expect(await courtesy.counts(group: "back.example").asked == 3)
     }
 
-    @Test("Aktor: eine gerade gemerkte Adresse gilt sofort als eigener Server, nicht erst nach einer Minute")
+    @Test("Actor: an address just remembered counts at once as an own server, not only after a minute")
     func aJustRememberedAddressIsOwnAtOnce() async throws {
         let own = OwnHosts()
         let courtesy = HostCourtesy(ownHosts: { own.current })
@@ -189,7 +189,7 @@ struct HostCourtesyTests {
         #expect(await courtesy.restRemaining(group: "mine.example") == nil, "a refusal rested the just-remembered server")
     }
 
-    /// Die eigenen Server eines Zeugen, von aussen veraenderbar.
+    /// The own servers of a witness, changeable from outside.
     nonisolated final class OwnHosts: Sendable {
         private let lock = NSLock()
         nonisolated(unsafe) private var hosts: Set<String> = []
@@ -197,7 +197,7 @@ struct HostCourtesyTests {
         func set(_ new: Set<String>) { lock.withLock { hosts = new } }
     }
 
-    /// Zaehlt, wie viele `enter` schon zurueckkamen.
+    /// Counts how many `enter` have already returned.
     actor Passed {
         var count = 0
         func add() { count += 1 }
@@ -205,7 +205,7 @@ struct HostCourtesyTests {
 
     private static func url(_ host: String) -> URL { URL(string: "https://\(host)/x")! }
 
-    @Test("Aktor: nie mehr als vier gleichzeitig an einen fremden Host, der fuenfte wartet auf einen Platz")
+    @Test("Actor: never more than four at once to a third-party host, the fifth waits for a slot")
     func capOfFour() async throws {
         let courtesy = HostCourtesy(ownHosts: { [] })
         var passes: [HostCourtesy.Pass] = []
@@ -228,7 +228,7 @@ struct HostCourtesyTests {
         #expect(await courtesy.counts(group: "a.example").inFlight == 0)
     }
 
-    @Test("Aktor: ein eigener Server hat keinen Deckel, das Geraet selbst geht nicht durch die Regel")
+    @Test("Actor: an own server has no cap, the device itself does not go through the rule")
     func ownServerAndLoopback() async throws {
         let courtesy = HostCourtesy(ownHosts: { ["abs.home.example"] })
         for _ in 0..<10 { _ = try await courtesy.enter(Self.url("abs.home.example")) }
@@ -237,7 +237,7 @@ struct HostCourtesyTests {
         #expect(!loop.counted)
     }
 
-    @Test("Aktor: MusicBrainz und das Cover Art Archive teilen die eine Sekunde")
+    @Test("Actor: MusicBrainz and the Cover Art Archive share the one second")
     func musicBrainzSpacing() async throws {
         let courtesy = HostCourtesy(ownHosts: { [] })
         let clock = ContinuousClock()
@@ -251,7 +251,7 @@ struct HostCourtesyTests {
         #expect(await courtesy.counts(group: "musicbrainz").asked == 2)
     }
 
-    @Test("Aktor: ein 429 mit Retry-After haelt ALLE Anfragen an den Host so lange an, auch an einen eigenen Server")
+    @Test("Actor: a 429 with Retry-After holds ALL requests to the host for that long, also to an own server")
     func retryAfterHoldsTheWholeHost() async throws {
         let courtesy = HostCourtesy(ownHosts: { ["own.example"] })
         let clock = ContinuousClock()
@@ -269,7 +269,7 @@ struct HostCourtesyTests {
         }
     }
 
-    @Test("Aktor: eine lange Ruhe schickt nichts, die Anfrage endet ungefragt")
+    @Test("Actor: a long rest sends nothing, the request ends unasked")
     func aLongRestSendsNothing() async throws {
         let courtesy = HostCourtesy(ownHosts: { [] })
         let pass = try await courtesy.enter(Self.url("busy.example"))
@@ -280,14 +280,14 @@ struct HostCourtesyTests {
         #expect(await courtesy.counts(group: "busy.example").asked == 1, "the resting host was asked again")
     }
 
-    // MARK: - Der Zaun ueber die Wege nach aussen
+    // MARK: - The fence over the ways outward
 
     private static func code(_ path: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         return SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("Zaun: jede Frage an eine Sitzung geht durch das Hoeflichkeits-Tor, die Ausnahmen sind benannt", .needsTheSources)
+    @Test("Fence: every request to a session goes through the courtesy gate, the exceptions are named", .needsTheSources)
     func everyWayPassesTheGate() throws {
         let retry = try Self.code("Sources/Networking/Retry.swift")
         #expect(retry.contains("try await courteously(request) {\n                    try await session.data(for: request, delegate: redirects)"),
@@ -313,7 +313,7 @@ struct HostCourtesyTests {
         #expect(downloader.components(separatedBy: "downloadTask(withResumeData: ").count - 1 == 1)
     }
 
-    @Test("Zaun: ein Buch je Host, und ungefragt wird an der Quelle beantwortet, nicht per Name", .needsTheSources)
+    @Test("Fence: one ledger per host, and unasked is answered at the source, not by name", .needsTheSources)
     func oneLedgerOneQuestion() throws {
         var byName: [String] = []
         var refusalCallers: Set<String> = []
@@ -333,7 +333,7 @@ struct HostCourtesyTests {
         #expect(refusalCallers == ["Retry.swift"], "a refusal is booked in the one ledger only: \(refusalCallers)")
     }
 
-    @Test("Zaun: niemand ausser dem Tor fuehrt einen eigenen Abstand zu einem fremden Dienst", .needsTheSources)
+    @Test("Fence: nobody but the gate keeps an own spacing toward a third-party service", .needsTheSources)
     func noOwnPace() throws {
         for path in ["Sources/Networking/CoverArtArchive.swift", "Sources/Networking/RadioArtworkService.swift",
                      "Sources/Networking/ArtistPortraitService.swift", "Sources/Networking/RadioLogoService.swift"] {

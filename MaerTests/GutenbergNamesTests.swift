@@ -11,7 +11,7 @@ import Foundation
 /// A Gutenberg title names its author and genres as a person reads them,
 /// not in the record's catalogue form, at every way in.
 struct GutenbergNamesTests {
-    @Test("der Autor steht als Vorname Nachname, ohne Lebensdaten")
+    @Test("the author appears as first name last name, without life dates")
     func theAuthorReadsAsAName() {
         #expect(FreeCatalog.gutenbergAuthor("Swift, Jonathan, 1667-1745") == "Jonathan Swift")
         #expect(FreeCatalog.gutenbergAuthor("Swift, Jonathan") == "Jonathan Swift")
@@ -24,7 +24,7 @@ struct GutenbergNamesTests {
         #expect(FreeCatalog.gutenbergAuthor("") == nil)
     }
 
-    @Test("ein Genre ist die Hauptueberschrift der Schlagwortkette, jede einmal")
+    @Test("a genre is the main heading of the subject chain, each once")
     func aGenreIsTheChainsMainHeading() {
         #expect(FreeCatalog.gutenbergGenres(["Voyages, Imaginary -- Fiction", "Satire", "Voyages, Imaginary -- Juvenile fiction"])
                 == ["Voyages, Imaginary", "Satire"])
@@ -34,7 +34,7 @@ struct GutenbergNamesTests {
 
     /// The subjects of Gulliver's Travels as the kept Gutenberg stock carries
     /// them (`gut:9272`).
-    @Test("die echte Gulliver-Kette ergibt hoechstens drei Genres, die Figur faellt")
+    @Test("the real Gulliver chain gives at most three genres, the character drops")
     func theGulliverChainGivesThreeGenresWithoutTheCharacter() {
         let gulliver = ["Fantasy fiction", "Satire", "Travelers -- Fiction",
                         "Gulliver, Lemuel (Fictitious character) -- Fiction",
@@ -45,7 +45,7 @@ struct GutenbergNamesTests {
         #expect(FreeCatalog.gutenbergGenreLimit == 3)
     }
 
-    @Test("jeder Weg eines Gutenberg-Titels nimmt die beiden Regeln", .needsTheSources)
+    @Test("every way of a Gutenberg title takes the two rules", .needsTheSources)
     func everyWayInTakesTheRules() throws {
         let provider = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/FreeCatalogProvider.swift"),
@@ -68,7 +68,7 @@ struct GutenbergNamesTests {
         ("Sources/Models/SyncCarried.swift", "carried.map(FreeCatalog.gutenbergReadable)"),
     ]
 
-    @Test("jeder gespeicherte Weg eines Gutenberg-Titels liest durch die Regeln", .needsTheSources)
+    @Test("every stored way of a Gutenberg title reads through the rules", .needsTheSources)
     func everyStoredWayReadsThroughTheRules() throws {
         for way in Self.storedWays {
             let text = SyncContractFenceTests.stripped(
@@ -77,7 +77,7 @@ struct GutenbergNamesTests {
         }
     }
 
-    @Test("Download, Verlauf und mitgetragener Titel lesen sich lesbar")
+    @Test("Download, history and carried title read legibly")
     func theOtherStoredFormsReadReadable() throws {
         let stored = """
         {"id":"gut:9272","media":{"metadata":{"title":"Gulliver's Travels","authorName":"Swift, Jonathan, 1667-1745",
@@ -101,7 +101,7 @@ struct GutenbergNamesTests {
         #expect(ListenHistory.readable(other) == other)
     }
 
-    @Test("ein vor den Regeln gespeicherter Gutenberg-Titel liest sich lesbar", .needsTheSources)
+    @Test("a Gutenberg title stored before the rules reads legibly", .needsTheSources)
     func aTitleKeptBeforeTheRulesReadsReadable() throws {
         // The record as the kept stock held it before the rules existed.
         let stored = """
@@ -120,7 +120,7 @@ struct GutenbergNamesTests {
         #expect(FreeCatalog.gutenbergReadable(other) == other)
     }
 
-    @Test("ein Gutenberg-Hoerbuch ist nie ein Album: der Player fuehrt zur Buchseite, die Reihe zeigt ein Werk", .needsTheSources)
+    @Test("a Gutenberg audiobook is never an album: the player leads to the book page, the series shows a work", .needsTheSources)
     func aGutenbergBookIsNeverAnAlbum() throws {
         // Even a title once marked as started in album form stays a reading.
         for form in [ProgressMark.StartedForm?.none, .album] {
@@ -147,7 +147,7 @@ struct GutenbergNamesTests {
         #expect(page.contains("guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return .series }"))
     }
 
-    @Test("ein Katalogtitel im Weiterhoeren oeffnet seine Seite, keine Folgenseite")
+    @Test("a catalog title in Continue Listening opens its page, not an episode page")
     @MainActor
     func aCatalogTitleOpensItsOwnPage() {
         let facts = CatalogFacts.empty

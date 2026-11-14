@@ -66,7 +66,7 @@ struct IdQuestionDoorFenceTests {
         return found
     }
 
-    @Test("der Zaehler sieht Namen, Alias und Umbruch, aber kein Glied als Alias")
+    @Test("the counter sees name, alias and line break, but no member as an alias")
     func theCounterSeesNameAliasAndBreak() {
         #expect(Self.sessionQuestions(in: "let x = AppSession.shared.libraryItem(forId: id)").count == 1)
         #expect(Self.sessionQuestions(in: "let s = AppSession.shared\nlet x = s.coverURL(forItemId: id)").count == 1)
@@ -83,7 +83,7 @@ struct IdQuestionDoorFenceTests {
                 "eine Adresse im Text ist kein Kommentar")
     }
 
-    @Test("keine Ansicht fragt die Sitzung beim Namen nach Titel, Cover oder Quelle einer Kennung",
+    @Test("no view asks the session by name for the title, cover or source of an id",
           .needsTheSources)
     func noViewAsksTheSessionForAnId() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }

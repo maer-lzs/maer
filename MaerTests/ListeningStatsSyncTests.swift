@@ -17,14 +17,14 @@ struct ListeningStatsSyncTests {
     private let phone = "device-phone"
     private let pad = "device-pad"
 
-    // MARK: - Die Falle, die die Bauform begruendet
+    // MARK: - The trap that justifies the design
 
-    @Test("das eigene Geraet wird NICHT doppelt gezaehlt")
+    @Test("the own device is NOT counted twice")
     func ownDeviceIsNotCountedTwice() {
         let local = ListeningStatsData(secondsPerDay: ["2026-08-19": 100])
-        // Der eigene Topf in der Wolke ist ein SPIEGEL der lokalen Datei.
-        // Wer beide addiert, bekommt eine Zahl, die einfach zu gross ist.
-        // Und niemandem faellt auf, warum.
+        // The own pot in the cloud is a MIRROR of the local file.
+        // Whoever adds both gets a number that is simply too big.
+        // And nobody notices why.
         let merged = ListeningStatsSync.merged(
             local: local, ownDeviceId: phone,
             foreign: [phone: ListeningStatsData(secondsPerDay: ["2026-08-19": 100]),
@@ -32,7 +32,7 @@ struct ListeningStatsSyncTests {
         #expect(merged.secondsPerDay["2026-08-19"] == 140)
     }
 
-    @Test("fremde Geraete addieren sich, je Tag und je Titel")
+    @Test("foreign devices add up, per day and per title")
     func foreignDevicesAddUp() {
         let merged = ListeningStatsSync.merged(
             local: ListeningStatsData(secondsPerDay: ["2026-08-19": 60],
@@ -46,32 +46,32 @@ struct ListeningStatsSyncTests {
         #expect(merged.secondsPerItem == ["radio:rb:a": 90, "radio:rb:b": 10])
     }
 
-    @Test("ohne fremde Geraete ist die Summe die eigene Datei")
+    @Test("without foreign devices the sum is the own file")
     func singleDeviceIsUnchanged() {
         let local = ListeningStatsData(secondsPerDay: ["2026-08-19": 42],
                                        secondsPerItem: ["radio:rb:a": 42])
         #expect(ListeningStatsSync.merged(local: local, ownDeviceId: phone, foreign: [:]) == local)
     }
 
-    // MARK: - Was reist, und was nicht (die Budget-Trennlinie)
+    // MARK: - What travels and what does not (the budget dividing line)
 
-    @Test("nur was KEINE Position hat, reist mit")
+    @Test("only what has NO position travels along")
     func onlyPositionlessItemsTravel() {
         let data = ListeningStatsData(
             secondsPerDay: ["2026-08-19": 1000],
-            secondsPerItem: ["radio:rb:a": 400,       // keine Position -> reist
-                             "rss:feed:episode": 300,  // Position reist schon
-                             "lva:some-work": 200,     // dito
-                             "abs-book-id": 100])      // dito, ueber den Server
+            secondsPerItem: ["radio:rb:a": 400,       // no position -> travels
+                             "rss:feed:episode": 300,  // position travels already
+                             "lva:some-work": 200,     // ditto
+                             "abs-book-id": 100])      // ditto, via the server
         let out = ListeningStatsSync.publishable(data)
         #expect(out.secondsPerDay == ["2026-08-19": 1000], "der Tages-Topf reist ganz")
         #expect(out.secondsPerItem == ["radio:rb:a": 400],
                 "Folgen und Buecher tragen ihre Zeit laengst in einem Kanal, der synchronisiert")
     }
 
-    // MARK: - Schluessel
+    // MARK: - Key
 
-    @Test("die Geraetekennung steht im SCHLUESSEL, nicht im Wert")
+    @Test("the device id is in the KEY, not in the value")
     func deviceIdIsPartOfTheKey() {
         let key = ListeningStatsSync.key(forDeviceId: phone)
         #expect(key == "listeningStats.device-phone")
@@ -80,9 +80,9 @@ struct ListeningStatsSyncTests {
         #expect(ListeningStatsSync.deviceId(fromKey: "listeningStats.") == nil)
     }
 
-    // MARK: - Kappe des Item-Topfs
+    // MARK: - Cap of the item pot
 
-    @Test("der Item-Topf behaelt die laengsten, nicht die neuesten")
+    @Test("the item pot keeps the longest, not the newest")
     func itemPotKeepsTheLongest() {
         let items = ["a": 10, "b": 500, "c": 300, "d": 1]
         let out = ListeningStatsSync.cappedItems(items, limit: 2)
@@ -91,22 +91,22 @@ struct ListeningStatsSyncTests {
                 "unter der Kappe bleibt alles unangetastet")
     }
 
-    @Test("Gleichstand kappt stabil, damit zwei Geraete dasselbe behalten")
+    @Test("a tie caps stably so that two devices keep the same")
     func capIsStableOnTies() {
         let items = ["b": 100, "a": 100, "c": 50]
         #expect(ListeningStatsSync.cappedItems(items, limit: 2) == ["a": 100, "b": 100])
     }
 
-    // MARK: - Die Haeufig-gehoert-Reihe rankt nach ZEIT
+    // MARK: - The Often Played row ranks by TIME
 
     private func station(_ id: String) -> RadioStation {
         RadioStation(id: "radio:rb:\(id)", name: id.uppercased(), streamURL: "https://s/\(id)")
     }
 
-    @Test("Zeit schlaegt Startzahl: zwei Stunden gewinnen gegen viele Antipper")
+    @Test("Time beats start count: two hours win against many taps")
     func timeBeatsStarts() {
         let stations = [station("a"), station("b")]
-        // a wurde zwanzigmal angetippt und nie gehoert, b einmal zwei Stunden.
+        // a was tapped twenty times and never played, b once for two hours.
         let ranked = RadioRanking.mostPlayed(
             stations: stations,
             counts: ["radio:rb:a": 20, "radio:rb:b": 1],
@@ -116,21 +116,21 @@ struct ListeningStatsSyncTests {
                 "genau der Fall, wegen dem das Mass gewechselt wurde")
     }
 
-    @Test("Uebergangsphase: ohne gemessene Zeit traegt der Startzaehler")
+    @Test("Transition phase: without measured time the start counter carries")
     func fallbackCarriesTheTransition() {
         let stations = [station("a"), station("b")]
-        // Direkt nach dem Update kennt niemand Sekunden. Die Reihe darf
-        // deswegen nicht leer sein.
+        // Right after the update nobody knows seconds. The row must not
+        // be empty because of that.
         let ranked = RadioRanking.mostPlayed(
             stations: stations, counts: ["radio:rb:a": 3, "radio:rb:b": 9],
             seconds: [:], limit: 8)
         #expect(ranked.map(\.id) == ["radio:rb:b", "radio:rb:a"])
     }
 
-    @Test("gemessene Zeit schlaegt den Rueckfall, egal wie gross dessen Zahl ist")
+    @Test("measured time beats the fallback, however big its number is")
     func measuredOutranksTheFallback() {
         let stations = [station("a"), station("b")]
-        // a hat 99 Starts und keine Zeit, b eine einzige gemessene Minute.
+        // a has 99 starts and no time, b a single measured minute.
         let ranked = RadioRanking.mostPlayed(
             stations: stations, counts: ["radio:rb:a": 99, "radio:rb:b": 0],
             seconds: ["radio:rb:b": 60], limit: 8)
@@ -138,18 +138,18 @@ struct ListeningStatsSyncTests {
                 "der Rueckfall verschwindet fuer einen Sender, sobald Zeit da ist")
     }
 
-    @Test("ein Sender ohne beides steht in keiner Reihe")
+    @Test("a station with neither is in no row")
     func unknownStationsStayOut() {
         #expect(RadioRanking.mostPlayed(stations: [station("a")], counts: [:],
                                         seconds: [:], limit: 8).isEmpty)
     }
 
-    // MARK: - Die Uebernahme des eigenen Topfs
+    // MARK: - The adoption of the own pot
 
     /// The day table could not be read, the item table was: the start holds
     /// the read items. The own pot carries one live item. No adoption, so no
     /// read item is removed by the next write.
-    @Test("Tage unlesbar, Titel gelesen, eigener Topf mit einem Live-Titel: keine Uebernahme, kein gelesener Titel geht")
+    @Test("Days unreadable, titles read, own pot with a live title: no adoption, no read title goes")
     func aReadTableIsNeverReplacedByThePot() {
         let read = ListeningStatsData(secondsPerDay: [:], secondsPerItem: ["abs:book": 900, "radio:rb:x": 60])
         let base = RowBase<ListeningStatsData>.unknown(seen: read)
@@ -165,7 +165,7 @@ struct ListeningStatsSyncTests {
     /// Nothing could be read (a fresh file after a reset, or the read failed
     /// as a whole): the own pot comes back, merged into what this run already
     /// counted, per key the larger value.
-    @Test("nichts gelesen: der eigene Topf kommt zurueck, zusammengefuehrt mit dem schon Gezaehlten")
+    @Test("nothing read: the own pot comes back, merged with what was already counted")
     func nothingReadMergesThePot() {
         let pot = ListeningStatsData(secondsPerDay: ["2026-10-03": 3600, "2026-10-04": 120],
                                      secondsPerItem: ["radio:rb:x": 60])
@@ -185,7 +185,7 @@ struct ListeningStatsSyncTests {
     /// after the last publish), the own pot 1200. The pot is shown; sixty
     /// seconds of listening and a save later the row stands at 2460, not at
     /// the pot plus the session and not at the session alone.
-    @Test("Tabellen beim Start unlesbar, auf der Platte 2400, Topf 1200, 60 s gehoert: nach dem save steht die Zeile nicht unter 2400")
+    @Test("Tables unreadable at start, 2400 on disk, pot 1200, 60 s played: after the save the row is not below 2400")
     func aSaveOverUnreadRowsNeverLowersThem() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("w80b-\(UUID().uuidString).sqlite").path
         defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
@@ -225,7 +225,7 @@ struct ListeningStatsSyncTests {
     /// then in memory only. Said once per run in the sync history, and on
     /// the statistics page while it lasts; a read that succeeds takes the
     /// line away.
-    @Test("eine unlesbare Tabelle: ein Eintrag im Sync-Verlauf je Lauf, die Zeile steht, bis das Lesen gelingt")
+    @Test("an unreadable table: one entry in the sync history per run, the row stays until reading succeeds")
     @MainActor
     func aHeldWriteIsSaidOnce() async throws {
         let directory = try NavidromeRekeyTests.temporaryDirectory("stats-held")
@@ -256,7 +256,7 @@ struct ListeningStatsSyncTests {
 
     /// The rebuild after the read: per unread table its rows plus what the
     /// run counted above the held pot; a table read at the start stays.
-    @Test("nach dem Lesen: Zeilen plus das Gezaehlte ueber dem Topf, eine gelesene Tabelle bleibt")
+    @Test("after reading: rows plus what was counted above the pot, a read table stays")
     func theRebuildAddsOnlyWhatTheRunCounted() {
         let held = ListeningStatsData(secondsPerDay: ["d": 1200], secondsPerItem: ["x": 1200])
         let own = ListeningStatsData(secondsPerDay: ["d": 1260, "e": 30], secondsPerItem: ["x": 1260])
@@ -267,7 +267,7 @@ struct ListeningStatsSyncTests {
     }
 
     /// What lies above the held part, per key; nothing at or below it.
-    @Test("ueber dem gehaltenen Teil bleibt je Schluessel nur der Rest, nichts darunter")
+    @Test("above the held part only the remainder stays per key, nothing below")
     func aboveKeepsOnlyTheRest() {
         let held = ListeningStatsData(secondsPerDay: ["a": 100, "b": 50], secondsPerItem: ["x": 10])
         let stock = ListeningStatsData(secondsPerDay: ["a": 130, "b": 50, "c": 7], secondsPerItem: ["x": 5, "y": 3])
@@ -285,7 +285,7 @@ struct ListeningByClassTests {
         AppStorageKeys.podcastShowId(forEpisodeId: episodeId)
     }
 
-    @Test("Folgen summieren sich zu ihrer Sendung")
+    @Test("Episodes add up to their show")
     func episodesSumIntoTheirShow() {
         let defaults: [String: Any] = [
             "localPosition.rss:feedA:ep1": [600.0, 1.7e12],
@@ -299,7 +299,7 @@ struct ListeningByClassTests {
         #expect(out["abspod:show1"] == 900)
     }
 
-    @Test("was keine Sendung ist, zaehlt nicht mit")
+    @Test("what is no show does not count")
     func nonPodcastEntriesAreIgnored() {
         let defaults: [String: Any] = [
             "localPosition.radio:rb:a": [600.0, 1.7e12],   // Live-Strom
@@ -310,30 +310,30 @@ struct ListeningByClassTests {
         #expect(ListeningByClass.shows(in: defaults, showId: showId).isEmpty)
     }
 
-    @Test("eine negative oder kaputte Position erfindet keine Zeit")
+    @Test("a negative or broken position invents no time")
     func brokenEntriesContributeNothing() {
         let defaults: [String: Any] = [
             "localPosition.rss:feedA:ep1": [-50.0, 1.7e12],
-            "localPosition.rss:feedA:ep2": [10.0],            // zu kurz
+            "localPosition.rss:feedA:ep2": [10.0],            // too short
             "localPosition.rss:feedA:ep3": "kein Array",
         ]
         #expect(ListeningByClass.shows(in: defaults, showId: showId)["rss:feedA"] == 0)
     }
 
-    @Test("Top-N sortiert nach Zeit, Gleichstand stabil")
+    @Test("Top-N sorts by time, ties stable")
     func topIsStable() {
         let out = ListeningByClass.top(["b": 100, "a": 100, "c": 500, "d": 0], limit: 3)
         #expect(out.map(\.id) == ["c", "a", "b"], "0 faellt raus, Gleichstand alphabetisch")
     }
 }
 
-/// Die Logo-Diagnose. Ihr Wert haengt an EINER Unterscheidung: eine Kette,
-/// die nichts gefunden hat, und eine, die nie fertig wurde, sehen auf dem
-/// Bildschirm gleich aus (Buchstaben), sind aber verschiedene Ursachen mit
-/// verschiedenen Fixes.
+/// The logo diagnosis. Its value hangs on ONE distinction: a chain
+/// that found nothing and one that never finished look the same on the
+/// screen (letters), but are different causes with
+/// different fixes.
 struct RadioLogoReportTests {
 
-    @Test("nie fertig geworden ist etwas anderes als kein Treffer")
+    @Test("never finished is something other than no hit")
     func unfinishedIsNotTheSameAsNoHit() {
         let rows = RadioLogoReport.rows(
             stations: [(id: "a", name: "A", faviconURL: "https://a/f.png"),
@@ -345,11 +345,11 @@ struct RadioLogoReportTests {
         #expect(rows.first { $0.id == "a" }?.chainResolved == true)
         #expect(rows.first { $0.id == "b" }?.chainAttempted == true)
         #expect(rows.first { $0.id == "b" }?.chainResolved == false)
-        // c fehlt in den Ergebnissen. Genau der Fall, der den Verdacht traegt.
+        // c is missing from the results. Exactly the case that carries the suspicion.
         #expect(rows.first { $0.id == "c" }?.chainAttempted == false)
     }
 
-    @Test("die Kopfzeile nennt die Zahl, auf die es ankommt")
+    @Test("the header line names the number that matters")
     func summaryNamesTheDecidingNumber() {
         let rows = RadioLogoReport.rows(
             stations: [(id: "a", name: "A", faviconURL: "https://a/f.png"),
@@ -362,7 +362,7 @@ struct RadioLogoReportTests {
         #expect(text.contains("mit Favicon-Adresse:  1"))
     }
 
-    @Test("ein leerer Bestand meldet Nullen statt zu verschwinden")
+    @Test("an empty stock reports zeros instead of disappearing")
     func emptyStateReportsZeros() {
         let text = RadioLogoReport.text(RadioLogoReport.rows(stations: [], chainResults: [:], now: 0))
         #expect(text.contains("Sender in den Reihen: 0"))
@@ -371,7 +371,7 @@ struct RadioLogoReportTests {
     /// "OHNE ERGEBNIS" is one of THREE causes, and the report must
     /// name which. Queued, transport-failed, or given up. They look the same
     /// on screen and need different fixes.
-    @Test("OHNE ERGEBNIS trennt Warteschlange, Fehlschlag und Aufgabe")
+    @Test("„OHNE ERGEBNIS“ separates queue, failure and giving up")
     func noResultNamesItsCause() {
         let stations: [(id: String, name: String, faviconURL: String?)] = [
             (id: "w", name: "W", faviconURL: nil),
@@ -390,7 +390,7 @@ struct RadioLogoReportTests {
     /// Ids shorten to the FIRST characters after the
     /// prefix. The v1-UUID tail is an import batch's shared node field, six
     /// different stations can end identically there.
-    @Test("Kurz-id nimmt den Anfang nach dem Praefix, nie das Ende")
+    @Test("Short id takes the start after the prefix, never the end")
     func shortIDTakesTheHead() {
         #expect(RadioLogoReport.shortID("radio:rb:9606f727-0601-11e8-ae97-52543be04c81")
                 == "9606f727-0601…")
@@ -403,7 +403,7 @@ struct RadioLogoReportTests {
 /// knowledge. Judged by the NUMBERS, and only on evidence.
 @Suite struct StandbyFinishedTests {
 
-    @Test("fertig nach Zahlen wird entladen; offen bleibt")
+    @Test("finished by the numbers is unloaded; open stays")
     func finishedByNumbersClears() {
         let done = ListeningStore.mark(from: [3599, 1_000, 3600], source: .backup)
         #expect(PlayerCoordinator.standbyCountsAsFinished(done))
@@ -411,7 +411,7 @@ struct RadioLogoReportTests {
         #expect(!PlayerCoordinator.standbyCountsAsFinished(open))
     }
 
-    @Test("ohne Dauer oder ohne Eintrag wird NIE entladen — nur auf Beleg")
+    @Test("without a duration or without an entry NEVER unloaded, only on evidence")
     func noEvidenceKeepsTheStandby() {
         #expect(!PlayerCoordinator.standbyCountsAsFinished(nil))
         let durationless = ListeningStore.mark(from: [1200, 1_000], source: .flushed)

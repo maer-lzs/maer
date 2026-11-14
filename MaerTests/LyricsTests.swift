@@ -107,44 +107,44 @@ struct LyricsTests {
         #expect(old.fromWeb == nil)
     }
 
-    // MARK: - Ein Nein wird nur aufgeschrieben, wenn jemand es gesagt hat
+    // MARK: - A No is written down only if somebody has said it
 
-    @Test("eine Abweisung wird nicht als 'dieses Lied hat keinen Text' gebucht")
+    @Test("a refusal is not booked as 'dieses Lied hat keinen Text'")
     func aRefusalIsNotAFinding() {
-        // Der Negativ-Eintrag gilt sechzig Tage, auf Platte und im
-        // Speicher. Vorher endete jeder Weg im selben nil: eine Quelle, die
-        // antwortet, eine die abweist (LRCLIB drosselt Serienfragen mit
-        // 429), und ein Geraet, das niemanden fragen konnte.
+        // The negative entry applies for sixty days, on disk and in
+        // memory. Before, every way ended in the same nil: a source that
+        // answers, one that refuses (LRCLIB throttles serial questions with
+        // 429), and a device that could not ask anyone.
         #expect(LyricsCaching.mayRemember([.answered, .answered]))
         #expect(LyricsCaching.mayRemember([.answered, .notAsked]))
         #expect(!LyricsCaching.mayRemember([.answered, .failed]))
         #expect(!LyricsCaching.mayRemember([.failed, .failed]))
     }
 
-    @Test("eine Runde, in der niemand gefragt wurde, schreibt nichts auf")
+    @Test("a round in which nobody was asked writes nothing down")
     func aRoundWithoutAQuestionWritesNothing() {
-        // Sonst bucht ein einziger Blick auf ein Lied im Flugmodus zwei
-        // Monate lang 'kein Text'.
+        // Otherwise a single look at a song in airplane mode books two
+        // months of "kein Text".
         #expect(!LyricsCaching.mayRemember([.notAsked, .notAsked]))
         #expect(!LyricsCaching.mayRemember([]))
     }
 
-    @Test("ein Nein von vor dem Einschalten ist keine Antwort auf die neue Frage")
+    @Test("a No from before switching on is no answer to the new question")
     func aNoFromBeforeTheSwitchIsOvertaken() {
-        // Mit ausgeschaltetem Abruf ist der Server die einzige Quelle, und
-        // sein "es gibt keinen" ist eine wahre Antwort auf DIESE Frage.
+        // With the lookup switched off the server is the only source, and
+        // its "es gibt keinen" is a true answer to THIS question.
         #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: false, lookupEnabled: false))
-        // Wird der Abruf eingeschaltet, ist die Frage eine andere, und der
-        // offene Dienst wurde nie gefragt. Sonst wirkt der Schalter, den
-        // jemand gerade umgelegt hat, fuer diese Lieder sechzig Tage nicht.
+        // If the lookup is switched on, the question is a different one, and the
+        // open service was never asked. Otherwise the switch that
+        // someone has just flipped has no effect for these songs for sixty days.
         #expect(LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: false, lookupEnabled: true))
-        // Wer gefragt wurde, bleibt gefragt.
+        // Whoever was asked stays asked.
         #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: true, lookupEnabled: true))
-        // Ein gefundener Text wird von einem Schalter nie ueberholt.
+        // A found text is never overtaken by a switch.
         #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: true, webAsked: false, lookupEnabled: true))
-        // Eintraege von vor diesem Feld: nichts ist ueber sie bekannt, also
-        // bleiben sie stehen. Jedes alte Nein zu verwerfen naehme die
-        // richtigen mit.
+        // Entries from before this field: nothing is known about them, so
+        // they stay. Discarding every old No would take the
+        // right ones along.
         #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: nil, lookupEnabled: true))
     }
 }

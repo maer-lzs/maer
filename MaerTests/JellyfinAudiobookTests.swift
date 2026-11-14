@@ -125,7 +125,7 @@ import Foundation
     /// sends `LastPlayedDate`, and the read gives it to the start, so an
     /// older backup of this device no longer wins over another device's
     /// newer position.
-    @Test("Jellyfin: der Schrieb traegt das Datum, der Stand des Servers liest es, und eine aeltere Sicherung gewinnt nicht")
+    @Test("Jellyfin: the write carries the date, the server's state reads it, and an older backup does not win")
     func theServerStandCarriesItsMoment() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000.25)
         let text = String(decoding: try JellyfinClient.userDataBody(seconds: 90, isFinished: false, now: now), as: UTF8.self)
@@ -146,7 +146,7 @@ import Foundation
     /// ends: 1200 files of three books in pages of 500 fold into three
     /// books, and a page that fails in the middle leaves no listing that
     /// stands as the whole stock.
-    @Test("Jellyfin: die Hoerbuecher kommen geblaettert, 1200 Dateien in drei Buechern; eine Seite, die scheitert, gibt keinen ganzen Bestand")
+    @Test("Jellyfin: the audiobooks come paged, 1200 files in three books; a page that fails gives no whole stock")
     func theAudiobooksArePaged() async throws {
         let files: [JFItem] = try (0..<1200).map { index in
             let book = index / 400

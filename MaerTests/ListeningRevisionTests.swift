@@ -12,7 +12,7 @@ import Foundation
 /// The seam counts events and announces each one; the rows that hang on
 /// it recompute per bump, never per tick.
 struct ListeningRevisionTests {
-    @Test("Jeder Stoss zaehlt einmal und meldet sich einmal")
+    @Test("Every bump counts once and announces itself once")
     @MainActor
     func bumpCountsAndAnnounces() {
         let revision = ListeningRevision()
@@ -29,7 +29,7 @@ struct ListeningRevisionTests {
     /// The podcast store is one of the writers: its bump reaches the seam,
     /// and the Podcasts tab scope moves with it (the store used to be the
     /// scope's only listening trigger).
-    @Test("Der Podcast-Speicher stoesst die Naht an")
+    @Test("The podcast store triggers the seam")
     @MainActor
     func podcastStoreBumpsTheSeam() {
         let before = ListeningRevision.shared.value

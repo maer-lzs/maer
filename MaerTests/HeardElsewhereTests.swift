@@ -19,7 +19,7 @@ struct HeardElsewhereTests {
         BookProgress(fraction: fraction, isFinished: finished, lastUpdate: 1_000)
     }
 
-    @Test("die Regel als Tabelle: nur der Wechsel zu gehoert zaehlt, ein Titel ohne Antwort davor nicht")
+    @Test("the rule as a table: only the change to played counts, a title without a prior answer does not")
     func theRuleAsATable() {
         #expect(HeardElsewhere.became(wasPlayed: false, isPlayed: true))
         #expect(!HeardElsewhere.became(wasPlayed: true, isPlayed: true), "played before and after: no change")
@@ -39,7 +39,7 @@ struct HeardElsewhereTests {
         PodcastListenLog(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path), upNext: queue)
     }
 
-    @Test("ein Abgleich, der eine Folge gehoert macht, nimmt sie aus Als Naechstes; eine schon gehoerte bleibt, wenn der Abgleich ihre Marke nicht aendert")
+    @Test("a sync that marks an episode played takes it out of Up Next; one already played stays if the sync does not change its mark")
     func onlyTheChangeTakesItOut() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("heard-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -63,7 +63,7 @@ struct HeardElsewhereTests {
         #expect(queue.contains(kept), "an episode played before, put back on purpose, was taken out again")
     }
 
-    @Test("gpodder bringt viele Kennungen in einem Abgleich: die Warteschlange wird einmal geschrieben")
+    @Test("gpodder brings many ids in one sync: the queue is written once")
     func aWholeHistoryWritesTheQueueOnce() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("heard-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -86,7 +86,7 @@ struct HeardElsewhereTests {
         #expect(changes == 1, "the queue was written \(changes) times for one round")
     }
 
-    @Test("eine gehoerte abspod-Folge nimmt ihren eingereihten RSS-Zwilling mit und umgekehrt")
+    @Test("a played abspod episode takes its queued RSS twin along and the other way round")
     func aTwinLeavesWithIt() {
         let twins = ["abspod:s:e": "rss:k:g", "rss:k:g": "abspod:s:e",
                      "abspod:s:f": "rss:k:h", "rss:k:h": "abspod:s:f"]
@@ -114,7 +114,7 @@ struct HeardElsewhereTests {
         "ABSPodcastProvider.swift": (1, "the Audiobookshelf episode progress"),
     ]
 
-    @Test("die Rufer von markedPlayed stehen im Bestand, und jeder neue fragt den Wechsel", .needsTheSources)
+    @Test("the callers of markedPlayed are in the stock, and every new one asks for the change", .needsTheSources)
     func everyCallerIsNamed() throws {
         var found: [String: Int] = [:]
         var texts: [String: String] = [:]

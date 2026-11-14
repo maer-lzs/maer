@@ -11,7 +11,7 @@ import Foundation
 /// The journey runner gives every server journey an app that never signed
 /// in: each runs on its own, on the freshly erased template.
 struct JourneyScriptFenceTests {
-    @Test("Journeys: ein Serverlauf faehrt jede Server-Journey einzeln auf frisch geloeschter Vorlage", .needsTheSources)
+    @Test("Journeys: a server run drives every server journey individually on a freshly erased template", .needsTheSources)
     func eachServerJourneyRunsOnAFreshTemplate() throws {
         let script = try String(contentsOf: SourceTree.root.appendingPathComponent("scripts/journeys.sh"), encoding: .utf8)
         let lines = script.split(separator: "\n").map(String.init).filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }

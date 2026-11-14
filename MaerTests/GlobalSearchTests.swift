@@ -164,11 +164,11 @@ struct SearchRankingTests {
         #expect(!SearchScope.library.includesCatalog)
         #expect(SearchScope.podcasts.kinds == [.show, .episode])
         #expect(SearchScope.podcasts.includesCatalog)
-        // Dieser Fall stand vorher als `[.book, .author, .series]` +
-        // `!includesCatalog` und schrieb damit die kaputte Verdrahtung fest.
-        // Ein
-        // Unit-Test über eine Filtermenge ist KEIN Zaun gegen "erreicht nie
-        // den Schirm". Das kann nur die Journey
+        // This case used to stand as `[.book, .author, .series]` +
+        // `!includesCatalog` and so cemented the broken wiring.
+        // A
+        // unit test over a filter set is NOT a fence against
+        // "erreicht nie den Schirm". Only the journey can do that
         // (`testBookScopeShowsCatalogResults`).
         #expect(SearchScope.audiobooks.kinds == [.book, .author, .series, .catalogBook])
         #expect(SearchScope.audiobooks.includesCatalog)
@@ -214,12 +214,12 @@ struct GlobalSearchModelTests {
         return model
     }
 
-    /// Die Suite muss ZWEIMAL hintereinander gruen sein: eine Frist von 3 s
-    /// macht das Gruen lastabhaengig. Im zweiten Lauf auf
-    /// demselben Simulator brauchten die Faelle 4,2 s und fielen rot, ohne
-    /// dass etwas kaputt war. Die Schleife bricht ab, sobald die Bedingung
-    /// wahr ist; eine grosszuegige Frist kostet nur im Fehlerfall Zeit und
-    /// sagt dort dasselbe aus.
+    /// The suite must be green TWICE in a row: a deadline of 3 s
+    /// makes the green depend on load. In the second run on
+    /// the same simulator the cases took 4.2 s and went red without
+    /// anything being broken. The loop stops as soon as the condition
+    /// holds; a generous deadline costs time only in the failure case and
+    /// says the same thing there.
     private func waitUntil(_ deadline: Duration = .seconds(20),
                            _ condition: @MainActor () -> Bool) async {
         let start = ContinuousClock.now

@@ -19,7 +19,7 @@ struct ListenHistoryTargetTests {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("Zeilen-Ziel: Buch im Regal, Katalog-Album, Server-Lied, und ein Grund statt Stille")
+    @Test("Row target: book on the shelf, catalog album, server song, and a reason instead of silence")
     func everyRowHasATargetOrAReason() {
         let T = ListenHistory.self
         // A book: on the shelf it opens, gone from it says so.
@@ -49,7 +49,7 @@ struct ListenHistoryTargetTests {
     /// catalog audiobook opens its detail page (the shelf's entries never
     /// hold a catalog work), a server book no longer on the shelf says why.
     @MainActor
-    @Test("am Rufer: ein gehoertes Katalog-Hoerbuch oeffnet seine Seite, ein Server-Buch ausser Regal sagt den Grund")
+    @Test("at the caller: a played catalog audiobook opens its page, a server book off the shelf says the reason")
     func theOpenerOpensACatalogBook() async {
         let router = PlayerSourceRouter.shared
         let before = router.handler
@@ -69,7 +69,7 @@ struct ListenHistoryTargetTests {
     /// The handler the router calls pushes the one catalog book page for
     /// `.catalogBook`, in the books tab; swallowing the target would leave the
     /// opener green and the tap without a page.
-    @Test("der Griff schiebt fuer ein Katalog-Buch die eine Detailseite, im Reiter Hoerbuecher", .needsTheSources)
+    @Test("the grip pushes the one detail page for a catalog book, in the audiobooks tab", .needsTheSources)
     func theHandlerPushesTheCatalogBookPage() throws {
         let library = try code("Sources/Views/LibraryView.swift")
         // The router's handler only: the search handler pushes the same
@@ -85,7 +85,7 @@ struct ListenHistoryTargetTests {
 
     /// The page: every row is a button into the one opener, and every
     /// outcome of it is handled; nothing that cannot open stays silent.
-    @Test("die Seite: jede Zeile oeffnet ueber die eine Tuer, jeder Ausgang wird gesagt", .needsTheSources)
+    @Test("the page: every row opens through the one door, every outcome is reported", .needsTheSources)
     func thePageOpensEveryRow() throws {
         let page = try code("Sources/Views/ListenHistoryScreen.swift")
         #expect(page.contains("Button {") && page.contains("await open(entry)"), "a row is not a button")
@@ -105,7 +105,7 @@ struct ListenHistoryTargetTests {
 
     /// Both servers answer the album of a song from the song itself; the
     /// union asks the server the id names.
-    @Test("beide Server nennen das Album eines Lieds aus dem Lied, die Vereinigung fragt den Server der Kennung", .needsTheSources)
+    @Test("both servers name the album of a song from the song, the union asks the server of the id", .needsTheSources)
     func bothServersNameTheAlbum() throws {
         let subsonic = try code("Sources/Providers/SubsonicProvider.swift")
         #expect(subsonic.contains("guard let song = try await client.song(id: songId), let albumId = song.albumId else { return nil }"))

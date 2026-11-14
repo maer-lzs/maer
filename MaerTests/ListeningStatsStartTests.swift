@@ -13,7 +13,7 @@ import Testing
 struct ListeningStatsStartTests {
     private typealias Load = ListeningStatsStore.StatsTable.Load
 
-    @Test("liest die Statistik nur eine Tabelle, startet sie mit ihr und haelt sie als gelesen")
+    @Test("if the statistics read only one table, they start with it and hold it as read")
     func aTableThatWasReadStands() {
         let days = Load(rows: ["2026-10-04": 600], skipped: 0)
         let (stock, base) = ListeningStatsStore.startBase(days: days, items: nil)
@@ -27,7 +27,7 @@ struct ListeningStatsStartTests {
         #expect(!base.map(\.secondsPerItem).refuses(["it": 60], .refused))
     }
 
-    @Test("beide Tabellen gelesen: bekannt, frisch oder mit uebersprungenen Zeilen unbekannt wie bisher")
+    @Test("both tables read: known, fresh or, with skipped rows, unknown as before")
     func bothTablesRead() {
         let days = Load(rows: ["d": 1], skipped: 0)
         let items = Load(rows: ["i": 2], skipped: 0)

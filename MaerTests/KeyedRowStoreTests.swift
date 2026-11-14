@@ -16,7 +16,7 @@ struct KeyedRowStoreTests {
         FileManager.default.temporaryDirectory.appendingPathComponent("keyed-\(UUID().uuidString).sqlite").path
     }
 
-    @Test("Diff: gleich ist leer; neu und geaendert sind Upserts; weg ist eine Entfernung")
+    @Test("Diff: equal is empty; new and changed are upserts; gone is a removal")
     func diffNamesWhatChanged() {
         let before = ["a": 1, "b": 2, "c": 3]
         #expect(KeyedRowDiff.compute(previous: before, current: before).isEmpty)
@@ -25,7 +25,7 @@ struct KeyedRowStoreTests {
         #expect(diff.removed == ["c"])
     }
 
-    @Test("Ersetzen, Diff anwenden, Zuruecklesen ueber Actor und Leser; keine Zeilen = nil")
+    @Test("Replace, apply diff, read back through actor and reader; no rows = nil")
     func roundTripThroughActorAndReader() async throws {
         let path = tempPath()
         defer { try? FileManager.default.removeItem(atPath: path) }
@@ -63,7 +63,7 @@ struct KeyedRowStoreTests {
 
     /// "Nothing there" and "could not read" are two things: a file that is
     /// no database THROWS at the reader, it never reads as empty rows.
-    @Test("Ein Lesefehler ist kein leerer Bestand: der Leser wirft")
+    @Test("A read error is no empty stock: the reader throws")
     func unreadableFileThrows() throws {
         let path = tempPath()
         defer { try? FileManager.default.removeItem(atPath: path) }

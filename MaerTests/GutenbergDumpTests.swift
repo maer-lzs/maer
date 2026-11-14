@@ -9,16 +9,16 @@ import Foundation
 import Synchronization
 @testable import Maer
 
-/// Der Gutenberg-Abzug gegen seine ECHTEN Bytes: ein Ausschnitt aus
-/// `pg_catalog.csv`, so wie der Dienst ihn liefert, mit CRLF am Zeilenende
-/// und einem Zeilenumbruch in einem Feld. Ein Swift-Literal verliert genau
-/// das Unsichtbare; der Leser las die ganze Datei als eine Zeile.
+/// The Gutenberg dump against its REAL bytes: an excerpt of
+/// `pg_catalog.csv` as the service delivers it, with CRLF at the line end
+/// and a line break inside a field. A Swift literal loses exactly
+/// the invisible part; the reader read the whole file as one line.
 struct GutenbergDumpTests {
     static func excerpt() throws -> Data {
         try CorpusFixture.data("pg_catalog-excerpt", ext: "csv", subdirectory: "GutenbergDump")
     }
 
-    @Test("Der Abzug mit CRLF wird Zeile fuer Zeile gelesen, ein Zeilenumbruch im Feld bleibt im Feld")
+    @Test("The dump with CRLF is read line by line, a line break inside a field stays inside the field")
     func theRealBytesAreRead() throws {
         let data = try Self.excerpt()
         let text = try #require(String(data: data, encoding: .utf8))
@@ -79,7 +79,7 @@ struct GutenbergDumpTests {
         return (CatalogStockFetch.DumpPartial(surface: "gutenberg", directory: folder), folder)
     }
 
-    @Test("das Teilstueck bleibt nach dem Lesen stehen, und ein zweiter Lauf liest es von der Platte statt neu zu holen")
+    @Test("the partial piece stays after reading, and a second run reads it from disk instead of fetching it again")
     func theFileStaysUntilTheStockStands() async throws {
         let file = try Self.excerpt()
         let (partial, folder) = try partial()
@@ -101,7 +101,7 @@ struct GutenbergDumpTests {
     /// The lever that empties the derived stocks, pulled while a dump runs:
     /// what lies on the disk afterwards must never be the tail of the file
     /// without its head, else a run after a restart splices it.
-    @Test("der Hebel mitten im Abruf: auf der Platte liegt danach nie das Ende ohne den Anfang")
+    @Test("the lever in the middle of a fetch: afterwards the disk never holds the end without the beginning")
     func theLeverMidRunLeavesNoHeadlessTail() async throws {
         let file = try Self.excerpt()
         let (partial, folder) = try partial()
@@ -120,7 +120,7 @@ struct GutenbergDumpTests {
     /// Once a slice was refused, the run goes on from memory and leaves the
     /// disk alone: a later slice neither empties the file again nor says so
     /// again. A mark put on the disk after the refusal outlives the run.
-    @Test("nach einer verweigerten Scheibe laesst der Abruf die Platte in Ruhe, eine Zeile statt einer je Scheibe")
+    @Test("after a refused slice the fetch leaves the disk alone, one line instead of one per slice")
     func aRefusedSliceLeavesTheDiskAloneAfterwards() async throws {
         let file = try Self.excerpt()
         let (partial, folder) = try partial()
@@ -141,7 +141,7 @@ struct GutenbergDumpTests {
 
     /// The lever over a folder with an unfinished dump and its counters:
     /// nothing of a stock stays, and what went is said.
-    @Test("der Hebel nimmt angefangene Abrufe samt Zaehlern mit")
+    @Test("the lever takes unfinished fetches along with their counters")
     func theLeverTakesUnfinishedDumps() async throws {
         let (partial, folder) = try partial()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -154,7 +154,7 @@ struct GutenbergDumpTests {
         #expect(after.isEmpty, "left after the lever: \(after)")
     }
 
-    @Test("eine Datei, die sich zwischen zwei Scheiben oben aendert, faengt neu an und wird fertig")
+    @Test("a file that changes upstream between two slices starts over and finishes")
     func aFileRewrittenUpstreamStartsOverAndFinishes() async throws {
         let file = try Self.excerpt()
         let (partial, folder) = try partial()
@@ -167,7 +167,7 @@ struct GutenbergDumpTests {
         #expect(wire.requests == 5, "one slice, the slice that names the change, then three slices of the file as it is now")
     }
 
-    @Test("eine ganze Datei ohne ein einziges Werk scheitert laut, bleibt einmal fuer den naechsten Lauf und geht beim zweiten leeren Lesen")
+    @Test("a whole file without a single work fails loudly, stays once for the next run and goes at the second empty read")
     func aFileWithoutAWorkFailsAloud() async throws {
         let (partial, folder) = try partial()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -197,7 +197,7 @@ struct GutenbergDumpTests {
         #expect(partial.load().body == noAudio, "the new copy is on the disk again")
     }
 
-    @Test("Gutenberg-Regale antworten aus dem Bestand, mit gut:-Titeln, nie mit archive-Titeln")
+    @Test("Gutenberg shelves answer from the stock, with gut: titles, never with archive titles")
     @MainActor
     func gutenbergShelvesAnswerFromTheStockWithGutenbergTitles() throws {
         let shelf = try #require(CatalogGenreAxis.librivoxShelves.first).key
@@ -225,7 +225,7 @@ struct GutenbergDumpTests {
         #expect(archive.map(\.id) == ["lva:librivox-work"], "an archive entry keeps its prefix")
     }
 
-    @Test("jeder Ausgang von ensureStock und ein leeres Ende von finish schreiben eine Zeile; das Teilstueck geht erst nach dem Bestand", .needsTheSources)
+    @Test("every exit of ensureStock and an empty end of finish write one line; the partial piece goes only after the stock", .needsTheSources)
     func everyEndSaysWhy() throws {
         let service = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/CatalogStockService.swift"), encoding: .utf8))

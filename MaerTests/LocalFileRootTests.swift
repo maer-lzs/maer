@@ -55,7 +55,7 @@ struct LocalFileRootTests {
         return Home(directory: directory)
     }
 
-    @Test("ohne eigene Wurzel liegt alles im Container, wie vorher")
+    @Test("without an own root everything lies in the container, as before")
     func theContainerBehavesAsBefore() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -75,7 +75,7 @@ struct LocalFileRootTests {
         await library.awaitPendingWrites()
     }
 
-    @Test("jede Lesung und jedes Entfernen fragt die Wurzel, nie den Container selbst")
+    @Test("every read and every removal asks the root, never the container itself")
     func everyReadAndRemovalAsksTheRoot() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -115,7 +115,7 @@ struct LocalFileRootTests {
         }.count
     }
 
-    @Test("kein Pfad an der Wurzel vorbei, der Container-Name an einer Stelle, Entfernen ueber die Wurzel",
+    @Test("no path past the root, the container name in one place, removal through the root",
           .needsTheSources)
     func nobodyReachesPastTheRoot() throws {
         var namesTheContainer: [String] = []
@@ -136,7 +136,7 @@ struct LocalFileRootTests {
         #expect(removals == 2, "the import's two cleanups, nothing else; found \(removals)")
     }
 
-    @Test("Eichzeilen: der Zaun sieht den alten Weg und laesst die Wurzel stehen")
+    @Test("Calibration lines: the fence sees the old way and leaves the root alone")
     func fenceCalibration() {
         #expect(Self.pathsPastTheRoot(in: "let url = audioDir.appendingPathComponent(contentPath)") == 1)
         #expect(Self.pathsPastTheRoot(in: "audioDir.appendingPathComponent(uuid(entry), isDirectory: true)") == 1)

@@ -12,7 +12,7 @@ import Foundation
 /// per title that moves to the top, a taken back "finished", the rows
 /// across a restart, and the two ways in.
 struct ListenHistoryRuleTests {
-    @Test("ein Lied zaehlt ab der Haelfte oder ab vier Minuten, knapp darunter nicht; ohne Laenge nie")
+    @Test("a song counts from the half or from four minutes, just below it not; without a length never")
     func theSongThreshold() {
         let under = ListenHistory.songHeard(song: "s", position: 89, duration: 180, noted: nil)
         let half = ListenHistory.songHeard(song: "s", position: 90, duration: 180, noted: nil)
@@ -26,7 +26,7 @@ struct ListenHistoryRuleTests {
         #expect(!unknown.enter, "a song without a length counted")
     }
 
-    @Test("ein Hoeren schreibt einmal; zurueck unter die Schwelle und wieder darueber ist ein neues Hoeren, ein anderes Lied auch")
+    @Test("a listen writes once; back below the threshold and above again is a new listen, another song too")
     func oneHearingEntersOnce() {
         var noted: String?
         var entered: [Double] = []
@@ -43,7 +43,7 @@ struct ListenHistoryRuleTests {
     /// Which page a playing title belongs to: books of the books tab and
     /// titles on the books shelf (Booksonic) as books; server music and the
     /// music of the open catalogs song by song; podcasts and radio nowhere.
-    @Test("Buch, Buch auf dem Buch-Regal (Booksonic), Server-Musik und Katalog-Musik gehen je auf ihre Seite; Podcast und Radio nirgends")
+    @Test("Book, book on the books shelf (Booksonic), server music and catalog music each go to their page; podcast and radio nowhere")
     func eachTitleGoesToItsPage() {
         let archive = FreeCatalog.archivePrefix + "release"
         let cases: [(String, ProgressMark.StartedForm?, Bool, ListenHistory.Family?)] = [
@@ -73,7 +73,7 @@ struct ListenHistoryRuleTests {
 
     /// A book enters once, when its phase turns into played: not with every
     /// tick while it stands played, again after a finish taken back.
-    @Test("ein Buch kommt einmal herein, wenn es nach gehoert wechselt; nicht bei jedem Takt danach, wieder nach einem zurueckgenommenen Fertig", .needsTheSources)
+    @Test("a book enters once when it changes to played; not with every tick after, again after a finish taken back", .needsTheSources)
     func aBookEntersWhenItTurnsPlayed() throws {
         typealias P = ProgressMark.PlayState.Phase
         let cases: [(P, P, Bool)] = [
@@ -96,7 +96,7 @@ struct ListenHistoryRuleTests {
 
     /// The player asks the one rule with the books shelf, and a catalog song
     /// takes its row id from the one rule.
-    @Test("der Player fragt die eine Regel mit dem Buch-Regal, ein Katalog-Lied nimmt seine Kennung aus der Regel", .needsTheSources)
+    @Test("the player asks the one rule with the books shelf, a catalog song takes its id from the rule", .needsTheSources)
     func thePlayerAsksTheRule() throws {
         let player = StockDriftTests.squeezed(SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)))
@@ -107,7 +107,7 @@ struct ListenHistoryRuleTests {
                 "the player asks the books tab beside the rule")
     }
 
-    @Test("die Seite zeigt je Familie die gehoerten Eintraege, neueste zuerst, ohne zurueckgenommene")
+    @Test("the page shows the played entries per family, newest first, without those taken back")
     func thePageList() {
         typealias E = ListenHistory.Entry
         let entries: [String: E] = [
@@ -120,7 +120,7 @@ struct ListenHistoryRuleTests {
         #expect(ListenHistory.historyList(entries, family: .music).map(\.id) == ["s1"])
     }
 
-    @Test("ein Datum vor 2000 steht nicht")
+    @Test("a date before 2000 is not shown")
     func noDateBefore2000() {
         let old = ListenHistory.Entry(id: "x", family: .book, title: "X", subtitle: "", heardAt: 3600)
         let now = ListenHistory.Entry(id: "y", family: .book, title: "Y", subtitle: "", heardAt: 1_700_000_000_000)
@@ -132,7 +132,7 @@ struct ListenHistoryRuleTests {
     /// with and without a server, by the one entry row at the end of the
     /// tab (the podcast tab too); the episode history and this page draw
     /// the one row.
-    @Test("beide Reiter oeffnen die eine Seite mit ihrer Familie, Musik und Buecher mit und ohne Server ueber die eine Reihe am Ende; beide Verlaeufe zeigen dieselbe Zeile", .needsTheSources)
+    @Test("both tabs open the one page with their family, music and books with and without a server through the one row at the end; both histories show the same row", .needsTheSources)
     func bothTabsOpenTheOnePage() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -199,7 +199,7 @@ struct ListenHistoryStoreTests {
     private func songs(_ history: ListenHistory) -> [String] { history.history(.music).map(\.id) }
     private func books(_ history: ListenHistory) -> [String] { history.history(.book).map(\.id) }
 
-    @Test("zweimal dasselbe Lied gehoert ist eine Zeile, oben; der Verlauf beginnt leer und steht nach einem Neustart")
+    @Test("the same song played twice is one row, on top; the history starts empty and stands after a restart")
     func twiceHeardIsOneRowOnTop() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -216,7 +216,7 @@ struct ListenHistoryStoreTests {
         #expect(top == 1_700_000_200_000, "the row does not carry the latest hearing")
     }
 
-    @Test("die Seite liest abseits des Hauptstrangs dieselbe Liste wie der Speicher; danach haengt ein Hoeren oben an, ohne zweites Lesen")
+    @Test("the page reads off the main thread the same list as the store; afterwards a listen is appended on top, without a second read")
     func thePageReadsOffTheMainThread() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -238,7 +238,7 @@ struct ListenHistoryStoreTests {
                 "the store read again over its rows or lost them: \(songs(later))")
     }
 
-    @Test("fertig zurueckgenommen nimmt das Buch von der Seite, ein neueres Hoeren bringt es zurueck, ein aelteres nicht")
+    @Test("a finish taken back removes the book from the page, a newer listen brings it back, an older one does not")
     func aTakenBackFinish() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -252,7 +252,7 @@ struct ListenHistoryStoreTests {
         #expect(books(history) == ["book-1"], "a newer hearing did not bring the book back")
     }
 
-    @Test("ohne Konto gehoert, das erste Konto A sieht alles; B sieht nichts von A; zurueck zu A, dann B: B's Eintraege wieder da, keiner von A")
+    @Test("played without an account, the first account A sees everything; B sees nothing of A; back to A, then B: B's entries are back, none of A's")
     func theHistoryFollowsTheAccount() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -285,7 +285,7 @@ struct ListenHistoryStoreTests {
         #expect(songs(later) == ["sub:song:b"], "a restart under B shows another stock: \(songs(later))")
     }
 
-    @Test("unter B nach der Ersetzung gehoert, steht der Eintrag nach einem Neustart bei B, keiner von A")
+    @Test("played under B after the replacement, the entry stands with B after a restart, none of A's")
     func anEntryHeardAfterTheReplacementSurvivesARestart() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -308,7 +308,7 @@ struct ListenHistoryStoreTests {
         #expect(books(later).isEmpty, "A's entry came along: \(books(later))")
     }
 
-    @Test("ein Eintrag waehrend einer gehaltenen Uebergabe wartet und steht danach bei B, keiner bei A")
+    @Test("an entry during a held hand-over waits and then stands with B, none with A")
     func anEntryDuringAHeldHandOverWaits() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -335,7 +335,7 @@ struct ListenHistoryStoreTests {
         #expect(rested == ["of-a"], "B's entry rests under A, or A's was lost: \(rested)")
     }
 
-    @Test("wartet ein Eintrag unter B und gelingt dann der Wechsel zu C, landet er nicht bei C")
+    @Test("if an entry waits under B and the switch to C then succeeds, it does not land with C")
     func anEntryWaitingForBNeverLandsAtC() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -361,7 +361,7 @@ struct ListenHistoryStoreTests {
 
     /// The two ways in stand once each: the tick of the player (a book into
     /// played, a song past its threshold) and the finish mark of a book.
-    @Test("die Zuwege stehen je einmal: der Takt des Players fuer Buch und Lied, die Marke fertig mit Zuruecknehmen", .needsTheSources)
+    @Test("the ways in stand once each: the tick of the player for book and song, the finish mark with taking back", .needsTheSources)
     func theWaysInStandOnce() throws {
         let player = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))

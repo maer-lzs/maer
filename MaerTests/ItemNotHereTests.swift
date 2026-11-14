@@ -16,7 +16,7 @@ import Foundation
 struct ItemNotHereTests {
     final class Fetches { var count = 0 }
 
-    @Test("jeder Fall hat einen Satz, keiner nennt Domain, Typ oder Code")
+    @Test("every case has a sentence, none names domain, type or code")
     func eachCaseHasASentence() {
         for failure in [ItemNotHere.episodeNotLoadedHere, .episodeNotOnServer, .fileGone] {
             let sentence = failure.errorDescription ?? ""
@@ -28,7 +28,7 @@ struct ItemNotHereTests {
         }
     }
 
-    @Test("nur eine Geste sagt einen Fehlschlag, Spiegel und Wiederherstellung nie")
+    @Test("only a gesture reports a failure, mirror and restore never")
     func onlyAGestureSaysAFailure() {
         #expect(PlayerCoordinator.OpenOrigin.gesture.saysFailure)
         #expect(!PlayerCoordinator.OpenOrigin.mirror.saysFailure)
@@ -46,7 +46,7 @@ struct ItemNotHereTests {
                     })
     }
 
-    @Test("was die Leiter im Feed gefunden hat, steht danach im Bestand und oeffnet ohne zweiten Abruf")
+    @Test("what the ladder found in the feed is afterwards in the stock and opens without a second fetch")
     func whatTheLadderFoundStaysInTheStock() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("item-not-here-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -84,7 +84,7 @@ struct ItemNotHereTests {
         #expect(await subs.absorb(fresh, showId: show.id) == 0, "a second absorb adds nothing")
     }
 
-    @Test("ist das Verzeichnis aus oder die Sendung hier nicht gefolgt, ist die Historie nicht gefragt: nil, nie 0")
+    @Test("if the directory is off or the show is not followed here, the history is not asked: nil, never 0")
     func anUnaskedHistoryIsNoFinding() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("history-nil-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -116,7 +116,7 @@ struct ItemNotHereTests {
         #expect(subs.shows.first?.episodes.count == 2, "and the stock is untouched")
     }
 
-    @Test("der Knopf fuer die Historie steht unter derselben Bedingung, unter der die Funktion fragt", .needsTheSources)
+    @Test("the button for the history stands under the same condition under which the function asks", .needsTheSources)
     func theHistoryButtonAsksWhatTheLoadAsks() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))
@@ -130,7 +130,7 @@ struct ItemNotHereTests {
         #expect(store.contains("guard AppStorageKeys.podcastIndexActive else {"))
     }
 
-    @Test("kein NSError mit erfundenem Code im Quellbaum", .needsTheSources)
+    @Test("no NSError with an invented code in the source tree", .needsTheSources)
     func noMadeUpStatusCodes() throws {
         // Each exception names its file and says why the code there is not
         // made up. None today.
@@ -148,7 +148,7 @@ struct ItemNotHereTests {
         #expect(Set(found.keys) == Set(exceptions.keys), "made-up NSError at \(found.sorted { $0.key < $1.key })")
     }
 
-    @Test("der Koordinator setzt loadError nur ueber die eine Ausgangstuer, und die Leiter legt ab, was sie fand", .needsTheSources)
+    @Test("the coordinator sets loadError only through the one exit door, and the ladder files what it found", .needsTheSources)
     func theCoordinatorSpeaksThroughOneExit() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift")
         let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))

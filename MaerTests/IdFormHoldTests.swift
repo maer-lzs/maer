@@ -34,7 +34,7 @@ struct IdFormHoldTests {
         try await body()
     }
 
-    @Test("Playlisten mit Kennungen des Musikservers warten, solange deren Form unbekannt ist; andere laufen")
+    @Test("Playlists with ids of the music server wait as long as their form is unknown; others run")
     func playlistsWaitForTheIdForm() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("id-form-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -64,7 +64,7 @@ struct IdFormHoldTests {
         }
     }
 
-    @Test("Wahlen mit Kennungen des Musikservers warten, solange deren Form unbekannt ist; andere laufen")
+    @Test("Choices with ids of the music server wait as long as their form is unknown; others run")
     func choicesWaitForTheIdForm() {
         let suite = "id-form-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -95,7 +95,7 @@ struct IdFormHoldTests {
                 "the round did not go on once the form was known")
     }
 
-    @Test("eine Liste, die eine Server-Kennung nur unter den Entfernten traegt, wartet ebenso")
+    @Test("a list that carries a server id only among the removed waits just the same")
     func aRemovedServerIdWaits() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("id-form-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -122,7 +122,7 @@ struct IdFormHoldTests {
         }
     }
 
-    @Test("eine Rate, die im Fenster notiert wird, steht nicht in alter Form im Dokument und reist nach dem Warten")
+    @Test("a rating noted in the window is not in the document in the old form and travels after the wait")
     func aRateNotedInTheWindowWaits() {
         let suite = "id-form-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -148,7 +148,7 @@ struct IdFormHoldTests {
                 "the held rate did not travel after the wait")
     }
 
-    @Test("die Uhr des Wartens laeuft erst, wenn eine Kennung des Musikservers wartet: Runden und Aussagen ohne sie fragen die Form nicht")
+    @Test("the clock of the wait runs only when an id of the music server waits: rounds and statements without one do not ask the form")
     func theClockStartsOnlyWhereAServerIdWaits() async throws {
         let suite = "id-form-clock-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -189,7 +189,7 @@ struct IdFormHoldTests {
         }
     }
 
-    @Test("eine Aussage mit einer Kennung des Musikservers waehrend einer Uebernahme wird auch im Warten nicht als eigenes Wort gestempelt")
+    @Test("a statement with an id of the music server during a takeover is not stamped as its own word even while waiting")
     func aHeldNoteDuringAnAdoptionStampsNothing() {
         let suite = "id-form-adopt-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -220,7 +220,7 @@ struct IdFormHoldTests {
         #expect(sync.localStamps()?[rate] == nil, "a note during an adoption was stamped as this device's word")
     }
 
-    @Test("die Form steht fest ohne Server, mit Typ und Fassung, nach einem Versuch, der nichts lehrte, oder nach der Frist; die Runden laufen dann wieder")
+    @Test("the form is settled without a server, with type and version, after an attempt that taught nothing, or after the deadline; the rounds then run again")
     func theWaitEnds() async throws {
         let previous = AppStorageKeys.subsonicServerURLValue
         let run = UUID().uuidString.prefix(8)
@@ -305,7 +305,7 @@ struct IdFormHoldTests {
         return count
     }
 
-    @Test("jeder Test-Bau eines Abgleichs sagt, ob die Form der Kennungen entschieden ist", .needsTheTests)
+    @Test("every test construction of a sync says whether the form of the ids is settled", .needsTheTests)
     func everyTestConstructionNamesTheForm() throws {
         var offenders: [String] = []
         var seen = 0

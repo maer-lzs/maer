@@ -8,18 +8,18 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der sichtbare iCloud-Schalter: mit eingerichtetem Mär Sync sichtbar aus
-/// und gesperrt, mit Satz und Weg zur Mär-Sync-Seite; ohne Mär Sync ist er
-/// der eine Schalter. Nie tragen beide.
+/// The visible iCloud switch: with Mär Sync set up it is visibly off
+/// and locked, with a sentence and a way to the Mär Sync page; without Mär Sync it is
+/// the one switch. Never do both carry.
 @MainActor
 struct ICloudSwitchTests {
-    @Test("Die Zustaende: frei ohne Dienst, gesperrt mit Dienst")
+    @Test("The states: free without the service, locked with the service")
     func theStates() {
         #expect(ICloudSwitch.state(serviceConfigured: false) == .free)
         #expect(ICloudSwitch.state(serviceConfigured: true) == .lockedServiceCarries)
     }
 
-    @Test("Mär Sync eingerichtet: kein Traeger schreibt nach iCloud, und der Schalter steht aus und gesperrt")
+    @Test("Mär Sync set up: no carrier writes to iCloud, and the switch stands off and locked")
     func theServiceCarriesEverything() throws {
         let access = MaerSyncAccess(baseURL: try #require(URL(string: "https://sync.example.test")), token: "a-token")
         #expect(StandCarriers.make(access: access) is MaerSyncStandCarrier)
@@ -30,7 +30,7 @@ struct ICloudSwitchTests {
         #expect(ICloudSwitch.state(serviceConfigured: true) == .lockedServiceCarries)
     }
 
-    @Test("Die Einstellungen fragen die Regel, sperren die Zeile und fuehren zur Mär-Sync-Seite; der Schalter zeigt die Sperre selbst", .needsTheSources)
+    @Test("The settings ask the rule, lock the row and lead to the Mär Sync page; the switch shows the lock itself", .needsTheSources)
     func theWiring() throws {
         func flat(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

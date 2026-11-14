@@ -8,14 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Gehoert-Verlauf vom Geraet (Build 47): aeltere Eintraege ohne Titel
-/// und Sendung, drei Eintraege „vor 56 Jahren“. Ein Titel, der beim
-/// Schreiben fehlte, kommt nach, ohne neues Hoeren; kein Datum vor 2000.
+/// The played history from the device (Build 47): older entries without title
+/// and show, three entries „vor 56 Jahren“. A title that was missing when
+/// writing is filled in later, without new listening; no date before 2000.
 @MainActor
 struct ListenHistoryHealTests {
     private let real = 1_753_180_608_000.0
 
-    @Test("Ein Zeitpunkt in Sekunden wird zu Millisekunden, eine Dauer nimmt den Zeitpunkt des Hoerstands, ein echter bleibt")
+    @Test("A point in time in seconds becomes milliseconds, a duration takes the point in time of the listening state, a real one stays")
     func theDatesHeal() {
         #expect(PodcastListenLog.healedPlayedAt(current: 1_753_180_608, stored: nil) == real,
                 "a moment in seconds is the same moment in milliseconds")
@@ -28,7 +28,7 @@ struct ListenHistoryHealTests {
                 "a stand whose own moment is no date is not copied")
     }
 
-    @Test("Kein Datum vor 2000 wird gezeigt")
+    @Test("No date before 2000 is shown")
     func noDateBefore2000IsShown() {
         func entry(_ at: Double) -> PodcastListenLog.Entry {
             .init(guid: "g", episodeTitle: "E", showTitle: "S", feedURL: "", duration: 60,
@@ -39,7 +39,7 @@ struct ListenHistoryHealTests {
         #expect(PodcastListenLog.shownDate(entry(real)) == Date(timeIntervalSince1970: real / 1000))
     }
 
-    @Test("Ein Titel, der beim Schreiben fehlte, kommt mit der naechsten Notiz desselben Stands, ohne neues Hoeren")
+    @Test("A title that was missing when writing arrives with the next note of the same state, without new listening")
     func aMissingTitleArrivesWithoutANewListen() {
         let log = PodcastListenLog.shared
         log._resetForTest()
@@ -57,7 +57,7 @@ struct ListenHistoryHealTests {
         #expect(log.entries[guid]?.playedAt == real, "the moment did not move: no new listen was booked")
     }
 
-    @Test("Der Verlauf ergaenzt beim Lesen, was heute aufloesbar ist; was nicht aufloesbar ist, bleibt leer und wird benannt")
+    @Test("The history fills in on reading what is resolvable today; what is not resolvable stays empty and is named")
     func theHistoryFillsWhatResolves() throws {
         let log = PodcastListenLog.shared
         log._resetForTest()
@@ -74,7 +74,7 @@ struct ListenHistoryHealTests {
         #expect(rows.first { $0.guid == gone }?.episodeTitle == "", "nothing is invented for what does not resolve")
     }
 
-    @Test("Die Zeile zeigt fuer einen fehlenden Titel einen Namen, laesst eine fehlende Sendung und ein falsches Datum weg", .needsTheSources)
+    @Test("The row shows a name for a missing title, omits a missing show and a wrong date", .needsTheSources)
     func theRowNamesWhatIsMissing() throws {
         let view = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastHistoryView.swift"), encoding: .utf8))
@@ -92,7 +92,7 @@ struct ListenHistoryHealTests {
 
     /// The page and its tile are called "Hörverlauf" in German; the empty
     /// page says it with the same word.
-    @Test("deutsch heisst der Verlauf Hörverlauf, auf der Kachel und auf der leeren Seite", .needsTheSources)
+    @Test("in German the history is called „Hörverlauf“, on the tile and on the empty page", .needsTheSources)
     func theGermanNameIsHoerverlauf() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -109,7 +109,7 @@ struct ListenHistoryHealTests {
 
     /// The second line is one text: who, then how long ago. At a large size
     /// it wraps as one line instead of two columns side by side.
-    @Test("die zweite Zeile ist ein Text: wer, dann wie lange her; fehlt eins, steht das andere allein")
+    @Test("the second line is one text: who, then how long ago; if one is missing, the other stands alone")
     func theSecondLineIsOneText() {
         #expect(HistoryRow.secondLine(subtitle: "Seed Artist", when: "11 minutes ago") == "Seed Artist · 11 minutes ago")
         #expect(HistoryRow.secondLine(subtitle: "", when: "last month") == "last month")

@@ -39,7 +39,7 @@ struct LocalLibraryRowsTests {
                            addedAt: addedAt, trackFiles: ["a.m4a"], chapters: [], hasCover: false)
     }
 
-    @Test("die Zeilen werden neueste zuerst gelesen; ein geloeschter Eintrag verlaesst seine Zeile")
+    @Test("the rows are read newest first; a deleted entry leaves its row")
     func theRowsReadNewestFirst() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -60,7 +60,7 @@ struct LocalLibraryRowsTests {
 
     // MARK: A file that cannot be copied is counted, not dropped
 
-    @Test("eine Datei, die sich nicht kopieren laesst, wird gezaehlt statt still uebergangen")
+    @Test("a file that cannot be copied is counted instead of silently skipped")
     func aFailedCopyIsCounted() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -76,7 +76,7 @@ struct LocalLibraryRowsTests {
                 "what arrived becomes the entry")
     }
 
-    @Test("kommt keine Datei an, entsteht kein Eintrag und kein leerer Ordner")
+    @Test("if no file arrives, no entry and no empty folder arise")
     func nothingArrivedLeavesNothing() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -90,7 +90,7 @@ struct LocalLibraryRowsTests {
         #expect(folders.isEmpty, "no empty folder left behind: \(folders)")
     }
 
-    @Test("die Import-Seite zeigt, wie viele Dateien nicht uebernommen wurden", .needsTheSources)
+    @Test("the import page shows how many files were not taken over", .needsTheSources)
     func theImportPageSaysHowManyFailed() throws {
         let page = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LocalFilesView.swift"),
                               encoding: .utf8)

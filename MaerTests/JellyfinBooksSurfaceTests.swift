@@ -35,7 +35,7 @@ import Foundation
 
     // MARK: - What the source serves
 
-    @Test("ein Server mit Buecher-Bibliothek bedient beide Typen, ohne dass jemand etwas zuordnet")
+    @Test("a server with a books library serves both types without anyone assigning anything")
     func aServerWithABooksLibraryServesBoth() {
         let withBooks = SourceModes.fromServerNamedLibraries(hasBooksLibrary: true)
         #expect(withBooks.serves(.music))
@@ -43,7 +43,7 @@ import Foundation
         #expect(withBooks.types == [.music, .audiobooks])
     }
 
-    @Test("ohne Buecher-Bibliothek bleibt die Quelle Musik, und der Hoerbuch-Tab sieht sie nicht")
+    @Test("without a books library the source stays music, and the audiobook tab does not see it")
     func aServerWithoutABooksLibraryStaysMusic() {
         let musicOnly = SourceModes.fromServerNamedLibraries(hasBooksLibrary: false)
         #expect(musicOnly.serves(.music))
@@ -55,7 +55,7 @@ import Foundation
 
     /// The gate the shelf asks is `mediaTypes`, and it must be able to say
     /// audiobooks at all. This is the line that kept the fold unreachable.
-    @Test("die Quelle nennt Hoerbuecher, sobald die Bibliothek bekannt ist")
+    @Test("the source names audiobooks as soon as the library is known")
     func theSourceCanNameAudiobooks() {
         let stored = AppStorageKeys.jellyfinBooksViewIdValue
         defer { AppStorageKeys.jellyfinBooksViewIdValue = stored }
@@ -75,7 +75,7 @@ import Foundation
                 "mit bekannter Bibliothek entscheiden nur noch Tab-Schalter und Quellen-Schalter")
     }
 
-    @Test("die Buecher-Bibliothek wird unter ihrer eigenen Kennung geholt, nicht unter dem Quellen-Kuerzel")
+    @Test("the books library is fetched under its own id, not under the source abbreviation")
     func booksAreFetchedUnderTheirOwnLibraryId() {
         let libraryId = JellyfinProvider.libraryId(booksViewId: "v-books")
         #expect(libraryId == "jf:books:v-books")
@@ -87,7 +87,7 @@ import Foundation
 
     // MARK: - What the shelf shows as progress
 
-    @Test("der Regal-Fortschritt kommt aus der Listung selbst, am weitesten Punkt")
+    @Test("the shelf progress comes from the listing itself, at the furthest point")
     func theShelfReadsItsProgressFromTheListing() throws {
         let groups = JellyfinBookFold.fold(try files())
         let group = try #require(groups.first)
@@ -101,7 +101,7 @@ import Foundation
         #expect(progress.lastUpdate == JellyfinProvider.epochMs(fromJFDate: "2026-09-15T07:00:00.0000000Z"))
     }
 
-    @Test("ein Buch ohne jede Position meldet keinen Fortschritt")
+    @Test("a book without any position reports no progress")
     func anUntouchedBookReportsNothing() throws {
         let wire = """
         {"Items":[
@@ -117,7 +117,7 @@ import Foundation
                 "ohne Position darf kein Balken entstehen, sonst steht jedes Buch bei null Prozent im Regal")
     }
 
-    @Test("ein durchgehoertes Buch meldet fertig")
+    @Test("a book listened through reports finished")
     func aBookPlayedThroughReportsFinished() throws {
         let wire = """
         {"Items":[
@@ -134,7 +134,7 @@ import Foundation
         #expect(progress.fraction == 1)
     }
 
-    @Test("die Antwort des Servers traegt das Datum der letzten Wiedergabe")
+    @Test("the server's answer carries the date of the last playback")
     func theWirePayloadCarriesTheLastPlayedDate() throws {
         let file = try #require(try files().first)
         #expect(file.userData?.lastPlayedDate == "2026-09-15T06:00:00.0000000Z")
@@ -143,7 +143,7 @@ import Foundation
 
     // MARK: - The shelf notices a source that starts serving books
 
-    @Test("die Kennung der Zweitquellen aendert sich nur, wenn sich die MENGE aendert")
+    @Test("the signature of the secondary sources changes only when the SET changes")
     func theSignatureFollowsTheSetAndNothingElse() {
         let none = LibraryViewModel.secondarySignature(of: [
             ("jf", false, true, ""), ("local", true, false, "")])
@@ -166,16 +166,16 @@ import Foundation
         #expect(alsoLocal != withJellyfin)
     }
 
-    /// Die Kennung allein haelt eine zweite Ankuendigung NICHT auf, und das
-    /// war der Befund: `secondarySignature` wird erst am ENDE von
-    /// `reloadLocalCache` geschrieben, also sieht jede Ankuendigung, die
-    /// waehrend der beiden `await` eintrifft, noch den alten Wert und kommt
-    /// durch. Ein Schalter erzeugt drei davon, und dann fragen drei Laeufe
-    /// gleichzeitig jede Zweitquelle ueber das Netz.
+    /// The signature alone does NOT stop a second announcement, and that
+    /// was the finding: `secondarySignature` is written only at the END of
+    /// `reloadLocalCache`, so every announcement that arrives
+    /// during the two `await`s still sees the old value and gets
+    /// through. One switch produces three of them, and then three runs ask
+    /// every secondary source over the network at the same time.
     ///
-    /// Verwerfen waere der Gegenfehler: die Ankuendigung waehrend des Laufs
-    /// kann genau die sein, auf die es ankommt.
-    @Test("eine zweite Ankuendigung wird gemerkt, nicht verworfen und nicht doppelt gefahren")
+    /// Discarding would be the opposite error: the announcement during the run
+    /// can be exactly the one that matters.
+    @Test("a second announcement is remembered, not discarded and not run twice")
     func aSecondAnnouncementIsRememberedNotRun() {
         typealias Step = LibraryViewModel.SecondaryRefreshStep
         #expect(LibraryViewModel.secondaryRefreshStep(signatureChanged: false, running: false) == Step.skip,
@@ -187,10 +187,10 @@ import Foundation
                 "die zweite Ankuendigung wird gemerkt, damit sie nicht verlorengeht")
     }
 
-    /// Der Zaun daneben liest den Quelltext, und er darf nicht an dem Satz
-    /// reissen, der ERKLAERT, warum der alte Griff weg ist. Beide Richtungen,
-    /// sonst ist es eine Behauptung ueber den Zaun statt einer Messung.
-    @Test("ein Kommentar UEBER den Griff ist kein Griff")
+    /// The fence beside it reads the source text, and it must not trip on the sentence
+    /// that EXPLAINS why the old grip is gone. Both directions,
+    /// otherwise it is a claim about the fence instead of a measurement.
+    @Test("a comment ABOUT the grip is no grip")
     func aCommentAboutTheGripIsNotAGrip() {
         let stripped = { (raw: String) in
             raw.split(separator: "\n", omittingEmptySubsequences: false)
@@ -205,17 +205,17 @@ import Foundation
                 "der Griff selbst muss ihn ausloesen, sonst bewacht der Zaun nichts")
     }
 
-    // MARK: - Und woraus sie bedient, nicht nur DASS sie bedient
+    // MARK: - And from what it serves, not only THAT it serves
 
-    /// Der Fall, der heute durchfaellt. Die Buecher-Bibliothek am Server wird
-    /// eine andere: dieselbe Quelle, weiter erreichbar, bedient weiter
-    /// Buecher. Nur die Kennungen im Regal gehoeren jetzt einer Bibliothek,
-    /// die niemand mehr fragt, und ein Tipp darauf landet bei einer Quelle,
-    /// die sie nicht kennt.
+    /// The case that fails today. The books library on the server becomes
+    /// another one: the same source, still reachable, keeps serving
+    /// books. Only the ids on the shelf now belong to a library
+    /// that nobody asks any more, and a tap on one lands at a source
+    /// that does not know it.
     ///
-    /// Der Weckruf kommt korrekt an (`refreshKnownLibraries` ruft ihn), er
-    /// wird am Tor verworfen, weil die Kennung ihn nicht sieht.
-    @Test("dieselbe Quelle mit einer ANDEREN Bibliothek ist eine andere Kennung")
+    /// The wake-up call arrives correctly (`refreshKnownLibraries` calls it), it
+    /// is discarded at the gate because the signature does not see it.
+    @Test("the same source with a DIFFERENT library is a different signature")
     func aLibraryThatBecomesAnotherOneMovesTheSignature() {
         let libraryA = LibraryViewModel.secondarySignature(of: [("jf", true, true, "A")])
         let libraryB = LibraryViewModel.secondarySignature(of: [("jf", true, true, "B")])
@@ -223,37 +223,37 @@ import Foundation
                 "Buecher-Bibliothek A wird B: das Regal traegt sonst Kennungen, die niemand mehr bedient")
     }
 
-    /// Die Gegenrichtung, und ohne sie waere das Tor nur ausgehaengt. Der
-    /// Netzpreis ist der Grund, warum es ueberhaupt steht: ein Umschalten
-    /// erzeugt drei Ankuendigungen, und drei Laeufe fragen jede Zweitquelle
-    /// gleichzeitig ueber das Netz.
-    @Test("dieselbe Bibliothek zweimal angekuendigt kostet keine Anfrage")
+    /// The opposite direction, and without it the gate would merely be unhinged. The
+    /// network price is the reason it stands at all: one switch
+    /// produces three announcements, and three runs ask every secondary source
+    /// at the same time over the network.
+    @Test("the same library announced twice costs no request")
     func thesameLibraryAnnouncedTwiceCostsNothing() {
         let once = LibraryViewModel.secondarySignature(of: [("jf", true, true, "A")])
         let again = LibraryViewModel.secondarySignature(of: [("jf", true, true, "A")])
         #expect(once == again)
     }
 
-    /// Und die Haelfte, die den Einwand traegt: `serving` steht im
-    /// abgebildeten Wert, NICHT im Filter. Duerfte es entscheiden, WELCHE
-    /// Quellen zaehlen, wuerde eine Musik-Bibliothek das Buch-Regal neu
-    /// mischen lassen, also genau der Preis, gegen den das Tor steht.
-    /// Deshalb antwortet `servingSignature` je SORTE, und hier steht die
-    /// Antwort fuer Buecher.
-    @Test("eine Quelle ohne Buecher steht nicht drin, egal woraus sie bedient")
+    /// And the half that carries the objection: `serving` is in the
+    /// mapped value, NOT in the filter. If it could decide WHICH
+    /// sources count, a music library would make the book shelf shuffle
+    /// anew, exactly the price the gate stands against.
+    /// That is why `servingSignature` answers per KIND, and here stands the
+    /// answer for books.
+    @Test("a source without books is not in it, whatever it serves from")
     func whatAMusicOnlySourceServesCannotReachTheBookShelf() {
         let musicMoved = LibraryViewModel.secondarySignature(of: [("jf", false, true, "andere-musik")])
         #expect(musicMoved.isEmpty,
                 "eine Quelle, die keine Buecher bedient, bewegt das Buch-Regal nicht")
     }
 
-    /// Der Bestand der Ueberschreiber, in BEIDE Richtungen.
+    /// The stock of the overriders, in BOTH directions.
     ///
-    /// Genau die Quellen, die auf eine ANDERE Bibliothek desselben Typs
-    /// gezeigt werden koennen, antworten mehr als die Vorgabe. Faellt eine
-    /// heraus, faellt sie stumm heraus, und genau diese Stille ist die
-    /// Klasse, aus der der Befund kommt.
-    @Test("genau die Quellen mit mehreren Bibliotheken sagen, woraus sie bedienen",
+    /// Exactly the sources that can be pointed at a DIFFERENT library of the same
+    /// type answer more than the default. If one drops
+    /// out, it drops out silently, and exactly this silence is the
+    /// class the finding comes from.
+    @Test("exactly the sources with several libraries say what they serve from",
           .needsTheSources)
     func exactlyTheSourcesWithSeveralLibrariesAnswer() throws {
         let folder = SourceTree.root.appendingPathComponent("Sources/Providers")
@@ -271,16 +271,16 @@ import Foundation
                 "AudioProvider.swift traegt die Vorgabe und gehoert dazu, die anderen zwei sind genau die Quellen, die auf eine andere Bibliothek desselben Typs zeigen koennen. Kommt eine dazu oder faellt eine weg, ist das ein Entscheid und kein Zufall")
     }
 
-    /// Die Klasse, nicht der Fundort: die Anforderung muss im PROTOKOLL
-    /// stehen. Steht sie nur in der Erweiterung, bindet ein Aufruf auf
-    /// `any AudioProvider` statisch an die Vorgabe, Jellyfins Antwort wird
-    /// still verworfen, und der Zaun bliebe gruen, waehrend der Defekt
-    /// unveraendert dasteht. Genau so ist `isAvailable` einmal
-    /// durchgerutscht (der immer sichtbare Musik-Reiter).
+    /// The class, not the place it was found: the requirement must be in the PROTOCOL.
+    /// If it is only in the extension, a call on
+    /// `any AudioProvider` binds statically to the default, Jellyfin's answer is
+    /// silently discarded, and the fence would stay green while the defect
+    /// stands unchanged. That is exactly how `isAvailable` once
+    /// slipped through (the always visible music tab).
     ///
-    /// Deshalb fragt dieser Zeuge die Quelle als EXISTENZIAL, nicht als
-    /// konkreten Typ: nur dann misst er die Bindung statt der Implementierung.
-    @Test("die Antwort der Quelle ueberlebt den Weg durch das Existenzial")
+    /// That is why this witness asks the source as an EXISTENTIAL, not as a
+    /// concrete type: only then does it measure the binding instead of the implementation.
+    @Test("the answer of the source survives the way through the existential")
     @MainActor
     func theAnswerSurvivesTheExistential() {
         let previous = AppStorageKeys.jellyfinBooksViewIdValue
@@ -294,7 +294,7 @@ import Foundation
                 "ueber `any AudioProvider` kommt die Vorgabe zurueck, wenn die Anforderung nur in der Erweiterung steht, und dann misst der ganze Zaun nichts")
     }
 
-    @Test("eine Quelle, die den Typ nicht bedient oder nicht bereit ist, steht nicht drin")
+    @Test("a source that does not serve the type or is not ready is not in it")
     func onlyServingAndAvailableSourcesCount() {
         #expect(LibraryViewModel.secondarySignature(of: [("jf", true, false, "")]).isEmpty,
                 "nicht bereit heisst nicht im Regal")
@@ -308,7 +308,7 @@ import Foundation
     /// asks `mediaTypes`, so this source may never answer with a fixed set
     /// again. Written as a fence because the merge itself needs a live client
     /// and a server, which no unit case has.
-    @Test("die Quelle leitet ihre Typen aus dem Tor ab, nicht aus einer festen Liste", .needsTheSources)
+    @Test("the source derives its types from the gate, not from a fixed list", .needsTheSources)
     func theSourceDerivesItsTypesFromTheGate() throws {
         let source = try String(contentsOfFile: Self.providerPath, encoding: .utf8)
         #expect(!source.contains("var mediaTypes: Set<MediaType> { [.music] }"),
@@ -322,7 +322,7 @@ import Foundation
     /// The shelf's own half of the same seam: the merge that lets a second
     /// source into the audiobook tab asks exactly this question, as a rule
     /// with its cases, and the shelf asks the rule.
-    @Test("das Regal mischt jede Zweitquelle ein, die Hoerbuecher bedient", .needsTheSources)
+    @Test("the shelf mixes in every secondary source that serves audiobooks", .needsTheSources)
     func theShelfMergesEverySourceThatServesAudiobooks() throws {
         #expect(LibraryViewModel.mixesIn(isMain: false, servesBooks: true, available: true), "a books source is mixed in")
         #expect(!LibraryViewModel.mixesIn(isMain: true, servesBooks: true, available: true), "the main source never twice")
@@ -340,7 +340,7 @@ import Foundation
     /// and the reason this fence exists: the books library answers a second
     /// after the start, and without this the shelf kept the mix it had made
     /// before that answer, so the book appeared only at the next launch.
-    @Test("das Regal wird geweckt, wenn eine Quelle ihre Typen aendert", .needsTheSources)
+    @Test("the shelf is woken when a source changes its types", .needsTheSources)
     func theShelfIsWokenWhenASourceChangesWhatItServes() throws {
         let source = try String(contentsOfFile: Self.shelfViewPath, encoding: .utf8)
         #expect(source.contains("onChange(of: session.sourcesVersion)"),
@@ -355,7 +355,7 @@ import Foundation
     /// provider, so it answered for a Jellyfin book with a request to the
     /// library server (measured live at the bench: the book page stayed
     /// without parts, the player without chapters).
-    @Test("Flaechen, die auf einen Titel wirken, holen den Anbieter aus seiner Kennung", .needsTheSources)
+    @Test("surfaces that act on a title get the provider from its id", .needsTheSources)
     func aSurfaceActingOnATitleRoutesByItsId() throws {
         for path in [Self.bookPagePath, Self.bookGridPath] {
             let raw = try String(contentsOfFile: path, encoding: .utf8)

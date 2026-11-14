@@ -48,7 +48,7 @@ struct ImageCacheKeyTests {
     /// (`CacheManager`, `options.width || 400`): the client asks for the
     /// cover as the server keeps it, and a cover kept from the scaled
     /// address never answers the new one.
-    @Test("ein Audiobookshelf-Cover kommt ungerechnet, und kein 400-Pixel-Cover antwortet seiner Adresse")
+    @Test("an Audiobookshelf cover comes unscaled, and no 400-pixel cover answers its address")
     func absCoverComesUnscaled() throws {
         let client = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "T")
         let url = try #require(client.largeCoverURL(forItemId: "li_1"))
@@ -80,7 +80,7 @@ struct ImageCacheKeyTests {
 
     /// The key sign-in (Nextcloud Music, any server after error 41) puts the
     /// key in the query; it is no part of a name, like `token` and `api_key`.
-    @Test("im Schluessel-Modus steht der Schluessel nicht im Namen eines Covers")
+    @Test("in key mode the key is not in the name of a cover")
     func subsonicApiKeyIsNotPartOfTheKey() {
         let a = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=SECRETKEY1&id=al-1&size=600&c=Maer&v=1.16.1&f=json")
         let b = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=OTHERKEY2&id=al-1&size=600&c=Maer&v=1.16.1&f=json")
@@ -92,7 +92,7 @@ struct ImageCacheKeyTests {
     /// The class, asked of the code that writes the names: every query name a
     /// sign-in form or a client writes into an image address stays out of a
     /// cover's name. Measured at the built addresses, not at a list.
-    @Test("jedes Anmeldeteil, das eine Bild-Adresse traegt, bleibt aus dem Namen")
+    @Test("every sign-in part that an image address carries stays out of the name")
     func everySignInPartStaysOutOfTheName() throws {
         for mode in [SubsonicSignIn.Mode.token, .apiKey] {
             let names = Set(SubsonicSignIn.items(mode, username: "u1", secret: "k1", token: "t1", salt: "s1").map(\.name))
@@ -119,7 +119,7 @@ struct ImageCacheKeyTests {
     /// A name an older build wrote with the key in it becomes exactly the
     /// name by address without it, which the read and the sweep know as a
     /// former name (`formerNames`, `legacyMoves`).
-    @Test("ein alter Name mit Schluessel wird genau der Name nach Adresse ohne ihn")
+    @Test("an old name with a key becomes exactly the name by address without it")
     func anOldNameWithTheKeyBecomesTodaysName() {
         let today = ImageCache.addressName(for: URL(string: "https://nc.example.lan/rest/getCoverArt.view?apiKey=SECRETKEY1&id=al-1&size=600")!)
         let old = "nc.example.lan__rest_getCoverArt.view_apiKey=SECRETKEY1_id=al-1_size=600"
@@ -129,7 +129,7 @@ struct ImageCacheKeyTests {
 
     /// A key holding `_`, `/` or `:` was written with `_` in the old name;
     /// its pieces go with the sign-in part, no piece of the key stays.
-    @Test("ein Schluessel mit Unterstrich, Schraegstrich oder Doppelpunkt verschwindet ganz aus dem alten Namen")
+    @Test("a key with underscore, slash or colon vanishes entirely from the old name")
     func aKeyWithSeparatorsLeavesNoPiece() {
         let today = ImageCache.addressName(for: URL(string: "https://nc.example.lan/rest/getCoverArt.view?apiKey=ab_cd/e:f&id=al-1&size=600")!)
         let old = "nc.example.lan__rest_getCoverArt.view_apiKey=ab_cd_e_f_id=al-1_size=600"
@@ -148,7 +148,7 @@ struct ImageCacheKeyTests {
     /// A foreign picture keeps every one-letter query part: there they name
     /// the picture (measured on feed and station images: a cache-buster `t`,
     /// a version `v`, NPR's size and crop `s`, `c`, `f`).
-    @Test("eine fremde Bild-Adresse behaelt jeden Kurznamen, zwei Groessen geben zwei Namen")
+    @Test("a foreign image address keeps every short name, two sizes give two names")
     func aForeignPictureKeepsItsShortNames() {
         let npr = key("https://media.npr.org/assets/img/show.jpg?s=1400&c=66&f=jpg")
         #expect(npr.contains("s=1400") && npr.contains("c=66") && npr.contains("f=jpg"))
@@ -161,7 +161,7 @@ struct ImageCacheKeyTests {
 
     /// The unambiguous sign-in names stay out of every name, also at a
     /// foreign address, so a sign-in never reaches a file name there either.
-    @Test("ein eindeutiger Zugangsname faellt auch an einer fremden Adresse")
+    @Test("an unambiguous credential name drops out on a foreign address too")
     func anUnambiguousSignInNameDropsEverywhere() {
         for name in ["token", "apiKey", "api_key", "ApiKey"] {
             let carried = key("https://cdn.example.org/cover.png?\(name)=SECRET9&v=3")
@@ -173,7 +173,7 @@ struct ImageCacheKeyTests {
 
     /// The image addresses our clients build are client images, measured at
     /// the built addresses; a foreign address is none.
-    @Test("die gebauten Bild-Adressen der Klienten sind Klient-Formen, eine fremde nicht")
+    @Test("the image addresses built by the clients are client forms, a foreign one is not")
     func theClientsBuildClientImages() throws {
         let subsonic = try #require(SubsonicClient(serverURL: "https://music.example.lan/sub", username: "hoerer", password: "geheim-42"))
         #expect(ImageCache.isClientImage(try #require(subsonic.mediaURL("getCoverArt", ["id": "al-1", "size": "600"]))))
@@ -191,7 +191,7 @@ struct ImageCacheKeyTests {
         #expect(!name.contains("t=") && !name.contains("s=") && !name.contains("u=hoerer"), "a sign-in part entered: \(name)")
     }
 
-    @Test("ein Bild der eigenen Server heisst nach Art, Kennung und Form, auf jedem Wirt und unter jedem Pfad gleich")
+    @Test("an image of the own servers is named by kind, id and form, the same on every host and under every path")
     func aServerPictureIsNamedByItsId() throws {
         let table: [(String, String, String)] = [
             ("https://abs.example.lan/api/items/li_1/cover?width=400&token=A",
@@ -222,7 +222,7 @@ struct ImageCacheKeyTests {
                 != key("https://jf.example.lan/Items/al-1/Images/Primary"), "two kinds of server share a name")
     }
 
-    @Test("eine oeffentliche Adresse heisst weiter nach Wirt, Pfad und Abfrage")
+    @Test("a public address is still named by host, path and query")
     func aPublicAddressKeepsItsName() {
         let address = "https://archive.org/services/img/librivox_book"
         #expect(ImageCache.serverImageName(URL(string: address)!) == nil)
@@ -230,7 +230,7 @@ struct ImageCacheKeyTests {
         #expect(key("https://media.npr.org/assets/img/show.jpg?s=1400") == "media.npr.org__assets_img_show.jpg_s=1400")
     }
 
-    @Test("jede Bild-Adresse, die ein Klient baut, heisst ohne Wirt")
+    @Test("every image address that a client builds is named without host")
     func everyBuiltServerPictureIsNamedWithoutItsHost() throws {
         let subsonic = try #require(SubsonicClient(serverURL: "https://music.example.lan/sub", username: "hoerer", password: "geheim-42"))
         let abs = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "jwt-1")
@@ -265,7 +265,7 @@ struct ImageCacheKeyTests {
         }
     }
 
-    @Test("zwei Adressen desselben Covers mit anderem Salz sind derselbe Name und ein Abruf")
+    @Test("two addresses of the same cover with a different salt are the same name and one fetch")
     func oneCoverWithTwoSaltsIsOneFetch() async throws {
         let one = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-9&size=600&t=T1&s=S1")!
         let two = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-9&size=600&t=T2&s=S2")!

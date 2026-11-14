@@ -35,7 +35,7 @@ import Foundation
             .reduce(0, +)
     }
 
-    @Test("jede orange Stelle der Ansichten ist die Hinweis-Zeile oder steht mit Grund im Bestand", .needsTheSources)
+    @Test("every orange site of the views is the hint line or is in the stock with a reason", .needsTheSources)
     func everyOrangeSiteIsTheHintLineOrNamed() throws {
         let views = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

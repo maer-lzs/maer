@@ -50,7 +50,7 @@ struct InventoryViewNamesFenceTests {
         return out
     }
 
-    @Test("Jede nicht-private View steht im Inventar in Spalte 1 oder 2", .needsTheSources)
+    @Test("Every non-private View is in the inventory in column 1 or 2", .needsTheSources)
     func everyViewIsNamed() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let inventory = try String(contentsOf: root.appendingPathComponent("docs/components.md"), encoding: .utf8)

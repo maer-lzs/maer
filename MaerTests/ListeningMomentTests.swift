@@ -13,7 +13,7 @@ import Foundation
 struct ListeningMomentTests {
     static let now: Double = 1_800_000_000_000
 
-    @Test("Der neuere der beiden Staende gewinnt, Sekunden und Millisekunden auf einer Uhr")
+    @Test("The newer of the two states wins, seconds and milliseconds on one clock")
     func newerStandWinsOnOneClock() {
         #expect(ListeningMoment.of(local: Self.now, server: Self.now - 5_000) == Self.now)
         #expect(ListeningMoment.of(local: Self.now - 5_000, server: Self.now) == Self.now)
@@ -22,7 +22,7 @@ struct ListeningMomentTests {
         #expect(ListeningMoment.of(local: 0, server: 0) == 0)
     }
 
-    @Test("Was laeuft, ist das Juengste: ein fremder Stand von eben schiebt es nicht nach hinten")
+    @Test("What is playing is the newest: a foreign state from just now does not push it back")
     func theRunningTitleStaysFirst() {
         // The running title's own stand is half a minute old (it is written
         // every thirty seconds), the other device's stand arrived a second
@@ -34,14 +34,14 @@ struct ListeningMomentTests {
         #expect(ListeningMoment.of(local: Self.now - 30_000, server: 0) < foreign)
     }
 
-    @Test("Die Beschriftung der Karte: laufend sagt laufend, sonst der Moment, sonst nichts")
+    @Test("The label of the card: playing says playing, otherwise the moment, otherwise nothing")
     func theCardSaysWhatItKnows() {
         #expect(ListeningMoment.label(local: Self.now - 30_000, server: 0, playingNowMs: Self.now) == .playing)
         #expect(ListeningMoment.label(local: Self.now - 30_000, server: Self.now, playingNowMs: nil) == .at(Self.now))
         #expect(ListeningMoment.label(local: 0, server: 0, playingNowMs: nil) == .none)
     }
 
-    @Test("Die Reihe der Startseite fragt dieselbe Uhr wie die Karten (eine Frage, keine zweite Rechnung)", .needsTheSources)
+    @Test("The row of the start page asks the same clock as the cards (one question, no second calculation)", .needsTheSources)
     func oneQuestionForRowAndCard() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func code(_ path: String) throws -> String {

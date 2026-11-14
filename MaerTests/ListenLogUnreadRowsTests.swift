@@ -8,9 +8,9 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Das Hoerprotokoll ueber Zeilen, die der Start nicht lesen konnte: kein
-/// Schrieb ersetzt einen Grabstein, den niemand gelesen hat; gelesen gilt
-/// die Regel des Protokolls (ein Grabstein weicht nur einem neueren Hoeren).
+/// The listen log over rows that the start could not read: no
+/// write replaces a tombstone that nobody has read; once read, the
+/// rule of the log applies (a tombstone yields only to a newer listen).
 @MainActor
 struct ListenLogUnreadRowsTests {
     private func entry(_ guid: String, playedAt: Double, unplayedAt: Double? = nil,
@@ -22,7 +22,7 @@ struct ListenLogUnreadRowsTests {
     /// An entry of the older stored shape does not say whether its time was
     /// observed; in doubt it answers no when, and a later bulk pass keeps it
     /// so, while a stamped play makes it observed.
-    @Test("ein Eintrag ohne Angabe zur Zeit gilt als nicht beobachtet, bis ein gestempeltes Hoeren kommt")
+    @Test("an entry without a statement about time counts as not observed until a stamped listen comes")
     func anEntryWithoutTheMarkHasNoObservedTime() {
         var old = entry("g", playedAt: 1_000)
         old.synthesizedAt = nil
@@ -34,7 +34,7 @@ struct ListenLogUnreadRowsTests {
         #expect(!PodcastListenLog.synthesized(false, then: true), "a bulk pass took the observed time back")
     }
 
-    @Test("die Regel: das spaetere Hoeren und der spaetere Grabstein stehen beide, Leeres fuellt die andere Seite")
+    @Test("the rule: the later listen and the later tombstone both stand, empty fills from the other side")
     func theMergeRule() {
         let row = entry("g", playedAt: 1_000, unplayedAt: 2_000, title: "Folge")
         let run = entry("g", playedAt: 1_500)
@@ -52,7 +52,7 @@ struct ListenLogUnreadRowsTests {
     /// The case from the order: a tombstone on disk, a start that cannot
     /// read, a reconcile that brings the guid as heard. After the rows are
     /// read the tombstone still stands.
-    @Test("ein Grabstein auf der Platte, Start liest nicht, ein Abgleich bringt die guid: danach steht der Grabstein noch")
+    @Test("a tombstone on disk, start does not read, a sync brings the guid: afterwards the tombstone still stands")
     func aTombstoneNobodyReadSurvives() async throws {
         let directory = try NavidromeRekeyTests.temporaryDirectory("listenlog-unread")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -83,7 +83,7 @@ struct ListenLogUnreadRowsTests {
 
     /// "Mark unplayed" over unread rows was a silent no-op; now the choice
     /// is kept and survives the adoption.
-    @Test("ungehoert markiert ueber ungelesenen Zeilen: die Wahl bleibt und ueberlebt das Lesen")
+    @Test("marked unplayed over unread rows: the choice stays and survives the read")
     func markingUnplayedOverUnreadRowsIsKept() async throws {
         let directory = try NavidromeRekeyTests.temporaryDirectory("listenlog-mark")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -112,7 +112,7 @@ struct ListenLogUnreadRowsTests {
     /// Two notes in one go (a reconcile notes guid after guid) before the
     /// adoption, the rows readable by then: the second write takes the log
     /// after the adoption, so the tombstone row stays.
-    @Test("zwei Notizen in einem Zug vor der Uebernahme: der Grabstein auf der Platte bleibt")
+    @Test("two notes in one go before the adoption: the tombstone on disk stays")
     func aNoteQueuedBeforeTheAdoptionKeepsTheTombstone() async throws {
         let directory = try NavidromeRekeyTests.temporaryDirectory("listenlog-queued")
         defer { try? FileManager.default.removeItem(at: directory) }

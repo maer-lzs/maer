@@ -9,21 +9,21 @@ import Foundation
 import SwiftUI
 @testable import Maer
 
-/// GOAL 3.0 Punkt 3, zweite Scheibe: die Adresse eines Covers wird GEFRAGT,
-/// nicht selbst gebaut. Der BESTAND traegt das meiste: welche Flaechen die
-/// Sitzung noch selbst nach einer Cover-Adresse fragen, je Datei, mit Grund.
+/// GOAL 3.0 point 3, second slice: the address of a cover is ASKED for,
+/// not built by oneself. The STOCK carries most of it: which surfaces still
+/// ask the session for a cover address themselves, per file, with a reason.
 ///
-/// Dazu eine Aussage ueber die Setz-Stellen, aber aus einem anderen Grund
-/// als beim Netz-Wert. Dort hielt sie die RICHTIGKEIT (ein vergessenes
-/// Reichen waere still geblieben); hier ist ein vergessenes Reichen
-/// harmlos, weil der Vorgabewert der echte Router ist. Sie haelt hier die
-/// KOSTEN: `ItemRouter` traegt einen Verschluss und ist darum nicht
-/// vergleichbar. Wer ihn in einem `body` setzt, baut bei jedem Durchlauf
-/// einen neuen Wert, den SwiftUI nicht als gleich erkennen kann, und alle
-/// Leser darunter werden neu ausgewertet. Solange nur der Vorgabewert gilt,
-/// wird nie verglichen und nichts invalidiert.
+/// In addition a statement about the setting sites, but for a different reason
+/// than with the network value. There it held the CORRECTNESS (a forgotten
+/// pass-along would have stayed silent); here a forgotten pass-along is
+/// harmless, because the default value is the real router. Here it holds the
+/// COST: `ItemRouter` carries a closure and is therefore not
+/// comparable. Whoever sets it in a `body` builds a new value on every pass
+/// that SwiftUI cannot recognize as equal, and all
+/// readers below are re-evaluated. As long as only the default value applies,
+/// nothing is ever compared and nothing invalidated.
 struct ItemRouterFenceTests {
-    /// Die fuenf Fragen des Blatts, so wie sie an der Sitzung heissen.
+    /// The five questions of the sheet, as they are named on the session.
     private static let questions = ["AppSession.shared.coverURL",
                                     "AppSession.shared.libraryItem",
                                     "AppSession.shared.playableItem",
@@ -46,7 +46,7 @@ struct ItemRouterFenceTests {
     /// handle of its own is not seen here.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [:]
 
-    @Test("Das Router-Blatt wird nur noch im Bestand selbst gefragt", .needsTheSources)
+    @Test("The router sheet is asked only in the stock itself", .needsTheSources)
     func theRouterLeafIsAskedForNotBuilt() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -55,19 +55,19 @@ struct ItemRouterFenceTests {
         // Per file both ways, so the total is the stock's total as well.
         let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
         #expect(drift.isEmpty, "a view asks the session itself again, or a stock above the count: \(drift)")
-        // Rot-Probe in beide Richtungen, ueber alle fuenf Fragen: der
-        // Pruefer sieht jeden Griff…
+        // Red probe in both directions, over all five questions: the
+        // checker sees every grip…
         #expect(Self.reaches(in: "let u = AppSession.shared.coverURL(forItemId: id)") == 1)
         #expect(Self.reaches(in: "let i = AppSession.shared.libraryItem(forId: id)") == 1)
         #expect(Self.reaches(in: "let p = AppSession.shared.provider(for: id)") == 1)
-        // …und einen Kommentar ueber einen Griff sieht er NICHT.
+        // …and a comment about a grip it does NOT see.
         #expect(Self.reaches(in: "// was AppSession.shared.coverURL(forItemId:)") == 0)
     }
 
-    /// Die Zaehlung steht als Funktion da, damit die Rot-Probe durch DEN
-    /// PRUEFER laeuft und nicht durch `String.contains`. Eine Probe, die
-    /// den Pruefer nicht ruft, bleibt gruen, wenn morgen jemand das Muster
-    /// oder das Abschneiden kaputtmacht.
+    /// The count stands as a function so that the red probe runs through THE
+    /// CHECKER and not through `String.contains`. A probe that does not
+    /// call the checker stays green if tomorrow someone breaks the pattern
+    /// or the cutting off.
     static func setters(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
@@ -76,16 +76,16 @@ struct ItemRouterFenceTests {
             }.count
     }
 
-    @Test("Niemand setzt den Router im Programm, sonst kosten alle Leser", .needsTheSources)
+    @Test("Nobody sets the router in the program, or all readers cost", .needsTheSources)
     func nobodyHandsTheRouterDownInTheApp() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let count = Self.setters(in: try String(contentsOf: file, encoding: .utf8))
             if count > 0 { setters.append("\(file.lastPathComponent): \(count)") }
         }
-        // Der Zaun sieht nur `Sources`. Eine Vorschau oder ein Zeuge setzt
-        // den Router ausserhalb eines Koerpers und faellt nicht darunter;
-        // das ist die Ausnahme, die keine Regel braucht.
+        // The fence sees only `Sources`. A preview or a witness sets
+        // the router outside a body and does not fall under it;
+        // that is the exception that needs no rule.
         #expect(setters.isEmpty,
                 """
                 der Router wird im Programm gesetzt (\(setters)). Er traegt einen \
@@ -94,36 +94,36 @@ struct ItemRouterFenceTests {
                 werden neu ausgewertet. Wer ihn wirklich reichen muss, macht ihn \
                 vorher vergleichbar oder haelt ihn ausserhalb des Koerpers
                 """)
-        // Rot-Probe in beide Richtungen, durch den Pruefer: er saehe die
-        // Form, wenn sie kaeme…
+        // Red probe in both directions, through the checker: it would see the
+        // form if it came…
         #expect(Self.setters(in: "content.environment(\\.itemRouter, ItemRouter())") == 1)
-        // …und einen Kommentar darueber sieht er NICHT.
+        // …and a comment about it it does NOT see.
         #expect(Self.setters(in: "// never .environment(\\.itemRouter, …)") == 0)
     }
 
-    @Test("Der Vorgabewert ist der ECHTE Router, ein vergessenes Reichen bricht nichts")
+    @Test("The default value is the REAL router, a forgotten pass-along breaks nothing")
     func theDefaultIsTheRealRouter() {
-        // Anders als beim Netz-Wert gaebe es hier keinen harmlosen Ersatz:
-        // ein Router, der nichts weiss, liefert keine Adresse, und Bilder
-        // blieben still weg. Deshalb ist der Standard der echte, wie bei
-        // den Umgebungs-Aktionen von SwiftUI selbst.
+        // Unlike with the network value there would be no harmless substitute here:
+        // a router that knows nothing returns no address, and images
+        // would silently stay away. That is why the default is the real one, as with
+        // the environment actions of SwiftUI itself.
         let fromEnvironment = EnvironmentValues().itemRouter
-        // Der Vorgabewert ANTWORTET. Der Fall braucht eine Kennung, deren
-        // Anbieter OHNE Sitzungszustand antwortet, sonst prueft er nichts:
-        // eine Radio-Kennung gaebe hier nil, weil im Lauf niemand die
-        // Station kennt, und `nil == nil` bestuende auch ein leerer
-        // Ersatz-Router. Eine Archiv-Kennung leitet die Adresse REIN aus
-        // der Kennung ab.
+        // The default value ANSWERS. The case needs an id whose
+        // provider answers WITHOUT session state, otherwise it checks nothing:
+        // a radio id would give nil here, because during the run nobody knows the
+        // station, and `nil == nil` would pass an empty
+        // substitute router too. An archive id derives the address PURELY from
+        // the id.
         let derived = fromEnvironment.coverURL("\(FreeCatalog.archivePrefix)beispielwerk")
         #expect(derived != nil)
         #expect(derived?.absoluteString.contains("beispielwerk") == true)
-        // Und die Regel der Sitzung gilt weiter: eine Kennung aus einem
-        // unbekannten Namensraum bekommt keine Adresse (der Schutz, der den
-        // 404-Sturm beendet hat).
+        // And the rule of the session still applies: an id from an
+        // unknown namespace gets no address (the protection that ended the
+        // 404 storm).
         #expect(fromEnvironment.coverURL("quatsch:42") == nil)
-        // Ersetzbar zu sein IST der Gewinn dieser Scheibe, also steht er als
-        // Fall da: ein untergeschobener Router antwortet anders, und ein
-        // leerer faellt an der ersten Zusicherung durch.
+        // Being replaceable IS the gain of this slice, so it stands as a
+        // case: a substituted router answers differently, and an
+        // empty one fails at the first assertion.
         let stub = ItemRouter(coverURL: { _ in URL(string: "https://example.org/x.jpg") })
         #expect(stub.coverURL("egal")?.host() == "example.org")
         let empty = ItemRouter(coverURL: { _ in nil })

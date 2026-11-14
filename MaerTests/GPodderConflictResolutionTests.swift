@@ -27,7 +27,7 @@ struct GPodderConflictResolutionTests {
     /// The page shows the feeds of `conflictingFeeds`, and the apply decides
     /// the same feeds: one root for both sets, so a feed can never be
     /// decided that the page did not show, or shown and then not decided.
-    @Test("die Seite und das Anwenden nehmen die Konflikte aus einer Wurzel", .needsTheSources)
+    @Test("the page and the apply take the conflicts from one root", .needsTheSources)
     func oneRootForTheConflicts() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderConflictResolution.swift"),
@@ -45,7 +45,7 @@ struct GPodderConflictResolutionTests {
     /// The synced set is built from what landed: a feed taken from the
     /// server counts only once it was subscribed here, as in the ordinary
     /// round.
-    @Test("der abgeglichene Satz nimmt vom Server nur, was hier abonniert wurde")
+    @Test("the reconciled set takes from the server only what was subscribed here")
     func theSyncedSetTakesOnlyWhatWasSubscribed() {
         let actions = GPodderConflictResolution.resolve(local: local, server: server, choices: [:])
         #expect(actions.subscribeLocally == ["c"], "the precondition: c is taken from the server")
@@ -58,7 +58,7 @@ struct GPodderConflictResolutionTests {
     /// out, held on Audiobookshelf, a failed fetch), each through the sheet
     /// and then three ordinary rounds: the server keeps every feed and gets
     /// no removal from this device. A set out one is said.
-    @Test("nach dem Aufloesen bekommt der gpodder-Server keine Entfernung fuer ein Abo, das hier nicht ankam")
+    @Test("after resolving, the gpodder server gets no removal for a subscription that did not arrive here")
     @MainActor
     func aFeedThatDidNotLandHereIsNotRemovedFromTheServer() async throws {
         let subs = PodcastSubscriptions.shared

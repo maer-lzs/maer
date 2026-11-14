@@ -32,7 +32,7 @@ struct LibraryRowStoreTests {
         try await LibraryRowStore(connection: try SQLiteConnection(path: ":memory:"))
     }
 
-    @Test("Eine unlesbare Zeile zaehlt: die Zeilen sind unbekannt, nie leer")
+    @Test("An unreadable row counts: the rows are unknown, never empty")
     func unreadableRowLeavesTheRowsUnknown() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         let store = try await LibraryRowStore(connection: db)
@@ -45,7 +45,7 @@ struct LibraryRowStoreTests {
         }
     }
 
-    @Test("Diff: unveraendert leer; neuer/geaenderter/bewegter Titel eine Zeile; Fortschritt je Eintrag")
+    @Test("Diff: unchanged is empty; a new/changed/moved title is one row; progress per entry")
     func diffNamesWhatChanged() {
         let before = LibraryDiskCache(items: [item("a"), item("b")],
                                       progress: ["a": BookProgress(fraction: 0.2, isFinished: false, lastUpdate: 1)])
@@ -68,7 +68,7 @@ struct LibraryRowStoreTests {
         #expect(gone.progressRemoved == ["a"] && gone.progressUpserted.isEmpty)
     }
 
-    @Test("Ersetzen, Diff anwenden, Zuruecklesen: Reihenfolge und jedes Feld; keine Zeilen = kein Cache")
+    @Test("Replace, apply diff, read back: order and every field; no rows = no cache")
     func roundTripAndApply() async throws {
         let store = try await store()
         #expect(try await store.loadAll() == nil, "no rows is no cache, not an empty library")

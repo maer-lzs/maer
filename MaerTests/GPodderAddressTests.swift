@@ -21,7 +21,7 @@ struct GPodderAddressTests {
                                            path: "api/2/subscriptions/\(GPodderClient.segment(name)).json"))
     }
 
-    @Test("der Benutzername geht einmal kodiert als ein Segment in die Adresse, auch mit Leerzeichen, Umlaut, Prozent und Schraegstrich")
+    @Test("the user name goes into the address once encoded as one segment, also with space, umlaut, percent and slash")
     func theNameIsOneSegmentEncodedOnce() throws {
         let table: [(name: String, path: String)] = [
             ("anna", "/api/2/subscriptions/anna.json"),
@@ -42,7 +42,7 @@ struct GPodderAddressTests {
         }
     }
 
-    @Test("die Adresse behaelt den Pfad der Basis und die Abfrage")
+    @Test("the address keeps the path of the base and the query")
     func theBasePathAndTheQueryStand() throws {
         let url = try #require(GPodderClient.address(base: URL(string: "https://host.example/gpodder/")!,
                                                      path: "api/2/episodes/\(GPodderClient.segment("anna smith")).json",
@@ -52,7 +52,7 @@ struct GPodderAddressTests {
 
     /// A path that is not encoded gives no address instead of ending the
     /// process in `percentEncodedPath`.
-    @Test("eine nicht kodierte Pfadangabe gibt keine Adresse, statt abzustuerzen")
+    @Test("an unencoded path gives no address instead of crashing")
     func anUnencodedPathGivesNoAddress() {
         #expect(GPodderClient.address(base: base, path: "api/2/subscriptions/anna smith.json") == nil)
         #expect(GPodderClient.address(base: base, path: "api/2/subscriptions/50%.json") == nil)
@@ -62,7 +62,7 @@ struct GPodderAddressTests {
 
     /// Basic auth splits at the first colon (RFC 7617): a user name with one
     /// is refused with its own sentence, before anything is sent.
-    @Test("ein Doppelpunkt im Benutzernamen wird abgelehnt, im Passwort nicht")
+    @Test("a colon in the user name is refused, in the password it is not")
     func aColonInTheUserNameIsRefused() {
         #expect(GPodderClient.basicAuthorization(user: "anna", password: "p:w")
                 == "Basic \(Data("anna:p:w".utf8).base64EncodedString())")
@@ -72,7 +72,7 @@ struct GPodderAddressTests {
 
     /// Every value interpolated into a request path goes through `segment`,
     /// counted per path, so one raw value among segmented ones is seen.
-    @Test("jeder eingesetzte Wert eines Anfragepfads geht durch segment", .needsTheSources)
+    @Test("every value inserted into a request path goes through segment", .needsTheSources)
     func everyPathValueIsASegment() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderClient.swift"), encoding: .utf8))
@@ -98,7 +98,7 @@ struct GPodderAddressTests {
 
     /// The class, asked of the source: an encoded segment never passes
     /// `appendingPathComponent`, which encodes every `%` again.
-    @Test("der gpodder-Klient baut seine Adressen nie ueber appendingPathComponent", .needsTheSources)
+    @Test("the gpodder client never builds its addresses through appendingPathComponent", .needsTheSources)
     func noSecondEncoding() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderClient.swift"), encoding: .utf8))

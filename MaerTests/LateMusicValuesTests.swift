@@ -18,7 +18,7 @@ struct LateMusicValuesTests {
         ids.map { LibraryItem(id: $0, media: nil, addedAt: nil) }
     }
 
-    @Test("die Regel: nur eine Antwort ersetzt, und nie die eines neueren Durchgangs")
+    @Test("the rule: only an answer replaces, and never that of a newer pass")
     func theRule() {
         #expect(LandedValue.replaces(answered: true, pass: 1, landedPass: 0))
         #expect(LandedValue.replaces(answered: true, pass: 2, landedPass: 2), "the late answer of the same pass")
@@ -26,7 +26,7 @@ struct LateMusicValuesTests {
         #expect(!LandedValue.replaces(answered: true, pass: 1, landedPass: 2), "an older pass replaced a newer one")
     }
 
-    @Test("keine Antwort laesst stehen, was gelandet ist: Regal, Neueste und Fortschritt")
+    @Test("no answer leaves in place what has landed: shelf, newest and progress")
     func noAnswerKeepsWhatLanded() {
         let values = LateMusicValues()
         let first = values.beginPass()
@@ -42,7 +42,7 @@ struct LateMusicValuesTests {
         #expect(values.progress.keys.sorted() == ["a"], "a pass without an answer emptied the progress")
     }
 
-    @Test("eine echte leere Antwort leert, eine spaete Antwort eines aelteren Durchgangs ersetzt keine neuere")
+    @Test("a real empty answer empties, a late answer of an older pass replaces no newer one")
     func anEmptyAnswerEmptiesAnOlderOneDoesNotReplace() {
         let values = LateMusicValues()
         let first = values.beginPass()
@@ -55,7 +55,7 @@ struct LateMusicValuesTests {
         #expect(values.recentAlbums.isEmpty, "a real empty answer did not empty the row")
     }
 
-    @Test("Zuletzt gespielt in zwei Haelften: ein spaetes Regal laesst die angefangenen Alben stehen und umgekehrt")
+    @Test("Recently Played in two halves: a late shelf leaves the started albums in place and the other way round")
     func theTwoHalvesKeepEachOther() {
         let values = LateMusicValues()
         values.setStartedAlbums(items("s"), pass: values.beginPass())
@@ -68,7 +68,7 @@ struct LateMusicValuesTests {
         #expect(values.recentAlbums.map(\.id) == ["c", "s", "t"], "a later shelf dropped the started albums")
     }
 
-    @Test("die angefangenen Alben tragen ihren Durchgang: ein aelterer, der zuletzt endet, setzt sie nicht zurueck")
+    @Test("the started albums carry their pass: an older one that ends last does not reset them")
     func startedAlbumsCarryTheirPass() {
         let values = LateMusicValues()
         let first = values.beginPass(), second = values.beginPass()
@@ -80,7 +80,7 @@ struct LateMusicValuesTests {
         #expect(values.recentAlbums.isEmpty, "nothing started did not empty the half")
     }
 
-    @Test("die Startseite reicht keine fehlgeschlagene Musikquelle als leere Reihe weiter, und jede Antwort traegt ihren Durchgang", .needsTheSources)
+    @Test("the start page passes on no failed music source as an empty row, and every answer carries its pass", .needsTheSources)
     func theStartPageHandsInAnswers() throws {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))

@@ -18,7 +18,7 @@ struct LocalSubscribeDoorTests {
         var reads = 0
     }
 
-    @Test("die Antwort: dort gehalten, nicht dort, oder ungelesen; eine bekannte Sendung ist gehalten, gelesen oder nicht")
+    @Test("the answer: held there, not there, or unread; a known show is held, read or not")
     func theThreeAnswers() {
         let titles = ["k": "Show"]
         #expect(ServerHolding.of(feedKey: "k", read: true, serverTitles: titles) == .held(title: "Show"))
@@ -27,7 +27,7 @@ struct LocalSubscribeDoorTests {
         #expect(ServerHolding.of(feedKey: "x", read: false, serverTitles: titles) == .unread)
     }
 
-    @Test("die Tuer: eine Sendung auf Audiobookshelf wird hier nicht abonniert und nicht abgerufen, eine andere wie bisher")
+    @Test("the door: a show on Audiobookshelf is not subscribed here and not fetched, another one as before")
     func aShowOnTheServerIsNotSubscribedHere() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }
@@ -50,7 +50,7 @@ struct LocalSubscribeDoorTests {
         #expect(subs.shows.contains { $0.feedURL == other })
     }
 
-    @Test("die Tuer bei ungelesenem Audiobookshelf: erst lesen; bleibt es ungelesen, abonniert eine Mechanik nichts, gelesen gilt die Antwort")
+    @Test("the door with unread Audiobookshelf: read first; if it stays unread, a mechanism subscribes nothing, once read the answer applies")
     func anUnreadServerIsReadFirstAndSetsOut() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }
@@ -82,7 +82,7 @@ struct LocalSubscribeDoorTests {
         #expect(calls.hosts.isEmpty && subs.shows.isEmpty)
     }
 
-    @Test("die Regeln bei ungelesenem Audiobookshelf: die Person abonniert mit Vermerk, eine Mechanik setzt aus; der Abgleich danach")
+    @Test("the rules with unread Audiobookshelf: the person subscribes with a note, a mechanism pauses; the sync afterwards")
     func theRulesWhileTheServerIsUnread() {
         #expect(ServerHolding.whileUnread(byPerson: true) == .subscribeNoted)
         #expect(ServerHolding.whileUnread(byPerson: false) == .setOut)
@@ -109,7 +109,7 @@ struct LocalSubscribeDoorTests {
     /// or after its start read failed: the show is missing from the memory
     /// only because nobody read it. The note stays, nothing is handed over,
     /// nothing goes; the next run settles.
-    @Test("ein Abgleich ueber einem ungeladenen oder ganz ungelesenen Speicher: der Vermerk bleibt, nichts geht, nichts wird uebergeben")
+    @Test("a sync over an unloaded or entirely unread store: the note stays, nothing goes, nothing is handed over")
     func aStoreNotReadAnswersNothing() async throws {
         for failure in ["unloaded", "readFailed"] {
             let (rig, state) = try await settling()
@@ -143,7 +143,7 @@ struct LocalSubscribeDoorTests {
     /// Rows stood that did not decode: a heard state may stand in an episode
     /// the memory does not hold. The show is held there and every state the
     /// memory knows would bridge; still the local subscription stays.
-    @Test("ein Abgleich ueber einem unvollstaendig gelesenen Speicher nimmt das lokale Abo nicht und laesst den Vermerk stehen")
+    @Test("a sync over an incompletely read store does not take the local subscription and leaves the note in place")
     func anIncompleteStoreKeepsTheLocalSubscription() async throws {
         let (rig, state) = try await settling()
         defer { rig.cleanup() }
@@ -210,7 +210,7 @@ struct LocalSubscribeDoorTests {
     /// note, a mechanism sets out; the next read hands the heard state to
     /// the server's episode (600 s against nothing there) and the local
     /// subscription goes, without a tombstone for the cloud.
-    @Test("ein Tipp bei ungelesenem Audiobookshelf abonniert hier mit Vermerk; der naechste Lesevorgang gibt den gehoerten Stand an die Folge dort und nimmt das lokale Abo")
+    @Test("a tap with unread Audiobookshelf subscribes here with a note; the next read hands the played state to the episode there and takes the local subscription")
     func aTapWhileUnreadHandsOverOnTheNextRead() async throws {
         let (rig, state) = try await settling()
         defer { rig.cleanup() }
@@ -247,7 +247,7 @@ struct LocalSubscribeDoorTests {
     /// The other way round: the server knows the episode later (900 s), so
     /// its state stays; the local subscription still goes, every state was
     /// decided there.
-    @Test("der Abgleich, wenn der Server spaeter gehoert hat: dessen Stand bleibt, nichts wird geschrieben")
+    @Test("the sync when the server played later: its state stays, nothing is written")
     func aNewerServerStateStays() async throws {
         let (rig, state) = try await settling()
         defer { rig.cleanup() }
@@ -269,7 +269,7 @@ struct LocalSubscribeDoorTests {
     /// Without the bridge (the server's episode carries another guid) the
     /// heard state has nowhere to go: the local subscription and its note
     /// stay. Not held there, the note goes and the subscription stays.
-    @Test("der Abgleich ohne Bruecke behaelt das lokale Abo; liegt die Sendung nicht dort, faellt nur der Vermerk")
+    @Test("the sync without a bridge keeps the local subscription; if the show is not there, only the note drops")
     func withoutTheBridgeTheLocalSubscriptionStays() async throws {
         let (rig, state) = try await settling()
         defer { rig.cleanup() }
@@ -290,7 +290,7 @@ struct LocalSubscribeDoorTests {
         #expect(subs.uncheckedFeedKeys().isEmpty, "the note stays for a show the server does not hold")
     }
 
-    @Test("der Import bei ungelesenem Audiobookshelf: erst lesen, dann aussetzen, nichts abonniert, das Ergebnis sagt es")
+    @Test("the import with unread Audiobookshelf: read first, then pause, nothing subscribed, the result says so")
     func anImportSetsOutWhileTheServerIsUnread() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }
@@ -310,7 +310,7 @@ struct LocalSubscribeDoorTests {
         #expect(calls.hosts.isEmpty && subs.shows.isEmpty && result.subscribed == 0, "a show was subscribed while the server was unread")
     }
 
-    @Test("gpodder: eine Sendung auf Audiobookshelf wird ueber drei Runden nicht lokal abonniert, und gpodder bekommt von diesem Geraet keine Entfernung")
+    @Test("gpodder: a show on Audiobookshelf is not subscribed locally over three rounds, and gpodder gets no removal from this device")
     func gpodderGetsNoRemovalForAShowOnTheServer() async throws {
         let subs = PodcastSubscriptions.shared
         await subs.ensureLoaded()
@@ -345,7 +345,7 @@ struct LocalSubscribeDoorTests {
         #expect(gpodder.uploads.allSatisfy { $0.remove.isEmpty }, "this device sent gpodder a removal: \(gpodder.uploads)")
     }
 
-    @Test("die Familie: eine Sendung auf Audiobookshelf wird nicht abonniert, nicht abgerufen und nicht als nicht gefolgt markiert; eine andere wie bisher")
+    @Test("the family: a show on Audiobookshelf is not subscribed, not fetched and not marked as not followed; another one as before")
     func theFamilyFollowsAShowOnTheServerThere() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }
@@ -368,7 +368,7 @@ struct LocalSubscribeDoorTests {
         #expect(subs.feedsNotFollowed[PodcastIdentity.feedKey(onServer)] == nil, "the server's show was marked as not followed")
     }
 
-    @Test("Abzeichen und Quellenseite lesen Audiobookshelf vor der Wahl zwischen Server und hier, und das Abzeichen sagt ein Aussetzen", .needsTheSources)
+    @Test("Badge and source page read Audiobookshelf before the choice between server and here, and the badge reports a pause", .needsTheSources)
     func theSurfacesReadBeforeTheyChoose() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(
@@ -396,7 +396,7 @@ struct LocalSubscribeDoorTests {
     /// The catalog page's "local only" feed goes through the door too: a show
     /// Audiobookshelf holds is refused with that sentence, an unread server
     /// says so, nothing is subscribed a second time.
-    @Test("Abo als Feed von der Katalogseite: geht durch die Tuer, liegt die Sendung auf Audiobookshelf, weist es ab", .needsTheSources)
+    @Test("Subscription as a feed from the catalog page: goes through the door, if the show is on Audiobookshelf, it refuses", .needsTheSources)
     func theCatalogLocalFeedGoesThroughTheDoor() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogDetailExtras.swift"), encoding: .utf8))
@@ -420,7 +420,7 @@ struct LocalSubscribeDoorTests {
         "PodcastSubscriptions.swift": (1, "the door itself"),
     ]
 
-    @Test("nur die benannten Stellen abonnieren an der Tuer vorbei", .needsTheSources)
+    @Test("only the named places subscribe past the door", .needsTheSources)
     func onlyTheNamedPlacesPassTheDoor() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {

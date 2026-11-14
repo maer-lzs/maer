@@ -27,7 +27,7 @@ struct MaerPlaylistCloudSyncTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("eine lokale Aenderung erreicht den Traeger ohne Neustart und ohne Gegenseite")
+    @Test("a local change reaches the carrier without a restart and without the far side")
     func aLocalChangeReachesTheCarrierByItself() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("playlist-send-\(UUID().uuidString)", isDirectory: true)

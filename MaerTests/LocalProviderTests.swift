@@ -35,7 +35,7 @@ struct LocalProviderTests {
         #expect(BookmarkProgressMath.progress(fromStand: [300, 1], duration: 0) == nil)
     }
 
-    @Test("der Anbieter lokaler Dateien fragt die eine Regel und baut keinen Fortschritt selbst", .needsTheSources)
+    @Test("the provider of local files asks the one rule and builds no progress itself", .needsTheSources)
     func theProviderAsksTheOneRule() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/LocalProvider.swift"), encoding: .utf8))

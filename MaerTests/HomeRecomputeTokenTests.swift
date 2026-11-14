@@ -17,7 +17,7 @@ struct HomeRecomputeTokenTests {
                                 rediscoverEnabled: true, hiddenRevision: 0, showFeeds: [], revision: 0)
     }
 
-    @Test("eine Liste, die sich bei gleicher Laenge aendert, aendert das Zeichen")
+    @Test("a list that changes at the same length changes the token")
     func equalLengthOtherContentChangesTheToken() {
         let base = Self.token()
         #expect(Self.token(entries: ["a", "c"]) != base, "die Bibliothek")
@@ -26,14 +26,14 @@ struct HomeRecomputeTokenTests {
         #expect(Self.token(continuing: [("a", 2)]) != base, "ein Weiterhoeren-Eintrag, der sich bewegt")
     }
 
-    @Test("die Reihenfolge der Warteschlange zaehlt, die der Bibliothek nicht")
+    @Test("the order of the queue counts, that of the library does not")
     func theQueueOrderCountsTheLibraryOrderDoesNot() {
         #expect(Self.token(queue: ["q2", "q1"]) != Self.token(), "Up Next zeigt die Reihenfolge")
         #expect(Self.token(entries: ["b", "a"]) == Self.token(), "die Bibliothek ist eine Menge")
         #expect(Self.token() == Self.token(), "gleicher Inhalt, gleiches Zeichen")
     }
 
-    @Test("Homes Zeichen zaehlt keine Liste", .needsTheSources)
+    @Test("Home's token counts no list", .needsTheSources)
     func homeCountsNoList() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"),
                               encoding: .utf8)

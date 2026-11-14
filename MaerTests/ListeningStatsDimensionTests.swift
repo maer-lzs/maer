@@ -21,11 +21,11 @@ struct ListeningStatsDimensionTests {
         data.secondsPerItem.values.reduce(0, +) <= data.secondsPerDay.values.reduce(0, +)
     }
 
-    @Test("die Summe je Item uebersteigt die Tagessumme nie")
+    @Test("the sum per item never exceeds the day sum")
     func itemSumNeverExceedsDaySum() {
         var data = ListeningStatsData()
-        // Zwei Titel und ein Tick ohne bekannte Kennung. Der landet NUR im
-        // Tages-Topf, und genau deshalb ist die Ungleichung nicht Gleichheit.
+        // Two titles and a tick without a known id. That one lands ONLY in the
+        // day pot, and exactly for that reason the inequality is not an equality.
         data.secondsPerDay["2026-08-19"] = 100
         data.secondsPerItem["radio:rb:a"] = 60
         data.secondsPerItem["rss:x:1"] = 30
@@ -35,7 +35,7 @@ struct ListeningStatsDimensionTests {
         #expect(!check(data), "110 zugeordnete Sekunden bei 100 gehoerten waeren zwei Wahrheiten")
     }
 
-    @Test("ein Tick zaehlt in BEIDE Toepfe, nicht zweimal in einen")
+    @Test("a tick counts in BOTH pots, not twice in one")
     func oneTickCountsOnceInEach() {
         var data = ListeningStatsData()
         for _ in 0..<5 {
@@ -47,20 +47,20 @@ struct ListeningStatsDimensionTests {
         #expect(check(data))
     }
 
-    @Test("ein Tick ohne Kennung faellt nur in den Tages-Topf")
+    @Test("a tick without an id falls only into the day pot")
     func tickWithoutIdOnlyCountsTheDay() {
         var data = ListeningStatsData()
         data.secondsPerDay["2026-08-19"] = 10
-        // Kein Item-Eintrag: ein Titel, dessen Detail noch nicht steht, darf
-        // die gehoerte Zeit nicht verschlucken. Die Tagessumme ist die
-        // Wahrheit, die Zuordnung ist die Kuer.
+        // No item entry: a title whose detail is not there yet must not
+        // swallow the listened time. The day sum is the
+        // truth, the attribution is the optional extra.
         #expect(data.secondsPerItem.isEmpty)
         #expect(check(data))
     }
 
-    @Test("Bestand ohne Item-Topf liest sich weiter — kein Migrationssprung")
+    @Test("Stock without an item pot still reads, no migration jump")
     func legacyDataStillDecodes() throws {
-        // Genau die Form, die heute auf der Platte liegt.
+        // Exactly the form that is on disk today.
         let legacy = #"{"secondsPerDay":{"2026-08-18":3600,"2026-08-19":120}}"#
         let decoded = try JSONDecoder().decode(ListeningStatsData.self,
                                                from: Data(legacy.utf8))
@@ -72,7 +72,7 @@ struct ListeningStatsDimensionTests {
     /// The FUNCTION the stats page calls, not a rebuild of its sort: the
     /// cap, the predicate and the stable tie all live in `topItems`, and a
     /// copy of the sort in the test held while the function drifted.
-    @Test("Rangfolge nach ZEIT, Gleichstand stabil, Kappung und Praedikat an der Funktion")
+    @Test("Ranking by TIME, ties stable, cap and predicate on the function")
     @MainActor func rankingIsByTime() throws {
         // A database of its own: the default is the app's shared one, where
         // other suites leave items (measured: "loadfail-…" from FailedLoadTests).
@@ -105,7 +105,7 @@ struct ListeningStatsDimensionTests {
         "StatsLocalPotTests.swift": (1, "its own run's ids only, whatever else the rows hold"),
     ]
 
-    @Test("ein Statistik-Speicher im Test liest eigene Zeilen; wer die geteilten liest, ist je Datei gezaehlt", .needsTheSources)
+    @Test("a statistics store in a test reads its own rows; whoever reads the shared ones is counted per file", .needsTheSources)
     func testStatsReadRowsOfTheirOwn() {
         var counts: [String: Int] = [:]
         let opener = "ListeningStatsStore" + "("

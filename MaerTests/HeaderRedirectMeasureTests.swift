@@ -169,7 +169,7 @@ struct HeaderRedirectMeasureTests {
         }
     }
 
-    @Test("Messung: kommt ein Header nach einer Umleitung beim Ziel an, je Ausgang, Art und Ziel",
+    @Test("Measurement: does a header reach the target after a redirect, per way, kind and target",
           arguments: Way.allCases, Header.allCases)
     func aHeaderAfterARedirect(way: Way, header: Header) async throws {
         let body = try Self.tone()

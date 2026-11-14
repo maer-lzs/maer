@@ -147,7 +147,7 @@ struct LibraryDerivedListsTests {
 
     // MARK: - Memoization stays fresh across every mutation
 
-    @Test("die Liste ohne eigenen Filter traegt alle Buecher, auch wenn der Filter der App steht")
+    @Test("the list without its own filter carries all books, even if the app's filter is set")
     func theListWithoutAFilterHoldsEveryBook() {
         withCleanSortDefaults { vm in
             vm.sortOption = .titel
@@ -244,7 +244,7 @@ struct LibraryDerivedListsTests {
         }
     }
 
-    @Test("Vorschau zaehlt BUECHER — ein Serien-Stapel seine Mitglieder")
+    @Test("Preview counts BOOKS, a series stack its members")
     func allBooksPreviewCountsBooks() {
         let entries: [LibraryViewModel.GridEntry] = [
             .series(name: "Saga", entries: [entry(id: "a", title: "A"),
@@ -316,7 +316,7 @@ struct LibraryDerivedListsTests {
 
     /// The status line under a cover: empty before the start, the time left
     /// once started (percent without a duration), Completed at the end.
-    @Test("die Statuszeile unter dem Cover: leer vor dem Start, Restzeit danach, ohne Dauer Prozent, am Ende fertig")
+    @Test("the status line under the cover: empty before the start, time left after, percent without a duration, finished at the end")
     func statusLine() {
         let unstarted = BookProgress(fraction: 0, isFinished: false, lastUpdate: 0, currentTime: 0)
         #expect(bookStatusText(unstarted, duration: 31_320) == "")
@@ -330,42 +330,42 @@ struct LibraryDerivedListsTests {
 }
 #endif
 
-// MARK: - Weiterhoeren kennt ALLE Quellen
+// MARK: - Continue Listening knows ALL sources
 
 struct ContinueSourcesTests {
     private func mark(_ pos: Double, _ ms: Double, _ dur: Double? = nil) -> [Double] {
         dur.map { [pos, ms, $0] } ?? [pos, ms]
     }
 
-    @Test("lokale Buecher UND Katalog-Werke zaehlen, Server-Kennungen nicht")
+    @Test("local books AND catalog works count, server ids do not")
     func localAndCatalogCount() {
         let defaults: [String: Any] = [
             "localPosition.local:winterfell": mark(3600, 2_000, 72_000),
             "localPosition.lv:176": mark(600, 1_000, 7_200),
-            // Ein reines Server-Buch fuehrt seinen Stand woanders. Hier
-            // taucht es nicht auf (und wenn doch, fuehrt die Server-Identitaet).
+            // A pure server book keeps its state elsewhere. Here
+            // it does not appear (and if it does, the server identity leads).
             "localPosition.abs-item-1": mark(900, 3_000),
             "irrelevant": 42,
         ]
         let out = ContinueSources.started(in: defaults, serverKnows: [])
-        #expect(out.map(\.id) == ["local:winterfell", "lv:176"])   // neuester zuerst
+        #expect(out.map(\.id) == ["local:winterfell", "lv:176"])   // newest first
     }
 
-    @Test("Dedupe: was der Server kennt, kommt hier nicht doppelt")
+    @Test("Dedupe: what the server knows does not appear twice here")
     func serverIdentityLeads() {
         let defaults: [String: Any] = ["localPosition.lv:176": mark(600, 1_000, 7_200)]
         #expect(ContinueSources.started(in: defaults, serverKnows: ["lv:176"]).isEmpty)
     }
 
-    @Test("angetippt ist nicht angefangen, fertig ist nicht weiterhoerbar")
+    @Test("tapped is not started, finished is not continuable")
     func edgesAreHonest() {
-        // 10 Sekunden sind ein Tipp, kein begonnenes Buch.
+        // 10 seconds are a tap, not a started book.
         #expect(ContinueSources.started(in: ["localPosition.lv:1": mark(10, 1)],
                                         serverKnows: []).isEmpty)
-        // Position am Ende ⇒ gehoert, nicht weiterhoeren.
+        // Position at the end ⇒ played, not continue listening.
         #expect(ContinueSources.started(in: ["localPosition.lv:2": mark(7_200, 1, 7_200)],
                                         serverKnows: []).isEmpty)
-        // Ohne bekannte Dauer bleibt der Eintrag drin (nichts wird erfunden).
+        // Without a known duration the entry stays in (nothing is invented).
         #expect(ContinueSources.started(in: ["localPosition.lv:3": mark(600, 1)],
                                         serverKnows: []).count == 1)
     }

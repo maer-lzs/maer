@@ -22,7 +22,7 @@ struct ItemRowsTests {
         return (defaults, suite, path)
     }
 
-    @Test("die Spruenge und die Lesezeichen je Titel ziehen einmal in Zeilen; ein Schluessel, der nicht liest, bleibt")
+    @Test("the jumps and the bookmarks per title move once into rows; a key that does not read stays")
     func theKeysPerTitleMove() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -51,7 +51,7 @@ struct ItemRowsTests {
         #expect(later.entry(owner, "li_a") == [[1.0, 2, 3, 4, 5, 6]], "the next start reads the rows")
     }
 
-    @Test("ein Eintrag aendert sich, ohne die anderen anzufassen; der letzte geht")
+    @Test("one entry changes without touching the others; the last one goes")
     func oneEntryChangesAlone() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -71,7 +71,7 @@ struct ItemRowsTests {
         #expect(emptied.isEmpty, "the last entry did not go")
     }
 
-    @Test("ein Koerper, der kein Text ist, laesst die Zeile davor stehen, und im Umzug bleibt er, wo er ist")
+    @Test("a body that is no text leaves the row before it in place, and in the move it stays where it is")
     func aBodyThatIsNoTextNeverLeavesSilently() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -89,7 +89,7 @@ struct ItemRowsTests {
         #expect(documents.body("maerSyncPlaylists") == body, "a body that is no text removed the row before")
     }
 
-    @Test("keine Quelle liest Spruenge oder Lesezeichen je Titel in den Voreinstellungen", .needsTheSources)
+    @Test("no source reads jumps or bookmarks per title in the defaults", .needsTheSources)
     func noSourceReadsTheKeysPerTitle() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var named: [String] = []

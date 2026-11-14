@@ -57,7 +57,7 @@ struct GPodderMergeTests {
     /// family removes a feed here (user intent, made elsewhere), the push
     /// takes it off the server, and the pull after that must not bring it
     /// back; a feed the family adds here goes to the server.
-    @Test("Familie und Server sagen dasselbe: der Pull bringt ein abbestelltes Abo nicht zurueck, ein neues geht zum Server")
+    @Test("Family and server say the same: the pull does not bring back an unsubscribed feed, a new one goes to the server")
     func theFamilyAndTheServerSayTheSame() {
         let feed = "https://example.org/f.xml", other = "https://example.org/g.xml"
         // (b) removed here by the family, still on the server, in prev.

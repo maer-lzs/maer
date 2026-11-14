@@ -75,31 +75,31 @@ struct GPodderVisibilityTests {
     }
 }
 
-// MARK: - Aus heisst vollstaendig unsichtbar (keine Asymmetrie)
+// MARK: - Off means fully invisible (no asymmetry)
 
 struct GPodderPremiumAsymmetryTests {
     private func show(_ url: String) -> (feedURL: String, origin: String?) { (url, nil) }
 
-    @Test("Schalter AUS: ein gepushter Token-Feed wird weder adoptiert noch aufgeraeumt")
+    @Test("Switch OFF: a pushed token feed is neither adopted nor cleaned up")
     func offMeansInvisibleInBothDirections() {
         let token = "https://premium.example/feed?auth=SECRETTOKEN1234567890"
         let normal = "https://example.org/a.xml"
         let tokenNorm = PodcastIdentity.normalizeFeedURL(token)
         let normalNorm = PodcastIdentity.normalizeFeedURL(normal)
 
-        // Das Geraet mit Schalter AUS sieht den Token-Feed lokal NICHT …
+        // The device with the switch OFF does NOT see the token feed locally …
         let split = GPodderVisibleSubscriptions.split([show(normal)], premiumOptIn: false)
         #expect(split.byNorm.keys.contains(normalNorm))
 
-        // … und die SERVER-Seite wird fuer dieses Geraet ebenfalls gefiltert:
-        // ohne diesen Schnitt gaelte der Feed als server-only ⇒ adoptiert,
-        // und eine Runde spaeter als lokal unsichtbar ⇒ entfernt.
+        // … and the SERVER side is filtered for this device as well:
+        // without this cut the feed would count as server-only ⇒ adopted,
+        // and one round later as locally invisible ⇒ removed.
         let merge = GPodderSubscriptionMerge.compute(
             local: [normalNorm], server: [normalNorm], prev: [normalNorm],
             hiddenLocally: split.hiddenNorms)
         #expect(merge.addLocally.isEmpty)
         #expect(merge.removeFromServer.isEmpty)
-        // Gegenprobe: MIT Schalter an ist der Feed sichtbar und reist normal.
+        // Counter-check: WITH the switch on the feed is visible and travels normally.
         let on = GPodderVisibleSubscriptions.split([show(normal), show(token)], premiumOptIn: true)
         #expect(on.byNorm.keys.contains(tokenNorm))
     }

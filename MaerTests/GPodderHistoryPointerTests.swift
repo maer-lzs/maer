@@ -19,7 +19,7 @@ struct GPodderHistoryPointerTests {
                              position: 120, total: 600, started: 0)
     }
 
-    @Test("ein erster Abgleich vor dem Laden der Feeds: der Stand einer bekannten Sendung wartet, bis seine Folge bekannt ist")
+    @Test("a first sync before the feeds load: the state of a known show waits until its episode is known")
     func aPlayOfAnUnknownEpisodeWaits() {
         let followed = "https://feed.example/show.xml"
         let first = [play("https://cdn.example/e1.mp3", feed: followed),
@@ -42,7 +42,7 @@ struct GPodderHistoryPointerTests {
         #expect(GPodderParking.split(many, isKnownEpisode: { _ in false }, isFollowedFeed: { _ in true }).parked.count == GPodderParking.most)
     }
 
-    @Test("Abmelden nimmt beide Zeiger und die geparkten Staende mit; der Abruf fragt danach ab null")
+    @Test("Signing out takes both pointers and the parked states along; the fetch then asks from zero")
     func signingOutForgetsThePointers() {
         let kept = GPodderSync.historyPointerKeys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
         let keptAccount = [AppStorageKeys.gpodderServerURL, AppStorageKeys.gpodderUsername]

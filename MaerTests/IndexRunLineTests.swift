@@ -13,12 +13,12 @@ import Foundation
 struct IndexRunLineTests {
     struct Refused: Error {}
 
-    @Test("die Zeile hat die Form der Metadaten-Zeile")
+    @Test("the line has the form of the metadata line")
     func theLineHasTheCatalogueShape() {
         #expect(IndexRunLine.line(kind: "mosaic", ms: 12, reason: "ok") == "INDEXRUN kind=mosaic ms=12 reason=ok")
     }
 
-    @Test("gemessen antwortet wie try?: der Wert, oder nil bei jedem Fehler")
+    @Test("measured answers like try?: the value, or nil on every error")
     func measuredAnswersLikeTry() async {
         #expect(await IndexRunLine.measured("mosaic", id: "x") { 3 } == 3)
         #expect(await IndexRunLine.measured("mosaic", id: "x") { () throws -> Int in throw Refused() } == nil)
@@ -33,7 +33,7 @@ struct IndexRunLineTests {
         ("Sources/Networking/ArtistPortraitService.swift", "IndexRunLine.write(kind: \"portrait\""),
     ]
 
-    @Test("jede Netzfrage einer Musik-Kachel schreibt ihre Zaehlzeile", .needsTheSources)
+    @Test("every network question of a music tile writes its counting line", .needsTheSources)
     func everyTileQuestionIsCounted() throws {
         for site in Self.sites {
             let text = try String(contentsOf: SourceTree.root.appendingPathComponent(site.file), encoding: .utf8)

@@ -20,7 +20,7 @@ struct ListeningStoreTests {
         UserDefaults(suiteName: "listening-store-\(UUID().uuidString)")!
     }
 
-    @Test("der Stand kommt mit Namen zurueck, nicht als Index")
+    @Test("the state comes back with names, not as an index")
     func marksHaveNames() {
         let d = suite()
         ListeningStore.record("li_x", position: 120, duration: 3600, atMs: 1_700_000_000_000, in: d)
@@ -31,7 +31,7 @@ struct ListeningStoreTests {
         #expect(mark?.source == .backup)
     }
 
-    @Test("der geflusht-Zeuge antwortet, wenn die Sicherung weg ist")
+    @Test("the flushed witness answers when the backup is gone")
     func flushedWitnessAnswers() {
         let d = suite()
         ListeningStore.record("li_x", position: 41, duration: 3600, atMs: 1_700_000_000_000, in: d)
@@ -44,7 +44,7 @@ struct ListeningStoreTests {
         #expect(mark?.source == .flushed)
     }
 
-    @Test("die Sicherung fuehrt, wenn beide da sind")
+    @Test("the backup leads when both are there")
     func backupLeads() {
         let d = suite()
         ListeningStore.noteFlushed("li_x", position: 10, atMs: 1_700_000_000_000, in: d)
@@ -53,7 +53,7 @@ struct ListeningStoreTests {
         #expect(ListeningStore.position("li_x", in: d) == 99)
     }
 
-    @Test("eine bekannte Dauer ueberlebt einen Schreiber, der sie nicht kennt")
+    @Test("a known duration survives a writer that does not know it")
     func durationSurvivesAnIgnorantWriter() {
         let d = suite()
         ListeningStore.record("rss:e1", position: 100, duration: 1800, atMs: 1_700_000_000_000, in: d)
@@ -64,9 +64,9 @@ struct ListeningStoreTests {
         #expect(ListeningStore.mark("rss:e1", in: d)?.duration == 1800)
     }
 
-    // MARK: - Klassen: was ein lokaler Stand IST
+    // MARK: - Classes: what a local state IS
 
-    @Test("ein Livestream bekommt keine Position")
+    @Test("a live stream gets no position")
     func liveStreamsKeepNoPosition() {
         // The ticker is class-blind by construction, so a playing station used
         // to write a GROWING position for an endless stream. One entry per
@@ -85,7 +85,7 @@ struct ListeningStoreTests {
         #expect(ListeningStore.positions(in: d).isEmpty)
     }
 
-    @Test("die Invariante gilt fuer JEDE Klasse")
+    @Test("the invariant holds for EVERY class")
     func everyClassKeepsALocalStand() {
         // One representative per class the app can play. The asymmetry that
         // produced the whole weekend's error family was exactly this list
@@ -110,21 +110,21 @@ struct ListeningStoreTests {
         }
     }
 
-    // MARK: - Der Katalog-Lesepfad, ohne jede Quelle
+    // MARK: - The catalog read path, without any source
 
-    /// Auflage zur Matrix-Zeile 3: die Geraete-Zeile faehrt mit einem
-    /// Sideload (`local:`), weil archive.org ein fester fremder Host ist und
-    /// ein Test-Sitz in Produktionscode genau den Pfad aendern wuerde, den die
-    /// Messung beweisen soll. Der KATALOG-Lesepfad wird dafuer hier belegt.
-    /// Ohne Netz, ohne Provider, ohne Attrappe.
+    /// Condition for matrix row 3: the device row runs with a
+    /// sideload (`local:`), because archive.org is a fixed foreign host and
+    /// a test seam in production code would change exactly the path that the
+    /// measurement is meant to prove. The CATALOG read path is covered here instead.
+    /// Without network, without provider, without a stand-in.
     ///
-    /// Die Aussage: ein Katalog-Stand wird allein aus dem lokalen Bestand
-    /// gewonnen. Keine Quelle wird gefragt, weil es fuer diese Klasse gar
-    /// keine gibt.
-    @Test("ein Katalog-Stand wird ohne jede Quelle gewonnen")
+    /// The statement: a catalog state is obtained solely from the local stock.
+    /// No source is asked, because for this class there is
+    /// none at all.
+    @Test("a catalog state is obtained without any source")
     func catalogStandIsWonLocally() {
         let d = suite()
-        let work = "lv:176"                                   // LibriVox-Werk
+        let work = "lv:176"                                   // LibriVox work
         let track = CatalogSongID.make(album: "lva:some-release", index: 4)
 
         for id in [work, track] {
@@ -135,10 +135,10 @@ struct ListeningStoreTests {
             #expect(mark?.source == .backup)
         }
 
-        // Und die Weiterhoeren-Bildung findet beide ohne Quelle, je auf
-        // ihrer TAB-Seite: das Werk in der Buch-Bildung, der TRACK
-        // (Song-Kennung = Musik per Bauform) in der Musik-Bildung. Keiner
-        // verschwindet.
+        // And the Continue Listening building finds both without a source, each on
+        // its TAB side: the work in the book building, the TRACK
+        // (song id = music by design) in the music building. Neither
+        // disappears.
         let defaults: [String: Any] = [
             AppStorageKeys.localPosition(work): [412.0, 1_700_000_000_000.0, 3600.0],
             AppStorageKeys.localPosition(track): [412.0, 1_700_000_000_000.0, 3600.0],
@@ -154,9 +154,9 @@ struct ListeningStoreTests {
         #expect(ContinueSources.isLocallyTracked(track))
     }
 
-    // MARK: - Umzug und Vergessen
+    // MARK: - Move and forgetting
 
-    @Test("ein Umzug malt nicht ueber einen neueren Stand")
+    @Test("a move does not paint over a newer state")
     func moveKeepsTheNewer() {
         let d = suite()
         // The device already listened to the server-side twin. That stand is
@@ -169,10 +169,10 @@ struct ListeningStoreTests {
         #expect(ListeningStore.backup("rss:e1", in: d) == nil, "die alte Kennung ist leer")
     }
 
-    /// Ein Umzug auf sich selbst schrieb den Stand und loeschte ihn danach
-    /// unter derselben Kennung. Kein Rufer erreicht das heute, der naechste
-    /// kann es; die Quelle schliesst es.
-    @Test("ein Umzug auf sich selbst aendert nichts und meldet nichts")
+    /// A move onto itself wrote the state and then deleted it
+    /// under the same id. No caller reaches that today, the next one
+    /// can; the source closes it.
+    @Test("a move onto itself changes nothing and reports nothing")
     func moveOntoItselfIsNothing() {
         let d = suite()
         ListeningStore.record("rss:e1", position: 30, duration: 1800, atMs: 1_000, in: d)
@@ -198,7 +198,7 @@ struct ListeningStoreTests {
     /// one, on a stock of its own, as a parallel run does, takes nothing
     /// from this stock; removing it leaves this one. With one place for all
     /// stocks, the later listener took every write and every replacement.
-    @Test("ein Zuhoerer je Bestand: ein spaeterer auf einem anderen Bestand nimmt diesem weder Schreiben noch Fluss noch Ersetzen")
+    @Test("one listener per stock: a later one on another stock takes from this one neither writing nor flow nor replacing")
     func oneListenerPerStock() {
         let mine = suite(), other = suite()
         let heard = Mutex<[String]>([])
@@ -225,7 +225,7 @@ struct ListeningStoreTests {
         #expect(heard.withLock { $0 } == ["mine wrote rss:m", "mine flushed rss:m", "mine replaces to-b", "mine wrote rss:n"])
     }
 
-    @Test("ein Umzug auf ein leeres Ziel traegt den Stand hinueber")
+    @Test("a move onto an empty target carries the state over")
     func moveOntoEmptyCarries() {
         let d = suite()
         ListeningStore.record("rss:e1", position: 30, duration: 1800, atMs: 1_000, in: d)
@@ -234,17 +234,17 @@ struct ListeningStoreTests {
         #expect(ListeningStore.backup("rss:e1", in: d) == nil)
     }
 
-    @Test("die Neuer-Regel ist pur und kennt fehlende Seiten")
+    @Test("the newer rule is pure and knows missing sides")
     func newerIsPure() {
         #expect(ListeningStore.newer([5, 100], nil) == [5, 100])
         #expect(ListeningStore.newer([5, 100], [7, 200]) == [7, 200])
         #expect(ListeningStore.newer([5, 300], [7, 200]) == [5, 300])
-        // Gleichstand: die ankommende Seite gewinnt, damit der Umzug ueberhaupt
-        // etwas bewegt.
+        // Tie: the incoming side wins, so that the move moves
+        // anything at all.
         #expect(ListeningStore.newer([5, 200], [7, 200]) == [5, 200])
     }
 
-    @Test("nur der Nutzer-Intent entfernt, und dann beide Schluessel")
+    @Test("only the user intent removes, and then both keys")
     func onlyUserIntentRemoves() {
         let d = suite()
         ListeningStore.record("local:f", position: 10, duration: 100, atMs: 1_000, in: d)
@@ -254,7 +254,7 @@ struct ListeningStoreTests {
         #expect(ListeningStore.flushed("local:f", in: d) == nil)
     }
 
-    @Test("der Bestand laesst sich abgehen und filtert die Klassen")
+    @Test("the stock can be walked and filters the classes")
     func scanningFiltersClasses() {
         let d = suite()
         ListeningStore.record("li_a", position: 10, duration: 100, atMs: 1_000, in: d)

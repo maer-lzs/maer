@@ -8,19 +8,19 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Gutenberg-Titel aus dem Bestand spielen (Weg B): die RDF eines Werks
-/// nennt seine Tondateien, die Dauern werden beim Oeffnen je Datei einmal
-/// gelesen und mit den Adressen gemerkt. Gegen die ECHTEN Bytes von 5884
-/// (drei Dateien) und 3002 (ein Lied in zwei Qualitaeten), geholt am 28.09.
+/// Playing Gutenberg titles from the stock (way B): the RDF of a work
+/// names its audio files, the durations are read once per file on opening
+/// and remembered with the addresses. Against the REAL bytes of 5884
+/// (three files) and 3002 (one song in two qualities), fetched on 28.09.
 nonisolated enum GutenbergWitness {
     static func record(_ number: Int) throws -> Data {
         try CorpusFixture.data("pg\(number)", ext: "rdf", subdirectory: "GutenbergDump")
     }
 
-    /// Gemessen am 28.09. mit AVURLAsset an gutenberg.org.
+    /// Measured on 28.09. with AVURLAsset against gutenberg.org.
     static let seconds5884 = [3597.1, 3183.6, 12385.8]
 
-    /// Zaehlt jede Anfrage; die Dauern kommen aus der Tabelle je Dateiname.
+    /// Counts every request; the durations come from the table per file name.
     /// Unchecked because one lock guards the counts; the answers, the status
     /// and the fixture are written by the witness between its questions.
     nonisolated final class Wire: @unchecked Sendable {
@@ -70,7 +70,7 @@ nonisolated enum GutenbergWitness {
 struct GutenbergRDFTests {
     typealias W = GutenbergWitness
 
-    @Test("Die RDF von 5884 nennt Titel, Autor und drei Tondateien; das Zip und die Texte zaehlen nicht")
+    @Test("The RDF of 5884 names title, author and three audio files; the zip and the texts do not count")
     func theRecordOf5884() throws {
         let record = try #require(GutenbergRDF.parse(try W.record(5884)))
         #expect(record.title == "The Flying Saucers are Real")
@@ -79,7 +79,7 @@ struct GutenbergRDFTests {
         #expect(GutenbergRDF.readingFiles(record.audio).count == 3)
     }
 
-    @Test("Die Qualitaets-Regel: gleicher Stamm in -high, -med, -low ist EINE Spur, die hoechste")
+    @Test("The quality rule: the same stem in -high, -med, -low is ONE track, the highest")
     func oneRecordingInSeveralSizes() throws {
         let record = try #require(GutenbergRDF.parse(try W.record(3002)))
         #expect(record.audio.count == 2, "the record names sochi-high and sochi-med")
@@ -89,9 +89,9 @@ struct GutenbergRDFTests {
             ([base + "a-low.mp3", base + "a-med.mp3"], [base + "a-med.mp3"]),
             ([base + "a-low.mp3", base + "a.mp3", base + "a-high.mp3"], [base + "a.mp3"]),
             ([base + "a-high.mp3", base + "b-low.mp3"], [base + "a-high.mp3", base + "b-low.mp3"]),
-            // Zahlen als Zahlen: Teil 10 kommt nach Teil 2.
+            // Numbers as numbers: part 10 comes after part 2.
             ([base + "1-10.mp3", base + "1-02.mp3", base + "1-01.mp3"], [base + "1-01.mp3", base + "1-02.mp3", base + "1-10.mp3"]),
-            // Notenbeispiele in einem Text sind keine Lesung.
+            // Music examples in a text are not a reading.
             (["https://www.gutenberg.org/files/9/9-h/audio/ex1.mp3"], []),
         ]
         for (given, expected) in table {
@@ -109,7 +109,7 @@ struct GutenbergWorkTracksTests {
         })
     }
 
-    @Test("5884: Fortsetzen mitten in Datei 2 landet in Datei 2 an der richtigen Stelle")
+    @Test("5884: resuming in the middle of file 2 lands in file 2 at the right place")
     func resumeLandsInThePartItBelongsTo() throws {
         let work = work5884()
         let tracks = try work.tracks()
@@ -124,7 +124,7 @@ struct GutenbergWorkTracksTests {
         #expect(TrackMath.trackIndex(for: 7000, tracks: tracks, bookDuration: total) == 2)
     }
 
-    @Test("Eine Datei ohne lesbare Dauer macht den Titel nicht still falsch, sondern benannt")
+    @Test("A file without a readable duration makes the title not silently wrong but named")
     func anUnreadablePartIsNamed() throws {
         let parts = work5884().parts
         let broken = GutenbergWork(title: "T", author: nil,
@@ -133,22 +133,22 @@ struct GutenbergWorkTracksTests {
         #expect(broken.totalSeconds == nil)
         let sentence = try #require(FreeCatalog.failureReason(GutenbergWorkError.partUnreadable(part: 2), online: true))
         #expect(sentence.contains("2"), "the page names the part: \(sentence)")
-        // Eine einzige Datei braucht keine Dauer, um zu stehen.
+        // A single file needs no duration to stand.
         let single = GutenbergWork(title: "T", author: nil, parts: [.init(url: parts[0].url, seconds: nil)])
         #expect(try single.tracks().count == 1)
     }
 }
 
-/// Was beim Lesen einer Dauer ein Befund ist und was nicht. Jede Zeile ist
-/// der Fehler, den `AVURLAsset.load(.duration)` am 28.09. gegen einen lokalen
-/// Server mit festen Antworten geliefert hat (Domain, Code, darunter).
+/// What counts as a finding when reading a duration and what does not. Each line is
+/// the error that `AVURLAsset.load(.duration)` delivered on 28.09. against a local
+/// server with fixed answers (domain, code, underlying).
 struct GutenbergPartReadingTests {
     private func error(_ domain: String, _ code: Int, beneath: (String, Int)) -> NSError {
         NSError(domain: domain, code: code,
                 userInfo: [NSUnderlyingErrorKey: NSError(domain: beneath.0, code: beneath.1)])
     }
 
-    @Test("Nur eine gelieferte Datei ohne Dauer und eine abwesende (404, 410) sind ein Befund; 403, 429, 5xx und kein Netz merken nichts")
+    @Test("Only a delivered file without a duration and an absent one (404, 410) are a finding; 403, 429, 5xx and no network remember nothing")
     func onlyAbsenceAndUnreadableContentAreFindings() {
         let url = NSURLErrorDomain, media = "CoreMediaErrorDomain"
         let table: [(String, NSError, GutenbergPartReading.Outcome)] = [
@@ -182,20 +182,20 @@ struct GutenbergPartReadingTests {
 struct GutenbergWorksTests {
     typealias W = GutenbergWitness
 
-    @Test("Das erste Oeffnen holt die RDF und je Datei eine Dauer, nacheinander; das zweite fragt nichts")
+    @Test("The first opening fetches the RDF and one duration per file, one after another; the second asks nothing")
     func resolvedOnceAndKept() async throws {
         let defaults = W.defaults()
         let wire = W.wire5884()
         let first = try #require(try await GutenbergWorks(wire: wire.wire, suiteName: defaults).work(number: 5884))
         #expect(first.parts.map(\.seconds) == W.seconds5884)
         #expect(wire.records == 1 && wire.durations == 3)
-        // Ein neuer Start liest den gemerkten Stand, ohne Netz.
+        // A new start reads the remembered state, without network.
         let again = try await GutenbergWorks(wire: wire.wire, suiteName: defaults).work(number: 5884)
         #expect(again == first)
         #expect(wire.records == 1 && wire.durations == 3, "kept for good: \(wire.records)/\(wire.durations)")
     }
 
-    @Test("Dauer nicht lesbar wird gemerkt; ein Fehlschlag merkt nichts und fragt beim naechsten Mal wieder")
+    @Test("Duration not readable is remembered; a failure remembers nothing and asks again next time")
     func onlyFindingsAreKept() async throws {
         let defaults = W.defaults()
         let unreadable = W.wire5884()
@@ -217,7 +217,7 @@ struct GutenbergWorksTests {
         #expect(offline.records == 2, "the failure stored nothing, so the next open asked again")
     }
 
-    @Test("Ein Werk ohne Aufzeichnung (404) ist ein Befund: gemerkt, kein Titel")
+    @Test("A work without a recording (404) is a finding: remembered, no title")
     func anAbsentRecordIsKept() async throws {
         let defaults = W.defaults()
         let wire = W.wire5884()
@@ -238,7 +238,7 @@ struct GutenbergStockTitleTests {
                           licenseurl: nil, year: nil, subject: ArchiveStringList(["Unidentified flying objects"]))
     }
 
-    @Test("Ein Titel aus dem Bestand wird ein gut:-Titel, nie ein archive-Titel, und spielt alle drei Dateien")
+    @Test("A title from the stock becomes a gut: title, never an archive title, and plays all three files")
     func aStockTitlePlays() async throws {
         let provider = FreeCatalogProvider.shared
         let item = try #require(provider.remember(popular: stockDoc(5884)))
@@ -258,7 +258,7 @@ struct GutenbergStockTitleTests {
         #expect(detail.media.metadata?.title == "The Flying Saucers are Real")
     }
 
-    @Test("Ohne Tondatei ist der Titel weg, nicht still leer")
+    @Test("Without an audio file the title is gone, not silently empty")
     func aWorkWithoutSoundIsGone() async throws {
         let wire = W.wire5884()
         wire.status = 404
@@ -271,7 +271,7 @@ struct GutenbergStockTitleTests {
         }
     }
 
-    @Test("Mit Bestand fragt die Uebersichtsreihe gutendex nicht und zeigt die Umwandlung von localBrowse")
+    @Test("With a stock the overview row does not ask gutendex and shows the conversion of localBrowse")
     func theOverviewRowTakesTheStock() async throws {
         let asks = W.Asks()
         var clients = CatalogLoaderWitness.failing()
@@ -297,13 +297,13 @@ struct GutenbergStockTitleTests {
         #expect(without.gutenberg.isEmpty)
     }
 }
-/// Die Rechte eines Gutenberg-Hoerbuchs stehen je Werk in der RDF, nicht
-/// pauschal fuer die Quelle: 5884 und 3002 sagen „Copyrighted“.
+/// The rights of a Gutenberg audiobook are in the RDF per work, not
+/// as a blanket for the source: 5884 and 3002 say „Copyrighted“.
 @MainActor
 struct GutenbergRightsTests {
     typealias W = GutenbergWitness
 
-    @Test("Die RDF nennt die Rechte je Werk, die Titelseite zeigt sie, die Kachel keine Kapsel")
+    @Test("The RDF names the rights per work, the title page shows them, the tile shows no capsule")
     func theRecordStatesTheRights() async throws {
         let record = try #require(GutenbergRDF.parse(try W.record(5884)))
         #expect(record.rights?.hasPrefix("Copyrighted") == true)
@@ -328,7 +328,7 @@ struct GutenbergRightsTests {
                 "the title page shows what the record says")
     }
 
-    @Test("Die Gutenberg-Seite hat die Browse-Reihe, und sie antwortet aus dem Bestand", .needsTheSources)
+    @Test("The Gutenberg page has the browse row, and it answers from the stock", .needsTheSources)
     func theBrowseShelf() async throws {
         var stock = CatalogStock(surface: "gutenberg", takenAt: 1, watermark: nil, entries: (1...5).map {
             CatalogStockEntry(id: "gut:\($0)", title: "W\($0)", creator: nil, subjects: [],

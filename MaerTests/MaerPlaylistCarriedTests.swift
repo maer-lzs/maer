@@ -24,7 +24,7 @@ struct MaerPlaylistCarriedTests {
         "li_abc": CarriedItem(id: "li_abc", title: "A Server Audiobook", subtitle: "A Narrator"),
     ]
 
-    @Test("Auf Geraet B: jeder Eintrag behaelt seinen Namen, Katalog spielt, der Rest nennt den Grund")
+    @Test("On device B: every entry keeps its name, catalog plays, the rest names the reason")
     func everyEntryArrivesNamedAndExplained() {
         let ids = Array(carried.keys).sorted()
         var playable: [String] = []
@@ -48,7 +48,7 @@ struct MaerPlaylistCarriedTests {
         #expect(playable.count + reasons.count == ids.count, "nothing vanishes silently")
     }
 
-    @Test("Die Schnappschuesse reisen im Blob hin und zurueck, und der Merge ergaenzt sie wie die Titel")
+    @Test("The snapshots travel in the blob there and back, and the merge supplements them like the titles")
     func snapshotsTravelInTheBlobAndTheMerge() {
         let blob = KeyValuePlaylistCarrier.blob(snapshots: carried)
         #expect(KeyValuePlaylistCarrier.snapshots(fromBlob: blob) == carried)
@@ -66,7 +66,7 @@ struct MaerPlaylistCarriedTests {
         #expect(outcome.lists["a"]?.snapshots.keys.sorted() == ["lv:123", "sub:song:7"])
     }
 
-    @Test("Gleicher Inhalt ist nie eine Kopie; eine Kopie nennt Geraet und Moment; ein neuer Name ist nie ein vergebener")
+    @Test("Same content is never a copy; a copy names device and moment; a new name is never a taken one")
     func rescueAndNaming() {
         let same = MaerPlaylistMerge.Entry(name: "L", updatedAt: 3, itemIds: ["a", "b"])
         #expect(!MaerPlaylistMerge.needsRescue(same, existing: [["a", "b"]]))

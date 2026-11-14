@@ -8,14 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Das Register merkt sich nur, was NACHWEISLICH funktioniert hat.
-/// Nie Zugangsdaten, nie automatisch geloescht.
+/// The register remembers only what has DEMONSTRABLY worked.
+/// Never credentials, never deleted automatically.
 struct KnownServersTests {
     private func fresh() -> UserDefaults {
         UserDefaults(suiteName: "known-servers-\(UUID().uuidString)")!
     }
 
-    @Test("nur Erfolge landen drin, ein zweiter Erfolg frischt auf statt zu doppeln")
+    @Test("only successes land in it, a second success refreshes instead of duplicating")
     func successOnlyAndNoDuplicates() {
         let d = fresh()
         KnownServers.remember("https://audio.example.com/", service: .audiobookshelf,
@@ -28,7 +28,7 @@ struct KnownServersTests {
         #expect(all.first?.url == "https://audio.example.com")
     }
 
-    @Test("derselbe Server unter anderer Schreibweise: ein Eintrag, der seine Schreibweise behaelt, und ein Vorschlag")
+    @Test("the same server under a different spelling: one entry that keeps its spelling, and one suggestion")
     func theSameServerUnderAnotherSpellingIsOne() throws {
         let d = fresh()
         KnownServers.remember("https://Audio.Example.com", service: .audiobookshelf, now: 100, defaults: d)
@@ -56,20 +56,20 @@ struct KnownServersTests {
         #expect(KnownServers.all(defaults: older).count == 3, "the offer moved the stored entries")
     }
 
-    @Test("Vorschlaege: eigener Dienst zuerst, Rest darunter — nach Aktualitaet")
+    @Test("Suggestions: own service first, rest below, by recency")
     func ownServiceFirst() {
         let d = fresh()
         KnownServers.remember("https://music.maer.fm", service: .subsonic, now: 100, defaults: d)
         KnownServers.remember("https://pods.maer.fm", service: .gpodder, now: 300, defaults: d)
         KnownServers.remember("https://alt.maer.fm", service: .subsonic, now: 200, defaults: d)
         let out = KnownServers.suggestions(for: .subsonic, defaults: d).map(\.url)
-        // Eigener Typ zuerst (neuester zuerst), dann die fremde Domain-Familie.
+        // Own type first (newest first), then the foreign domain family.
         #expect(out == ["https://alt.maer.fm", "https://music.maer.fm", "https://pods.maer.fm"])
     }
 
-    /// Am Geraet stand die Adresse des Sync-Dienstes als Vorschlag im Feld
-    /// fuer den Audiobookshelf-Server: die fremde Gruppe nahm jede Art auf.
-    @Test("Vorschlaege: der Sync-Dienst steht nie unter einem Medienserver, und kein Medienserver unter dem Sync-Dienst")
+    /// On the device the address of the sync service appeared as a suggestion in the field
+    /// for the Audiobookshelf server: the foreign group took in every kind.
+    @Test("Suggestions: the sync service never appears under a media server, and no media server under the sync service")
     func theSyncServiceAndTheMediaServersStayApart() {
         let d = fresh()
         KnownServers.remember("https://books.maer.fm", service: .audiobookshelf, now: 100, defaults: d)
@@ -83,18 +83,18 @@ struct KnownServersTests {
         #expect(!KnownServers.sameKind(.subsonic, .maerSync))
     }
 
-    @Test("nichts verschwindet von selbst — nur von Hand")
+    @Test("nothing disappears by itself, only by hand")
     func neverAutoDeletes() {
         let d = fresh()
         KnownServers.remember("https://a.example", service: .jellyfin, now: 1, defaults: d)
-        // Auch ein uralter Eintrag bleibt. Ausfall ist kein Loeschgrund.
+        // Even a very old entry stays. An outage is no reason to delete.
         #expect(KnownServers.all(defaults: d).count == 1)
         let entry = KnownServers.all(defaults: d)[0]
         KnownServers.forget(entry, defaults: d)
         #expect(KnownServers.all(defaults: d).isEmpty)
     }
 
-    @Test("die Bestands-Befuellung laeuft genau EINMAL")
+    @Test("the stock seeding runs exactly ONCE")
     func backfillIsOneOff() {
         let d = fresh()
         KnownServers.backfill([("https://a.example", .audiobookshelf),
@@ -102,7 +102,7 @@ struct KnownServersTests {
                                ("https://b.example", .subsonic)], now: 5, defaults: d)
         #expect(KnownServers.all(defaults: d).count == 2)   // Dublette gefaltet
         KnownServers.backfill([("https://c.example", .gpodder)], now: 6, defaults: d)
-        #expect(KnownServers.all(defaults: d).count == 2)   // zweiter Lauf tut nichts
+        #expect(KnownServers.all(defaults: d).count == 2)   // the second run does nothing
     }
 }
 #endif

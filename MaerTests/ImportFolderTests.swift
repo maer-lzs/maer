@@ -16,7 +16,7 @@ import Foundation
 struct ImportFolderTests {
     struct LookupFailed: Error {}
 
-    @Test("ein gelisteter Ordner gilt, ohne nachzufragen")
+    @Test("a listed folder applies without asking")
     func aListedFolderWinsWithoutAsking() async {
         var asked = false
         let answer = await ImportFolder.resolve(listed: [ABSFolder(id: "fo_1", fullPath: nil)]) {
@@ -27,13 +27,13 @@ struct ImportFolderTests {
         #expect(!asked, "die Liste trug den Ordner, also wird nicht nachgefragt")
     }
 
-    @Test("ohne gelisteten Ordner wird nachgefragt")
+    @Test("without a listed folder it asks")
     func withoutAListedFolderItAsks() async {
         #expect(await ImportFolder.resolve(listed: nil) { [ABSFolder(id: "fo_2", fullPath: nil)] } == .folder("fo_2"))
         #expect(await ImportFolder.resolve(listed: []) { [ABSFolder(id: "fo_3", fullPath: nil)] } == .folder("fo_3"))
     }
 
-    @Test("eine Bibliothek ohne Ordner und eine unerreichbare sind zwei Antworten, nicht nichts")
+    @Test("a library without folders and an unreachable one are two answers, not nothing")
     func noFolderAndUnreachableAreTwoAnswers() async {
         #expect(await ImportFolder.resolve(listed: nil) { [] } == .none)
         #expect(await ImportFolder.resolve(listed: nil) { throw LookupFailed() } == .unreachable)
@@ -41,7 +41,7 @@ struct ImportFolderTests {
 
     /// A view asks no network question of the server client. Reading its
     /// address is a fact; calling a method on it is a fetch.
-    @Test("keine Ansicht ruft eine Methode des Server-Clients", .needsTheSources)
+    @Test("no view calls a method of the server client", .needsTheSources)
     func noViewCallsTheServerClient() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
@@ -64,7 +64,7 @@ struct ImportFolderTests {
 
     /// The server address is one fact with one name (`serverAddress` on
     /// the sign-in model); no view reads it off the client itself.
-    @Test("keine Ansicht liest die Server-Adresse am Client vorbei", .needsTheSources)
+    @Test("no view reads the server address past the client", .needsTheSources)
     func noViewReadsTheAddressOffTheClient() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
@@ -80,7 +80,7 @@ struct ImportFolderTests {
         #expect(readers.isEmpty, "eine Ansicht liest die Adresse am Client: \(readers)")
     }
 
-    @Test("der Zaehler sieht den Ruf auch ueber einen Umbruch, nicht die Adresse")
+    @Test("the counter sees the call across a line break too, not the address")
     func theCounterSeesTheCallNotTheAddress() {
         #expect(Self.clientCalls(in: "(try? await AppSession.shared.apiClient\n    .fetchLibraryFolders(libraryId: id))") == 1)
         #expect(Self.clientCalls(in: "Text(AppSession.shared.apiClient.baseURL.absoluteString)") == 0)

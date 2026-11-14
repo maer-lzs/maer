@@ -33,7 +33,7 @@ struct ImageCachePersistentTests {
             + String(repeating: "x", count: 220))!
     }
 
-    @Test("ein persistiertes Cover wird von Vorschau- und Vollbild-Pfad gefunden")
+    @Test("a persisted cover is found by the preview and full-image paths")
     func persistedCoverIsFoundByTheReadPaths() async {
         let url = coverURL(UUID().uuidString)
         await ImageCache.shared.makePersistent(coverURL: url, data: png(64))
@@ -42,9 +42,9 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.image(for: url) != nil)
     }
 
-    /// Rot-Probe: ein anderer Name wird NICHT gefunden. Der Vorschau-Pfad
-    /// liest nur die Platte, also ist nil hier ein echtes Fehlen.
-    @Test("ein anderer Name wird nicht gefunden")
+    /// Red probe: a different name is NOT found. The preview path
+    /// reads only the disk, so nil here is a real absence.
+    @Test("a different name is not found")
     func aDifferentNameIsNotFound() async {
         let url = coverURL(UUID().uuidString)
         await ImageCache.shared.makePersistent(coverURL: url, data: png(64))
@@ -53,9 +53,9 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.thumbnail(for: other) == nil)
     }
 
-    /// Nach dem Entfernen des Downloads bleibt das Bild lesbar: die Kopie
-    /// wandert in den Cache statt zu verschwinden.
-    @Test("nach dem Entfernen bleibt das Bild aus dem Cache lesbar")
+    /// After the download is removed the image stays readable: the copy
+    /// moves into the cache instead of disappearing.
+    @Test("after removal the image stays readable from the cache")
     func unpersistedCoverStaysReadableFromTheCache() async {
         let url = coverURL(UUID().uuidString)
         await ImageCache.shared.makePersistent(coverURL: url, data: png(64))
@@ -68,7 +68,7 @@ struct ImageCachePersistentTests {
         URL(string: "https://nd.example.lan/rest/getCoverArt?id=\(id)&size=600")!
     }
 
-    @Test("zwischen den Ordnern: ein aktives Cover nur im Cache geht hoch, ein geschuetztes ohne Download geht runter oder faellt")
+    @Test("between the folders: an active cover only in the cache goes up, a protected one without a download goes down or drops")
     func theTierMoves() {
         let moves = ImageCache.tierMoves(persistent: ["kept", "orphan", "twin"],
                                          cache: ["active", "twin", "other"],
@@ -84,7 +84,7 @@ struct ImageCachePersistentTests {
 
     /// A download moved to a new id: its cover takes the new address
     /// without the network, and the read paths find it there.
-    @Test("das geschuetzte Cover eines umgezogenen Downloads nimmt die neue Adresse an, ohne Netz")
+    @Test("the protected cover of a moved download takes the new address, without network")
     func aMovedDownloadsCoverIsRenamed() async {
         let tag = UUID().uuidString
         let old = navidromeCover("old-\(tag)")
@@ -102,7 +102,7 @@ struct ImageCachePersistentTests {
     /// A server picture of a download, kept, after the server moved to
     /// another host and base path: its name is the same, so the read finds
     /// it without the network (the new host does not answer).
-    @Test("nach einem Umzug des Servers findet ein Download sein Cover ohne Netz")
+    @Test("after a move of the server a download finds its cover without network")
     func aMovedServerKeepsTheCover() async {
         let tag = UUID().uuidString.prefix(8)
         let before = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T1&s=S1")!
@@ -116,7 +116,7 @@ struct ImageCachePersistentTests {
     /// A kept cover from before server pictures were named by their id
     /// stands under its name by address: it is read, and the sweep moves it
     /// to the name by id, without the network.
-    @Test("ein geschuetztes Cover unter dem Namen nach Adresse wird gelesen und zieht im Fegelauf unter den Namen nach Bild")
+    @Test("a protected cover under the name by address is read and moves under the name by image in the sweep run")
     func aKeptCoverByAddressMovesToItsNameById() async {
         let tag = UUID().uuidString.prefix(8)
         let url = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T1&s=S1")!
@@ -132,7 +132,7 @@ struct ImageCachePersistentTests {
 
     /// The id move of a music server right after the update: the kept cover
     /// still stands under its name by address and takes the new name by id.
-    @Test("eine Umschluesselung benennt auch ein Cover um, das noch unter dem Namen nach Adresse steht")
+    @Test("a rekey also renames a cover that is still under the name by address")
     func anIdMoveRenamesACoverStillByAddress() async {
         let tag = UUID().uuidString.prefix(8)
         let old = URL(string: "https://music.example.lan/rest/getCoverArt.view?id=old-\(tag)&size=600&t=T1")!
@@ -152,7 +152,7 @@ struct ImageCachePersistentTests {
     /// other kinds, public addresses and the kept folder stay. In a folder
     /// of its own: the real purgeable folder is shared with parallel
     /// witnesses.
-    @Test("nach dem Wechsel auf einen zweiten Server derselben Art liest dessen Adresse nichts aus der leerbaren Ablage des ersten")
+    @Test("after the switch to a second server of the same kind its address reads nothing from the clearable store of the first")
     func aSecondServerOfTheKindReadsNothingOfTheFirst() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("covers-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -174,7 +174,7 @@ struct ImageCachePersistentTests {
 
     /// The colors taken from a cover are kept by its name too: the second
     /// server's album would take the first's colors for the player.
-    @Test("nach dem Wechsel auf einen zweiten Server derselben Art traegt dessen Adresse keine Farben des ersten")
+    @Test("after the switch to a second server of the same kind its address carries no colors of the first")
     func aSecondServerOfTheKindTakesNoColorsOfTheFirst() {
         let tag = UUID().uuidString.prefix(8)
         let first = URL(string: "https://gonic-a.example/rest/getCoverArt.view?id=al-\(tag)&size=600&t=T1&s=S1")!
@@ -193,7 +193,7 @@ struct ImageCachePersistentTests {
         for url in stay { #expect(held(url), "the colors of \(url) went with the server") }
     }
 
-    @Test("das Raeumen der Cover einer Art raeumt ihre Farben mit", .needsTheSources)
+    @Test("clearing the covers of a kind clears their colors too", .needsTheSources)
     func forgettingTheCoversOfAKindForgetsTheirColors() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "ImageCache.swift" })
         let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
@@ -207,7 +207,7 @@ struct ImageCachePersistentTests {
     /// renames it, without the network, and it stays kept under today's name.
     /// The key in the old name is one the server no longer knows (the user
     /// made a new one since), so the rename must not depend on today's key.
-    @Test("ein geschuetztes Cover mit Schluessel im Namen steht nach dem naechsten Fegelauf unter dem Namen ohne")
+    @Test("a protected cover with a key in the name stands under the name without it after the next sweep run")
     func aKeptCoverLosesTheKeyInItsName() async {
         let tag = UUID().uuidString.prefix(8)
         let url = URL(string: "https://nc.example.lan/rest/getCoverArt.view?apiKey=NEWKEY2&id=al-\(tag)&size=600")!
@@ -227,7 +227,7 @@ struct ImageCachePersistentTests {
     /// stands under the name the earlier rule gave it (without its `t`); the
     /// next sweep moves it to today's name, without the network, and a
     /// foreign name of today that carries `t=` is left as it is.
-    @Test("ein geschuetztes fremdes Cover zieht ohne Netz unter den heutigen Namen, ein heutiger Name mit t bleibt stehen")
+    @Test("a protected foreign cover moves under today's name without network, a today's name with t stays")
     func aKeptForeignCoverMovesToTodaysName() async {
         let tag = UUID().uuidString.prefix(8)
         let url = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/image.jpg?t=1700000001&size=3000")!
@@ -255,7 +255,7 @@ struct ImageCachePersistentTests {
     /// falls back to the show's picture without it; both are downloaded. The
     /// earlier rule's name for A is today's name of B: the move leaves B's
     /// kept cover where it is and hands A nothing of it.
-    @Test("der Umzug nimmt nie den Namen einer anderen aktiven Adresse: B behaelt sein Cover, A erbt es nicht")
+    @Test("the move never takes the name of another active address: B keeps its cover, A does not inherit it")
     func theMoveNeverTakesTheNameOfAnotherActiveAddress() async throws {
         let tag = UUID().uuidString.prefix(8)
         let episodeA = URL(string: "https://cdn.example.org/\(tag)/x.jpg?t=2")!
@@ -282,7 +282,7 @@ struct ImageCachePersistentTests {
 
     /// Two active sizes of one picture share the earlier rule's name: which
     /// one would inherit is a matter of order, so neither moves.
-    @Test("zwei aktive Groessen mit einem alten Namen: keine zieht um")
+    @Test("two active sizes with one old name: neither moves")
     func twoSizesWithOneOldNameDoNotMove() async throws {
         let tag = UUID().uuidString.prefix(8)
         let small = URL(string: "https://cdn.example.org/\(tag)/y.jpg?s=600")!
@@ -308,7 +308,7 @@ struct ImageCachePersistentTests {
     /// a show no longer followed) is missing from the list, while an active
     /// neighbour carries its name as its old name. An incomplete pass moves
     /// nothing: the cover stays where it is, and nothing is handed over.
-    @Test("ein geschuetztes Cover ohne baubare Adresse uebersteht einen unvollstaendigen Lauf, auch wenn ein aktiver Nachbar seinen Namen als alten traegt")
+    @Test("a protected cover without a buildable address survives an incomplete run, even if an active neighbor carries its name as an old one")
     func anIncompletePassMovesNoName() async throws {
         let tag = UUID().uuidString.prefix(8)
         let neighbour = URL(string: "https://cdn.example.org/\(tag)/z.jpg?t=7")!
@@ -331,7 +331,7 @@ struct ImageCachePersistentTests {
 
     /// A cover an earlier sweep already demoted stands in the cache under the
     /// old name. The move finds it there and puts it up under the new one.
-    @Test("ein schon abgestuftes Cover eines umgezogenen Downloads wird im Cache gefunden und steht danach geschuetzt unter der neuen Adresse")
+    @Test("an already demoted cover of a moved download is found in the cache and afterwards stands protected under the new address")
     func aDemotedCoverOfAMovedDownloadIsRenamedToo() async {
         let tag = UUID().uuidString
         let old = navidromeCover("demoted-old-\(tag)")
@@ -346,7 +346,7 @@ struct ImageCachePersistentTests {
 
     /// A cover that was demoted once (the sweep ran before the download
     /// moved) is protected again by the next sweep, because it is active.
-    @Test("ein aktives Cover, das nur im Cache steht, wird vom naechsten Fegelauf wieder geschuetzt")
+    @Test("an active cover that stands only in the cache is protected again by the next sweep run")
     func theSweepPromotesAnActiveCover() async throws {
         let url = navidromeCover("active-\(UUID().uuidString)")
         #expect(ImageCache.shared.testPlaceInCache(png(64), for: url), "the precondition: the cover stands in the cache")
@@ -360,7 +360,7 @@ struct ImageCachePersistentTests {
 
     /// A cover demoted by an earlier sweep keeps its old moment; the TTL
     /// step of the same pass would delete it. It goes up first.
-    @Test("ein abgestuftes Cover mit 31 Tagen kommt hoch, bevor die Frist es loescht")
+    @Test("a demoted cover at 31 days comes up before the deadline deletes it")
     func anOldDemotedCoverGoesUpBeforeTheTTL() async {
         let url = navidromeCover("old-active-\(UUID().uuidString)")
         let monthAgo = Date().addingTimeInterval(-31 * 86_400)
@@ -373,7 +373,7 @@ struct ImageCachePersistentTests {
 
     /// A pass that cannot name every download's cover (the scan is not done,
     /// or a music title without its client) demotes nothing.
-    @Test("ein Fegelauf ohne vollstaendige Antwort laesst ein geschuetztes Cover stehen")
+    @Test("a sweep run without a complete answer leaves a protected cover in place")
     func anIncompleteAnswerDemotesNothing() async {
         let url = navidromeCover("unnamed-\(UUID().uuidString)")
         #expect(ImageCache.shared.testPlacePersistent(png(64), for: url), "the precondition: a persistent cover")
@@ -384,7 +384,7 @@ struct ImageCachePersistentTests {
 
     /// The active covers come after the downloads' scan, and a download
     /// whose cover address cannot be built makes the answer incomplete.
-    @Test("die aktiven Cover kommen nach dem Scan, ein Download ohne Adresse macht die Antwort unvollstaendig")
+    @Test("the active covers come after the scan, a download without an address makes the answer incomplete")
     func theActiveCoversWaitForTheScan() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("active-covers-\(UUID().uuidString)", isDirectory: true)
@@ -408,7 +408,7 @@ struct ImageCachePersistentTests {
     /// now names the new form while the kept cover stands under the old
     /// one: a music download makes the answer incomplete. A book does not
     /// wait on the move.
-    @Test("ein offener Umzug macht die Antwort mit einem Musik-Download unvollstaendig, ohne Musik-Download nicht")
+    @Test("an open move makes the answer incomplete with a music download, not without one")
     func aPendingMoveMakesTheAnswerIncomplete() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("move-pending-\(UUID().uuidString)", isDirectory: true)
@@ -449,7 +449,7 @@ struct ImageCachePersistentTests {
         return before.contains { $0.contains("#expect(!\(name).knowsAll") }
     }
 
-    @Test("kein Zeuge fegt den geteilten Cache mit vollstaendiger Antwort", .needsTheSources)
+    @Test("no witness sweeps the shared cache with a complete answer", .needsTheSources)
     func noWitnessSweepsTheSharedCacheWithACompleteAnswer() throws {
         let tests = SourceTree.root.appendingPathComponent("MaerTests")
         var sweeps = 0
@@ -482,7 +482,7 @@ struct ImageCachePersistentTests {
     /// One pass between the folders counts all four directions, a removal
     /// too; failures are counted with the first reason in the one summary
     /// line, which speaks as soon as any count is not zero.
-    @Test("der Lauf zwischen den Ordnern zaehlt alle vier Richtungen")
+    @Test("the run between the folders counts all four directions")
     func theTierPassCountsAllFourDirections() async throws {
         let root = try NavidromeRekeyTests.temporaryDirectory("tiers-tally")
         defer { try? FileManager.default.removeItem(at: root) }
@@ -518,7 +518,7 @@ struct ImageCachePersistentTests {
     /// A walk that could not list the folder, or a start that could not read
     /// the marks, knows no downloads: that is a blind spot, not "none", and
     /// the sweep must not demote every kept cover on it.
-    @Test("ein Scan, der nicht lesen konnte, ist keine leere Antwort")
+    @Test("a scan that could not read is no empty answer")
     func anUnreadableScanIsNoEmptyAnswer() async throws {
         let address: (String) -> URL? = { URL(string: "https://example.lan/cover/\($0)") }
         // The folder: a file stands where the download folder belongs.
@@ -566,7 +566,7 @@ struct ImageCachePersistentTests {
     /// address in the new one, the move open. The sweep with that answer
     /// demotes nothing; the move's rename then puts the cover under the new
     /// form, where a complete answer keeps it.
-    @Test("im Fenster vor dem Umzug bleibt das Cover unter der alten Form geschuetzt, danach steht es unter der neuen")
+    @Test("in the window before the move the cover stays protected under the old form, afterwards it stands under the new one")
     func theWindowBeforeTheMoveKeepsTheCover() async throws {
         let tag = UUID().uuidString
         let old = navidromeCover("old-\(tag)")
@@ -589,7 +589,7 @@ struct ImageCachePersistentTests {
                 "and a complete answer keeps it there")
     }
 
-    @Test("der Umzug ist offen, solange die Regel gilt, ein Server da ist und die Marke fehlt")
+    @Test("the move is open as long as the rule applies, a server is there and the mark is missing")
     func theMoveIsPendingUntilItsMarker() throws {
         let suite = "move-pending-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -618,7 +618,7 @@ struct ImageCachePersistentTests {
         await ImageCache.shared.testDiskSettled(url)
     }
 
-    @Test("das Entfernen eines Downloads legt das geschuetzte Cover einer wartenden Adresse nicht dorthin, wo das Netz-Tor liest")
+    @Test("removing a download does not put the protected cover of a waiting address where the network gate reads")
     func removingADownloadKeepsAWaitingCopyFromTheGate() async {
         let url = coverURL(UUID().uuidString)
         await keptAndWaiting(url)
@@ -631,7 +631,7 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.thumbnail(for: url, maxPixelSize: 64) != nil, "every other reader still finds the kept copy")
     }
 
-    @Test("das geschuetzte Cover einer wartenden Adresse zieht mit um, und die neue Adresse wartet: das Netz-Tor findet nichts")
+    @Test("the protected cover of a waiting address moves along, and the new address waits: the network gate finds nothing")
     func renamingAWaitingCopyKeepsTheNewAddressWaiting() async {
         let tag = UUID().uuidString
         let old = navidromeCover("old-\(tag)")
@@ -647,7 +647,7 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.thumbnail(for: new, maxPixelSize: 64) != nil, "every other reader finds the kept copy")
     }
 
-    @Test("der Fegelauf stuft das geschuetzte Cover einer wartenden Adresse nicht ab; eines, das nicht wartet, schon")
+    @Test("the sweep run does not demote the protected cover of a waiting address; one that does not wait, it does")
     func theSweepKeepsAWaitingCopyUp() async {
         let url = coverURL(UUID().uuidString)
         await keptAndWaiting(url)
@@ -663,7 +663,7 @@ struct ImageCachePersistentTests {
                 "the control: a copy that does not wait goes down")
     }
 
-    @Test("ein Altname im Cache-Ordner zieht nicht unter den Namen einer wartenden Adresse; ohne Warten zieht er um")
+    @Test("an old name in the cache folder does not move under the name of a waiting address; without waiting it moves")
     func aLegacyNameDoesNotMoveOntoAWaitingName() async {
         let tag = UUID().uuidString.prefix(8)
         let url = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/image.jpg?t=1700000001&size=3000")!
@@ -690,7 +690,7 @@ struct ImageCachePersistentTests {
     /// bytes (an invalidation would remove exactly those). They go up under
     /// the new name in the same step: the moved download keeps a persistent
     /// copy, not only from the next sweep on.
-    @Test("ein Umbenennen macht frische Bytes der neuen Adresse nie unsichtbar und hebt sie fuer den Download hoch")
+    @Test("a rename never makes fresh bytes of the new address invisible and lifts them up for the download")
     func renamingKeepsFreshBytesOfTheNewAddress() async {
         let tag = UUID().uuidString
         let old = navidromeCover("old-\(tag)")
@@ -716,7 +716,7 @@ struct ImageCachePersistentTests {
     /// not hold the address, so a rename puts an old name's file under its
     /// name; the sweep clears it when it is done, behind the disk work of
     /// that address. A file the step did not put there is not its matter.
-    @Test("nach den Umbenennungen raeumt der Fegelauf eine Datei, die sie unter einen inzwischen wartenden Namen legten")
+    @Test("after the renames the sweep run clears a file that they put under a name that has meanwhile started waiting")
     func theSweepClearsAWaitingNameFromTheCache() async {
         let tag = UUID().uuidString.prefix(8)
         let url = URL(string: "https://www.omnycontent.com/d/programs/\(tag)/late.jpg?t=1700000005&size=3000")!
@@ -736,7 +736,7 @@ struct ImageCachePersistentTests {
     /// The clearing after step 0 asks only the names the renames placed: a
     /// file under a waiting name that came another way (fresh bytes of a
     /// load whose replacing of the kept copy failed) is not its matter.
-    @Test("eine Datei unter einem wartenden Namen, die Schritt 0 nicht legte, laesst der Fegelauf stehen")
+    @Test("a file under a waiting name that step 0 did not put there is left in place by the sweep run")
     func theSweepLeavesAFileItDidNotPlace() async {
         let url = coverURL(UUID().uuidString)
         ImageCache.shared.invalidate(url: url)
@@ -749,7 +749,7 @@ struct ImageCachePersistentTests {
         #expect(ImageCache.shared.testCacheBytes(url) == fresh, "step 0 cleared a file it did not place")
     }
 
-    @Test("der Fegelauf laesst die geschuetzte Fassung einer wartenden Adresse stehen, auch wenn der Cache denselben Namen haelt")
+    @Test("the sweep run leaves the protected version of a waiting address in place, even if the cache holds the same name")
     func theSweepDropsNoWaitingCopy() async {
         let url = coverURL(UUID().uuidString)
         await keptAndWaiting(url)
@@ -767,7 +767,7 @@ struct ImageCachePersistentTests {
     /// the sweep).
     /// What the count does not see: the writers of fresh bytes (`write(to:)`,
     /// `copyItem` with `replaceItemAt`), which lay down a loaded picture.
-    @Test("jede moveItem-Stelle im Cover-Cache steht im Bestand", .needsTheSources)
+    @Test("every moveItem site in the cover cache is in the stock", .needsTheSources)
     func everyMoveInTheCoverCacheIsCounted() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
@@ -780,7 +780,7 @@ struct ImageCachePersistentTests {
     /// clearing after step 0 asks the set of waiting names only, and no hop
     /// of `renameStep` onto the main actor asks a file; files are asked in
     /// the disk chain (`onDisk`) and in the step itself, off the main actor.
-    @Test("Regel 5 im Fegelauf: das Raeumen nach Schritt 0 fragt auf dem Hauptstrang keine Datei", .needsTheSources)
+    @Test("Rule 5 in the sweep run: the clearing after step 0 asks no file on the main thread", .needsTheSources)
     func theSweepAsksNoFileOnTheMainActor() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
@@ -803,7 +803,7 @@ struct ImageCachePersistentTests {
     /// Rule 5 at the rename of a moved download: a server move renames every
     /// moved download in one go, so the files are asked in the disk chain
     /// of both addresses, never on the main actor.
-    @Test("Regel 5 beim Umbenennen eines Downloads: keine Datei auf dem Hauptstrang", .needsTheSources)
+    @Test("Rule 5 when renaming a download: no file on the main thread", .needsTheSources)
     func theRenameAsksNoFileOnTheMainActor() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/ImageCache.swift"), encoding: .utf8))
@@ -854,7 +854,7 @@ struct ImageCachePersistentTests {
         return found
     }
 
-    @Test("die Frage, in welchem Ordner eine Datei steht, hat eine Antwort fuer Schraegstrich und Punkt")
+    @Test("the question in which folder a file stands has an answer for slash and dot")
     func theFolderQuestionHasOneAnswer() {
         let file = URL(fileURLWithPath: "/a/b/c.png")
         #expect(ImageCache.stands(file, in: URL(fileURLWithPath: "/a/b", isDirectory: true)))
@@ -868,7 +868,7 @@ struct ImageCachePersistentTests {
     /// own answer; nowhere else builds one. Every witness above injects the
     /// pending move, so the production wiring is held here: the default asks
     /// the pass itself, and the one production caller keeps that default.
-    @Test("die Antwort auf aktive Cover entsteht nur im DownloadManager", .needsTheSources)
+    @Test("the answer about active covers arises only in the DownloadManager", .needsTheSources)
     func activeCoversAreBuiltInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }

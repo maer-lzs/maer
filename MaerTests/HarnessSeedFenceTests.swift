@@ -12,7 +12,7 @@ import Foundation
 /// travel out, it is not adopted, and when the pot still carries one it
 /// leaves both devices.
 struct HarnessSeedFenceTests {
-    @Test("Die Seed-Kennungen des Harness sind erkennbar, die echten Kennungen nicht")
+    @Test("The seed ids of the harness are recognizable, the real ids are not")
     func seedIdsAreRecognised() {
         for id in ["radio:manual:seed-1", "radio:manual:seed-2", "radio:rb:seed-pop-1",
                    "sub:album:seed-3", "sub:song:seed-song-1", "lva:seed-classic-2",
@@ -28,7 +28,7 @@ struct HarnessSeedFenceTests {
         }
     }
 
-    @Test("Die Muster sind verankert: eine echte Adresse mit seed im Pfad ist kein Seed")
+    @Test("The patterns are anchored: a real address with seed in the path is no seed")
     func markersAreAnchored() {
         // The consequence of the question is a DELETION, so a marker
         // matched anywhere inside an id would drop a real stand. An rss id
@@ -51,7 +51,7 @@ struct HarnessSeedFenceTests {
         }
     }
 
-    @Test("Der Wahl-Schluessel traegt dieselbe Frage: die Familie davor wird abgezogen, der Anker bleibt")
+    @Test("The choice key carries the same question: the family before it is stripped, the anchor stays")
     func theCloudKeyAsksTheSameQuestion() {
         #expect(UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.favoritePrefix + "radio:manual:seed-2"))
         #expect(UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.recentStationPrefix + "radio:rb:seed-pop-1"))
@@ -73,7 +73,7 @@ struct HarnessSeedFenceTests {
 
     /// A new family prefix that the seed question does not strip lets seeds
     /// of that family in; the list is held to every prefix of the catalog.
-    @Test("jedes Familien-Praefix des Katalogs steht in der Liste, die die Saat-Frage abzieht", .needsTheSources)
+    @Test("every family prefix of the catalog is in the list that the seed question strips", .needsTheSources)
     func everyFamilyPrefixIsStripped() throws {
         let code = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/UserChoiceSync.swift"),
                               encoding: .utf8)
@@ -87,7 +87,7 @@ struct HarnessSeedFenceTests {
         #expect(missing.isEmpty, "family prefixes the seed question does not strip: \(missing)")
     }
 
-    @Test("Ein geseedeter Sender reist nicht hinaus, ein echter schon") @MainActor
+    @Test("A seeded station does not travel out, a real one does") @MainActor
     func seedStationsDoNotTravel() {
         let suiteName = "harness-seed-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -105,7 +105,7 @@ struct HarnessSeedFenceTests {
         #expect(travelling.map(\.id) == ["radio:manual:swr3"])
     }
 
-    @Test("Ein von Hand eingetragener Sender reist als eigene Aussage, das Entfernen als Grabstein") @MainActor
+    @Test("A hand-entered station travels as its own statement, the removal as a tombstone") @MainActor
     func manualStationsTravelElementWise() {
         let suiteName = "manual-travel-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -129,7 +129,7 @@ struct HarnessSeedFenceTests {
     /// a host that never resolves, and names no production host. On
     /// 23.10.2026 it kept whatever address the simulator held and sent its
     /// made-up token to a production server.
-    @Test("der Testmodus setzt seinen eigenen Buchserver und nennt keinen Produktivnamen", .needsTheSources)
+    @Test("the test mode sets its own book server and names no production host", .needsTheSources)
     func theHarnessNeverReachesARealServer() throws {
         #expect(UITestSeed.bookServer.host?.hasSuffix(".invalid") == true)
         let seed = SyncContractFenceTests.stripped(try String(

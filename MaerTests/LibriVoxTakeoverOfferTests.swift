@@ -17,14 +17,14 @@ struct LibriVoxTakeoverOfferTests {
                      url_librivox: nil, url_rss: rss, authors: nil, sections: [], genres: nil)
     }
 
-    @Test("ohne Buch kein Angebot, auch mit Server-Bibliotheken")
+    @Test("without a book no offer, even with server libraries")
     func withoutTheBookNothingIsOffered() {
         let offers = LibriVoxTakeoverOffer.offers(book: nil, hasServerLibraries: true)
         #expect(offers == .init(server: false, feed: false))
         #expect(!offers.any, "ohne Eintrag kein Menue")
     }
 
-    @Test("mit Buch: der Server nur mit Bibliothek, der Feed nur mit Adresse")
+    @Test("with a book: the server only with a library, the feed only with an address")
     func withTheBookEachOfferNeedsItsMeans() {
         #expect(LibriVoxTakeoverOffer.offers(book: Self.book(rss: "https://f"), hasServerLibraries: true)
                 == .init(server: true, feed: true))

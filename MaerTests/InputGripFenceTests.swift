@@ -37,7 +37,7 @@ struct InputGripFenceTests {
             .filter { !(file == gripLine.file && $0.trimmingCharacters(in: .whitespaces) == gripLine.line) }
     }
 
-    @Test("Wer den Finger sperrt, sperrt auch die Bedienungshilfen, ausser bei reinem Schmuck mit Grund", .needsTheSources)
+    @Test("Whoever blocks the finger blocks accessibility too, except for pure decoration with a reason", .needsTheSources)
     func noViewBlocksTheFingerAlone() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources)
@@ -73,7 +73,7 @@ struct InputGripFenceTests {
     /// The text-only episode's button is out of sight and out of the tree,
     /// and the place that fires asks too: a tap that still reaches it opens
     /// nothing.
-    @Test("Der unsichtbare Play-Knopf einer Nur-Text-Folge oeffnet nichts, gefragt wird, wo der Knopf feuert", .needsTheSources)
+    @Test("The invisible play button of a text-only episode opens nothing, the question is asked where the button fires", .needsTheSources)
     func theTextOnlyPlayButtonOpensNothing() throws {
         let row = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastComponents.swift"),

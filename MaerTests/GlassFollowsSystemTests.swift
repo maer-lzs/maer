@@ -11,7 +11,7 @@ import Foundation
 /// The glass of the column, the tab bar and the playback bar follows the
 /// system's Liquid Glass setting: no surface lays a tint of its own over it.
 struct GlassFollowsSystemTests {
-    @Test("das Glas traegt keine eigene Toenung, jede Glasflaeche nimmt das Glas des Systems", .needsTheSources)
+    @Test("the glass carries no tint of its own, every glass surface takes the system's glass", .needsTheSources)
     func theGlassCarriesNoTintOfItsOwn() throws {
         let glass = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/AdaptiveGlassBackground.swift"),

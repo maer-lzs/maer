@@ -12,7 +12,7 @@ import Foundation
 /// (`HandOverHold`): the listen log and the notice log take it, and a new
 /// log (the listening history) takes it too instead of a third copy.
 struct HandOverHoldTests {
-    @Test("eine gehaltene Uebergabe behaelt, was waehrenddessen kommt, und gibt es nur dem Konto heraus, unter dem es entstand, in Reihenfolge")
+    @Test("a held hand-over keeps what arrives in the meantime and gives it out only to the account under which it arose, in order")
     func aHeldHandOverKeepsAndReleasesInOrder() {
         var hold = HandOverHold<String>()
         #expect(!hold.isHeld)
@@ -58,7 +58,7 @@ struct HandOverHoldTests {
 
     /// The logs that follow the account keep their hold in the one type;
     /// no log keeps a hold of its own, whatever it calls it.
-    @Test("kein Protokoll fuehrt eine eigene gehaltene Uebergabe neben HandOverHold", .needsTheSources)
+    @Test("no log keeps a held hand-over of its own beside HandOverHold", .needsTheSources)
     func noLogKeepsAHoldOfItsOwn() {
         var own: [String] = []
         var taking: [String] = []

@@ -11,7 +11,7 @@ import Foundation
 /// The library is whole by its distinct ids, never by the number of
 /// entries, and a server without a total is paged until a short page.
 struct LibraryCompletenessTests {
-    @Test("voll ist die Liste mit so vielen verschiedenen Kennungen wie total; ohne total endet sie an einer kurzen Seite")
+    @Test("the list is full with as many distinct ids as total; without total it ends at a short page")
     func wholeByDistinctIds() {
         typealias Rule = LibraryCompleteness
         func step(_ before: Int, _ after: Int, page: Int, total: Int) -> Rule.Step {
@@ -67,7 +67,7 @@ struct LibraryCompletenessTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("die Schleife gegen die Vorgabe des Blaetterns mit einer doppelten Kennung: sie endet nach der zweiten Seite, und die Liste ist nicht voll",
+    @Test("the loop against the paging default with a duplicate id: it ends after the second page, and the list is not full",
           .timeLimit(.minutes(1)))
     @MainActor
     func theDefaultPagingEnds() async throws {
@@ -83,7 +83,7 @@ struct LibraryCompletenessTests {
         #expect(model.keySweep == nil, "a list that never reached its total handed its ids to the cleanup")
     }
 
-    @Test("die Bibliothek fragt die Regel und sagt einen Abbruch beim Nachladen", .needsTheSources)
+    @Test("the library asks the rule and reports an abort while loading more", .needsTheSources)
     func theLibraryAsksTheRule() throws {
         let library = try FetchAnswerTests.squeezedSource("Sources/ViewModels/LibraryViewModel.swift")
         #expect(library.contains("guard LibraryCompleteness.isWhole(step) else {"))

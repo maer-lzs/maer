@@ -12,7 +12,7 @@ import Foundation
 /// two columns of 172.5 pt instead of two 150 pt cells with room beside
 /// them.
 struct GridColumnsTests {
-    @Test("eine Zelle ist so breit wie ihre Spalte, so viele Spalten wie passen")
+    @Test("a cell is as wide as its column, as many columns as fit")
     func aCellFillsItsColumn() {
         let phone = GridColumns.layout(available: 393 - 32, minimum: 150, spacing: 16)
         #expect(phone == .init(count: 2, width: 172), "two columns on a 393 pt phone, each filled: \(phone)")
@@ -22,7 +22,7 @@ struct GridColumnsTests {
         #expect(pad.count == 6 && pad.width >= 150, "a wide page takes as many columns as fit: \(pad)")
     }
 
-    @Test("unter einer Spalte und vor der Messung eine Spalte in der Mindestbreite")
+    @Test("below one column and before the measurement, one column at the minimum width")
     func belowOneColumnOneColumn() {
         #expect(GridColumns.layout(available: 0, minimum: 150, spacing: 16) == .init(count: 1, width: 150))
         #expect(GridColumns.layout(available: 120, minimum: 150, spacing: 16) == .init(count: 1, width: 150))
@@ -34,7 +34,7 @@ struct GridColumnsTests {
 
     /// The grid gives the column; a tile that draws itself at a fixed
     /// width inside it stands in the column with room on both sides.
-    @Test("die Vollseite gibt jeder Zelle die Spaltenbreite, keine Zelle zeichnet fest 150", .needsTheSources)
+    @Test("the full page gives every cell the column width, no cell draws a fixed 150", .needsTheSources)
     func everyCellOfThePageTakesTheColumn() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/MixedMediaPage.swift"), encoding: .utf8))

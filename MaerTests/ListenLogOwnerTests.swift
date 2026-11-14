@@ -40,7 +40,7 @@ struct ListenLogOwnerTests {
         Set(log.history(resolve: { _ in nil }).map(\.guid))
     }
 
-    @Test("ohne Konto gehoert, das erste Konto A sieht alles; A abgemeldet weiter gehoert, wieder A sieht alles; B sieht nichts von A; zurueck zu A, dann B: B's Eintraege wieder da, keiner von A; ueber einen Neustart")
+    @Test("played without an account, the first account A sees everything; A signed out and played on, A again sees everything; B sees nothing of A; back to A, then B: B's entries are back, none of A's; across a restart")
     func theLogFollowsTheAccount() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -100,7 +100,7 @@ struct ListenLogOwnerTests {
     /// neither laid down empty nor replaced. The rows become readable, and
     /// B hears an episode: the held switch is tried again first, so B's
     /// entry stands with B and none with A, also after a restart.
-    @Test("ein Wechsel, waehrend die Gehoert-Zeilen ungelesen sind, haelt und wird vor der naechsten Folge wiederholt: B's Folge bei B, keine bei A, ueber einen Neustart")
+    @Test("a switch while the played rows are unread holds and is repeated before the next episode: B's episode with B, none with A, across a restart")
     func aSwitchOverUnreadRowsHolds() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -141,7 +141,7 @@ struct ListenLogOwnerTests {
         #expect(restingGuids == [ofA], "B's episode rests under A, or A's was lost: \(restingGuids)")
     }
 
-    @Test("wartet eine Folge unter B und gelingt dann der Wechsel zu C, steht sie nicht bei C")
+    @Test("if an episode waits under B and the switch to C then succeeds, it does not stand with C")
     func anEpisodeWaitingForBNeverLandsAtC() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -184,7 +184,7 @@ struct ListenLogOwnerTests {
 
     /// Notes heard while the switch holds wait in memory; after it they are
     /// written in chunks and once, not one write per note.
-    @Test("viele Folgen, die auf eine gehaltene Uebergabe warten, werden danach gebuendelt geschrieben: alle stehen da, ein Schrieb")
+    @Test("many episodes waiting for a held hand-over are written bundled afterwards: all are there, one write")
     func waitingNotesAreWrittenOnce() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -209,7 +209,7 @@ struct ListenLogOwnerTests {
     /// The one-time backfill under a held switch waits in memory. A restart
     /// before the hand-over loses that, so the flag must not stand yet: the
     /// next start runs the backfill again, after its hand-over.
-    @Test("der Einmal-Nachtrag bei gehaltener Uebergabe setzt seine Marke nicht; nach einem Neustart ohne Uebergabe laeuft er nach der Uebergabe, die Geschichte steht da")
+    @Test("the one-time backfill under a held hand-over does not set its mark; after a restart without a hand-over it runs after the hand-over, the history is there")
     func theBackfillWaitsForTheHandOver() async throws {
         let rig = try rig()
         defer { rig.cleanup() }
@@ -238,7 +238,7 @@ struct ListenLogOwnerTests {
         #expect(flaggedLater, "the flag did not follow the pass")
     }
 
-    @Test("das Gehoert-Protokoll traegt sich als Laeufer ein und folgt beim Start", .needsTheSources)
+    @Test("the played log registers itself as a runner and follows at start", .needsTheSources)
     func theLogIsEnrolledAndFollowsAtStart() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

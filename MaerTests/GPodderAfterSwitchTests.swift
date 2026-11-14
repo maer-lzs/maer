@@ -22,7 +22,7 @@ struct GPodderAfterSwitchTests {
         return (RestingShelf(directory: folder), folder)
     }
 
-    @Test("die Ruhe: kein Halter laeuft, ein anderer Halter ruht, ein unlesbarer Halter ruht auch, mit Satz")
+    @Test("the rest: no holder runs, another holder rests, an unreadable holder rests too, with a sentence")
     func theRest() throws {
         let (shelf, folder) = shelf()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -39,7 +39,7 @@ struct GPodderAfterSwitchTests {
         #expect(GPodderSync.rest(on: shelf, quietly: true) == .ownerUnreadable)
     }
 
-    @Test("zehn Ticks ueber einem unlesbaren Regal geben eine Zeile, ein wieder gelesenes und erneut unlesbares Regal die naechste")
+    @Test("ten ticks over an unreadable shelf give one line, a shelf read again and unreadable again gives the next")
     func anUnreadableShelfWritesOneLinePerState() throws {
         let (shelf, folder) = shelf()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -61,7 +61,7 @@ struct GPodderAfterSwitchTests {
         #expect(GPodderSync.restLog.lines == 2, "the shelf read again, so its next failure is a new state")
     }
 
-    @Test("die Regel der Zeile: nur ein unlesbares Regal nach einer anderen Antwort")
+    @Test("the rule of the line: only an unreadable shelf after a different answer")
     func theRestLogRule() {
         var log = GPodderRestLog()
         let answers: [GPodderRest] = [.runs, .restsAfterSwitch, .ownerUnreadable, .ownerUnreadable, .restsAfterSwitch, .ownerUnreadable]
@@ -70,7 +70,7 @@ struct GPodderAfterSwitchTests {
         #expect(log.lines == 2)
     }
 
-    @Test("die liegengelassenen Feeds sieht gpodder in keiner Richtung, bis dieses Geraet einen selbst abonniert")
+    @Test("gpodder sees the left-behind feeds in neither direction until this device subscribes to one itself")
     func theLeftFeedsAreUnseen() {
         let server = ["a": "https://a.example/feed", "s": "https://s.example/feed"]
         let left = GPodderVisibleSubscriptions.leftOnServer(server: Set(server.keys), local: ["s", "b"])
@@ -81,7 +81,7 @@ struct GPodderAfterSwitchTests {
                 "a left feed this device subscribes itself stays hidden and would read as removed")
     }
 
-    @Test("das Konfliktblatt sieht den Server wie die Runde: ohne liegengelassene Feeds und ohne Opt-in ohne Token-Feeds")
+    @Test("the conflict sheet sees the server like the round: without left-behind feeds and, without opt-in, without token feeds")
     func theConflictSheetSeesTheServerLikeTheRound() {
         let token = "https://premium.example/feed?auth=SECRETTOKEN1234567890"
         let plain = "https://plain.example/feed", left = "https://left.example/feed"
@@ -100,7 +100,7 @@ struct GPodderAfterSwitchTests {
     /// Going on with this account writes the holder before the keys: when
     /// the holder cannot be written, nothing of the account before changes,
     /// so its return goes on with its own state.
-    @Test("Weiterfuehren, wenn der Halter nicht geschrieben werden kann: kein Schluessel aendert sich")
+    @Test("Going on when the holder cannot be written: no key changes")
     func aFailedHolderChangesNoKey() throws {
         let kept = Self.keys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
         let (shelf, folder) = shelf()
@@ -138,7 +138,7 @@ struct GPodderAfterSwitchTests {
 
     /// The two owners: A's feed stands on the gpodder server, B holds the
     /// subscriptions on this device. Every way after the switch.
-    @Test("nach dem Wechsel: A's Feed bleibt auf dem gpodder-Server und erscheint nie bei B, auf keinem Weg; B's Feed geht zum Server")
+    @Test("after the switch: A's feed stays on the gpodder server and never appears for B, by no way; B's feed goes to the server")
     func noWayTakesTheFeedOfTheAccountBefore() async throws {
         let subs = PodcastSubscriptions.shared
         await subs.ensureLoaded()
@@ -212,7 +212,7 @@ struct GPodderAfterSwitchTests {
         #expect(AppStorageKeys.stringArray(AppStorageKeys.gpodderLeftOnServer)?.contains(aNorm) != true)
     }
 
-    @Test("gpodder trennen meldet dieses Geraet ab, auf dem Server aendert sich nichts, und gpodder ruht danach nicht mehr")
+    @Test("disconnecting gpodder signs this device out, nothing changes on the server, and gpodder no longer rests afterwards")
     func disconnectSignsTheDeviceOut() throws {
         let stateKeys = [AppStorageKeys.gpodderServerURL, AppStorageKeys.gpodderUsername,
                          AppStorageKeys.gpodderDeviceRegisteredFor] + Self.keys

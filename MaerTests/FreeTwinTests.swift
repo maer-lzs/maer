@@ -8,13 +8,13 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der freie Zwilling einer dauerhaft abgelehnten Bezahl-Sendung: zuerst
-/// die gemerkte freie Adresse, sonst EINE Verzeichnis-Suche nach dem Titel.
-/// Die Sendung fragt, nie still; Ja traegt die Hoerstaende hinueber und
-/// merkt die Bezahl-Adresse auf dem Geraet, Nein laesst den Hinweis stehen.
+/// The free twin of a permanently declined paid show: first the remembered
+/// free address, otherwise ONE directory search by title.
+/// The show asks, never silently; Yes carries the listening states over and
+/// remembers the paid address on the device, No leaves the notice in place.
 @MainActor
 struct FreeTwinTests {
-    /// Ein Verzeichnis, das jede Suche zaehlt.
+    /// A directory that counts every search.
     final class FakeDirectory: PodcastDirectory {
         var hits: [PodcastSearchResult] = []
         var fails = false
@@ -56,7 +56,7 @@ struct FreeTwinTests {
                      free: try #require(URL(string: "https://free.example/\(run)/feed.xml")))
     }
 
-    /// Bezahl-Feed abonniert, dann dreimal ueber einen Tag abgelehnt.
+    /// Paid feed subscribed, then declined three times over a day.
     private func refusedPaidShow(_ subs: PodcastSubscriptions, _ feeds: Feeds,
                                  now: @escaping () -> Double, advance: () -> Void) async throws -> PodcastShow {
         subs.clock = now
@@ -74,9 +74,9 @@ struct FreeTwinTests {
         PodcastSearchResult(title: title, author: nil, artworkURL: nil, feedURL: feedURL)
     }
 
-    // MARK: - Die Regeln
+    // MARK: - The rules
 
-    @Test("Treffer nur mit gleichem Titel und ohne Bezahl-Merkmal; gemerkt vor gesucht; Nein ist kein Angebot")
+    @Test("A hit needs the same title and no paid marker; remembered before searched; No is no offer")
     func rules() {
         let isPremium: (String) -> Bool = { $0.contains("token=") }
         #expect(FreeTwin.pick(hits: [("Verbrechen", "https://p.example/f?token=x"), ("Verbrechen", "https://f.example/f")],
@@ -90,7 +90,7 @@ struct FreeTwinTests {
         #expect(FreeTwin.offer(remembered: "https://a", searched: nil, declined: true) == nil)
     }
 
-    @Test("Die gemerkte Adresse verliert nur Benutzer und Passwort, sonst kein Zeichen")
+    @Test("The remembered address loses only user and password, not a single other character")
     func addressLosesOnlyTheCredentials() {
         #expect(FreeTwin.address("https://name:geheim@feeds.example/Show/Feed/?page=2#x")
                 == "https://feeds.example/Show/Feed/?page=2#x")
@@ -102,9 +102,9 @@ struct FreeTwinTests {
         }
     }
 
-    // MARK: - A: die freie Adresse wird gemerkt, wo sie gesehen wird
+    // MARK: - A: the free address is remembered where it is seen
 
-    @Test("A: der Austausch Frei zu Premium und der uebersprungene Zwilling merken die freie Adresse, ohne Zugangswert")
+    @Test("A: the swap from free to premium and the skipped twin remember the free address, without a credential")
     func freeAddressIsRemembered() async throws {
         let h = try harness("merken")
         defer { h.close() }
@@ -113,7 +113,7 @@ struct FreeTwinTests {
         h.subs._testFeedFetcher = { url in
             .show(FeedRefusalTests.show(url, guidStem: url.absoluteString.contains("paid") ? "paid" : "free", episodes: 0..<4))
         }
-        // Austausch: erst frei, dann Premium, dann die Zustimmung.
+        // Swap: first free, then premium, then the consent.
         try #require(await h.subs.subscribe(urlString: f.free.absoluteString, notesCloud: false))
         try #require(await h.subs.subscribe(urlString: f.paid.absoluteString, notesCloud: false))
         let offer = try #require(h.subs.pendingPremiumReplacement, "das Angebot steht, sonst misst der Fall nichts")
@@ -122,7 +122,7 @@ struct FreeTwinTests {
         #expect(h.defaults.string(forKey: key) == f.free.absoluteString)
         #expect(h.defaults.string(forKey: key)?.contains("geheim") == false)
 
-        // Ueberspringen: das Premium-Abo steht, die freie Adresse kommt an.
+        // Skipping: the premium subscription stays, the free address arrives.
         h.defaults.removeObject(forKey: key)
         let outcome = await h.subs.follow(urlString: f.free.absoluteString, notesCloud: false)
         guard case .freeTwin = outcome else {
@@ -132,7 +132,7 @@ struct FreeTwinTests {
         #expect(h.defaults.string(forKey: key) == f.free.absoluteString)
     }
 
-    @Test("A reist zum Zweitgeraet, ohne Zugangswert; danach schreibt keines mehr")
+    @Test("A travels to the second device, without a credential; after that neither writes any more")
     func freeAddressTravels() {
         let cloud = UserChoiceFakeCloud()
         let suites = ["twin-a-\(UUID().uuidString)", "twin-b-\(UUID().uuidString)"]
@@ -155,9 +155,9 @@ struct FreeTwinTests {
         #expect(NSDictionary(dictionary: before).isEqual(to: after), "eingeschwungen")
     }
 
-    // MARK: - B: eine Suche
+    // MARK: - B: one search
 
-    @Test("B: genau eine Suche, erst wenn die Ablehnung dauerhaft ist; danach null Anfragen; der Treffer steht mit Titel")
+    @Test("B: exactly one search, only when the refusal is permanent; then zero requests; the hit stands with its title")
     func oneSearchThenSilence() async throws {
         let h = try harness("suche")
         defer { h.close() }
@@ -173,7 +173,7 @@ struct FreeTwinTests {
         #expect(directory.searches.count == 1, "Ruhe: nach dem ersten Ergebnis keine Anfrage mehr")
     }
 
-    @Test("B: nichts gefunden wird gemerkt, ein Fehlschlag nicht; kein Verzeichnis heisst keine Anfrage")
+    @Test("B: nothing found is remembered, a failure is not; no directory means no request")
     func nothingIsKeptFailureIsNot() async throws {
         let h = try harness("nichts")
         defer { h.close() }
@@ -185,17 +185,17 @@ struct FreeTwinTests {
         let show = try await refusedPaidShow(h.subs, f, now: { now }, advance: { now += day / 2 })
         #expect(directory.searches.count == 1)
         #expect(h.subs.freeTwinOffer(show) == nil)
-        // Der Fehlschlag hat nichts gemerkt: das naechste Auffrischen fragt einmal neu.
+        // The failure remembered nothing: the next refresh asks once more.
         directory.fails = false
         directory.hits = []
         await h.subs.refreshAll()
         #expect(directory.searches.count == 2)
-        // „Nichts gefunden“ ist gemerkt.
+        // „Nichts gefunden“ is remembered.
         await h.subs.refreshAll()
         #expect(directory.searches.count == 2)
         #expect(h.subs.freeTwinOffer(show) == nil)
 
-        // Ohne Verzeichnis geht keine Anfrage hinaus.
+        // Without a directory no request goes out.
         let g = try harness("ohne")
         defer { g.close() }
         var later = 1_000_000.0
@@ -203,7 +203,7 @@ struct FreeTwinTests {
         #expect(g.subs.freeTwinOffer(other) == nil)
     }
 
-    @Test("A vor B: ist die freie Adresse bekannt, wird nicht gesucht")
+    @Test("A before B: if the free address is known, no search happens")
     func rememberedAddressNeedsNoSearch() async throws {
         let h = try harness("bekannt")
         defer { h.close() }
@@ -211,8 +211,8 @@ struct FreeTwinTests {
         let directory = FakeDirectory()
         h.subs._testDirectory = directory
         await h.subs.ensureLoaded()
-        // Die Kennung, unter der die Sendung gleich steht (die Vorrichtung
-        // bildet sie aus der Adresse), bekommt die Adresse VOR der Ablehnung.
+        // The identifier under which the show soon stands (the fixture
+        // builds it from the address) gets the address BEFORE the refusal.
         let paidId = PodcastIdentity.feedKey(f.paid.absoluteString)
         h.defaults.set(f.free.absoluteString, forKey: AppStorageKeys.podcastFreeTwin(paidId))
         var now = 1_000_000.0
@@ -223,9 +223,9 @@ struct FreeTwinTests {
         #expect(h.subs.freeTwinOffer(show) == FreeTwin.Offer(feedURL: f.free.absoluteString, title: nil))
     }
 
-    // MARK: - Die Antwort der Person
+    // MARK: - The person's answer
 
-    @Test("Ja: die freie Sendung steht, die Hoerstaende gingen mit, die Bezahl-Adresse ist auf dem Geraet gemerkt")
+    @Test("Yes: the free show is there, the listening states went along, the paid address is remembered on the device")
     func switchCarriesOver() async throws {
         let h = try harness("ja")
         defer { h.close() }
@@ -245,7 +245,7 @@ struct FreeTwinTests {
         #expect(paidTwins?[free.id] == f.paid.absoluteString)
     }
 
-    @Test("Ja, wenn der freie Feed schon abonniert ist: der Umzug geht auf die vorhandene Sendung, nicht still ins Leere")
+    @Test("Yes, if the free feed is already subscribed: the move goes to the existing show, not silently into nothing")
     func switchOntoTheSubscribedTwin() async throws {
         let h = try harness("ja-schon")
         defer { h.close() }
@@ -256,13 +256,13 @@ struct FreeTwinTests {
         h.subs._testFeedFetcher = { url in
             .show(FeedRefusalTests.show(url, guidStem: url.absoluteString.contains("paid") ? "paid" : "free", episodes: 0..<4))
         }
-        // Erst frei, dann Premium (das Angebot zum Austausch bleibt offen):
-        // beide sind abonniert.
+        // First free, then premium (the offer to swap stays open):
+        // both are subscribed.
         try #require(await h.subs.subscribe(urlString: f.free.absoluteString, notesCloud: false))
         try #require(await h.subs.subscribe(urlString: f.paid.absoluteString, notesCloud: false))
         let paid = try #require(h.subs.shows.first { $0.feedURL == f.paid.absoluteString })
         try #require(h.subs.shows.count == 2, "beide abonniert, sonst misst der Fall nichts")
-        // Nur der Bezahl-Feed wird abgelehnt, ueber einen Tag.
+        // Only the paid feed is declined, over a day.
         h.subs._testFeedFetcher = { url in
             url.absoluteString.contains("paid")
                 ? .status(403) : .show(FeedRefusalTests.show(url, guidStem: "free", episodes: 0..<4))
@@ -278,7 +278,7 @@ struct FreeTwinTests {
         #expect(ListeningStore.backup("rss:free-1", in: h.defaults)?.first == 400, "der Hoerstand ging mit")
     }
 
-    @Test("Nein: die Frage geht, der Hinweis bleibt; ein Erfolg des Feeds raeumt Suche und Nein")
+    @Test("No: the question goes, the notice stays; a success of the feed clears search and No")
     func declineKeepsTheNotice() async throws {
         let h = try harness("nein")
         defer { h.close() }
@@ -300,7 +300,7 @@ struct FreeTwinTests {
         #expect(searched?[show.id] == nil)
     }
 
-    // MARK: - Verdrahtung
+    // MARK: - Wiring
 
     private func sourceText(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -308,7 +308,7 @@ struct FreeTwinTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    @Test("Die Sendung fragt ueber den Hinweis; am Zwilling vorbei folgt nur das Umschalten", .needsTheSources)
+    @Test("The show asks through the notice; past the twin only the switch follows", .needsTheSources)
     func wiring() throws {
         let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
         for teil in ["freeTwin: subs.freeTwinOffer(show)", "subs.switchToFreeTwin(showId:", "subs.declineFreeTwin(show)"] {

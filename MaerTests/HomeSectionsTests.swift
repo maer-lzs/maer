@@ -12,7 +12,7 @@ import Foundation
 struct HomeSectionsTests {
     /// Music never stands in Continue, spoken word always does. A music
     /// playlist is music too: in progress it stands in "Listen Again".
-    @Test("Musik steht nie in Weiterhoeren, auch keine Playlist; gesprochenes Wort immer")
+    @Test("Music never stands in Continue Listening, not even a playlist; spoken word always does")
     func musicNeverInContinue() {
         #expect(!HomeSections.continueAccepts("sub:album:42"))          // server album with 56 %
         #expect(!HomeSections.continueAccepts("jf:album:7"))
@@ -31,7 +31,7 @@ struct HomeSectionsTests {
     /// no way around: nothing tells it that an entry is a playlist. What the
     /// rule turns away goes to "Listen Again"; the Continue row ranks books
     /// and episodes only, so no music stream can slip back into it.
-    @Test("die Startseite fragt die Regel ohne Ausnahme fuer Playlisten", .needsTheSources)
+    @Test("the start page asks the rule for playlists without exception", .needsTheSources)
     func theHomePageAsksWithoutAnException() throws {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
@@ -61,7 +61,7 @@ struct HomeSectionsTests {
     /// fetched and then stands in the row; only what still does not resolve
     /// stays out, and it is counted. A failure is no knowledge: the id waits
     /// its holdback and is asked again after it.
-    @Test("eine angefangene Playlist, die diese Sitzung nie gesehen hat, steht nach dem Holen in Wieder anhoeren")
+    @Test("a started playlist this session has never seen stands in Listen Again after the fetch")
     @MainActor
     func anUnseenStartedPlaylistIsFetchedIntoTheRow() async {
         let clock = Clock()
@@ -87,7 +87,7 @@ struct HomeSectionsTests {
 
     /// A server that answers slowly or not at all: the start page renders
     /// after the budget, and the id on its way is not asked a second time.
-    @Test("ein haengender Holer haelt die Startseite hoechstens fuer das Budget auf")
+    @Test("a hanging fetcher holds the start page for the budget at most")
     @MainActor
     func aHangingFetchWaitsAtMostTheBudget() async {
         let fetcher = ListenAgainFetch()
@@ -103,7 +103,7 @@ struct HomeSectionsTests {
 
     /// The answer that comes after the budget: the row learns it without a
     /// further pass.
-    @Test("eine spaete Antwort kommt von selbst in die Reihe")
+    @Test("a late answer arrives in the row by itself")
     @MainActor
     func aLateAnswerJoinsTheRow() async {
         let fetcher = ListenAgainFetch()
@@ -119,7 +119,7 @@ struct HomeSectionsTests {
         #expect(cache.late == ["sub:playlist:late"], "the late answer reached the row")
     }
 
-    @Test("je Durchgang hoechstens die Kappe")
+    @Test("per pass at most the cap")
     @MainActor
     func thePlanIsCapped() {
         let ids = (0..<20).map { "sub:playlist:cap\($0)" }
@@ -130,7 +130,7 @@ struct HomeSectionsTests {
     /// resolving; a plain `compactMap` drops an unseen id without a trace,
     /// a fetch outside the budget holds the whole page, and the late answer
     /// goes to the late store.
-    @Test("die Startseite holt unter dem Budget, gedeckelt, und zaehlt nach dem Aufloesen", .needsTheSources)
+    @Test("the start page fetches under the budget, capped, and counts after resolving", .needsTheSources)
     func theHomePageFetchesWhatItCannotResolve() throws {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
@@ -149,7 +149,7 @@ struct HomeSectionsTests {
 
     /// One moment per episode: the newer of local and server stand, on
     /// the ms clock, whatever unit each arrived in.
-    @Test("Die Folge hat EINEN Moment fuer Reihe und Karte")
+    @Test("The episode has ONE moment for row and card")
     func oneMomentPerEpisode() {
         #expect(HomeSections.lastPlayedMs(local: 1_000_000, server: 1_700_000_000_000) == 1_700_000_000_000)
         #expect(HomeSections.lastPlayedMs(local: 1_700_000_500, server: 1_700_000_000_000) == 1_700_000_500_000,
@@ -221,15 +221,15 @@ struct HomeSectionsTests {
 struct ContinueRankingTests {
     /// Three sources, three known moments, one order: the newest first
     /// whatever the source, and a source that hands over seconds ranks by
-    /// its real moment. Rot-Probe: unnormalized, the seconds entry is last.
-    @Test("Weiterhoeren ordnet nach dem echten Moment ueber alle Quellen, eine Uhr")
+    /// its real moment. Red probe: unnormalized, the seconds entry is last.
+    @Test("Continue Listening orders by the real moment across all sources, one clock")
     func continueRanksByTheRealMomentAcrossSources() {
         let t = 1_700_000_000.0                        // seconds
         let book = [(id: "book", ts: HomeSections.normalizedMs(t + 300))]          // seconds from a server
         let episode = [(id: "episode", ts: HomeSections.normalizedMs((t + 100) * 1000))]
         let album = [(id: "album", ts: HomeSections.normalizedMs((t + 200) * 1000))]
         #expect(HomeSections.byRecency([book, episode, album], limit: 10) == ["book", "album", "episode"])
-        // Rot-Probe of the old ranking: the seconds entry sinks to the end.
+        // Red probe of the old ranking: the seconds entry sinks to the end.
         let rawBook = [(id: "book", ts: t + 300)]
         let rawEpisode = [(id: "episode", ts: (t + 100) * 1000)]
         let rawAlbum = [(id: "album", ts: (t + 200) * 1000)]
