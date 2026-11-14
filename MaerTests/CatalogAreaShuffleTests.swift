@@ -11,7 +11,7 @@ import Foundation
 /// Every catalogue area page carries "Play something at random" in its
 /// menu, with the draw of its catalogue; no row grows a button of its own.
 struct CatalogAreaShuffleTests {
-    @Test("der Buch-Wurf fragt die eine Basis der Quelle, in den Sprachen, wo die Quelle mehrere hat")
+    @Test("the book shuffle asks the one base of the source, in the languages where the source has several")
     func theBookDrawAsksTheSourcesBase() throws {
         let librivox = try #require(CatalogShuffle.bookQuery(for: .librivox, languageCodes: ["de"]))
         #expect(librivox.hasPrefix(try #require(ArchiveOrgClient.archiveBaseQuery(for: .librivox)) + " AND ("))
@@ -25,7 +25,7 @@ struct CatalogAreaShuffleTests {
         #expect(CatalogShuffle.bookQuery(for: .oerr, languageCodes: ["de"]) == nil)
     }
 
-    @Test("ohne Jamendo-Schluessel nennt der Wurf die Ursache, im Menue und am Reihenknopf", .needsTheSources)
+    @Test("without a Jamendo key the shuffle names the cause, in the menu and at the row button", .needsTheSources)
     func aJamendoDrawWithoutKeyNamesTheCause() throws {
         let sentence = try #require(CatalogShuffle.jamendoMissing(clientId: nil))
         #expect(sentence.contains("Jamendo"))
@@ -57,7 +57,7 @@ struct CatalogAreaShuffleTests {
         }
     }
 
-    @Test("ein Buch-Wurf, dessen Seite verlassen wurde, startet nichts und sagt nichts, auch wenn die Antwort noch kam")
+    @Test("a book shuffle whose page was left starts nothing and says nothing, even if the answer still came")
     @MainActor func aLeftDrawStartsNothing() async {
         let ends = Ends()
         let book = LibraryItem(id: "gut:1342", media: nil, addedAt: nil)
@@ -95,7 +95,7 @@ struct CatalogAreaShuffleTests {
         #expect(ends.failures.count == 1, "an empty draw says nothing")
     }
 
-    @Test("jede Bereichsseite traegt den Wurf ihres Katalogs im Menue, keine Reihe einen neuen Knopf", .needsTheSources)
+    @Test("every area page carries the shuffle of its catalog in the menu, no row a new button", .needsTheSources)
     func everyAreaPageCarriesItsDraw() throws {
         func text(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(

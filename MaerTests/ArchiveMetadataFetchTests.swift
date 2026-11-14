@@ -14,7 +14,7 @@ import Foundation
 /// A row of fetches that died in a recompute reads as `cancelled`, never
 /// as a broken source.
 struct ArchiveMetadataFetchTests {
-    @Test("Ein Status ausserhalb 2xx wird als Status verworfen, vor dem Decoder")
+    @Test("A status outside 2xx is rejected as a status, before the decoder")
     func statusIsRefusedBeforeDecoding() throws {
         #expect(throws: Never.self) { try ArchiveOrgClient.checkStatus(200) }
         #expect(throws: Never.self) { try ArchiveOrgClient.checkStatus(nil) }
@@ -27,7 +27,7 @@ struct ArchiveMetadataFetchTests {
         }
     }
 
-    @Test("Der Grund ist ein Wort je Ausgang: cancelled, urlError, status, decode")
+    @Test("The reason is one word per outcome: cancelled, urlError, status, decode")
     func reasonNamesTheExit() {
         #expect(ArchiveOrgClient.fetchReason(CancellationError()) == "cancelled")
         #expect(ArchiveOrgClient.fetchReason(URLError(.cancelled)) == "cancelled")
@@ -36,7 +36,7 @@ struct ArchiveMetadataFetchTests {
         #expect(ArchiveOrgClient.fetchReason(FreeCatalog.CatalogDecodeError(status: 200, answerPrefix: "<html")) == "decode")
     }
 
-    @Test("Die Messzeile traegt id, Pfad, status, bytes, Dateien, ms und den Grund")
+    @Test("The measurement line carries id, path, status, bytes, files, ms and the reason")
     func lineCarriesTheMeasurement() {
         let line = ArchiveOrgClient.metadataLine(identifier: "otr_x", path: "metadata", status: 200, bytes: 8300, files: 12, ms: 412, reason: "ok")
         #expect(line == "FREECAT metadata id=otr_x path=metadata status=200 bytes=8300 files=12 ms=412 reason=ok")

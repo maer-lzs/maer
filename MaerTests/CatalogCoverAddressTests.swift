@@ -16,7 +16,7 @@ import UIKit
 @MainActor
 @Suite(.serialized)
 struct CatalogCoverAddressTests {
-    @Test("das Raster behaelt die mittlere Form, die grossen Ansichten fragen den Scan")
+    @Test("the grid keeps the medium form, the large views ask for the scan")
     func theGridKeepsTheMediumFormTheLargeViewsTheScan() throws {
         let medium = try #require(FreeCatalog.gutenbergCoverURL(number: "1342"))
         #expect(medium.absoluteString == "https://www.gutenberg.org/cache/epub/1342/pg1342.cover.medium.jpg",
@@ -34,7 +34,7 @@ struct CatalogCoverAddressTests {
         #expect(CoverAddressHistory.formerAddress(of: archive) == nil)
     }
 
-    @Test("die grossen Ansichten fragen die grosse Form", .needsTheSources)
+    @Test("the large views ask the large form", .needsTheSources)
     func theLargeViewsAskTheLargeForm() throws {
         func read(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(
@@ -50,7 +50,7 @@ struct CatalogCoverAddressTests {
             .contains("CoverAddressHistory.large(coverURL(forItemId: itemId))"), "the default asks the larger form")
     }
 
-    @Test("Jamendo fragt 600 Pixel ueberall, 300 ist der fruehere Name", .needsTheSources)
+    @Test("Jamendo asks for 600 pixels everywhere, 300 is the earlier name", .needsTheSources)
     func jamendoAsksTheLargerSizeEverywhere() throws {
         let large = try #require(URL(string: "https://usercontent.jamendo.com?type=album&id=7&width=600&trackid=9"))
         #expect(CoverAddressHistory.formerAddress(of: large)?.absoluteString
@@ -70,7 +70,7 @@ struct CatalogCoverAddressTests {
         ArchiveFile(name: name, length: nil, title: nil, format: format, source: source, size: String(bytes))
     }
 
-    @Test("archive.org: das groesste Original-Bild unter der Grenze, sonst der Dienst")
+    @Test("archive.org: the largest original image under the limit, otherwise the service")
     func archiveTakesTheLargestOriginalPicture() throws {
         let files = [
             Self.file("cover small.jpg", source: "original", format: "JPEG", bytes: 80_000),
@@ -102,7 +102,7 @@ struct CatalogCoverAddressTests {
         #expect(CoverAddressHistory.formerAddress(of: URL(string: "https://archive.org/download/rel/a.mp3")!) == nil)
     }
 
-    @Test("die grosse Ansicht nimmt das Original, sobald die Dateiliste gelesen ist; das Raster bleibt beim Dienst")
+    @Test("the large view takes the original as soon as the file list is read; the grid stays with the service")
     func theLargeViewTakesTheOriginalOnceTheFilesWereRead() async throws {
         let album = "lva:cover-witness-\(UUID().uuidString)"
         let identifier = try #require(FreeCatalog.archiveIdentifier(of: album))
@@ -140,7 +140,7 @@ struct CatalogCoverAddressTests {
         "DownloadManager.swift": (3, reason: "a download keeps, sweeps and forgets the large cover"),
     ]
 
-    @Test("nur die grossen Ansichten fragen largeCoverURL, je genau so oft wie gezaehlt", .needsTheSources)
+    @Test("only the large views ask largeCoverURL, each exactly as often as counted", .needsTheSources)
     func onlyTheLargeViewsAskTheLargeCover() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -151,7 +151,7 @@ struct CatalogCoverAddressTests {
         #expect(counts == Self.largeCoverStock.mapValues(\.count), "the large cover is asked elsewhere or more often: \(counts)")
     }
 
-    @Test("grosser Player und Sperrbildschirm zeigen bei LibriVox das Cover der Buchseite", .needsTheSources)
+    @Test("large player and lock screen show the cover of the book page for LibriVox", .needsTheSources)
     func theLibriVoxPlayerShowsThePagesCover() throws {
         func read(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(
@@ -171,7 +171,7 @@ struct CatalogCoverAddressTests {
         #expect(model.contains("var feedCover: (String) async -> URL? = { await LibriVoxCoverLoader.hiresCover(forItemId: $0) }"))
     }
 
-    @Test("Sperrbildschirm bei LibriVox: zuerst der Feed, das grosse Cover nur ohne Feed, eine Antwort")
+    @Test("Lock screen for LibriVox: the feed first, the large cover only without a feed, one answer")
     func theLockScreenAsksTheFeedFirst() async throws {
         let model = PlayerViewModel(provider: FreeCatalogProvider.shared)
         let feed = try #require(URL(string: "https://archive.org/download/book/feed-cover.jpg"))
@@ -197,7 +197,7 @@ struct CatalogCoverAddressTests {
         return try #require(UIImage(cgImage: image).pngData())
     }
 
-    @Test("ein Original wird nie als Platzhalter gemerkt, derselbe Streifen vom Dienst schon")
+    @Test("an original is never remembered as a placeholder, the same strip from the service is")
     func anOriginalIsNeverAPlaceholder() throws {
         let strip = try Self.waveformStrip()
         let service = FreeCatalog.archiveCoverURL(identifier: "rel")!
@@ -207,7 +207,7 @@ struct CatalogCoverAddressTests {
                 "an uploader's own picture was judged a placeholder and would be remembered as none")
     }
 
-    @Test("ein Cover unter der kleinen Adresse bleibt offline lesbar")
+    @Test("a cover under the small address stays readable offline")
     func theEarlierNameIsAReadCandidate() throws {
         let medium = try #require(FreeCatalog.gutenbergCoverURL(number: "1342"))
         let scan = try #require(CoverAddressHistory.large(medium))
@@ -224,7 +224,7 @@ struct CatalogCoverAddressTests {
         }
     }
 
-    @Test("nennt die grosse Adresse kein Bild, kommt die fruehere und steht unter der grossen")
+    @Test("if the large address names no image, the earlier one comes and is stored under the large one")
     func anAbsentScanFallsBackToTheEarlierAddress() async throws {
         let missing = try await BulkImportTests.Stand.start(.answer(status: 404, body: Data()))
         defer { missing.stop() }
@@ -291,7 +291,7 @@ struct CatalogCoverAddressTests {
             }
     }
 
-    @Test("Sperrbildschirm bei LibriVox: das Bild im Cache steht sofort, das Feed-Cover kommt danach, nie umgekehrt")
+    @Test("Lock screen for LibriVox: the image in the cache is there at once, the feed cover comes after, never the other way round")
     func theLockScreenShowsTheKeptPictureBeforeTheFeed() async throws {
         let tag = "lock-\(UUID().uuidString)"
         let source = LibriVoxCoverSource(tag: tag)

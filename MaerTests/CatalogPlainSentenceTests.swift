@@ -17,7 +17,7 @@ struct CatalogPlainSentenceTests {
 
     /// Every catalog page reaches the sentence through the one door that
     /// also writes the log line; nobody asks the bare sentence beside it.
-    @Test("jede Katalog-Seite nimmt den Satz ueber die eine Tuer, die auch die Logzeile schreibt", .needsTheSources)
+    @Test("every catalog page takes the sentence through the one door that also writes the log line", .needsTheSources)
     func everyPageGoesThroughTheDoor() throws {
         var beside: [String] = []
         var doors = 0
@@ -39,7 +39,7 @@ struct CatalogPlainSentenceTests {
         #expect(cell.contains("FreeCatalog.logReason(error)"), "the cell logs the page sentence")
     }
 
-    @Test("die Tuer gibt den Satz der Seite und schweigt bei einem Abbruch")
+    @Test("the door gives the sentence of the page and stays silent on a cancellation")
     func theDoorGivesTheSentence() async {
         let error = APIError.http(429, "slow down")
         #expect(await CatalogPageFailure.sentence(for: error, at: "witness") == FreeCatalog.failureReason(error, online: true))
@@ -49,7 +49,7 @@ struct CatalogPlainSentenceTests {
     /// A transport failure is worded by the device's reach, not by its
     /// code: online, a timeout or an unknown host is the source not
     /// answering; offline, every transport failure is the network.
-    @Test("Zeitueberschreitung und unbekannter Host: online antwortet die Quelle nicht, offline fehlt das Netz", arguments: [
+    @Test("Timeout and unknown host: online the source does not answer, offline the network is missing", arguments: [
         URLError.Code.timedOut, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .notConnectedToInternet,
     ])
     func aTransportFailureIsWordedByTheReach(code: URLError.Code) async {
@@ -66,7 +66,7 @@ struct CatalogPlainSentenceTests {
     /// The one transport code that is a verdict: what `isGone` writes down
     /// as dead says on the page that it is gone, online and offline, and
     /// does not invite another try.
-    @Test("eine Quelle, die den Titel als entfernt meldet, sagt auf der Seite, dass er weg ist, wie der Vermerk als tot")
+    @Test("a source that reports the title as removed says on the page that it is gone, like the note as dead")
     func aGoneItemSaysItIsGone() {
         let error = URLError(.resourceUnavailable)
         #expect(FreeCatalog.isGone(error), "the precondition: the dead-item rule reads it as gone")
@@ -75,7 +75,7 @@ struct CatalogPlainSentenceTests {
         }
     }
 
-    @Test("Drosselung: eine Quelle, die um eine Pause bittet, sagt das in eigenen Worten")
+    @Test("Throttling: a source that asks for a pause says so in its own words")
     func aThrottledSourceSaysItIsBusy() {
         let busy = String(localized: "The source is busy. Please try again later.")
         #expect(FreeCatalog.failureReason(APIError.http(429, "slow down"), online: true) == busy)
@@ -86,7 +86,7 @@ struct CatalogPlainSentenceTests {
     /// The server side of a subscribe: a refusal is worded by its meaning,
     /// the status goes to the log line; a missing podcast library has its
     /// own sentence.
-    @Test("Abo auf dem Server: kein Status im Satz, der Status in der Logzeile, eigener Satz ohne Podcast-Bibliothek", .needsTheSources)
+    @Test("Subscription on the server: no status in the sentence, the status in the log line, a sentence of its own without a podcast library", .needsTheSources)
     func theServerRefusalCarriesNoStatus() throws {
         for status in [400, 403, 404, 409, 429, 500, 503] {
             let sentence = ABSPodcastProvider.serverSentence(APIError.http(status, "detail"))
@@ -106,7 +106,7 @@ struct CatalogPlainSentenceTests {
 
     /// The server branch of a subscribe hands back the sentence alone; the
     /// step and the measured reason are in its log lines.
-    @Test("das Abo auf dem Server gibt nur den Satz zurueck, Schritt und Grund stehen in der Logzeile", .needsTheSources)
+    @Test("the subscription on the server returns only the sentence, step and reason are in the log line", .needsTheSources)
     func theServerSubscribeSaysASentence() throws {
         let provider = try code("Sources/Providers/ABSPodcastProvider.swift")
         let start = try #require(provider.range(of: "func subscribeOnServer("), "the server subscribe is gone")

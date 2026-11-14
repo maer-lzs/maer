@@ -11,7 +11,7 @@ import Foundation
 /// A stock nothing reads any more leaves the device at start: the old
 /// shellac stock holds the whole 78 rpm collection past the shelves.
 struct CatalogStockRetiredTests {
-    @Test("der alte Schellack-Bestand geht beim Start, fertig und halb, andere bleiben")
+    @Test("the old shellac stock goes at start, finished and half, others stay")
     func theRetiredStockGoes() throws {
         let fm = FileManager.default
         let dir = fm.temporaryDirectory.appendingPathComponent("retired-\(UUID().uuidString)", isDirectory: true)
@@ -29,7 +29,7 @@ struct CatalogStockRetiredTests {
         #expect(CatalogStockStore.shared.removeRetired(in: dir) == 0)
     }
 
-    @Test("kein lebender Bereich ist ausgemustert, und der Start mustert aus", .needsTheSources)
+    @Test("no living area is retired, and the start retires", .needsTheSources)
     func noLiveSurfaceIsRetired() throws {
         let live = Set(ArchiveMusicCatalog.all.map(\.key))
         #expect(live.isDisjoint(with: CatalogStockStore.retiredSurfaces))

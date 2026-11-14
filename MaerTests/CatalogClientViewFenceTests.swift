@@ -62,7 +62,7 @@ struct CatalogClientViewFenceTests {
         return found
     }
 
-    @Test("der Zaehler schreibt einen Abruf der Ansicht zu, in der er steht")
+    @Test("the counter attributes a fetch to the view it stands in")
     func theCounterAttributesACallToItsView() {
         let nestedBefore = """
         struct Page: View {
@@ -92,7 +92,7 @@ struct CatalogClientViewFenceTests {
                 == ["P": 1], "ein Umbruch mit Kommentar vor dem Punkt verbirgt den Abruf nicht")
     }
 
-    @Test("Ansichten rufen keinen Katalog-Klienten, der Bestand faellt nur", .needsTheSources)
+    @Test("views call no catalog client, the stock only falls", .needsTheSources)
     func viewsDoNotCallCatalogClients() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")

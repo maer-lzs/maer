@@ -35,7 +35,7 @@ struct CarrierDocumentRowsTests {
                         deviceId: { "dev-a" }, defaults: defaults, documents: documents)
     }
 
-    @Test("der erste Zugriff zieht die vier Dokumente in Zeilen; die Versionen gehen, die Sitzung liest die Dokumente zurueck")
+    @Test("the first access moves the four documents into rows; the versions go, the session reads the documents back")
     func theFirstAccessMovesTheDocuments() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -66,7 +66,7 @@ struct CarrierDocumentRowsTests {
         #expect(session.playlistsBody == playlists && session.choicesBody == choices, "the session did not read the documents back")
     }
 
-    @Test("ein Schrieb der Sitzung legt die Dokumente in die Zeilen und keinen alten Namen in die Voreinstellungen")
+    @Test("a write of the session puts the documents into the rows and no old name into the defaults")
     func aWriteKeepsTheOldNamesEmpty() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -85,7 +85,7 @@ struct CarrierDocumentRowsTests {
         #expect(old.isEmpty, "an older build finds \(old.sorted())")
     }
 
-    @Test("kann der Start die Dokumente nicht lesen, fallen ihre Versionen, und gelesen steht der Koerper, wo der Lauf keinen haelt")
+    @Test("if the start cannot read the documents, their versions drop, and once read the body stands where the run holds none")
     func anUnreadStartDropsTheVersions() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }

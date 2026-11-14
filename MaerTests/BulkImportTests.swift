@@ -60,7 +60,7 @@ struct BulkImportTests {
         })
     }
 
-    @Test("tote Feeds halten den Import nicht auf, hoechstens vier zugleich, jeder benannt und zum Nachholen markiert")
+    @Test("dead feeds do not hold up the import, at most four at once, each named and marked for catching up")
     func deadFeedsDoNotHoldTheImport() async throws {
         let (subs, cleanup) = try await Self.store()
         defer { cleanup() }
@@ -100,7 +100,7 @@ struct BulkImportTests {
         }
     }
 
-    @Test("vier gleichzeitig, und der Zwillings-Ausstieg zaehlt bei genau seiner Sendung")
+    @Test("four at the same time, and the twin exit counts at exactly its show")
     func eachFeedAnswersForItself() async throws {
         let (subs, cleanup) = try await Self.store()
         defer { cleanup() }
@@ -125,7 +125,7 @@ struct BulkImportTests {
         #expect(!subs.shows.contains { $0.feedURL.contains("free.example") }, "the twin is not subscribed")
     }
 
-    // MARK: - States per show (Scheibe 2)
+    // MARK: - States per show (slice 2)
 
     @MainActor final class Gate { var open = false; var progress: [PodcastSubscriptions.ImportProgress] = [] }
 
@@ -152,7 +152,7 @@ struct BulkImportTests {
                                               pubDate: 1, duration: 3600)])
     }
 
-    @Test("ein Stand, der nur ueber den Titel passt, landet nie bei der falschen Sendung, auch wenn seine eigene fehlt")
+    @Test("a state that matches only by title never lands at the wrong show, even if its own is missing")
     func aTitleOnlyStateNeverLandsElsewhere() async throws {
         let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
@@ -172,7 +172,7 @@ struct BulkImportTests {
         #expect(result.progressApplied == 1 && result.unmatched == ["Same Title"], "B's state waits unmatched")
     }
 
-    @Test("der Stand einer Sendung steht, sobald sie gefolgt ist, bevor der naechste Feed antwortet; ein zweiter Lauf holt sie nicht neu")
+    @Test("the state of a show is in place as soon as it is followed, before the next feed answers; a second run does not fetch it again")
     func aShowsStatesLandWhenItIsFollowed() async throws {
         let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
@@ -212,7 +212,7 @@ struct BulkImportTests {
         #expect(tally.calls == 1, "a second run asks only the feed it does not hold: \(tally.calls)")
     }
 
-    @Test("die Leiter nimmt nur die erlaubten Sprossen und zaehlt Titel ueber die ganze Quelle")
+    @Test("the ladder takes only the allowed rungs and counts titles across the whole source")
     func theLadderTakesOnlyTheRungsItIsGiven() {
         let target = ForeignMatchTarget(id: "e1", rawGUID: "g1", enclosureURL: "https://x.example/1.mp3",
                                         link: nil, title: "Only Title", feedKey: "k")
@@ -235,7 +235,7 @@ struct BulkImportTests {
         #expect(ForeignStateMatcher.plan(states: [byTitle], targets: [target], titleStates: twice, feedKeyOf: key).matches.isEmpty)
     }
 
-    // MARK: - Background (Scheibe 3)
+    // MARK: - Background (slice 3)
 
     /// Background time that ends when the witness says so.
     @MainActor final class FakeWork: BackgroundWork {
@@ -250,7 +250,7 @@ struct BulkImportTests {
         func end(_ token: BackgroundWorkToken) { ended += 1 }
     }
 
-    @Test("endet die Hintergrundzeit, hoert der Import an der naechsten Sendungsgrenze auf, sagt wo, behaelt das Getane und ein zweiter Lauf setzt fort")
+    @Test("if the background time ends, the import stops at the next show boundary, says where, keeps what was done and a second run continues")
     func anExpiredImportStopsAndContinues() async throws {
         let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
@@ -389,7 +389,7 @@ struct BulkImportTests {
         return request
     }
 
-    @Test("ein Versuch statt der Leiter, gegen einen schweigenden und einen ueberlasteten Wirt")
+    @Test("one attempt instead of the ladder, against a silent and an overloaded host")
     func onceAsksOnce() async throws {
         let session = URLSession(configuration: .ephemeral)
         let clock = ContinuousClock()
@@ -423,7 +423,7 @@ struct BulkImportTests {
         #expect(answer?.statusCode == 503 && busyCount == 1, "a 503 is answered once, not retried: \(busyCount)")
     }
 
-    @Test("ein grosser lebender Feed, der langsam aber stetig liefert, kommt durch die kurze Stille")
+    @Test("a large living feed that delivers slowly but steadily gets through the short silence")
     func aSlowSteadyFeedArrives() async throws {
         let stand = try await Stand.start(.trickle(bytes: 12, gapMs: 200))
         defer { stand.stop() }
@@ -438,7 +438,7 @@ struct BulkImportTests {
         #expect(data.count == 12, "the whole body arrived: \(data.count)")
     }
 
-    @Test("jeder Leser nennt die Sendung, wie die Quelle sie nennt")
+    @Test("every reader names the show as the source names it")
     func everyReaderNamesItsFeeds() throws {
         let opml = """
         <?xml version="1.0"?><opml version="2.0"><body>\
@@ -479,7 +479,7 @@ struct BulkImportTests {
         #expect(apple.feedTitles == ["https://apple.example/feed": "Apple Show"], "only the followed show, by its name")
     }
 
-    @Test("ein Apple-Stand traegt seine Sendung und steht, sobald sie gefolgt ist")
+    @Test("an Apple state carries its show and is in place as soon as it is followed")
     func appleStatesCarryTheirShow() async throws {
         let run = UUID().uuidString.prefix(8)
         let a = "https://a-\(run).example/feed.xml"
@@ -544,7 +544,7 @@ struct BulkImportTests {
         #expect(landedWhileWaiting, "A's Apple state stood while B was still unanswered: an abort there keeps it")
     }
 
-    @Test("der Massen-Import fragt einmal und kurz, eine Stelle", .needsTheSources)
+    @Test("the bulk import asks once and briefly, one place", .needsTheSources)
     func theBulkPatience() throws {
         #expect(FeedFetchPatience.bulk.asksOnce && FeedFetchPatience.bulk.silenceLimit == FeedFetchPatience.bulkSilence)
         #expect(!FeedFetchPatience.patient.asksOnce && FeedFetchPatience.patient.silenceLimit == nil)
@@ -563,7 +563,7 @@ struct BulkImportTests {
 
     // MARK: - Size
 
-    @Test("ein Import schreibt die Marken einmal je Anwendung, nicht je Folge")
+    @Test("an import writes the marks once per application, not per episode")
     func marksAreWrittenOncePerApply() async throws {
         let (subs, defaults, cleanup) = try await Self.storeAndDefaults()
         let run = UUID().uuidString.prefix(8)
@@ -591,7 +591,7 @@ struct BulkImportTests {
         #expect(archived.count == 5)
     }
 
-    @Test("die Leiter behaelt je Folge den bevorzugten Stand, auch ueber viele Staende")
+    @Test("the ladder keeps the preferred state per episode, even across many states")
     func theLadderKeepsOnePreferredStatePerEpisode() throws {
         let count = 3_000
         let targets = (0..<count).map { e in

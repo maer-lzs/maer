@@ -275,10 +275,10 @@ struct FlipCooldownTests {
         #expect(!bar.collapsed)
     }
 
-    /// Die stille Fehlklasse hinter „Faecher kommen nie": eine Reihe wartet
-    /// in der Ruhe-Warteschlange, und das Ruhe-Ereignis kommt nicht. Nach
-    /// dem Loslassen flusht der Wachhund von selbst.
-    @Test("nach dem Loslassen ohne Ruhe-Ereignis flusht der Wachhund die Warteschlange")
+    /// The silent class of failure behind „Faecher kommen nie": a row waits
+    /// in the calm queue, and the calm event does not come. After
+    /// letting go the watchdog flushes by itself.
+    @Test("after letting go without a calm event the watchdog flushes the queue")
     func calmWatchdogFlushesAfterFingerUp() async throws {
         let bar = BottomBarState()
         bar.calmWatchdogSeconds = 0.05
@@ -291,9 +291,9 @@ struct FlipCooldownTests {
         #expect(ran)
     }
 
-    /// Rot-Probe: bleibt der Finger unten, flusht nichts. Der Wachhund
-    /// ersetzt das Ruhe-Ereignis, nicht die Geste.
-    @Test("waehrend des Ziehens flusht der Wachhund nicht")
+    /// Red test: if the finger stays down, nothing flushes. The watchdog
+    /// replaces the calm event, not the gesture.
+    @Test("during dragging the watchdog does not flush")
     func calmWatchdogWaitsWhileDragging() async throws {
         let bar = BottomBarState()
         bar.calmWatchdogSeconds = 0.05

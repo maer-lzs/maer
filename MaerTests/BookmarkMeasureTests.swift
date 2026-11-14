@@ -11,7 +11,7 @@ import Foundation
 /// The measure lines for linked folders carry no path, and the debug measure page
 /// leaves nothing behind: no bookmark, no held access.
 struct E1MeasureLineTests {
-    @Test("Aufloesung und Wiedergabe, nie ein Pfad")
+    @Test("Resolution and playback, never a path")
     func lines() {
         #expect(E1MeasureLine.resolution(place: .usb, resolved: true, stale: true, renewed: true,
                                          access: true, files: 3, notLoaded: 1, reason: nil)
@@ -26,7 +26,7 @@ struct E1MeasureLineTests {
         #expect(E1MeasureLine.Place.allCases.map(\.rawValue) == ["intern", "icloud", "anbieter", "usb"])
     }
 
-    @Test("ein ausgelagerter iCloud-Ordner zaehlt seine Dateien als nicht geladen, nicht als fehlend")
+    @Test("an offloaded iCloud folder counts its files as not downloaded, not as missing")
     func evictedFolderIsNotEmpty() {
         let audio = E1MeasureLine.audio(among: [
             (name: ".b.m4a.icloud", notDownloaded: false),   // placeholder form
@@ -55,7 +55,7 @@ struct BookmarkMeasureTests {
         func stop(_ url: URL) { stopped += 1 }
     }
 
-    @Test("nach Messung loeschen bleibt kein Lesezeichen und kein gehaltener Zugriff")
+    @Test("after measuring and deleting, no bookmark and no held access remains")
     func clearingLeavesNothing() throws {
         let suite = "e1mess-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -90,7 +90,7 @@ struct BookmarkMeasureTests {
         #expect(access.started == access.stopped, "every access started is stopped")
     }
 
-    @Test("ein unlesbarer Ordner zaehlt nicht als leerer")
+    @Test("an unreadable folder does not count as an empty one")
     func unreadableIsNotEmpty() throws {
         let base = FileManager.default.temporaryDirectory
             .appendingPathComponent("e1mess-\(UUID().uuidString)", isDirectory: true)
@@ -119,7 +119,7 @@ struct BookmarkMeasureTests {
         func stop(_ url: URL) {}
     }
 
-    @Test("ohne Zugriff startet die Probe nicht und sagt es in einer eigenen Zeile")
+    @Test("without access the probe does not start and says so in a line of its own")
     func noAccessNoProbe() throws {
         let suite = "e1mess-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))

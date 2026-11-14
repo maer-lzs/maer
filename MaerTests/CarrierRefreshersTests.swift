@@ -30,14 +30,14 @@ struct CarrierRefreshersTests {
         try await body()
     }
 
-    @Test("eine Zone weckt nur ihren Traeger; ohne Zone oder mit fremder Zone holen alle")
+    @Test("a zone wakes only its carrier; without a zone or with a foreign zone all fetch")
     func aZoneWakesItsCarrierAloneAndNoZoneWakesAll() async throws {
         try #require(CarrierRefreshers.zones.isEmpty,
                      "ein frueherer Fall hat seine Probe stehen lassen: \(CarrierRefreshers.zones)")
         let stats = Probe(), lists = Probe(), choices = Probe()
-        // Das Register lebt ueber die Faelle hinweg. Eine Probe, die stehen
-        // bleibt, zaehlt im naechsten Fall mit, und genau das hat die Zusage
-        // „fragt niemanden" zu einer geliehenen Zahl gemacht.
+        // The register lives across the cases. A probe that remains
+        // standing counts in the next case, and that is exactly what turned the promise
+        // „fragt niemanden" into a borrowed number.
         defer { for probe in [stats, lists, choices] { CarrierRefreshers.unregister(probe) } }
         CarrierRefreshers.register(stats, zone: "probe-stats", gate: { true }) { stats.calls.append($0) }
         CarrierRefreshers.register(lists, zone: "probe-playlists", gate: { true }) { lists.calls.append($0) }
@@ -62,11 +62,11 @@ struct CarrierRefreshersTests {
         withExtendedLifetime((stats, lists, choices)) {}
     }
 
-    @Test("ein verschwundener Traeger faellt aus dem Register; der ausgeschaltete iCloud-Schalter fragt keinen CloudKit-Traeger")
+    @Test("a vanished carrier drops out of the register; the switched-off iCloud switch asks no CloudKit carrier")
     func aGoneCarrierIsSkippedAndTheSwitchOffAsksNoCloudKitCarrier() async throws {
-        // Voraussetzung, zugesichert statt angenommen: das Register ist leer.
-        // Sonst zaehlt die Rueckgabezahl unten fremde Proben mit und die
-        // Zusage waere wieder geliehen.
+        // Precondition, ensured instead of assumed: the register is empty.
+        // Otherwise the return count below also counts foreign probes and the
+        // promise would be borrowed again.
         try #require(CarrierRefreshers.zones.isEmpty,
                      "ein frueherer Fall hat seine Probe stehen lassen: \(CarrierRefreshers.zones)")
         do {
@@ -78,10 +78,10 @@ struct CarrierRefreshersTests {
         }
         #expect(!CarrierRefreshers.zones.contains("probe-gone"), "a released carrier leaves the register")
 
-        // Der iCloud-Schalter ist nicht mehr die Frage des Registers, sondern
-        // das Tor der CloudKit-Traeger; ein Traeger mit diesem Tor schweigt
-        // also weiter, wenn der Schalter aus ist. Die Zusage „fragt niemanden"
-        // waere nach dem Dienst-Eintrag falsch, denn der haengt nicht daran.
+        // The iCloud switch is no longer the question of the register, but
+        // the gate of the CloudKit carriers; a carrier with this gate thus stays
+        // silent when the switch is off. The promise „fragt niemanden"
+        // would be wrong after the service entry, because that does not depend on it.
         let stays = Probe()
         defer { CarrierRefreshers.unregister(stays) }
         CarrierRefreshers.register(stays, zone: "probe-stays",
@@ -95,17 +95,17 @@ struct CarrierRefreshersTests {
         }
         UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
         let asked = await CarrierRefreshers.refreshAll(by: "push")
-        // Jetzt traegt die Zahl wieder: das Register war zu Beginn leer und
-        // diese Probe ist die einzige darin. Der Traeger haengt am
-        // iCloud-Schalter, also fragt der ausgeschaltete Schalter niemanden.
-        // Ein Traeger mit eigenem Tor, etwa der Dienst, bliebe davon
-        // unberuehrt; das steht als eigener Fall daneben.
+        // Now the count carries again: the register was empty at the start and
+        // this probe is the only one in it. The carrier hangs on the
+        // iCloud switch, so the switched-off switch asks nobody.
+        // A carrier with a gate of its own, such as the service, would remain
+        // untouched by it; that stands as a separate case beside it.
         #expect(asked == 0, "mit ausgeschaltetem Schalter wurde jemand gefragt")
         #expect(stays.calls.isEmpty, "der ausgeschaltete iCloud-Schalter haelt seinen Traeger zurueck")
         withExtendedLifetime(stays) {}
     }
 
-    @Test("eine angemeldete Zone mit geschlossenem Tor weckt keinen anderen Traeger")
+    @Test("a signed-in zone with a closed gate wakes no other carrier")
     func aRegisteredZoneWithAClosedGateWakesNobodyElse() async throws {
         try #require(CarrierRefreshers.zones.isEmpty,
                      "ein frueherer Fall hat seine Probe stehen lassen: \(CarrierRefreshers.zones)")
@@ -127,7 +127,7 @@ struct CarrierRefreshersTests {
 
     /// The fence: the next carrier cannot be forgotten by the push and the
     /// scene, because both ask the register, and every carrier signs in.
-    @Test("jeder Traeger meldet sich an, auch der Dienst; Push und Szene fragen das Register", .needsTheSources)
+    @Test("every carrier registers, the service too; push and scene ask the register", .needsTheSources)
     func everyCarrierRegistersAndBothOccasionsAskTheRegister() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let networking = root.appendingPathComponent("Sources/Networking")
@@ -160,7 +160,7 @@ struct CarrierRefreshersTests {
     /// register asked the iCloud switch for everyone while it served CloudKit
     /// alone; the service carrier behind that gate would fall silent exactly
     /// when it is the only transport left.
-    @Test("ein Traeger mit geschlossenem Tor wird nicht gefragt, die anderen schon")
+    @Test("a carrier with a closed gate is not asked, the others are")
     func aClosedGateSilencesOnlyItsOwnCarrier() async {
         let open = Probe(), closed = Probe()
         defer { for probe in [open, closed] { CarrierRefreshers.unregister(probe) } }
@@ -176,7 +176,7 @@ struct CarrierRefreshersTests {
     /// The iCloud switch is one of those gates, no longer the register's own
     /// question: a CloudKit carrier stays quiet with the switch off, and the
     /// service carrier beside it does not care about that switch at all.
-    @Test("der iCloud-Schalter schweigt die CloudKit-Traeger, nicht den Dienst")
+    @Test("the iCloud switch silences the CloudKit carriers, not the service")
     func theICloudSwitchSilencesTheCloudKitHalfOnly() async {
         let cloudKit = Probe(), service = Probe()
         defer { for probe in [cloudKit, service] { CarrierRefreshers.unregister(probe) } }

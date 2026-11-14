@@ -12,7 +12,7 @@ import Testing
 /// template goes beyond the limit, and every change ends in a closure.
 struct CarPlayStackTests {
 
-    @Test("der Player zuoberst bleibt, wo er ist")
+    @Test("the player on top stays where it is")
     func thePlayerOnTopStays() {
         #expect(CarPlayLayout.playerMove(playerOnTop: true, playerIndex: 3, depth: 4) == .stay)
         #expect(CarPlayLayout.playerMove(playerOnTop: true, playerIndex: nil, depth: 2) == .stay,
@@ -20,19 +20,19 @@ struct CarPlayStackTests {
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: 3, depth: 4) == .stay)
     }
 
-    @Test("liegt der Player unter einer Liste, geht das Auto zu ihm zurueck und legt ihn nicht neu auf")
+    @Test("if the player lies under a list, the car goes back to it and does not push it anew")
     func thePlayerUnderAListIsGoneBackTo() {
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: 3, depth: 5) == .back)
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: 1, depth: 3) == .back)
     }
 
-    @Test("liegt der Player nicht im Stapel, wird er aufgelegt, solange Platz ist")
+    @Test("if the player is not in the stack, it is pushed as long as there is room")
     func thePlayerOutsideTheStackIsLaidOn() {
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: nil, depth: 1) == .push)
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: nil, depth: CarPlayLayout.stackLimit - 1) == .push)
     }
 
-    @Test("am Rand des Stapels wird nichts mehr aufgelegt, weder der Player noch eine Liste")
+    @Test("at the edge of the stack nothing more is pushed, neither the player nor a list")
     func atTheLimitNothingIsLaidOn() {
         #expect(CarPlayLayout.stackLimit == 5, "the tab bar, two levels, the player and its list")
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: nil, depth: CarPlayLayout.stackLimit) == .full)
@@ -42,7 +42,7 @@ struct CarPlayStackTests {
     }
 
     /// The rule reads the stack as it stands, not the way it came to be.
-    @Test("drei Wege zu einem Stapel: eine zweite Liste des Players, eine spaete Seite ueber dem Player, eine verirrte Seite")
+    @Test("three ways to a stack: a second list of the player, a late page above the player, a stray page")
     func threeWaysToAStack() {
         // The tab bar, two levels, the player and its list: a second tap
         // on the player's list button finds the stack full.
@@ -60,7 +60,7 @@ struct CarPlayStackTests {
         #expect(CarPlayLayout.playerMove(playerOnTop: false, playerIndex: nil, depth: 6) == .full)
     }
 
-    @Test("kein Wechsel des Stapels laeuft ohne Abschluss, und jedes Auflegen fragt vorher die Regel", .needsTheSources)
+    @Test("no change of the stack runs without a completion, and every push asks the rule first", .needsTheSources)
     func noChangeOfTheStackRunsWithoutAClosure() throws {
         let root = SourceTree.root.appendingPathComponent("Sources")
         let changes = ["pushTemplate(", "pop(to:", "popToTemplate(", "popTemplate(", "popToRootTemplate(",
@@ -88,7 +88,7 @@ struct CarPlayStackTests {
         #expect(delegate.components(separatedBy: "pushTemplate(nowPlaying").count - 1 == 1, "the player is laid on in another place")
     }
 
-    @Test("Gleichheit zweier Bezuege: keiner ist kein Treffer")
+    @Test("Equality of two references: none is no match")
     @MainActor
     func theSameObject() {
         let one = NSObject(), other = NSObject()
@@ -100,7 +100,7 @@ struct CarPlayStackTests {
     /// The first build after a connect is held and ends at a disconnect;
     /// after its waits it sets nothing on a scene that is gone, and a
     /// second tap on Up Next lays no second list over the first.
-    @Test("Trennen waehrend des ersten Aufbaus setzt nichts mehr; zweimal Als Naechstes legt eine Liste", .needsTheSources)
+    @Test("Disconnecting during the first build sets nothing more; Up Next twice pushes one list", .needsTheSources)
     func aDisconnectEndsTheFirstBuild() throws {
         let delegate = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         #expect(delegate.contains("connectTask?.cancel() connectTask = Task { await self.prepare() guard Self.isSame(self.interfaceController, interfaceController) else {"),

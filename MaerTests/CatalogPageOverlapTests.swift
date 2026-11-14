@@ -12,7 +12,7 @@ import Foundation
 /// and says so in one line per pass: that is how the question "does the
 /// page show a title twice" is measured on the page itself.
 struct CatalogPageOverlapTests {
-    @Test("ein Titel in zwei Reihen zaehlt einmal als doppelt, einer zweimal in derselben Reihe nicht")
+    @Test("a title in two rows counts once as a duplicate, one twice in the same row does not")
     func aTitleInTwoRowsCounts() {
         let count = CatalogPageOverlap.count(rows: [["a", "b", "c"], ["c", "d"], [], ["b", "c", "e", "e"]])
         #expect(count.rows == 3, "an empty row counted")
@@ -25,7 +25,7 @@ struct CatalogPageOverlapTests {
                 "the line carries at most three examples")
     }
 
-    @Test("eine Feed-Seite schweigt, eine Seite mit Regalen spricht erst, wenn sie geantwortet haben")
+    @Test("a feed page stays silent, a page with shelves speaks only once they have answered")
     func onlyRowsThePageShowsSpeak() {
         #expect(!CatalogPageOverlap.speaks(feedBased: true, hasShelves: false, shelvesLoaded: false),
                 "a feed page draws a list, its items are no row")
@@ -37,7 +37,7 @@ struct CatalogPageOverlapTests {
                 "a catalogue page without shelves speaks after its rows")
     }
 
-    @Test("die Quellen-Seite schreibt die Zeile nach jedem Durchgang der Regale", .needsTheSources)
+    @Test("the source page writes the line after every pass of the shelves", .needsTheSources)
     func thePageSaysItAfterEachPass() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
@@ -55,7 +55,7 @@ struct CatalogPageOverlapTests {
 
     private static func titles(_ ids: [String]) -> [Title] { ids.map(Title.init) }
 
-    @Test("geteilte Titel gehen an die kuerzere Reihe: zwei Regale mit denselben sechs Titeln enden gleich lang")
+    @Test("shared titles go to the shorter row: two shelves with the same six titles end up equally long")
     func sharedTitlesSpreadEvenly() {
         let six = (1...6).map { "x\($0)" }
         let kept = Self.ids(CatalogPageOverlap.balanced([Self.titles(six), Self.titles(six)], buffer: nil, limit: 12))
@@ -65,7 +65,7 @@ struct CatalogPageOverlapTests {
                 "own titles stay; the middle row holds none of its own, so it is the shortest and gets both shared ones")
     }
 
-    @Test("Beliebt ist der Puffer: teilt es Titel mit einem Regal, steht der Titel im Regal, und Beliebt fuellt aus seinem Vorrat nach")
+    @Test("Popular is the buffer: if it shares titles with a shelf, the title stays in the shelf, and Popular refills from its stock")
     func popularRefillsFromItsStock() {
         let popular = Self.titles((1...30).map { "p\($0)" })
         let shelf = Self.titles((1...5).map { "p\($0)" } + (1...7).map { "s\($0)" })
@@ -76,7 +76,7 @@ struct CatalogPageOverlapTests {
         #expect(CatalogPageOverlap.shorter([popular, shelf], to: kept, limit: 12) == 0)
     }
 
-    @Test("jeder Titel einmal, keine Reihe ueber 12, gleiche Bestaende geben dieselbe Seite, eine Reihe entfaellt nur ganz anderswo")
+    @Test("every title once, no row above 12, equal stocks give the same page, a row drops out only elsewhere entirely")
     func theInvariantsHold() {
         let pool = (0..<40).map { "t\($0)" }
         let stocks = (0..<7).map { row in Self.titles((0..<20).map { pool[($0 * (row + 1) + row * 3) % pool.count] }) }
@@ -107,7 +107,7 @@ struct CatalogPageOverlapTests {
 
     /// The page draws the split and its rows read their share of it, so no
     /// row cuts its own stock past the rule.
-    @Test("die Quellen-Seite zeichnet die Verteilung, keine Reihe schneidet ihren Bestand selbst", .needsTheSources)
+    @Test("the source page draws the distribution, no row cuts its stock itself", .needsTheSources)
     func thePageDrawsTheSplit() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))

@@ -40,15 +40,15 @@ struct ArtworkDoorFenceTests {
     }
 
     /// The homes and their stock on the day of the fence.
-    // BESTAND OHNE EINZELGRUENDE: die drei Eintraege haben denselben Grund, sie SIND die
-    // Heimaten der Tuer. Ein Satz je Zeile waere derselbe Satz dreimal.
+    // BESTAND OHNE EINZELGRUENDE: the three entries have the same reason, they ARE the
+    // homes of the door. One sentence per line would be the same sentence three times.
     nonisolated static let stock: [String: Int] = [
         "ImageCache.swift": 20,
         "ImageProbe.swift": 5,
         "Artwork.swift": 3,
     ]
 
-    @Test("Bildbytes werden nur hinter der Tuer dekodiert, der Bestand faellt nur", .needsTheSources)
+    @Test("Image bytes are decoded only behind the door, the stock only falls", .needsTheSources)
     func markersLiveBehindTheDoor() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -63,7 +63,7 @@ struct ArtworkDoorFenceTests {
         #expect(Self.markerSites(in: "let image = await Artwork.image(for: url)?.image") == 0)
     }
 
-    @Test("ImageCache.shared kennen nur die Tuer und der Cache", .needsTheSources)
+    @Test("Only the door and the cache know ImageCache.shared", .needsTheSources)
     func cacheIsTheDoorsBusiness() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -77,7 +77,7 @@ struct ArtworkDoorFenceTests {
         #expect(Self.cacheSites(in: "// ImageCache.shared was here") == 0)
     }
 
-    @Test("Ein Server-Cover reist nie, ein oeffentliches darf")
+    @Test("A server cover never travels, a public one may")
     func serverCoversStayHome() {
         #expect(!SyncCarried.coverMayTravel("sub:al-42"))
         #expect(!SyncCarried.coverMayTravel("jf:0123456789abcdef"))

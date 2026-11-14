@@ -9,7 +9,7 @@ import Foundation
 @testable import Maer
 
 /// The cadence of the ten-second loop and of the widget, counted per hour
-/// from the rules the loop asks (Platz 4).
+/// from the rules the loop asks (place 4).
 @MainActor
 struct CadenceTests {
 
@@ -45,7 +45,7 @@ struct CadenceTests {
 
     /// The numbers of the measuring table, held: a change of the cadence
     /// shows here first, and the takeover between devices depends on them.
-    @Test("die Kadenz je Stunde und Weg, nach den Regeln der Schleife: Pause und Spielen, je Traeger")
+    @Test("the cadence per hour and route, by the rules of the loop: pause and playing, per carrier")
     func theCadencePerHour() {
         #expect(Self.hour(playing: false, pullSeconds: 10) == Hour(wakeUps: 360, serverRounds: 120, polls: 120, pulls: 0, heartbeats: 0))
         #expect(Self.hour(playing: true, pullSeconds: 10) == Hour(wakeUps: 360, serverRounds: 120, polls: 360, pulls: 360, heartbeats: 360))
@@ -54,7 +54,7 @@ struct CadenceTests {
 
     /// While playing, the widget runs on by itself: a step per minute for
     /// the next hour, from position, duration and rate.
-    @Test("das Widget laeuft beim Spielen selbst weiter: ein Schritt je Minute aus Position, Dauer und Rate")
+    @Test("the widget keeps running by itself while playing: one step per minute from position, duration and rate")
     func theWidgetRunsOnByItself() {
         let steps = WidgetSnapshot.steps(position: 600, duration: 3600, rate: 1.5, minutes: 60) { "\(Int($0))" }
         #expect(steps.count == 61)
@@ -77,7 +77,7 @@ struct CadenceTests {
     /// asks the rule each second, renews the snapshot before its steps run
     /// out, and the widget shows the true position at every minute. Without
     /// the renewal it stood on the last step after the hour.
-    @Test("anderthalb Stunden ohne Zustandswechsel: der Tick erneuert den Schnappschuss, das Widget zeigt jede Minute die wahre Stelle")
+    @Test("an hour and a half without a state change: the tick renews the snapshot, the widget shows the true position every minute")
     func aLongPlaybackKeepsTheWidgetRunning() {
         let duration = 3.0 * 3600, start = 1_000_000.0
         func snapshot(at second: Double) -> WidgetSnapshot {
@@ -107,7 +107,7 @@ struct CadenceTests {
 
     /// A snapshot written before the steps existed still reads and shows
     /// its saved values.
-    @Test("ein Schnappschuss von vorher bleibt lesbar und zeigt seine Werte")
+    @Test("a snapshot from before stays readable and shows its values")
     func anOldSnapshotReads() throws {
         let old = #"{"itemId":"x","title":"t","fraction":0.25,"remainingText":"1 h","isPlaying":true}"#
         let snapshot = try JSONDecoder().decode(WidgetSnapshot.self, from: Data(old.utf8))
@@ -117,7 +117,7 @@ struct CadenceTests {
 
     /// The tick does not reload the widget; a jump and a change of rate,
     /// which move what the widget runs on from, do.
-    @Test("der Tick laedt das Widget nicht neu; ein Sprung und eine neue Rate schreiben den Schnappschuss", .needsAudio)
+    @Test("the tick does not reload the widget; a jump and a new rate write the snapshot", .needsAudio)
     func onlyStateChangesWriteTheWidget() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)

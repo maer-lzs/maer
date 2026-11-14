@@ -27,7 +27,7 @@ struct CatalogStockIndexTests {
         ])
     }
 
-    @Test("der Index antwortet, was der Scan antwortet")
+    @Test("the index answers what the scan answers")
     func indexEqualsScan() {
         let index = CatalogStockIndex(stock: stock)
         for terms in [["fiction"], ["europe"], ["adventure", "history"], ["Fiction"],
@@ -39,17 +39,17 @@ struct CatalogStockIndexTests {
         }
     }
 
-    /// Rot-Probe: ein Begriff, der nur als TEIL eines Fachs vorkommt,
-    /// trifft nicht; das war die Teilstring-Falle, die der Scan bewusst
-    /// nicht hat.
-    @Test("kein Teilstring-Treffer")
+    /// Red test: a term that occurs only as a PART of a shelf
+    /// does not match; that was the substring trap that the scan deliberately
+    /// does not have.
+    @Test("no substring hit")
     func noSubstringHit() {
         let index = CatalogStockIndex(stock: stock)
         #expect(index.matching(terms: ["mystery"]).isEmpty)
         #expect(index.matching(terms: ["science"]).isEmpty)
     }
 
-    @Test("jeder Eintrag hoechstens einmal, in Bestandsordnung")
+    @Test("every entry at most once, in stock order")
     func eachEntryOnceInOrder() {
         let index = CatalogStockIndex(stock: stock)
         #expect(index.matching(terms: ["fiction", "science fiction", "adventure"]) == [0, 1, 3])

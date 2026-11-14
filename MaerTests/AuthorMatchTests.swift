@@ -12,7 +12,7 @@ import Foundation
 /// has to match carries two shapes: the same person written the other way
 /// round, and several people in one field.
 struct AuthorMatchTests {
-    @Test("Derselbe Mensch, andersherum geschrieben: Nachname, Vorname trifft Vorname Nachname")
+    @Test("The same person, written the other way round: surname, first name matches first name surname")
     func swappedNameIsTheSamePerson() {
         #expect(AuthorMatch.field("Tolkien, J. R. R.", names: "J. R. R. Tolkien"))
         #expect(AuthorMatch.field("J. R. R. Tolkien", names: "Tolkien, J. R. R."))
@@ -20,7 +20,7 @@ struct AuthorMatchTests {
         #expect(!AuthorMatch.field("Tolkien, Christopher", names: "J. R. R. Tolkien"))
     }
 
-    @Test("Mehrere Menschen in einem Feld: ein sicherer Trenner teilt, ein Komma nie")
+    @Test("Several people in one field: a safe separator splits, a comma never")
     func severalPeopleInOneField() {
         #expect(AuthorMatch.field("Neil Gaiman & Terry Pratchett", names: "Terry Pratchett"))
         #expect(AuthorMatch.field("Neil Gaiman; Terry Pratchett", names: "Neil Gaiman"))
@@ -32,7 +32,7 @@ struct AuthorMatchTests {
         #expect(AuthorMatch.people(in: "A & B").count == 2)
     }
 
-    @Test("Die Form: gefaltet, ohne Zeichensetzung, ohne doppelte Leerzeichen; Leeres trifft nichts")
+    @Test("The form: folded, without punctuation, without double spaces; empty matches nothing")
     func normalisationAndEmptiness() {
         #expect(AuthorMatch.normalized("  J.  R. R.  Tolkien ") == "j r r tolkien")
         #expect(AuthorMatch.forms(of: "Tolkien, J. R. R.").contains("j r r tolkien"))
@@ -42,7 +42,7 @@ struct AuthorMatchTests {
         #expect(!AuthorMatch.field("Tolkien", names: "."), "punctuation alone names nobody")
     }
 
-    @Test("Der Autor-Treffer traegt die Route der Bibliothek, keinen eigenen Weg der Suche", .needsTheSources)
+    @Test("The author hit carries the route of the library, no route of its own from the search", .needsTheSources)
     func searchPushesTheLibraryRoute() throws {
         let text = try String(contentsOf: URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

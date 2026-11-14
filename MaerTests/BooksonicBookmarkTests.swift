@@ -31,29 +31,29 @@ struct BooksonicBookmarkTests {
         return decoded.inner.bookmarks?.bookmark ?? []
     }
 
-    @Test("Die echte Antwort dekodiert, mit allen Feldern die die Regel braucht")
+    @Test("The real answer decodes, with all fields that the rule needs")
     func realShapeDecodes() throws {
         let list = try bookmarks()
         #expect(list.count == 1)
         let mark = try #require(list.first)
-        // Die Position steht in MILLISEKUNDEN, wie die Subsonic-Beschreibung
-        // sie fuehrt; Maer rechnet intern in Sekunden und wandelt an dieser
-        // Tuer. Geschrieben wurden 90500 ms.
+        // The position is in MILLISECONDS, as the Subsonic description
+        // has it; Maer calculates internally in seconds and converts at this
+        // door. 90500 ms were written.
         #expect(mark.position == 90500)
-        // Der Kommentar traegt die Item-Kennung: eine Marke kennt nur Song
-        // und Position, die Zugehoerigkeit zum Album steht nur hier.
+        // The comment carries the item identifier: a mark knows only song
+        // and position, the membership in the album is only here.
         #expect(mark.comment == "sub:album:0")
         #expect(mark.changed == "2026-09-07T18:20:39.067Z")
-        // `entry` ist das GANZE Song-Objekt, nicht bloss eine Kennung.
+        // `entry` is the WHOLE song object, not merely an identifier.
         let entry = try #require(mark.entry)
         #expect(entry.id == "5")
         #expect(entry.duration == 425)
     }
 
-    @Test("Die Marke landet auf der Zeitachse des Buchs, nicht auf der des Songs")
+    @Test("The mark lands on the timeline of the book, not on that of the song")
     func resumeLandsOnTheBooksTimeline() throws {
-        // Album 0 des Prüfstands: zwei Spuren, 246 s und 425 s. Die Marke
-        // sitzt in der ZWEITEN, also 246 s Vorlauf plus 90,5 s darin.
+        // Album 0 of the test bench: two tracks, 246 s and 425 s. The mark
+        // sits in the SECOND, so 246 s lead plus 90.5 s into it.
         let songs = [(id: "4", start: 0.0), (id: "5", start: 246.0)]
         let pick = try #require(BookmarkProgressMath.resume(
             bookmarks: try bookmarks(), itemId: "sub:album:0", songs: songs,
@@ -61,17 +61,17 @@ struct BooksonicBookmarkTests {
         #expect(pick.time == 336.5)
     }
 
-    @Test("Eine Marke, deren Song nicht mehr im Album steht, faellt sauber weg")
+    @Test("A mark whose song is no longer in the album drops out cleanly")
     func bookmarkOfARemovedSongIsDropped() throws {
-        // Der Gegenlauf zur Regel oben: dasselbe Album ohne die zweite Spur.
-        // Ohne diesen Fall koennte `resume` alles zurueckgeben und der Zeuge
-        // saehe es nicht.
+        // The counterpart to the rule above: the same album without the second track.
+        // Without this case `resume` could return everything and the witness
+        // would not see it.
         let songs = [(id: "4", start: 0.0)]
         #expect(BookmarkProgressMath.resume(bookmarks: try bookmarks(), itemId: "sub:album:0",
                                             songs: songs, stamp: { _ in 1 }) == nil)
     }
 
-    @Test("Eine fremde Item-Kennung im Kommentar traegt nichts hierher")
+    @Test("A foreign item identifier in the comment carries nothing over here")
     func aForeignCommentIsNotOurs() throws {
         let songs = [(id: "4", start: 0.0), (id: "5", start: 246.0)]
         #expect(BookmarkProgressMath.resume(bookmarks: try bookmarks(), itemId: "sub:album:9",
@@ -83,7 +83,7 @@ struct BooksonicBookmarkTests {
     /// since is seen before this device writes. An open whose read failed
     /// writes no bookmark until a read succeeds. The provider is one
     /// instance without a client to hand in, so this is read at the source.
-    @Test("Subsonic: die Lesezeichen werden jedes Mal gefragt, und nach einem gescheiterten Lesen wird nicht geschrieben", .needsTheSources)
+    @Test("Subsonic: the bookmarks are asked every time, and after a failed read nothing is written", .needsTheSources)
     func theBookmarksAreAskedEachTime() throws {
         let source = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8))

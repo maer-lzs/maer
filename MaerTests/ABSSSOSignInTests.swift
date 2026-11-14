@@ -37,7 +37,7 @@ struct ABSSSOSignInTests {
         })
     }
 
-    @Test("SSO meldet ueber den Ablauf an: Start, Tausch mit dem Cookie des Starts, dann derselbe Schluss wie mit Passwort")
+    @Test("SSO signs in through the flow: start, exchange with the cookie of the start, then the same ending as with a password")
     func ssoSignsInThroughTheFlow() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -56,7 +56,7 @@ struct ABSSSOSignInTests {
         #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == "token-sso")
     }
 
-    @Test("Nach dem Ablauf haelt der geteilte Speicher kein Cookie des Servers, und spaetere Anfragen tragen keins")
+    @Test("After the flow the shared store holds no cookie of the server, and later requests carry none")
     func theFlowLeavesNoCookieBehind() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -82,7 +82,7 @@ struct ABSSSOSignInTests {
         #expect(!after.isEmpty && after.allSatisfy { $0.cookie == nil }, "a later request carried \(after.map(\.cookie))")
     }
 
-    @Test("Ohne token meldet SSO nicht an und sagt, dass der Server die Erneuerung braucht")
+    @Test("Without a token SSO does not sign in and says the server needs the renewal")
     func noLongLivedTokenNoSignIn() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -96,7 +96,7 @@ struct ABSSSOSignInTests {
         #expect(auth.apiClient.baseURL.absoluteString == "https://abs.a.example" && auth.apiClient.token == "token-of-a")
     }
 
-    @Test("Ein fremder Zustand in der Rueckkehr meldet nicht an und fragt den Tausch nicht")
+    @Test("A foreign state in the return does not sign in and does not ask for the exchange")
     func aForeignReturnSignsNobodyIn() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -110,7 +110,7 @@ struct ABSSSOSignInTests {
         #expect(auth.apiClient.token == "token-of-a")
     }
 
-    @Test("Ein Tausch ohne das Cookie des Starts (anderer Ablauf) ergibt den Satz zu No session")
+    @Test("An exchange without the cookie of the start (another flow) gives the sentence for No session")
     func anExchangeOfAnotherFlowIsUnknown() async throws {
         let server = try await ABSLoopback.start(login: .refuse, libraries: .accept, singleSignOn: .token("token-sso"))
         defer { server.stop() }
@@ -127,7 +127,7 @@ struct ABSSSOSignInTests {
         #expect(!AuthViewModel.sentence(for: .flowUnknown).isEmpty)
     }
 
-    @Test("Der Server laesst die Rueckkehr nicht zu: Satz, keine Anmeldung")
+    @Test("The server does not allow the return: sentence, no sign-in")
     func aRefusedReturnAddressIsSaid() async throws {
         let server = try await ABSLoopback.start(login: .refuse, libraries: .accept, singleSignOn: .token("token-sso"))
         defer { server.stop() }
@@ -141,7 +141,7 @@ struct ABSSSOSignInTests {
         }
     }
 
-    @Test("Ein SSO-Token eines anderen Nutzers am selben Server ist ein Kontowechsel")
+    @Test("An SSO token of another user on the same server is an account switch")
     func anotherUserBySSOIsAnAccountSwitch() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -170,7 +170,7 @@ struct ABSSSOSignInTests {
     /// The way that runs is the one whose button shows the progress: the
     /// view model names it while it runs and names none before and after,
     /// for the password sign-in and for the single sign-on.
-    @Test("Das Ladezeichen gehoert dem ausloesenden Knopf: Verbinden laeuft als connect, SSO als singleSignOn")
+    @Test("The busy indicator belongs to the triggering button: Connect runs as connect, SSO as singleSignOn")
     func theRunningWayIsTheOneThatWasPressed() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -219,7 +219,7 @@ struct ABSSSOSignInTests {
             .map(\.composedMessage).filter { $0.hasPrefix(prefix) }
     }
 
-    @Test("Jeder Ausgang der Anmeldung schreibt eine Zeile: angemeldet, nicht uebernommen, Fehler ausserhalb des Ablaufs")
+    @Test("Every outcome of the sign-in writes a line: signed in, not adopted, error outside the flow")
     func everyOutcomeOfASignInIsLogged() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }

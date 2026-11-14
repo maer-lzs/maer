@@ -28,7 +28,7 @@ struct AntennaPodDatabaseTests {
                                  downloadURL: "https://podcast-mp3.dradio.de/\(item).mp3?refId=x")
     }
 
-    @Test("angefangen: Position und Dauer aus Millisekunden, Zeitpunkt = zuletzt gespielt")
+    @Test("started: position and duration from milliseconds, time = last played")
     func started() throws {
         let lib = AntennaPodDatabase.library(
             feeds: [dlf], items: [item(1, read: 0, guid: "7f619668")],
@@ -44,7 +44,7 @@ struct AntennaPodDatabaseTests {
         #expect(s.episodeLink == "https://www.deutschlandfunk.de/e1.html")
     }
 
-    @Test("gehoert: read=1 mit Abschlusszeitpunkt")
+    @Test("played: read=1 with completion time")
     func played() {
         let lib = AntennaPodDatabase.library(
             feeds: [dlf], items: [item(2, read: 1)],
@@ -55,21 +55,21 @@ struct AntennaPodDatabaseTests {
         #expect(lib.states.first?.stampedAt == 1_756_665_600_000)
     }
 
-    @Test("von Hand markiert: gehoert ohne Zeitpunkt, darf nur fuellen")
+    @Test("marked by hand: played without a time, may only fill")
     func markedByHand() {
         let lib = AntennaPodDatabase.library(feeds: [dlf], items: [item(7, read: 1)], media: [media(7)])
         #expect(lib.states.first?.finished == true)
         #expect(lib.states.first?.stampedAt == nil)
     }
 
-    @Test("neu und ungehoert ohne Position sind kein Stand")
+    @Test("new and unplayed without a position are no state")
     func unplayedIsNoState() {
         let lib = AntennaPodDatabase.library(
             feeds: [dlf], items: [item(3, read: -1), item(4, read: 0)], media: [media(3), media(4, position: 500)])
         #expect(lib.states.isEmpty)
     }
 
-    @Test("eine abbestellte Sendung bleibt mit ihren Folgen draussen; ohne Spalte gilt abonniert")
+    @Test("an unsubscribed show stays out with its episodes; without a column, subscribed applies")
     func unsubscribedStaysOut() {
         let lib = AntennaPodDatabase.library(
             feeds: [dlf, gone], items: [item(5, feed: 9, read: 1)], media: [media(5, lastPlayed: 5)])
@@ -79,7 +79,7 @@ struct AntennaPodDatabaseTests {
         #expect(AntennaPodDatabase.library(feeds: [old], items: [], media: []).feedURLs == [gone.downloadURL!])
     }
 
-    @Test("ein Eintrag ohne Medienzeile: gehoert zaehlt, angefangen kann es nicht sein")
+    @Test("an entry without a media row: played counts, started cannot be")
     func withoutMedia() {
         let lib = AntennaPodDatabase.library(feeds: [dlf], items: [item(6, read: 1), item(8, read: 0)], media: [])
         #expect(lib.states.map(\.finished) == [true])
@@ -88,7 +88,7 @@ struct AntennaPodDatabaseTests {
 
     /// The schema fixture built from AntennaPod 3.12.0, read through the
     /// real SQLite path: two feeds, five states out of seven episodes.
-    @Test("die Schema-Datei liest sich durch den SQLite-Leser")
+    @Test("the schema file reads through the SQLite reader")
     func fixtureFile() throws {
         let data = try CorpusFixture.data("antennapod", ext: "db", subdirectory: "AntennaPod")
         let url = FileManager.default.temporaryDirectory

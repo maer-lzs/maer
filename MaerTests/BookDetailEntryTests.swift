@@ -7,9 +7,9 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die EINE Hoerbuch-Detailseite: die Server-Seite ist die Form, ein
-/// Katalog-Titel tritt durch eine zweite Tuer ein. Die Abnahme-Marke ist,
-/// dass die SERVER-Seite unveraendert bleibt.
+/// The ONE audiobook detail page: the server page is the form, a
+/// catalog title enters through a second door. The acceptance mark is
+/// that the SERVER page stays unchanged.
 struct BookDetailEntryTests {
 
     private func seite() throws -> String {
@@ -20,10 +20,10 @@ struct BookDetailEntryTests {
             encoding: .utf8)
     }
 
-    /// Der Server-Eintritt verlangt sein LibraryViewModel weiter als
-    /// Pflicht: keine Aufrufstelle kann es still fallen lassen. Der
-    /// Katalog-Eintritt kommt ohne aus.
-    @Test("beide Tueren stehen, und die Server-Tuer verlangt ihr Modell weiter", .needsTheSources)
+    /// The server entry continues to demand its LibraryViewModel as
+    /// mandatory: no call site can silently drop it. The
+    /// catalog entry does without.
+    @Test("both doors exist, and the server door keeps requiring its model", .needsTheSources)
     func bothDoorsStand() throws {
         let text = try seite().split(whereSeparator: \.isWhitespace).joined()
         #expect(text.contains("init(entry:LibraryEntry,coordinator:PlayerCoordinator,libraryViewModel:LibraryViewModel)"),
@@ -32,20 +32,20 @@ struct BookDetailEntryTests {
                 "die Katalog-Tuer ist wieder zu")
     }
 
-    /// Was sich unterscheidet, wird JE BILD aus der Kennung aufgeloest,
-    /// nie beim Oeffnen gemerkt. Dieselbe Regel, die die Sendungsseite beim
-    /// Kaltstart ehrlich gehalten hat.
-    @Test("der Unterschied haengt an der Kennung, je Bild aufgeloest", .needsTheSources)
+    /// What differs is resolved PER IMAGE from the identifier,
+    /// never remembered at opening. The same rule that kept the show page
+    /// honest at cold start.
+    @Test("the difference depends on the identifier, resolved per image", .needsTheSources)
     func theDifferenceHangsOnTheId() throws {
         let text = try seite().split(whereSeparator: \.isWhitespace).joined()
         #expect(text.contains("FreeCatalog.isCatalogId(entry.id)"),
                 "die Katalog-Frage haengt nicht mehr an der Kennung")
-        // Der Provider folgt derselben Regel wie die Frage: er kommt aus der
-        // KENNUNG. Die alte Weiche leitete nur Katalog-Titel und gab alles
-        // andere an den Koordinator, also an den HAUPT-Anbieter (sein
-        // `provider` ist ein `let` aus dem `init`, nicht das, was spielt); live am
-        // Pruefstand gemessen hiess das, dass ein Jellyfin-Buch beim
-        // Bibliotheks-Server nachfragte und seine Seite ohne Teile blieb.
+        // The provider follows the same rule as the question: it comes from the
+        // IDENTIFIER. The old switch routed only catalog titles and passed everything
+        // else to the coordinator, that is to the MAIN provider (its
+        // `provider` is a `let` from the `init`, not what is playing); measured live at
+        // the test bench this meant that a Jellyfin book asked the
+        // library server and its page stayed without parts.
         #expect(text.contains("detailProvider:anyAudioProvider{router.provider(entry.id)}"),
                 "die Aufloesung des Anbieters haengt nicht mehr an der Kennung")
         #expect(!text.contains(":coordinator.provider"),
@@ -58,7 +58,7 @@ struct BookDetailEntryTests {
     /// with the provider of the TITLE (`detailProvider`), never the running
     /// session's, or a Jellyfin book reports its mark to the library server,
     /// which does not know it.
-    @Test("der Katalog-Zweig des Markierens schreibt lokal, der Server-Zweig bleibt", .needsTheSources)
+    @Test("the catalog branch of marking writes locally, the server branch stays", .needsTheSources)
     func theCatalogMarkWritesLocally() throws {
         let rumpf = try #require(functionBody(of: "private func toggleFinishedMark() async {",
                                               in: try seite()))
@@ -69,10 +69,10 @@ struct BookDetailEntryTests {
                 "the door is asked with another provider than the title's")
     }
 
-    /// Die Zweitknoepfe folgen den RECHTEN: ein Katalog-Titel bekommt
-    /// keinen Download-Knopf, weil jede andere Flaeche diesen Weg
-    /// geschlossen haelt. Das Markieren bleibt ihm.
-    @Test("ein Katalog-Titel bekommt keinen Download-Knopf", .needsTheSources)
+    /// The secondary buttons follow the RIGHTS: a catalog title gets
+    /// no download button, because every other surface keeps this path
+    /// closed. Marking stays for it.
+    @Test("a catalog title gets no download button", .needsTheSources)
     func aCatalogTitleGetsNoDownloadButton() throws {
         let rumpf = try #require(functionBody(of: "private func downloadSection(compact: Bool) -> some View {",
                                               in: try seite()))

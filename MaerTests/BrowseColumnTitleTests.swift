@@ -11,7 +11,7 @@ import Testing
 /// In two columns an area's title stands once: an area that runs on into
 /// the trailing column keeps its title's room there without the title.
 struct BrowseColumnTitleTests {
-    @Test("zwei Spalten: der Titel eines Bereichs, der in die zweite Spalte weiterlaeuft, steht nur links")
+    @Test("two columns: the title of an area that continues into the second column appears only on the left")
     func aContinuedAreaTitlesOnce() {
         let books: [BrowseSection] = [.librivox, .gutenberg, .archiveBooks, .oldTimeRadio, .publicFeeds, .independentFeeds]
         let halves = BrowseSection.columns(books)
@@ -22,7 +22,7 @@ struct BrowseColumnTitleTests {
         #expect(split.isEmpty)
     }
 
-    @Test("die zweite Spalte haelt den Titel eines fortgesetzten Bereichs verborgen", .needsTheSources)
+    @Test("the second column keeps the title of a continued area hidden", .needsTheSources)
     func theTrailingColumnHidesTheContinuedTitle() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))

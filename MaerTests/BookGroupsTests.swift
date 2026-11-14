@@ -33,7 +33,7 @@ struct BookGroupsTests {
          entry("n1")]
     }
 
-    @Test("der Reiter und die Suche oeffnen fuer Serien und Autoren dieselbe Seite, ein Tipp in einer Gruppe dieselbe Buchliste wie ein Treffer")
+    @Test("the tab and the search open the same page for series and authors, a tap in a group the same book list as a hit")
     func tabAndSearchOpenTheSamePage() {
         #expect(LibraryListRoute.bookTabEntries == [.groups(.series), .groups(.authors), .localFiles])
         let tiles = SearchDeckTiles.tiles(scope: .audiobooks, counts: SearchDeckCounts())
@@ -55,7 +55,7 @@ struct BookGroupsTests {
         #expect(LibraryListRoute.books(of: .genres, named: "G") == .genre("G"))
     }
 
-    @Test("die Gruppen je Art kommen aus einer Stelle: Serien gefaltet und sortiert, ohne Serie in keiner; das Deck der Suche liest dieselben")
+    @Test("the groups per kind come from one place: series folded and sorted, without a series in none; the deck of the search reads the same ones")
     func theGroupsComeFromOnePlace() {
         let series = LibraryViewModel.groups(.series, of: stock)
         #expect(series.map(\.name) == ["Amber", "Foundation"], "\(series.map(\.name))")
@@ -73,7 +73,7 @@ struct BookGroupsTests {
         }
     }
 
-    @Test("die Seite einer Gruppe haelt jedes Buch, das ihre Gruppe zaehlt; Serie und Genre genau diese")
+    @Test("the page of a group holds every book that its group counts; series and genre exactly these")
     func thePageOfAGroupHoldsItsBooks() {
         for kind in BookGroupKind.allCases {
             for group in LibraryViewModel.groups(kind, of: stock) {
@@ -92,7 +92,7 @@ struct BookGroupsTests {
         #expect(withoutAuthor == ["n1"], "the group of the books without an author opens an empty page: \(withoutAuthor)")
     }
 
-    @Test("die Suche hat keine Bohr-Ebene fuer Buchgruppen mehr und schiebt die Seite; der Reiter zeigt die Kacheln", .needsTheSources)
+    @Test("the search has no drill-down level for book groups anymore and pushes the page; the tab shows the tiles", .needsTheSources)
     func noSecondGroupList() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

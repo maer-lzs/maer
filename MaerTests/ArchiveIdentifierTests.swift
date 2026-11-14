@@ -11,7 +11,7 @@ import Foundation
 /// A song address (`lva:X#n`) resolves to the same archive identifier as
 /// its release, so source links and covers never carry `%23<index>`.
 struct ArchiveIdentifierTests {
-    @Test("Song und Album ergeben dieselbe Kennung, andere Quellen keine")
+    @Test("Song and album give the same identifier, other sources none")
     func songResolvesToItsRelease() {
         let album = "lva:cocaine-bear-soundtrack"
         let song = CatalogSongID.make(album: album, index: 0)
@@ -22,7 +22,7 @@ struct ArchiveIdentifierTests {
         #expect(FreeCatalog.archiveIdentifier(of: "jam:99") == nil)
     }
 
-    @Test("Cover und Quelle eines Songs sind die des Albums, ohne %23")
+    @Test("Cover and source of a song are those of the album, without %23")
     func coverAndSourceCarryNoFragment() {
         let album = "lva:cocaine-bear-soundtrack"
         let song = CatalogSongID.make(album: album, index: 3)

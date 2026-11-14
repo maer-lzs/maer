@@ -15,7 +15,7 @@ import Foundation
 struct CatalogFactsParameterTests {
     static let item = LibraryItem(id: "lv:witness-reading", media: nil, addedAt: nil)
 
-    @Test("die Suche nennt die Lesung, die ihr gereicht wird, und keine, wenn keine gereicht wird")
+    @Test("the search names the reading that is passed to it, and none if none is passed")
     func searchNamesTheReadingItIsHanded() {
         let second = GlobalSearchModel.bookResult(Self.item, source: "LibriVox", readingVersion: { _ in 2 })
         #expect(second.subtitle?.contains("2") == true, "die gereichte Lesung steht in der Zeile")
@@ -25,7 +25,7 @@ struct CatalogFactsParameterTests {
 
     /// A work stays one entry, whatever the service would say: the form that
     /// is handed in decides, and a work is decided before any detail is asked.
-    @Test("die Playlist-Erweiterung folgt der gereichten Form")
+    @Test("the playlist extension follows the form that is passed")
     func playlistExpansionFollowsTheFormItIsHanded() async {
         let id = FreeCatalog.archivePrefix + "witness-form"
         let expanded = await PlaylistPresenter.expandedCatalogRelease(id, archiveForm: { _ in .work })

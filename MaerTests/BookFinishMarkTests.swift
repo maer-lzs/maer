@@ -12,7 +12,7 @@ import Foundation
 /// and from the tile menu alike; a catalogue title's mark lands on the device.
 @MainActor
 struct BookFinishMarkTests {
-    @Test("die Geste geht je Titel an ihren Ort: Katalog lokal, Server ganz, offline in die Schlange, ein Fehler schreibt nichts")
+    @Test("the gesture goes to its place per title: catalog locally, server fully, offline into the queue, an error writes nothing")
     func eachTitleGoesToItsPlace() {
         #expect(BookFinishMark.step(keptHere: true, target: true, fetch: .failed, knownDuration: 600, knownFraction: 0.2)
                 == .local(position: 600, duration: 600), "a catalogue title is marked on the device, whatever the server said")
@@ -32,7 +32,7 @@ struct BookFinishMarkTests {
                 == .refuse)
     }
 
-    @Test("als gehoert markiert, steht der Hoerstand eines Katalog-Titels auf dem Geraet, von jeder Flaeche aus")
+    @Test("marked as played, the listening state of a catalog title is on the device, from every surface")
     func aCatalogueMarkLandsOnTheDevice() async {
         let id = FreeCatalog.librivoxPrefix + "finish-\(UUID().uuidString)"
         defer { ListeningStore.forgetUserDeleted(id) }
@@ -48,7 +48,7 @@ struct BookFinishMarkTests {
         #expect(ListeningStore.mark(id)?.position == 600, "the mark went where the catalogue writes nothing")
     }
 
-    @Test("nach einer eingereihten Marke zeigt die Liste sie sofort, ohne Netz und ohne weiteren Anlass")
+    @Test("after a queued mark the list shows it at once, without network and without further occasion")
     func theListShowsAQueuedMarkAtOnce() async {
         let id = "finish-witness-\(UUID().uuidString)"
         let provider = MockProvider()
@@ -127,7 +127,7 @@ struct BookFinishMarkTests {
         PlayQueue.shared.remove(id)
     }
 
-    @Test("eine gesendete Marke ist bei 403, 404 und 410 eine Verweigerung mit Satz; die Schlange laesst nur 404 und 410 fallen")
+    @Test("a sent mark is a refusal with a sentence on 403, 404 and 410; the queue drops only 404 and 410")
     func theRefusalRules() {
         #expect(SyncRules.refusesTheMark(status: 403))
         #expect(SyncRules.refusesTheMark(status: 404))
@@ -146,7 +146,7 @@ struct BookFinishMarkTests {
         #expect(SyncQueue.httpStatus(of: URLError(.notConnectedToInternet)) == nil)
     }
 
-    @Test("jede Quelle sagt selbst, ob eine Marke bei ihr ankommt: Server senden, lokale Dateien, Kataloge, Feeds und Radio behalten sie")
+    @Test("every source says itself whether a mark reaches it: servers send, local files, catalogs, feeds and radio keep it")
     func everySourceAnswersWhereItsMarkGoes() {
         let session = AppSession.shared
         let answers: [(id: String, keeps: Bool)] = [
@@ -158,7 +158,7 @@ struct BookFinishMarkTests {
         }
     }
 
-    @Test("ein Buch einer Quelle ohne Audiobookshelf-Abgleich (Jellyfin, Booksonic) bekommt seine Marke gesendet")
+    @Test("a book of a source without Audiobookshelf sync (Jellyfin, Booksonic) gets its mark sent")
     func aMarkReachesASourceWithoutTheReconcile() async {
         let entry = book("jf:book")
         let provider = AnsweringProvider()
@@ -170,7 +170,7 @@ struct BookFinishMarkTests {
         #expect(provider.lastFinished == true)
     }
 
-    @Test("verweigert der Server den Schrieb inhaltlich, bleibt alles: nichts eingereiht, Als Naechstes unveraendert, der Satz kommt")
+    @Test("if the server refuses the write on its merits, everything stays: nothing queued, Up Next unchanged, the sentence appears")
     func aRefusedWriteChangesNothing() async {
         let entry = book("refused")
         PlayQueue.shared.playLast(entry.id)
@@ -187,7 +187,7 @@ struct BookFinishMarkTests {
         #expect(stillNext, "a refused mark took the title out of Up Next")
     }
 
-    @Test("ein voruebergehender Fehler beim Schrieb reiht die Marke ein und nimmt den Titel aus Als Naechstes")
+    @Test("a temporary error on the write queues the mark and takes the title out of Up Next")
     func aPassingFailureQueuesTheMark() async {
         let entry = book("passing")
         PlayQueue.shared.playLast(entry.id)
@@ -202,7 +202,7 @@ struct BookFinishMarkTests {
         #expect(!stillNext)
     }
 
-    @Test("eine lokale Datei traegt ihre Marke auf dem Geraet, ihre Quelle schreibt nichts")
+    @Test("a local file carries its mark on the device, its source writes nothing")
     func aLocalFileKeepsItsMarkHere() async {
         let entry = book("local:finish")
         defer { ListeningStore.forgetUserDeleted(entry.id) }
@@ -214,7 +214,7 @@ struct BookFinishMarkTests {
         #expect(ListeningStore.mark(entry.id)?.position == 900, "the mark is gone at the next start")
     }
 
-    @Test("der Player nimmt fuer ein Buch die Tuer: verweigert bleiben Stand und Marke, geschrieben steht die Marke")
+    @Test("the player takes the door for a book: if refused, state and mark stay, if written, the mark stands")
     func thePlayerTakesTheDoor() async {
         let entry = book("player")
         let refusing = AnsweringProvider(writeError: APIError.http(404, "gone"))
@@ -242,7 +242,7 @@ struct BookFinishMarkTests {
         #expect(writing.writes == 1)
     }
 
-    @Test("die Buch-Geste schreibt nur noch die Tuer, alle drei Flaechen rufen sie", .needsTheSources)
+    @Test("the book gesture is written only by the door now, all three surfaces call it", .needsTheSources)
     func onlyTheDoorWritesTheGesture() throws {
         let views = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])
         #expect(views.count > 100, "der Zaun hat die Ansichten nicht gelesen")
@@ -267,7 +267,7 @@ struct BookFinishMarkTests {
     /// A refused mark writes nothing, and both surfaces say the door's
     /// sentence: the detail page in its line, the tile menu, closed by the
     /// time the answer comes, in a notice on the cell that hosts it.
-    @Test("verweigert der Server die Marke, sagen beide Flaechen den Satz der Tuer", .needsTheSources)
+    @Test("if the server refuses the mark, both surfaces say the sentence of the door", .needsTheSources)
     func bothSurfacesSayARefusedMark() throws {
         let views = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])
         for name in ["BookDetailScreen.swift", "BookGridComponents.swift"] {

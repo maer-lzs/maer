@@ -23,7 +23,7 @@ struct CatalogKeptItemsTests {
             addedAt: nil)
     }
 
-    @Test("ein Titel mit Namen wird vorn behalten, ohne Spuren, einmal je Kennung")
+    @Test("a title with a name is kept at the front, without tracks, once per identifier")
     func aNamedTitleIsKeptFirstWithoutTracks() {
         let garden = item("lva:secret_garden_version2_librivox", title: "The Secret Garden")
         let kept = CatalogKeptItems.adding(garden, to: [])
@@ -37,7 +37,7 @@ struct CatalogKeptItemsTests {
         #expect(again.map(\.id) == [garden.id, other.id])
     }
 
-    @Test("ein Titel ohne Namen fuegt nichts hinzu, die Grenze haelt die neuesten")
+    @Test("a title without a name adds nothing, the limit keeps the newest")
     func anUnnamedTitleAddsNothingAndTheCapKeepsTheNewest() {
         let kept = CatalogKeptItems.adding(item("lva:a", title: "A"), to: [])
         #expect(CatalogKeptItems.adding(item("lva:b", title: nil), to: kept) == kept)
@@ -46,7 +46,7 @@ struct CatalogKeptItemsTests {
         #expect(full.map(\.id) == ["lva:4", "lva:3", "lva:2"])
     }
 
-    @Test("ein Eintrag aus der Reihe behaelt seinen Titel und nimmt die Dauer des aufgeloesten Titels, wo er keine hat")
+    @Test("an entry from the row keeps its title and takes the duration of the resolved title where it has none")
     func aRowEntryKeepsItsTitleAndTakesTheDuration() {
         let row = LibraryItem(id: "lva:bbc", media: LibraryItemMedia(
             metadata: LibraryItemMetadata(title: "BBC Sci-Fi Radio Plays", authorName: nil, narratorName: nil,
@@ -67,7 +67,7 @@ struct CatalogKeptItemsTests {
     /// A kept document that is there and does not read (before the first
     /// unlock) is not empty: nothing is saved over it, and once it reads the
     /// titles of the run go in front of it.
-    @Test("ein behaltenes Dokument, das nicht liest, wird nicht ueberschrieben; liest es wieder, kommen die Titel des Laufs davor")
+    @Test("a kept document that does not read is not overwritten; if it reads again, the titles of the run come before it")
     @MainActor
     func anUnreadKeptDocumentIsNotReplaced() async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -95,7 +95,7 @@ struct CatalogKeptItemsTests {
         #expect(saved.map(\.id) == ["lva:second", "lva:first", "lva:old"], "the document read late lost a title")
     }
 
-    @Test("der Anbieter laedt die behaltenen Titel beim Start und behaelt, was er aufloest; Weiterhoeren benennt die unbenannten", .needsTheSources)
+    @Test("the provider loads the kept titles at start and keeps what it resolves; Continue Listening names the unnamed ones", .needsTheSources)
     func theProviderKeepsAndContinueNames() throws {
         let read = { (path: String) in
             SyncContractFenceTests.stripped(

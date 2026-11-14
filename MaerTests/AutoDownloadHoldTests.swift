@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Automatik haelt je Sendung eine gewaehlte Anzahl: was ueber der Anzahl
-/// liegt, geht am weitesten von der Richtung zuerst, nie eine angefangene
-/// oder die spielende. Die Richtung reist, Ein/Aus und Anzahl bleiben am
-/// Geraet, und der Umzug vom alten einen Wert schreibt nichts.
+/// The automation keeps a chosen count per show: what lies above the count
+/// goes, the one furthest from the direction first, never a started one
+/// or the playing one. The direction travels, on/off and count stay on the
+/// device, and the move from the old single value writes nothing.
 @MainActor
 struct AutoDownloadHoldTests {
     typealias Rules = PodcastAutoDownloadRules
@@ -22,12 +22,12 @@ struct AutoDownloadHoldTests {
     /// waits, a news show keeps only the newest, under the count fills.
     nonisolated static let holds = SharedCases.cases("auto-download-hold")
 
-    @Test("gemeinsame Faelle: auto-download-hold traegt sechs Faelle")
+    @Test("shared cases: auto-download-hold carries six cases")
     func holdCasesLoaded() {
         #expect(Self.holds.count == 6)
     }
 
-    @Test("gemeinsame Faelle: hold antwortet je Fall wie die Datei sagt", arguments: holds)
+    @Test("shared cases: hold answers per case as the file says", arguments: holds)
     func hold(_ c: SharedCase) throws {
         let input = try c.value("input")
         let downloaded = input["downloaded"]?.strings
@@ -57,7 +57,7 @@ struct AutoDownloadHoldTests {
         (defaults.persistentDomain(forName: name) ?? [:]) as NSDictionary
     }
 
-    @Test("der alte eine Wert wird beim Lesen zerlegt, jede Form behaelt ihre Wirkung, und nichts wird geschrieben")
+    @Test("the old single value is split on reading, every form keeps its effect, and nothing is written")
     func theOldValueSplitsWhenRead() {
         let (defaults, name) = suite()
         defer { UserDefaults().removePersistentDomain(forName: name) }
@@ -88,7 +88,7 @@ struct AutoDownloadHoldTests {
         #expect(snapshot(defaults, name) == before, "reading the old value wrote nothing")
     }
 
-    @Test("ein neuer Wert gewinnt ueber den alten, eine reisende Richtung schlaegt den alten Wert des Geraets")
+    @Test("a new value wins over the old one, a traveling direction beats the old value of the device")
     func aNewValueWins() {
         let (defaults, name) = suite()
         defer { UserDefaults().removePersistentDomain(forName: name) }
@@ -109,7 +109,7 @@ struct AutoDownloadHoldTests {
         return (sync, defaults, suite)
     }
 
-    @Test("I7 und I8: die Richtung von A steht auf B, Ein/Aus und Anzahl von B bleiben, B laedt aus nie, danach null Schreibvorgaenge")
+    @Test("I7 and I8: the direction of A applies on B, on/off and count of B stay, B never unloads, afterwards zero writes")
     func theDirectionTravelsAndNothingElse() {
         let cloud = CountingChoiceCloud()
         let a = device(cloud, now: 10_000)
@@ -148,7 +148,7 @@ struct AutoDownloadHoldTests {
         #expect(cloud.writes == 0, "settled: two more rounds on both devices write nothing")
     }
 
-    @Test("die Automatik laeuft nur ueber Sendungen, die auf diesem Geraet an sind, und an fragt nur die Geraete-Werte", .needsTheSources)
+    @Test("the automation runs only over shows that are on on this device, and on asks only the device values", .needsTheSources)
     func offNeverLoads() throws {
         let helpers = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastHelpers.swift"), encoding: .utf8))

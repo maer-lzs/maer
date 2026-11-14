@@ -21,14 +21,14 @@ struct ABSPodcastFeedTests {
     "type":"episodic"},"episodes":[]}}
     """.utf8)
 
-    @Test("das Bild aus der Antwort des Servers geht beim Anlegen mit")
+    @Test("the picture from the server's answer goes along when a show is created")
     func theServersPictureGoesAlong() throws {
         let metadata = try JSONDecoder().decode(PodcastFeedResponse.self, from: Self.serverAnswer).podcast.metadata
         #expect(metadata.image == "https://feed.example.lan/cover.jpg", "the picture under the server's name was not read")
         #expect(metadata.title == "Ein Feed" && metadata.feedUrl == "https://feed.example.lan/rss")
     }
 
-    @Test("die gemessene Antwort des Servers traegt das Bild unter image")
+    @Test("the measured answer of the server carries the picture under image")
     func theMeasuredAnswerCarriesThePicture() throws {
         // A measured answer of the test server, byte for byte; it is no
         // shared case file, so it lives beside them, not among them.
@@ -38,7 +38,7 @@ struct ABSPodcastFeedTests {
         #expect(metadata.title == "Stille-Funk")
     }
 
-    @Test("das Anlegen und der Nachzug tragen dieses Bild", .needsTheSources)
+    @Test("creating a show and the catch-up carry this picture", .needsTheSources)
     func creationAndFollowUpCarryIt() throws {
         let client = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/APIClient.swift"), encoding: .utf8))

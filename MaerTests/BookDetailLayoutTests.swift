@@ -53,7 +53,7 @@ struct BookDetailLayoutTests {
 /// One plain text from the HTML of a description, for books, shows and
 /// episodes: the same answer every time, `&amp;` decoded last.
 struct HTMLPlainTextTests {
-    @Test("eine Beschreibung wird jedes Mal gleich zu Text, ein maskiertes Zeichen bleibt maskiert")
+    @Test("a description becomes the same text every time, an escaped character stays escaped")
     func theEntitiesDecodeInOneOrder() {
         #expect(htmlPlainText("&amp;lt;b&amp;gt;") == "&lt;b&gt;", "an escaped entity stays the text it names")
         #expect(htmlPlainText("<p>Kapitel&nbsp;1 &amp; 2</p><br/>&quot;Ja&quot;, sagt &apos;er&#39; &lt;leise&gt;")
@@ -61,7 +61,7 @@ struct HTMLPlainTextTests {
         #expect(htmlEntities.last?.entity == "&amp;", "the ampersand goes last")
     }
 
-    @Test("Buchseite und Podcastseiten nehmen eine Fassung der Ersetzung", .needsTheSources)
+    @Test("book page and podcast pages take one version of the replacement", .needsTheSources)
     func oneVersionOfTheCleanup() throws {
         var tables: [String] = []
         for (file, text) in ProjectFileIntegrityTests.sourceTexts() {
@@ -74,7 +74,7 @@ struct HTMLPlainTextTests {
         #expect(book.contains("Text(htmlPlainText(description))"))
     }
 
-    @Test("Biografie und Albumnotizen werden zu demselben Klartext wie eine Buchbeschreibung, leer ist nichts", .needsTheSources)
+    @Test("biography and album notes become the same plain text as a book description, empty is nothing", .needsTheSources)
     func musicNotesTakeThePlainText() throws {
         let note = "<p>Rock &amp; Roll</p>Peter&#39;s <a href=\"https://example.org\">Band</a>"
         #expect(htmlPlainTextOrNil(note) == htmlPlainText(note))
@@ -94,7 +94,7 @@ struct HTMLPlainTextTests {
         "APIClient.swift": (1, "APIError.sanitize, a server's error page as one short line of a message, not a description"),
     ]
 
-    @Test("das Muster fuer Tags steht nur in der einen Fassung und im Fehlertext", .needsTheSources)
+    @Test("the pattern for tags exists only in the one version and in the error text", .needsTheSources)
     func theTagPatternStandsInOnePlace() {
         var found: [String: Int] = [:]
         var seen = false

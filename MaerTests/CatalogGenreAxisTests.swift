@@ -15,18 +15,18 @@ struct CatalogShelfQueryTests {
         #expect(CatalogGenreAxis.subjects(forShelf: "does-not-exist").isEmpty)
     }
 
-    /// Jede Fläche derselben Quelle muss auf
-    /// DERSELBEN Basis stehen. Der Regal-Pfad hatte die Basis nachgebaut und
-    /// dabei drei beschlossene Punkte verloren. Entdopplung, Lizenzklausel
-    /// und (über `isCuratedArchiveDoc`) die Sperrliste.
+    /// Every surface of the same source must stand on the
+    /// SAME base. The shelf path had rebuilt the base and lost three
+    /// decided points in doing so: de-duplication, license clause
+    /// and (via `isCuratedArchiveDoc`) the block list.
     @Test("every archive shelf stands on the source's ONE base query")
     func shelvesReuseTheBaseQuery() throws {
         let books = try #require(ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks))
         #expect(books.contains("NOT collection:librivoxaudio"),
                 "without it a shelf shows the LibriVox duplicates again (measured: 1.098 of 1.602)")
-        // Der Lizenzfilter ist vom ANZEIGE-Weg gefallen: die Grenze sitzt am
-        // Kopieren (`mayDownload`), nicht am Zeigen, und die fehlende Angabe
-        // ist an der Kachel SICHTBAR statt den Eintrag zu verschweigen.
+        // The license filter has fallen from the DISPLAY path: the limit sits at
+        // copying (`mayDownload`), not at showing, and the missing statement
+        // is VISIBLE on the tile instead of concealing the entry.
         #expect(!books.contains("licenseurl"),
                 "die Anzeige filtert wieder nach Lizenz")
         #expect(books.contains("mediatype:(audio)"),
@@ -35,7 +35,7 @@ struct CatalogShelfQueryTests {
         let otr = try #require(ArchiveOrgClient.archiveBaseQuery(for: .oldTimeRadio))
         #expect(!otr.contains("licenseurl"), "die OTR-Anzeige filtert wieder nach Lizenz")
         #expect(otr.contains("mediatype:(audio)"))
-        // Die andere Haelfte des Entscheids muss dabei greifen.
+        // The other half of the decision has to take hold here.
         #expect(!FreeCatalog.mayDownload(licenceURL: nil))
         #expect(FreeCatalog.mayDownload(licenceURL: "https://creativecommons.org/licenses/by/4.0/"))
 
@@ -59,11 +59,11 @@ struct CatalogShelfQueryTests {
     }
 }
 
-/// Die Kopf-Regel der gefilterten Flaechen: eine gefilterte Flaeche darf
-/// nie aussehen wie der volle Bestand; der Titel nennt den Filter, und
-/// ohne Filter aendert sich nichts.
+/// The head rule of the filtered surfaces: a filtered surface must
+/// never look like the full stock; the title names the filter, and
+/// without a filter nothing changes.
 struct FilteredHeadTests {
-    @Test("der Titel nennt den aktiven Filter und sonst nichts")
+    @Test("the title names the active filter and nothing else")
     func headNamesTheFilter() {
         #expect(FilteredHead.title("All Books", filterLabel: "Unfinished")
                 == "All Books · Unfinished")

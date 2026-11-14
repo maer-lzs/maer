@@ -160,7 +160,7 @@ struct AppRowsCompletenessFenceTests {
         }
     }
 
-    @Test("jede Ueberschrift an einer Reiter-Wurzel gehoert zu einer Reihe der Liste", .needsTheSources)
+    @Test("every heading at a tab root belongs to a row of the list", .needsTheSources)
     func everyRenderedRowIsListed() throws {
         let found = try Self.allHeadings()
         #expect(found.count > 30, "the reading found only \(found.count) headings")
@@ -171,7 +171,7 @@ struct AppRowsCompletenessFenceTests {
         #expect(Set(Self.sites.keys).subtracting(keys).isEmpty, "places for rows AppRows does not know")
     }
 
-    @Test("jede Reihe der Liste wird gezeichnet oder ist ein benannter Nachfrager", .needsTheSources)
+    @Test("every row of the list is drawn or is a named asker", .needsTheSources)
     func everyListedRowIsRendered() throws {
         let found = try Self.allHeadings()
         let keys = Set(AppRows.all.map(\.key))
@@ -196,7 +196,7 @@ struct AppRowsCompletenessFenceTests {
         #expect(radio.components(separatedBy: "cardRow(title: String(localized:").count == 2, "the recents card row draws a second row")
     }
 
-    @Test("ohne Schalter nennt jede Reihe ihren Grund, und jede Quelle loest auf")
+    @Test("without a switch every row names its reason, and every source resolves")
     func everyFixedEntryNamesItsReasonAndEverySourceResolves() {
         for row in AppRows.all {
             #expect(row.toggleable == (row.fixed == nil), "\(row.key): a switch and a reason, or neither")
@@ -287,7 +287,7 @@ struct AppRowsCompletenessFenceTests {
         }
     }
 
-    @Test("jeder Reiter steht in seiner Reihenfolge, und die Liste der Reihen auch", .needsTheSources)
+    @Test("every tab stands in its order, and the list of rows too", .needsTheSources)
     func everyTabStandsInItsOrder() throws {
         for order in Self.orders {
             let code = SyncContractFenceTests.stripped(try String(
@@ -310,7 +310,7 @@ struct AppRowsCompletenessFenceTests {
         #expect(Self.sequence(probe, in: "start b a").last! == nil, "the reading sees no order")
     }
 
-    @Test("die Lesung selbst: Ueberschrift, Deklaration, Anker und Bereich")
+    @Test("the reading itself: heading, declaration, anchor and range")
     func theReadingItself() {
         let code = """
         struct Other: View {

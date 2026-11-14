@@ -13,44 +13,44 @@ import Foundation
 /// out and dropped the keychain token, which no restart could undo.
 @MainActor
 struct AuthSessionTests {
-    @Test("ein 401-Dauerregen laesst den Schluessel unangetastet")
+    @Test("a 401 downpour leaves the key untouched")
     func unauthorizedNeverDeletesTheToken() async {
         let key = "test-token-\(UUID().uuidString)"
         KeychainStore.save("SECRET-TOKEN", forKey: key)
         defer { KeychainStore.delete(forKey: key) }
 
         let auth = AppSession.shared.authViewModel
-        // Dieser Test veraendert einen SINGLETON. Er stellt
-        // den Ausgangszustand danach wieder her, sonst traegt der naechste
-        // Test in derselben Suite den Zweifel weiter.
-        defer { auth.logout() }   // im Testlauf ist kein echter Zugang gesetzt
-        // Der Dauerregen: viele 401 hintereinander, so wie das Hochfahren
-        // des Reverse-Proxys sie liefert.
+        // This test changes a SINGLETON. It restores
+        // the initial state afterwards, otherwise the next
+        // test in the same suite carries the doubt on.
+        defer { auth.logout() }   // no real access is set in the test run
+        // The downpour: many 401s in a row, as the start-up
+        // of the reverse proxy delivers them.
         for _ in 0..<25 { auth.markSessionSuspect() }
 
-        // Der Zustand ist ZWEIFEL, nicht Abmeldung …
+        // The state is DOUBT, not sign-out …
         #expect(auth.sessionSuspect)
-        // … und der gespeicherte Schluessel liegt unveraendert im Bund.
+        // … and the stored key lies unchanged in the keychain.
         #expect(KeychainStore.load(forKey: key) == "SECRET-TOKEN")
     }
 
-    @Test("die Probe trennt 'Server nicht da' von 'Server sagt nein'")
+    @Test("the probe separates 'server not there' from 'server says no'")
     func probeSeparatesUnreachableFromRejected() async {
-        // Ohne Token ist die Frage beantwortet, ohne das Netz zu fragen.
+        // Without a token the question is answered without asking the network.
         let client = APIClient(baseURL: URL(string: "https://example.invalid")!, token: nil)
         #expect(await client.probeAuthorization() == .rejected)
-        // Mit Token, aber unerreichbarem Host: UNREACHABLE. Genau das
-        // Neustart-Fenster, in dem nichts angetastet werden darf.
+        // With a token but an unreachable host: UNREACHABLE. Exactly the
+        // restart window in which nothing may be touched.
         let offline = APIClient(baseURL: URL(string: "https://127.0.0.1:9")!, token: "T")
         #expect(await offline.probeAuthorization() == .unreachable)
     }
 
-    @Test("eine erfolgreiche Neu-Anmeldung raeumt den Zweifel ab", .needsTheSources)
+    @Test("a successful re-sign-in clears the doubt", .needsTheSources)
     func successfulSignInClearsTheDoubt() {
-        // Der vierte Fall: reject → Neu-Anmeldung → Zustand weg.
-        // Geprueft an der QUELLE, weil der Erfolgspfad einen echten Server
-        // braucht: der connect()-Erfolgszweig muss beide Flags raeumen.
-        // Die Probe-Schleife tut es nach `needsReauth` nicht mehr.
+        // The fourth case: reject → re-sign-in → state gone.
+        // Checked at the SOURCE, because the success path needs a real server:
+        // the connect() success branch must clear both flags.
+        // The probe loop no longer does it after `needsReauth`.
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let file = root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift")
@@ -64,11 +64,11 @@ struct AuthSessionTests {
         #expect(success.contains("needsReauth = false"))
     }
 
-    @Test("nur der Nutzer-Abmelde-Weg raeumt den Schluessel", .needsTheSources)
+    @Test("only the user sign-out path clears the key", .needsTheSources)
     func onlyTheUserPathDeletes() {
-        // Der Zaun in Textform: der 401-Rueckruf zeigt auf markSessionSuspect,
-        // niemals auf logout(). Gemessen an der Quelle, damit ein spaeterer
-        // Umbau die Regel nicht still zuruecknimmt.
+        // The fence in text form: the 401 callback points to markSessionSuspect,
+        // never to logout(). Measured at the source, so that a later
+        // rework does not silently withdraw the rule.
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let file = root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift")

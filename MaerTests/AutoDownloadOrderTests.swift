@@ -26,12 +26,12 @@ struct AutoDownloadOrderTests {
         (1...max(1, value?["count"]?.int ?? 1)).map { .init(guid: "e\($0)", pubDate: Double($0)) }
     }
 
-    @Test("gemeinsame Faelle: auto-download-order traegt dreizehn Faelle")
+    @Test("shared cases: auto-download-order carries thirteen cases")
     func orderCasesLoaded() {
         #expect(Self.order.count == 13)
     }
 
-    @Test("gemeinsame Faelle: Der Reihe nach antwortet je Fall wie die Datei sagt", arguments: order)
+    @Test("shared cases: In order answers per case as the file says", arguments: order)
     func nextInOrder(_ c: SharedCase) throws {
         let input = try c.value("input")
         switch c.ask {
@@ -55,7 +55,7 @@ struct AutoDownloadOrderTests {
         }
     }
 
-    @Test("angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut", .needsTheSources)
+    @Test("started means half a minute, as in Continue Listening, at the place that builds the run", .needsTheSources)
     func begunMeansHalfAMinute() throws {
         #expect(PodcastAutoDownloadRules.startedAtLeast == 30)
         #expect(PodcastAutoDownloadRules.runGap == 3)
@@ -76,7 +76,7 @@ struct AutoDownloadOrderTests {
         #expect(spelled == ["PodcastAutoDownloadRules.swift"], "the half minute is read at its one place: \(spelled)")
     }
 
-    @Test("Blatt: jedes Feld schreibt nur eine Aenderung, das Oeffnen schreibt nichts", .needsTheSources)
+    @Test("Sheet: every field writes only a change, opening writes nothing", .needsTheSources)
     func theSheetWritesOnlyChanges() throws {
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
         for (field, guardLine) in [
@@ -100,7 +100,7 @@ struct AutoDownloadOrderTests {
         #expect(setOwn.contains("guard raw != PodcastGeneralRule.effective(stored: stored(showId), general: general) else { return }"))
     }
 
-    @Test("Messung: der Lauf schreibt je Sendung Richtung, Stichtag und Wahl, und der Bericht nennt den Zustand", .needsTheSources)
+    @Test("Measurement: the run writes per show direction, cutoff date and choice, and the report names the state", .needsTheSources)
     @MainActor
     func theRunSaysWhatItRead() throws {
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
@@ -131,7 +131,7 @@ struct AutoDownloadOrderTests {
                                      pubDate: Double($0), duration: 600) }
     }
 
-    @Test("eine Sendung, zwei Urteile, zwei Antworten: lokal ungehoert, geteilt gehoert, in beiden Richtungen")
+    @Test("one show, two verdicts, two answers: locally unplayed, shared played, in both directions")
     func oneShowTwoJudgementsTwoAnswers() {
         let episodes = Self.showEpisodes(key: "k")
         let local: (PodcastEpisode) -> EpisodePlayState = { _ in .unplayed }
@@ -150,7 +150,7 @@ struct AutoDownloadOrderTests {
     /// The other way round: heard here, begun on the server later. The
     /// shared judgement takes the newer state, so the run fetches and keeps
     /// the episode the person is in, where the local one let it go.
-    @Test("Gegenrichtung: lokal gehoert, am Server begonnen und neuer, das geteilte Urteil nimmt den neueren Stand")
+    @Test("Opposite direction: locally played, started on the server and newer, the shared verdict takes the newer state")
     @MainActor
     func heardHereBegunOnTheServerLater() throws {
         let key = "witness\(UUID().uuidString.prefix(8))"
@@ -187,7 +187,7 @@ struct AutoDownloadOrderTests {
     /// Heard under the episode's server id only: the mark stands under its
     /// `abspod:` id, the feed episode has none. The shared judgement reads
     /// the newest mark across the bridge, so the run skips the episode.
-    @Test("eine Marke nur unter der Kennung der Fassung am Server: das geteilte Urteil sieht sie, der Lauf laesst die Folge aus")
+    @Test("a mark only under the identifier of the version on the server: the shared verdict sees it, the run skips the episode")
     @MainActor
     func aMarkUnderTheServerIdCounts() throws {
         let key = "witness\(UUID().uuidString.prefix(8))"
@@ -216,7 +216,7 @@ struct AutoDownloadOrderTests {
                 == [episodes[4].guid, episodes[3].guid, episodes[2].guid, episodes[0].guid])
     }
 
-    @Test("der Lauf fragt das geteilte Urteil einmal je Folge, das Aufraeumen bleibt lokal", .needsTheSources)
+    @Test("the run asks the shared verdict once per episode, the cleanup stays local", .needsTheSources)
     func theRunAsksTheSharedJudgementOnce() throws {
         let helpers = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastHelpers.swift"), encoding: .utf8))

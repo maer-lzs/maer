@@ -17,7 +17,7 @@ struct CatalogRightsWordingFenceTests {
             try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("„frei“ steht in keinem Text der App als Aussage ueber die Kataloge", .needsTheSources)
+    @Test("„frei“ appears in no text of the app as a statement about the catalogs", .needsTheSources)
     func freeIsNoClaim() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -36,14 +36,14 @@ struct CatalogRightsWordingFenceTests {
         #expect(banned.contains(where: "From the Free Catalogs".lowercased().contains))
     }
 
-    @Test("LibriVox und die abgelaufene US-Frist heissen gemeinfrei in den USA", .needsTheSources)
+    @Test("LibriVox and the expired US term are called public domain in the USA", .needsTheSources)
     func publicDomainNamesTheUSA() throws {
         let provider = try source("Sources/Providers/FreeCatalogProvider.swift")
         #expect(!provider.contains("String(localized: \"Public domain\")"), "a catalog label claims public domain everywhere")
         #expect(provider.components(separatedBy: "String(localized: \"Public domain in the USA\")").count - 1 == 2)
     }
 
-    @Test("keine Rechte-Angabe ohne Aussage traegt ein Siegel, der Hinweis des Archivs hat einen Wortlaut", .needsTheSources)
+    @Test("no rights statement without a claim carries a seal, the note of the archive has a wording", .needsTheSources)
     func noSealWithoutAStatement() throws {
         let detail = try source("Sources/Views/CatalogDetailExtras.swift")
         #expect(detail.contains("if let licence, licence != FreeCatalog.unstatedRights {"))
@@ -59,7 +59,7 @@ struct CatalogRightsWordingFenceTests {
         #expect(settings.contains("if let notice = source.rightsNotice {"))
     }
 
-    @Test("der Satz zur Verantwortung steht einmal, im Abschnitt Ueber Maer", .needsTheSources)
+    @Test("the sentence on responsibility appears once, in the section About Maer", .needsTheSources)
     func theResponsibilityStandsOnce() throws {
         var users: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {

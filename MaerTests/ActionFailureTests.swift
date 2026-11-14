@@ -31,7 +31,7 @@ struct ActionFailureTests {
         try FetchAnswerTests.squeezedSource(relative)
     }
 
-    @Test("die Handlungen, die ein Scheitern verschluckten, fragen die Antwort und sagen eine Weigerung", .needsTheSources)
+    @Test("the actions that swallowed a failure ask for the answer and report a refusal", .needsTheSources)
     func theSwallowedActionsAskTheAnswer() throws {
         var offenders: [String] = []
         for site in Self.swallowedActions {
@@ -56,7 +56,7 @@ struct ActionFailureTests {
 
     /// A press while the automatic pass runs: no pass ran, so the line does
     /// not say "Nothing to sync.".
-    @Test("ein Abgleich, der nicht lief, weil einer lief, sagt nicht nichts zu tun")
+    @Test("a sync that did not run because one was running does not say nothing to do")
     func aPassThatDidNotRunSaysNothing() {
         var running = PodcastSubscriptionSync.Report()
         running.alreadyRunning = true

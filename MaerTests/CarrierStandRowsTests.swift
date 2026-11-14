@@ -29,7 +29,7 @@ struct CarrierStandRowsTests {
         return try KeyedRowStore<[Double]>.loadNow(table: .carrierStand, reader: reader).rows
     }
 
-    @Test("der erste Zugriff zieht die Bloecke beider Traeger und aller Identitaeten in Zeilen; Blob, Token und Version gehen, die Marke der Einfaltung bleibt")
+    @Test("the first access moves the blocks of both carriers and all identities into rows; blob, token and version go, the mark of the folding stays")
     func theFirstAccessMovesTheBlobs() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -63,7 +63,7 @@ struct CarrierStandRowsTests {
         #expect(later.rows("cloudStandQueue") == ["rss:q": [20, 2_000]], "the next start reads the rows")
     }
 
-    @Test("ein abgebrochener Umzug fuehrt Blob und Zeilen zusammen, die Zeilen gewinnen")
+    @Test("an aborted move merges blob and rows, the rows win")
     func aBrokenMoveMerges() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -80,7 +80,7 @@ struct CarrierStandRowsTests {
         #expect(defaults.object(forKey: "cloudStandMirror") == nil)
     }
 
-    @Test("ein Besitzer schreibt nur seine Zeilen; Umbenennen traegt sie zum neuen Namen")
+    @Test("an owner writes only its rows; renaming carries them to the new name")
     func oneOwnerLeavesTheOthers() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -117,7 +117,7 @@ struct CarrierStandRowsTests {
     /// unknown mirror, not an empty one. The token goes, so the next round
     /// fetches from the start, and once the rows are read they join the
     /// mirror instead of leaving with the next write.
-    @Test("kann der Start die Zeilen nicht lesen, faellt das Token des CloudKit-Traegers, und gelesen geht keine Zeile verloren")
+    @Test("if the start cannot read the rows, the token of the CloudKit carrier drops, and once read no row is lost")
     func anUnreadStartDropsTheTokenAndLosesNoRow() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -142,7 +142,7 @@ struct CarrierStandRowsTests {
         carrier.stop()
     }
 
-    @Test("kann der Start die Zeilen nicht lesen, faellt die Version des Mär-Sync, und gelesen geht keine Zeile verloren")
+    @Test("if the start cannot read the rows, the version of Mär Sync drops, and once read no row is lost")
     func anUnreadStartDropsTheVersionAndLosesNoRow() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -165,7 +165,7 @@ struct CarrierStandRowsTests {
         #expect(try storedRows(path)[CarrierStandRows.key(owner, "rss:old")] == [1, 100], "a read row left with the write")
     }
 
-    @Test("nur die Bloecke der Staende gelten als alter Besitzer, nicht die Nachbarschluessel")
+    @Test("only the blocks of the states count as an old owner, not the neighboring keys")
     func theLegacyOwnersAreTheBlobs() {
         for key in ["cloudStandMirror", "cloudStandQueue", "maerSyncStands", "maerSyncStands.x/y", "maerSyncStandsQueue", "maerSyncStandsQueue.x"] {
             #expect(CarrierStandRows.isLegacyOwner(key), "\(key)")
@@ -242,7 +242,7 @@ struct CarrierStandRowsTests {
         return false
     }
 
-    @Test("der Leser alter Schluessel sieht jede Tuer und den Wert der Konstante, nicht ihren Namen; Schreiben und Loeschen lesen nicht")
+    @Test("the reader of old keys sees every door and the value of the constant, not its name; writing and deleting do not read")
     func theLegacyReaderSeesEveryDoorAndTheValue() {
         let carrier = "struct OldCarrier {\n    static let mirrorKey = \"cloudStandMirror\"\n    static let queueKey: String = \"cloudStandQueue\"\n"
             + "    static func ring(_ id: String) -> String { \"jumpRing.\\(id)\" }\n}"
@@ -272,7 +272,7 @@ struct CarrierStandRowsTests {
     /// an old key from them by its name. The move does not either: it walks
     /// the keys of the defaults (`dictionaryRepresentation`), so it is held
     /// to the same rule and stands in no exception.
-    @Test("kein Bau schreibt die alten Namen wieder: Token und Version heissen neu, kein Ganzschrieb eines Abbilds in die Voreinstellungen", .needsTheSources)
+    @Test("no build writes the old names again: token and version are named anew, no whole write of an image into the defaults", .needsTheSources)
     func theOldNamesAreNeverWrittenAgain() throws {
         let tokens = [CloudKitStandCarrier.tokenKey, CloudKitChoiceCarrier.tokenKey, CloudKitPlaylistCarrier.tokenKey,
                       CloudKitStatsCarrier.tokenKey]

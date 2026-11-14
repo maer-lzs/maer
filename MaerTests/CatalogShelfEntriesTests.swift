@@ -20,7 +20,7 @@ struct CatalogShelfEntriesTests {
                           licenseurl: nil, year: nil, subject: nil, collection: ArchiveStringList(["etree"]))
     }
 
-    @Test("die eine Kuratierung: Sperrliste immer, LibriVox-Trennung nur ausserhalb von LibriVox, Reihenfolge bleibt")
+    @Test("the one curation: block list always, LibriVox separation only outside LibriVox, order stays")
     func theOneCuration() {
         let first = Self.doc(), second = Self.doc()
         let denied = Self.doc("BearislandAM")
@@ -32,7 +32,7 @@ struct CatalogShelfEntriesTests {
                 == [first.identifier, duplicate.identifier, second.identifier], "LibriVox trennt sich nicht von sich selbst")
     }
 
-    @Test("ein Regal wird zu Eintraegen; Sammlungen hinter die Einzelwerke nur, wo verlangt")
+    @Test("a shelf becomes entries; collections behind the single works only where required")
     func aShelfBecomesEntries() throws {
         let collection = Self.doc(creator: "Various")
         let single = Self.doc(creator: "A")
@@ -49,7 +49,7 @@ struct CatalogShelfEntriesTests {
         #expect(CatalogShelfEntries.shelf(.gutenberg(books: [], total: 0), source: .gutenberg)?.items.isEmpty == true)
     }
 
-    @Test("Musik wird nicht kuratiert, wie vorher")
+    @Test("Music is not curated, as before")
     func musicIsNotCurated() {
         let denied = Self.doc("HMSUlyssesAM")
         let items = CatalogShelfEntries.music([denied])

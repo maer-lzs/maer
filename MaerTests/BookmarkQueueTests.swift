@@ -8,20 +8,20 @@ import Foundation
 import Testing
 @testable import Maer
 
-/// Tests für die Offline-Lesezeichen-Queue: Aufheben von Create+Delete,
-/// optimistische Sicht (Cache + Pending) und Reihenfolge-Erhalt.
-/// Reine Logik ohne Netz. Flush() wird hier bewusst nicht getestet.
+/// Tests for the offline bookmark queue: cancelling of Create+Delete,
+/// optimistic view (cache + pending) and order preservation.
+/// Pure logic without network. Flush() is deliberately not tested here.
 @MainActor
 struct BookmarkQueueTests {
     private let itemId = "bookmark-test-item"
 
-    /// Queue nutzt UserDefaults. Vor jedem Test sauber räumen.
+    /// The queue uses UserDefaults. Clean up properly before every test.
     private func reset() {
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.pendingBookmarkOps)
         BookmarkQueue.shared.cache([], forItemId: itemId)
     }
 
-    @Test("Offline angelegt + offline gelöscht hebt sich auf")
+    @Test("Created offline + deleted offline cancel each other out")
     func createThenDeleteCancelsOut() {
         reset()
         BookmarkQueue.shared.enqueue(.create(itemId: itemId, time: 42.4, title: "Test"))
@@ -29,7 +29,7 @@ struct BookmarkQueueTests {
         #expect(BookmarkQueue.shared.pendingOps().isEmpty)
     }
 
-    @Test("Pending-Create erscheint optimistisch in der effektiven Liste")
+    @Test("A pending create appears optimistically in the effective list")
     func effectiveMergesPendingCreate() {
         reset()
         BookmarkQueue.shared.cache(
@@ -42,7 +42,7 @@ struct BookmarkQueueTests {
         reset()
     }
 
-    @Test("Pending-Delete filtert den gecachten Server-Eintrag heraus")
+    @Test("A pending delete filters the cached server entry out")
     func effectiveFiltersPendingDelete() {
         reset()
         BookmarkQueue.shared.cache(
@@ -51,12 +51,12 @@ struct BookmarkQueueTests {
         )
         BookmarkQueue.shared.enqueue(.delete(itemId: itemId, time: 10))
         #expect(BookmarkQueue.shared.effectiveBookmarks(forItemId: itemId).isEmpty)
-        // Der Delete bleibt als Op liegen (kein passendes Pending-Create).
+        // The delete stays as an op (no matching pending create).
         #expect(BookmarkQueue.shared.pendingOps().count == 1)
         reset()
     }
 
-    @Test("Reihenfolge der Ops bleibt erhalten")
+    @Test("The order of the ops is preserved")
     func preservesOrder() {
         reset()
         BookmarkQueue.shared.enqueue(.create(itemId: itemId, time: 1, title: "A"))
@@ -100,7 +100,7 @@ struct BookmarkQueueTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("die Regel nach dem Senden: geht nur, was ankam; Neues bleibt; ein gesendetes, inzwischen aufgehobenes Anlegen wird zum Loeschen")
+    @Test("the rule after sending: only what arrived goes; new things stay; a create that was sent and meanwhile cancelled becomes a delete")
     func theRuleAfterAFlush() {
         let a = BookmarkQueue.Operation.create(itemId: itemId, time: 10, title: "A")
         let b = BookmarkQueue.Operation.create(itemId: itemId, time: 20, title: "B")
@@ -112,7 +112,7 @@ struct BookmarkQueueTests {
         #expect(BookmarkQueue.afterFlush(current: [gone], sent: [gone]).isEmpty)
     }
 
-    @Test("ein Lesezeichen, das waehrend des Sendens angelegt wird, ueberlebt den Flush")
+    @Test("a bookmark created during sending survives the flush")
     func aBookmarkQueuedDuringAFlushSurvives() async {
         reset()
         defer { reset() }
@@ -127,7 +127,7 @@ struct BookmarkQueueTests {
         #expect(BookmarkQueue.shared.pendingOps() == [.create(itemId: itemId, time: 20, title: "during")])
     }
 
-    @Test("ein Loeschen waehrend des Sendens desselben Anlegens erreicht den Server als Loeschen")
+    @Test("a deletion during the sending of the same create reaches the server as a deletion")
     func aDeleteDuringTheSendBecomesADelete() async {
         reset()
         defer { reset() }

@@ -11,7 +11,7 @@ import Foundation
 /// Data the app can fetch again stays out of backups, marked on its
 /// directory through ONE function: downloads, kept covers, catalogue stocks.
 struct BackupExclusionTests {
-    @Test("eine markierte Ablage traegt die Marke auf der Platte, eine andere nicht")
+    @Test("a marked store carries the mark on the disk, another one does not")
     func aMarkedDirectoryCarriesTheMark() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("backup-\(UUID().uuidString)", isDirectory: true)
@@ -29,7 +29,7 @@ struct BackupExclusionTests {
                 "a directory that is not there cannot be marked, and the answer says so")
     }
 
-    @Test("der Katalog-Bestand liegt nach dem Schreiben ausserhalb des Backups")
+    @Test("the catalog stock lies outside the backup after writing")
     func theCatalogStockStaysOutOfBackups() throws {
         let surface = "backuptest-\(UUID().uuidString)"
         let stock = CatalogStock(surface: surface, takenAt: 1, entries: [
@@ -49,7 +49,7 @@ struct BackupExclusionTests {
         #expect(BackupExclusion.isMarked(directory), "the stock was written into a directory that goes into backups")
     }
 
-    @Test("nur die eine Funktion setzt die Marke", .needsTheSources)
+    @Test("only the one function sets the mark", .needsTheSources)
     func onlyTheSeamSetsTheMark() {
         let files = ProjectFileIntegrityTests.sourceTexts()
         #expect(files.contains { $0.name == "BackupExclusion.swift" }, "der Zaun hat die Naht nicht gelesen")

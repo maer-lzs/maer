@@ -57,7 +57,7 @@ struct BookRouteEntryTests {
         LibraryItem(id: id, media: nil, addedAt: nil)
     }
 
-    @Test("ein Kandidat mit Titel schlaegt einen ohne, der Stand des Regals bleibt")
+    @Test("a candidate with a title beats one without, the state of the shelf stays")
     func aTitledCandidateWins() {
         let id = "lva:secret_garden"
         #expect(BookRouteEntry.resolve(id, shelved: nil, known: nil, playing: bare(id))?.item.title
@@ -69,7 +69,7 @@ struct BookRouteEntryTests {
         #expect(hit?.item.title == "T" && hit?.progress?.fraction == 0.3)
     }
 
-    @Test("die Seite nennt den Titel der geladenen Details, wenn der Eintrag keinen traegt", .needsTheSources)
+    @Test("the page names the title of the loaded details when the entry carries none", .needsTheSources)
     func thePageNamesTheDetailsTitle() throws {
         let id = "lva:secret_garden"
         let detail = LibraryItemDetail(id: id, media: try #require(item(id).media), userMediaProgress: nil)

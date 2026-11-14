@@ -7,14 +7,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Bezug des Bestands: die Massen-Wege, und was an ihnen schiefgehen
-/// koennte, ohne dass es jemand merkt.
+/// The retrieval of the stock: the bulk routes, and what could go wrong
+/// with them without anyone noticing.
 struct CatalogStockFetchTests {
 
-    /// Der Erstbezug laeuft ueber den SCHOEPF-Endpunkt, nicht ueber die
-    /// Seiten-API der Flaechen. Gemessen: 10.000 Eintraege in 3,6 s, also
-    /// 19 Abrufe fuer die groesste Sammlung statt Hunderten.
-    @Test("der Erstbezug fragt den Massen-Weg mit genau den Feldern des Bestands")
+    /// The first retrieval runs through the SCOOP endpoint, not through the
+    /// page API of the surfaces. Measured: 10,000 entries in 3.6 s, so
+    /// 19 fetches for the largest collection instead of hundreds.
+    @Test("the first retrieval asks the bulk route with exactly the fields of the stock")
     func theFirstFetchUsesTheMassRoute() throws {
         let url = try #require(CatalogStockFetch.scrapeURL(
             query: "collection:librivoxaudio AND mediatype:(audio)", cursor: nil))
@@ -26,16 +26,16 @@ struct CatalogStockFetchTests {
             #expect(CatalogStockFetch.scrapeFields.contains(feld),
                     "\(feld) fehlt im Bezug, obwohl der Bestand es fuehrt")
         }
-        // Der Zeiger reist mit, sonst bekaeme man immer dieselbe Scheibe.
+        // The pointer travels along, otherwise one would always get the same slice.
         let zweite = try #require(CatalogStockFetch.scrapeURL(query: "x", cursor: "abc"))
         #expect(zweite.absoluteString.contains("cursor=abc"))
     }
 
-    /// Der Gutenberg-Abzug ist eine CSV mit Anfuehrungszeichen, Kommata in
-    /// Titeln und Semikolon-Listen. Dieses Literal traegt die Spalten der
-    /// echten Form, aber LF statt CRLF; die echten Bytes prueft
-    /// `GutenbergDumpTests` an einem Ausschnitt der Datei.
-    @Test("der Abzug wird gelesen wie er wirklich aussieht")
+    /// The Gutenberg dump is a CSV with quotation marks, commas in
+    /// titles and semicolon lists. This literal carries the columns of the
+    /// real form, but LF instead of CRLF; the real bytes are checked by
+    /// `GutenbergDumpTests` on an excerpt of the file.
+    @Test("the dump is read as it really looks")
     func theDumpIsParsedAsItReallyLooks() {
         let csv = """
         Text#,Type,Issued,Title,Language,Authors,Subjects,LoCC,Bookshelves
@@ -50,29 +50,29 @@ struct CatalogStockFetchTests {
         #expect(alice?.title == "Alice's Adventures in Wonderland, and more",
                 "das Komma im Titel hat die Spalten verschoben")
         #expect(alice?.creator == "Carroll, Lewis")
-        // Schlagworte UND Buecherregale, beide semikolon-getrennt, beide
-        // einzeln — daran haengt die lokale Fach-Zuordnung.
+        // Keywords AND bookshelves, both semicolon-separated, both
+        // individually. The local shelf assignment depends on it.
         #expect(alice?.subjects.contains("Fantasy fiction") == true)
         #expect(alice?.subjects.contains("Children's Literature") == true)
         #expect(alice?.subjects.contains("Children's stories") == true)
-        // Der Abzug traegt KEINE Download-Zahlen. Gemessen, und der Grund,
-        // warum die Beliebt-Ordnung beim Dienst bleibt.
+        // The dump carries NO download counts. Measured, and the reason
+        // why the Popular order stays with the service.
         #expect(alice?.downloads == nil, "der Abzug traegt ploetzlich Popularitaet")
 
-        // Rot-Probe: die Text-Zeile faellt heraus, obwohl sie zuerst steht.
+        // Red test: the text row drops out although it comes first.
         #expect(!eintraege.contains { $0.id == "gut:1" },
                 "ein Text-Werk ist im Hoerbuch-Bestand gelandet")
-        // Und eine Zeile ohne Autor faellt nicht weg, sie hat nur keinen.
+        // And a row without an author does not drop out, it just has none.
         #expect(eintraege.first { $0.id == "gut:99999" }?.creator?.isEmpty ?? true)
     }
 
-    /// Ein leerer Nachschlag verschiebt die Marke NICHT nach vorne. Sonst
-    /// haette ein stiller Tag ohne Neuzugaenge das Zeitfenster geschlossen,
-    /// in dem die Nachzuegler stehen.
-    @Test("eine leere Antwort laesst die Marke stehen")
+    /// An empty lookup does NOT move the mark forward. Otherwise
+    /// a quiet day without new arrivals would have closed the time window
+    /// in which the latecomers stand.
+    @Test("an empty answer leaves the mark in place")
     func anEmptyAnswerKeepsTheWatermark() {
         #expect(CatalogStockFetch.watermark(from: [], previous: "2026-08-01") == "2026-08-01")
-        // Rot-Probe: eine nicht leere Antwort setzt sie sehr wohl neu.
+        // Red test: a non-empty answer certainly sets it anew.
         let eintrag = CatalogStockEntry(id: "a", title: "T", creator: nil, subjects: [],
                                         downloads: nil, licenseurl: nil, year: nil)
         let neu = CatalogStockFetch.watermark(from: [eintrag], previous: "2026-08-01")
@@ -80,28 +80,28 @@ struct CatalogStockFetchTests {
         #expect(neu?.count == 10, "die Marke ist kein Datum in der Form JJJJ-MM-TT")
     }
 }
-/// Der Etappen-Download des Gutenberg-Abzugs: die Vollstaendigkeit
-/// entscheidet an der ANGESAGTEN Gesamtgroesse, nicht an der Laenge der
-/// letzten Scheibe. Die drei Loecher der Laengen-Regel (Endlosschleife
-/// bei Range-ignorierendem Host, Torso durch kurze 206, 416 bei exaktem
-/// Vielfachen) sind damit zu.
+/// The staged download of the Gutenberg dump: completeness
+/// is decided by the ANNOUNCED total size, not by the length of the
+/// last slice. The three holes of the length rule (infinite loop
+/// with a Range-ignoring host, torso through short 206, 416 on an exact
+/// multiple) are thereby closed.
 struct GutenbergSliceRuleTests {
     private let size = CatalogStockFetch.gutenbergSliceBytes
 
-    @Test("mit angesagtem Total entscheidet das Total, nicht die Scheibenlaenge")
+    @Test("with an announced total the total decides, not the slice length")
     func statedTotalDecides() {
         let full = CatalogStockFetch.DumpSlice(bytes: size, statedTotal: 21_196_613)
-        // Volle Scheibe, aber laengst nicht alles: weitermachen.
+        // Full slice, but nowhere near everything: continue.
         #expect(!CatalogStockFetch.dumpIsComplete(held: size, slice: full, sliceSize: size))
-        // Kurze Scheibe mitten drin (erlaubte kurze 206): KEIN Ende,
-        // sonst buchte sich ein Torso als Vollbestand.
+        // Short slice in the middle (allowed short 206): NO end,
+        // otherwise a torso would be booked as the full stock.
         let short = CatalogStockFetch.DumpSlice(bytes: 1_000, statedTotal: 21_196_613)
         #expect(!CatalogStockFetch.dumpIsComplete(held: 5_000_000, slice: short, sliceSize: size))
-        // Alles gehalten: fertig, auch wenn die Scheibe voll war.
+        // Everything held: done, even if the slice was full.
         #expect(CatalogStockFetch.dumpIsComplete(held: 21_196_613, slice: full, sliceSize: size))
     }
 
-    @Test("ohne Total bleibt die kurze Antwort das einzige ehrliche Ende")
+    @Test("without a total the short answer remains the only honest end")
     func withoutTotalTheShortAnswerEnds() {
         let vollAntwort = CatalogStockFetch.DumpSlice(bytes: size, statedTotal: nil)
         #expect(!CatalogStockFetch.dumpIsComplete(held: size, slice: vollAntwort, sliceSize: size))
@@ -109,31 +109,31 @@ struct GutenbergSliceRuleTests {
         #expect(CatalogStockFetch.dumpIsComplete(held: 12, slice: kurz, sliceSize: size))
     }
 
-    /// Der Riss, den die beiden Regeln darueber NICHT fangen: die
-    /// Anfrage traegt immer einen Range, also sagt eine schlichte 200
-    /// „ignoriert, hier ist alles". So eine Antwort traegt kein
-    /// Content-Range (kein Total) und ist laenger als eine Scheibe (also
-    /// auch keine kurze Antwort) — angehaengt vervielfachte sie die
-    /// Datei Runde um Runde.
-    @Test("eine 200 auf eine Range-Anfrage ersetzt den Koerper und endet")
+    /// The crack that the two rules above do NOT catch: the
+    /// request always carries a Range, so a plain 200 says
+    /// „ignoriert, hier ist alles". Such an answer carries no
+    /// Content-Range (no total) and is longer than a slice (so
+    /// not a short answer either). Appended, it would multiply the
+    /// file round after round.
+    @Test("a 200 on a range request replaces the body and ends")
     func ignoredRangeReplacesInsteadOfAppending() {
         #expect(CatalogStockFetch.dumpAnswerReplacesBody(status: 200))
-        // Rot-Probe: der regulaere Teilinhalt haengt weiter an.
+        // Red test: the regular partial content keeps appending.
         #expect(!CatalogStockFetch.dumpAnswerReplacesBody(status: 206))
-        // Und ohne HTTP-Antwort bleibt es beim alten Verhalten.
+        // And without an HTTP response the old behavior remains.
         #expect(!CatalogStockFetch.dumpAnswerReplacesBody(status: nil))
     }
 
-    /// Zeigt, warum die 200 ueberhaupt eine eigene Regel braucht: an den
-    /// beiden vorhandenen Regeln gemessen sieht sie aus wie „weitermachen".
-    @Test("die 200 faellt durch beide Vollstaendigkeits-Regeln hindurch")
+    /// Shows why the 200 needs a rule of its own at all: measured against the
+    /// two existing rules it looks like „weitermachen".
+    @Test("the 200 falls through both completeness rules")
     func theIgnoredRangeAnswerLooksIncompleteToBothRules() {
         let ganzeDatei = CatalogStockFetch.DumpSlice(bytes: 21_196_613, statedTotal: nil)
         #expect(!CatalogStockFetch.dumpIsComplete(held: 21_196_613,
                                                  slice: ganzeDatei, sliceSize: size))
     }
 
-    @Test("die Gesamtgroesse wird aus dem Content-Range gelesen")
+    @Test("the total size is read from the Content-Range")
     func totalComesFromTheHeader() {
         #expect(CatalogStockFetch.statedTotal(fromContentRange: "bytes 0-4194303/21196613") == 21_196_613)
         #expect(CatalogStockFetch.statedTotal(fromContentRange: "bytes 0-1023/*") == nil)

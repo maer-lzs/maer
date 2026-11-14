@@ -13,7 +13,7 @@ import Foundation
 /// (`CarrierRows.forgetUntilRead`), the run winning per entry
 /// (`CarrierRows.laterRead`).
 struct CarrierUnreadRuleTests {
-    @Test("spaet gelesene Zeilen fuellen nur, was der Lauf nicht kennt; der Lauf gewinnt je Eintrag")
+    @Test("late-read rows fill only what the run does not know; the run wins per entry")
     func theRunWinsPerEntry() {
         let read = ["a": [1.0], "b": [2.0]]
         let run = ["b": [9.0], "c": [3.0]]
@@ -33,7 +33,7 @@ struct CarrierUnreadRuleTests {
         return found
     }
 
-    @Test("jeder Traeger sagt die Regel ueber ungelesene Zeilen an der einen Stelle", .needsTheSources)
+    @Test("every carrier states the rule about unread rows in the one place", .needsTheSources)
     func everyCarrierUsesTheOnePlace() throws {
         let rule = try Self.sites(of: ".forgetUntilRead(")
         #expect(rule == ["CloudKitStandCarrier.swift": 1, "CloudKitPlaylistCarrier.swift": 1, "CloudKitStatsCarrier.swift": 1,

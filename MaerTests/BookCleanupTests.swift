@@ -12,7 +12,7 @@ import Foundation
 /// audiobooks that are gone, and nothing of any other source.
 @Suite(.serialized)
 struct BookCleanupTests {
-    @Test("die Aufraeumung entfernt nur rohe Hoerbuch-Kennungen, Position und Geschwindigkeit gleich")
+    @Test("the cleanup removes only raw audiobook identifiers, position and speed alike")
     @MainActor
     func onlyRawBookIdsGo() {
         let name = "book-cleanup-\(UUID().uuidString)"
@@ -46,7 +46,7 @@ struct BookCleanupTests {
         }
     }
 
-    @Test("die Regel ist positiv, eine Kennung ohne Namensraum und nicht in der Bibliothek")
+    @Test("the rule is positive, an identifier without a namespace and not in the library")
     func theRuleIsPositive() {
         let valid: Set<String> = ["li_kept"]
         #expect(AppStorageKeys.prunedByBookCleanup("li_gone", validItemIds: valid))
@@ -56,7 +56,7 @@ struct BookCleanupTests {
         }
     }
 
-    @Test("eine zweite Buchbibliothek: die Liste einer Bibliothek richtet nicht ueber die Buecher der anderen")
+    @Test("a second book library: the list of one library does not judge the books of the other")
     func oneLibraryDoesNotJudgeTheOther() {
         #expect(AppStorageKeys.listJudgesEveryBook(bookLibraries: 1))
         #expect(!AppStorageKeys.listJudgesEveryBook(bookLibraries: 2), "the other library's books are absent, not gone")
@@ -64,7 +64,7 @@ struct BookCleanupTests {
         #expect(!AppStorageKeys.listJudgesEveryBook(bookLibraries: 0))
     }
 
-    @Test("die Buchkeys gehen nur in cleanUpPerBook und nur hinter der Regel", .needsTheSources)
+    @Test("the book keys go only into cleanUpPerBook and only behind the rule", .needsTheSources)
     func theLoadCleansOnlyBehindTheRule() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/LibraryViewModel.swift"), encoding: .utf8))
@@ -111,7 +111,7 @@ struct BookCleanupTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("ueber den Ladeweg: die zweite Buchbibliothek laesst Stand und Geschwindigkeit der ersten stehen, eine einzige raeumt")
+    @Test("through the load path: the second book library leaves state and speed of the first in place, a single one cleans up")
     @MainActor
     func theLoadOfASecondLibraryKeepsTheFirst() async throws {
         let keys = [AppStorageKeys.selectedLibraryId, AppStorageKeys.absSignedInServer, AppStorageKeys.absLastFullLoadServer,

@@ -82,7 +82,7 @@ struct CatalogPositionMigrationTests {
     /// The migration runs once per release; a failed detail is no decision,
     /// so it marks nothing and the next open asks again. A release without
     /// a position to carry is decided at once.
-    @Test("scheitert der Abruf der Details, bleibt die Uebernahme offen; ohne Position gilt sie als entschieden")
+    @Test("if the fetch of the details fails, the adoption stays open; without a position it counts as decided")
     @MainActor
     func aFailedDetailMarksNothing() async {
         struct Down: Error {}

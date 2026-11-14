@@ -11,7 +11,7 @@ import SwiftUI
 /// The status line of the featured cards wraps at large type instead of
 /// being cut, and both cards draw it through the one building block.
 struct CardStatusLineTests {
-    @Test("eine Zeile bis zur ueblichen Groesse, darueber zwei, bis zur Grenze der Karten")
+    @Test("one line up to the usual size, two above it, up to the limit of the cards")
     func linesFollowTheTypeSize() {
         #expect(CardStatusLine.lines(for: .xSmall) == 1)
         #expect(CardStatusLine.lines(for: .large) == 1)
@@ -20,7 +20,7 @@ struct CardStatusLineTests {
         #expect(CardStatusLine.lines(for: .accessibility1) == 2)
     }
 
-    @Test("die Zeile bricht nur hinter dem Trenner, nie mitten in einer Angabe wie vor 1 Stunde")
+    @Test("the line breaks only after the separator, never in the middle of an entry such as „vor 1 Stunde“")
     func theLineBreaksOnlyAfterTheSeparator() {
         let line = CardStatusLine.joined(["noch 24 Min.", "vor 1 Stunde"])
         #expect(line == "noch\u{00A0}24\u{00A0}Min.\u{00A0}· vor\u{00A0}1\u{00A0}Stunde", "\(line.unicodeScalars.map { String($0.value, radix: 16) })")
@@ -29,7 +29,7 @@ struct CardStatusLineTests {
         #expect(CardStatusLine.joined(["Gehoert"]) == "Gehoert")
     }
 
-    @Test("Buch- und Folgenzeile setzen ihre Teile ueber joined zusammen", .needsTheSources)
+    @Test("book line and episode line put their parts together through joined", .needsTheSources)
     func bothTextsJoinThroughTheRule() throws {
         let text = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CardStatusLine.swift"), encoding: .utf8))
@@ -37,7 +37,7 @@ struct CardStatusLineTests {
         #expect(!text.contains(".joined(separator: \" · \")"), "a plain separator lets a part break inside")
     }
 
-    @Test("Karten und Weiterhoeren-Seiten sagen dieselben Worte: Statuszeile ueber CardStatusLine, Text aus einer Stelle", .needsTheSources)
+    @Test("cards and Continue Listening pages say the same words: status line through CardStatusLine, text from one place", .needsTheSources)
     func cardsAndPagesUseTheOneLine() throws {
         let uses: [(file: String, needles: [String])] = [
             ("Sources/Views/BookFeaturedCard.swift", ["CardStatusLine(text:", "CardStatusLine.bookText(entry)"]),
@@ -55,7 +55,7 @@ struct CardStatusLineTests {
         }
     }
 
-    @Test("die Buchseite sagt zuletzt gehoert mit den Worten der Karte", .needsTheSources)
+    @Test("the book page says last listened with the words of the card", .needsTheSources)
     @MainActor
     func theBookPageSaysWhatTheCardSays() throws {
         // A server stand in seconds, as an old server or the seed once gave:

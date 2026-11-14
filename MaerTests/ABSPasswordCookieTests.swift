@@ -30,7 +30,7 @@ struct ABSPasswordCookieTests {
         return auth
     }
 
-    @Test("Die Anmeldung mit Passwort fragt nach den Tokens und laesst kein Cookie im geteilten Speicher")
+    @Test("The password sign-in asks for the tokens and leaves no cookie in the shared store")
     func thePasswordSignInLeavesNoCookie() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -50,7 +50,7 @@ struct ABSPasswordCookieTests {
         #expect(!after.isEmpty && after.allSatisfy { $0.cookie == nil }, "a later request carried \(after.map(\.cookie))")
     }
 
-    @Test("Ein Server, der das Cookie trotzdem setzt: es endet mit der Anmeldung")
+    @Test("A server that sets the cookie anyway: it ends with the sign-in")
     func aCookieSetAnywayEndsWithTheSignIn() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -67,7 +67,7 @@ struct ABSPasswordCookieTests {
         #expect(!after.isEmpty && after.allSatisfy { $0.cookie == nil }, "a later request carried \(after.map(\.cookie))")
     }
 
-    @Test("Beim Start gehen nur refresh_token und auth_method am Host des Servers, ein fremdes Cookie bleibt")
+    @Test("At start only refresh_token and auth_method on the server's host go, a foreign cookie stays")
     func theStartSweepsOnlyTheTwoCookies() throws {
         let host = "abs-\(UUID().uuidString.lowercased()).example"
         let other = "other-\(UUID().uuidString.lowercased()).example"
@@ -90,7 +90,7 @@ struct ABSPasswordCookieTests {
         #expect((HTTPCookieStorage.shared.cookies(for: elsewhere) ?? []).map(\.name) == ["refresh_token"])
     }
 
-    @Test("Ein Server, der neu startet und einmal 503 sagt: die Anmeldung mit Passwort fragt nach der Regel noch einmal und meldet an")
+    @Test("A server that restarts and answers 503 once: the password sign-in asks again by the rule and signs in")
     func aRestartingServerIsAskedAgain() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -104,7 +104,7 @@ struct ABSPasswordCookieTests {
         #expect(logins.allSatisfy { $0.returnTokens == "true" }, "the repeated sign-in lost its question for the tokens")
     }
 
-    @Test("Ein echtes Set-Cookie des Servers im geteilten Speicher, wie es ein frueherer Bau hinterliess: der Start kehrt es")
+    @Test("A real Set-Cookie of the server in the shared store, as an earlier build left it: the start sweeps it away")
     func aCookieTheServerSetIsSweptAtTheStart() async throws {
         let stand = ABSSignInSwitchTests.Stand()
         defer { stand.restore() }
@@ -132,7 +132,7 @@ struct ABSPasswordCookieTests {
         var open = false
     }
 
-    @Test("Ist der Schluesselbund beim Start unlesbar, gehen die zwei Cookies, sobald die Adresse nachgelesen ist")
+    @Test("If the keychain is unreadable at start, the two cookies go as soon as the address is read again")
     func theSweepFollowsTheRereadAddress() throws {
         let host = "abs-\(UUID().uuidString.lowercased()).example"
         let server = try #require(URL(string: "https://\(host)/"))
@@ -159,7 +159,7 @@ struct ABSPasswordCookieTests {
                 "the store keeps \((HTTPCookieStorage.shared.cookies(for: server) ?? []).map(\.name))")
     }
 
-    @Test("Die Regel nimmt nur die zwei Namen und nur den Host selbst")
+    @Test("The rule takes only the two names and only the host itself")
     func theRuleTakesTheTwoNamesAtTheHost() throws {
         let server = try #require(URL(string: "https://Books.Example.org/abs"))
         func cookie(_ name: String, _ domain: String) throws -> HTTPCookie {

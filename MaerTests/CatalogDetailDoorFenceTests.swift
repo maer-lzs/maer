@@ -25,7 +25,7 @@ struct CatalogDetailDoorFenceTests {
         }
     }
 
-    @Test("der Zaehler sieht Namen, Alias und Umbruch")
+    @Test("the counter sees names, alias and line break")
     func theCounterSeesNameAliasAndBreak() {
         #expect(Self.namedFetches(in: "try await FreeCatalogProvider.shared.fetchItemDetail(itemId: i)") == 1)
         #expect(Self.namedFetches(in: "let provider = FreeCatalogProvider.shared\n_ = try? await provider.fetchItemDetail(itemId: i)") == 1)
@@ -33,7 +33,7 @@ struct CatalogDetailDoorFenceTests {
         #expect(Self.namedFetches(in: "try await router.provider(i).fetchItemDetail(itemId: i)") == 0)
     }
 
-    @Test("niemand holt ein Katalog-Detail beim Namen des Katalogs", .needsTheSources)
+    @Test("nobody fetches a catalog detail by the name of the catalog", .needsTheSources)
     func nobodyFetchesACatalogDetailByName() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")

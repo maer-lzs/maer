@@ -25,7 +25,7 @@ struct ABSPodcastRefreshTests {
                                      loadedAny: !fetched.details.isEmpty, holdsShows: true)
     }
 
-    @Test("die letzte Sendung geloescht: jeder Abruf antwortet leer, die Liste wird leer")
+    @Test("the last show deleted: every fetch answers empty, the list becomes empty")
     func theLastShowDeletedEmptiesTheList() async {
         let fetched = await ABSPodcastProvider.fetchShows(
             libraryIds: ["lib"], items: { _ in [] }, detail: { _ in throw Down() })
@@ -33,7 +33,7 @@ struct ABSPodcastRefreshTests {
         #expect(adopts(fetched), "a deleted last show stays visible")
     }
 
-    @Test("die Liste der Sendungen scheitert: der Stand bleibt")
+    @Test("the list of shows fails: the state stays")
     func aFailedItemListKeepsTheShows() async {
         let fetched = await ABSPodcastProvider.fetchShows(
             libraryIds: ["lib"], items: { _ in throw Down() }, detail: { Self.detail($0) })
@@ -41,7 +41,7 @@ struct ABSPodcastRefreshTests {
         #expect(!adopts(fetched), "a failed fetch emptied the shows")
     }
 
-    @Test("alle Details scheitern: der Stand bleibt")
+    @Test("all details fail: the state stays")
     func failedDetailsKeepTheShows() async {
         let fetched = await ABSPodcastProvider.fetchShows(
             libraryIds: ["lib"], items: { _ in ["a", "b", "c"] }, detail: { _ in throw Down() })
@@ -49,7 +49,7 @@ struct ABSPodcastRefreshTests {
         #expect(!adopts(fetched), "failed details emptied the shows")
     }
 
-    @Test("etwas geladen, ein Abruf gescheitert: das Geladene gilt wie bisher")
+    @Test("something loaded, one fetch failed: what loaded counts as before")
     func aPartialRunTakesWhatCame() async {
         let fetched = await ABSPodcastProvider.fetchShows(
             libraryIds: ["one", "two"],
@@ -66,7 +66,7 @@ struct ABSPodcastRefreshTests {
     /// them adopts it and stamps the throttle. Before, such a run adopted
     /// nothing and held nothing back, so every mount asked again after
     /// five minutes and the gone shows stood for the session.
-    @Test("eine Runde aus lauter Absenzen ist eine Antwort: der Stand wird uebernommen, nie weder uebernommen noch gesperrt")
+    @Test("a round of nothing but absences is an answer: the state is adopted, never neither adopted nor blocked")
     func aRunOfAbsencesAloneIsAnAnswer() async {
         let detailsGone = await ABSPodcastProvider.fetchShows(
             libraryIds: ["lib"], items: { _ in ["a", "b"] }, detail: { _ in throw APIError.http(404, "") })
@@ -91,7 +91,7 @@ struct ABSPodcastRefreshTests {
 
     /// The refresh asks the rule with the run's failures, and no fetch of the
     /// run swallows its error any more.
-    @Test("die Aktualisierung fragt die Regel mit den gescheiterten Abrufen", .needsTheSources)
+    @Test("the refresh asks the rule with the failed fetches", .needsTheSources)
     func theRefreshAsksTheRule() throws {
         let code = try Self.providerCode()
         #expect(code.contains("ABSPodcastRefreshRule.adopts(everyFetchAnswered: fetched.failures == 0"))
@@ -107,7 +107,7 @@ struct ABSPodcastRefreshTests {
     /// Every change of the shows goes through `replaceShows`, which counts
     /// the token up, and the throttle is stamped only right after a run
     /// adopted the server's answer.
-    @Test("jede Aenderung der Sendungen zaehlt das Token hoch, und die Drossel stellt sich nur nach einer Uebernahme", .needsTheSources)
+    @Test("every change of the shows counts the token up, and the throttle resets only after an adoption", .needsTheSources)
     func everyChangeCountsTheTokenAndOnlyAnAdoptionStampsTheThrottle() throws {
         let code = try Self.providerCode()
         let lines = code.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -127,7 +127,7 @@ struct ABSPodcastRefreshTests {
     /// failures earn the holdback is one question at one place
     /// (`FetchHoldback.starts`), asked by both stamps: a show deleted on the
     /// server (404) is a finding, a cancellation is no failure.
-    @Test("nach einem gescheiterten Lauf fragt kein impliziter Rufer vor dem Ende der Sperrfrist; welche Fehler sperren, sagt eine Regel", .needsTheSources)
+    @Test("after a failed run no implicit caller asks before the block period ends; a rule says which errors block", .needsTheSources)
     func aFailedRunHoldsTheImplicitCallers() async throws {
         // The classes, through the fetch itself: a deleted show holds
         // nothing, a failing server holds, a cancellation holds nothing.
@@ -174,7 +174,7 @@ struct ABSPodcastRefreshTests {
 
     /// A refusal that can pass keeps a played mark queued; one that answers
     /// the same every time drops it (the mark stays on the device).
-    @Test("die Schlange der Gehoert-Markierungen behaelt, was vorbeigeht, und laesst fallen, was immer gleich antwortet")
+    @Test("the queue of played marks keeps what passes by and drops what always answers the same")
     func theQueueKeepsWhatCanPass() {
         for status in [nil, 401, 403, 429, 500, 503] as [Int?] {
             #expect(ABSPlayedWriteRetry.keeps(status: status), "\(String(describing: status)) dropped a mark that can pass")
@@ -188,7 +188,7 @@ struct ABSPodcastRefreshTests {
 
     /// No call to the server in the whole file ends without a line, no catch
     /// stands empty, and a failed progress pull does not count the token.
-    @Test("kein Abruf der Datei endet ohne Zeile, kein catch ist leer, ein Fehlschlag zaehlt das Token nicht", .needsTheSources)
+    @Test("no fetch of the file ends without a line, no catch is empty, a failure does not count the token", .needsTheSources)
     func noCallOfTheFileEndsWithoutALine() throws {
         let code = try Self.providerCode()
         #expect(code.contains("client."), "the fence read the provider")
@@ -214,7 +214,7 @@ struct ABSPodcastRefreshTests {
     /// A write to the server from a stored entry takes the one form
     /// (`ForeignServerProgress.write`), the history push included, and the
     /// shows are only replaced together with their episode handles.
-    @Test("ein Schrieb an den Server aus einem gespeicherten Stand nimmt die eine Ausgangsform, und Sendungen werden nur mit ihren Handles gesetzt", .needsTheSources)
+    @Test("a write to the server from a saved state takes the one source form, and shows are set only with their handles", .needsTheSources)
     func oneFormOfAWriteAndShowsWithTheirHandles() throws {
         let code = try Self.providerCode()
         #expect(code.contains("client.updateEpisodeProgress("), "the fence read the provider")

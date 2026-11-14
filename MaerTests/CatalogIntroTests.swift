@@ -11,7 +11,7 @@ import Foundation
 /// The introduction of a catalogue page says what is true of the page and
 /// stays left of an open fold.
 struct CatalogIntroTests {
-    @Test("die Einleitung endet vor dem Falz wie die linke Spalte, ohne Falz nimmt sie die Seite")
+    @Test("the introduction ends before the fold like the left column, without a fold it takes the page")
     func theIntroEndsBeforeTheFold() {
         // The open Duo: window 951, fold 455.5 to 495.5, side column 84.
         let open = FoldSplit.leadingHalf(contentMinX: 0, contentWidth: 867, fold: 455.5...495.5, windowWidth: 951)
@@ -23,7 +23,7 @@ struct CatalogIntroTests {
         #expect(FoldSplit.leadingHalf(contentMinX: 500, contentWidth: 367, fold: 455.5...495.5, windowWidth: 951) == 0)
     }
 
-    @Test("kein Satz einer Einleitung verspricht eine Angabe auf der Kachel")
+    @Test("no sentence of an introduction promises a statement on the tile")
     func noIntroPromisesAnythingOnATile() {
         #expect(ArchiveMusicCatalog.netlabels.headerNote
                 == String(localized: "Netlabel releases under Creative Commons licences, from the Internet Archive."))
@@ -35,7 +35,7 @@ struct CatalogIntroTests {
         }
     }
 
-    @Test("jede Einleitung einer Katalogseite und der Rechtehinweis bleiben links vom Falz", .needsTheSources)
+    @Test("every introduction of a catalog page and the rights note stay left of the fold", .needsTheSources)
     func everyIntroKeepsLeftOfTheFold() throws {
         func text(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(

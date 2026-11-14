@@ -25,7 +25,7 @@ struct ABSSingleSignOnTests {
 
     // MARK: PKCE
 
-    @Test("PKCE S256 nach RFC 7636, Anhang B")
+    @Test("PKCE S256 per RFC 7636, Appendix B")
     func pkceMatchesTheRFC() {
         #expect(PKCE.challenge(for: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")
                 == "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
@@ -37,7 +37,7 @@ struct ABSSingleSignOnTests {
 
     // MARK: Start
 
-    @Test("Der Start nennt Challenge, S256, die Rueckkehr der App, code und den Zustand")
+    @Test("The start names challenge, S256, the return of the app, code and the state")
     func startAddress() throws {
         let start = try #require(ABSSSO.startURL(server: server, challenge: "ch", state: "st"))
         #expect(start.path == "/books/auth/openid")
@@ -48,20 +48,20 @@ struct ABSSingleSignOnTests {
         #expect(query(start, "state") == "st")
     }
 
-    @Test("Die Seite des Anbieters kommt als Weiterleitung auf https")
+    @Test("The page of the provider comes as a redirect to https")
     func providerPageOnHTTPS() throws {
         let page = try ABSSSO.providerPage(status: 302, location: "https://id.example/authorize?state=st", body: Data())
         #expect(page.host == "id.example")
     }
 
-    @Test("Ein Anbieter ohne https bricht vor dem Fenster ab")
+    @Test("A provider without https aborts before the window")
     func providerWithoutHTTPS() {
         #expect(throws: ABSSSO.Failure.providerNotSecure) {
             try ABSSSO.providerPage(status: 302, location: "http://id.example/authorize", body: Data())
         }
     }
 
-    @Test("Invalid redirect_uri: der Server laesst die Rueckkehr der App nicht zu")
+    @Test("Invalid redirect_uri: the server does not allow the return of the app")
     func returnAddressRefused() {
         #expect(throws: ABSSSO.Failure.returnAddressRefused) {
             try ABSSSO.providerPage(status: 400, location: nil, body: Data("Invalid redirect_uri".utf8))
@@ -79,7 +79,7 @@ struct ABSSingleSignOnTests {
 
     // MARK: Return
 
-    @Test("Die Rueckkehr traegt den Code nur mit dem Zustand dieses Ablaufs")
+    @Test("The return carries the code only with the state of this flow")
     func returnCarriesTheCode() throws {
         let back = try #require(URL(string: "audiobookshelf://oauth?code=c0de&state=st"))
         #expect(try ABSSSO.code(fromReturn: back, state: "st") == "c0de")
@@ -97,13 +97,13 @@ struct ABSSingleSignOnTests {
 
     // MARK: Exchange
 
-    @Test("Der Tausch nimmt das langlebige token")
+    @Test("The exchange takes the long-lived token")
     func exchangeTakesTheLongLivedToken() throws {
         let body = Data(#"{"user":{"id":"u1","token":"legacy","accessToken":"short","refreshToken":"long"},"userDefaultLibraryId":"l1"}"#.utf8)
         #expect(try ABSSSO.token(status: 200, location: nil, body: body) == "legacy")
     }
 
-    @Test("Ohne token meldet der Tausch nicht an: der Server braucht die Erneuerung")
+    @Test("Without a token the exchange does not sign in: the server needs the renewal")
     func exchangeWithoutTokenSignsNobodyIn() {
         let body = Data(#"{"user":{"id":"u1","accessToken":"short","refreshToken":"long"}}"#.utf8)
         #expect(throws: ABSSSO.Failure.needsRenewal) { try ABSSSO.token(status: 200, location: nil, body: body) }
@@ -115,14 +115,14 @@ struct ABSSingleSignOnTests {
         }
     }
 
-    @Test("No session: der Server kennt den Ablauf nicht mehr")
+    @Test("No session: the server no longer knows the flow")
     func exchangeWithoutTheFlowCookie() {
         #expect(throws: ABSSSO.Failure.flowUnknown) {
             try ABSSSO.token(status: 400, location: nil, body: Data("No session".utf8))
         }
     }
 
-    @Test("Ein Fehler im Tausch kommt als Weiterleitung zur Anmeldeseite mit Grund")
+    @Test("An error in the exchange comes as a redirect to the sign-in page with a reason")
     func exchangeFailureAsRedirect() {
         #expect(throws: ABSSSO.Failure.refusedBySignIn("Unauthorized")) {
             try ABSSSO.token(status: 302, location: "/login?error=Unauthorized&autoLaunch=0", body: Data())
@@ -157,7 +157,7 @@ struct ABSSingleSignOnTests {
         }, window: window, randomValue: { values.removeFirst() })
     }
 
-    @Test("Der ganze Ablauf: Start, Fenster, Tausch mit dem Verifier zur Challenge")
+    @Test("The whole flow: start, window, exchange with the verifier for the challenge")
     func wholeFlow() async throws {
         let requests = Requests()
         let window = FakeWindow { _ in URL(string: "audiobookshelf://oauth?code=c0de&state=state-value")! }
@@ -173,7 +173,7 @@ struct ABSSingleSignOnTests {
         #expect(query(urls.last, "state") == query(urls.first, "state"))
     }
 
-    @Test("Ein fremder Zustand meldet niemanden an, der Tausch wird nicht gefragt")
+    @Test("A foreign state signs in nobody, the exchange is not asked")
     func foreignReturnExchangesNothing() async {
         let requests = Requests()
         let window = FakeWindow { _ in URL(string: "audiobookshelf://oauth?code=c0de&state=another-flow")! }

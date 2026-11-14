@@ -31,7 +31,7 @@ struct CarrierRecordRowsTests {
                                                                t: t, tombstone: false)])
     }
 
-    @Test("der erste Zugriff zieht die Bloecke der Wahlen, Playlisten und Statistik in Zeilen; die drei Token gehen, die Marken der Einfaltung bleiben")
+    @Test("the first access moves the blocks of the choices, playlists and statistics into rows; the three tokens go, the marks of the folding stay")
     func theFirstAccessMovesTheRecordBlobs() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -61,7 +61,7 @@ struct CarrierRecordRowsTests {
         #expect(!defaults.bool(forKey: CarrierStandRows.movedKey), "the records moved the stands' mark")
     }
 
-    @Test("die Satzzeilen und die Staende sind getrennte Tabellen: ein Umzug nimmt die Bloecke des anderen nicht")
+    @Test("the record rows and the states are separate tables: a move does not take the blocks of the other")
     func theTwoKindsMoveApart() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -86,7 +86,7 @@ struct CarrierRecordRowsTests {
         return database
     }
 
-    @Test("kann der Start die Zeilen nicht lesen, faellt das Token des Wahlen-Traegers, und gelesen geht keine Zeile verloren")
+    @Test("if the start cannot read the rows, the token of the choices carrier drops, and once read no row is lost")
     func anUnreadStartDropsTheChoiceTokenAndLosesNoRow() async throws {
         let (defaults, suite, path) = try place()
         defer { defaults.removePersistentDomain(forName: suite) }

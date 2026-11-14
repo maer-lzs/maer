@@ -8,12 +8,12 @@ import Foundation
 import Testing
 @testable import Maer
 
-/// Tests für die Magic-Byte-Erkennung und Endungs-Reparatur der Downloads.
-/// Der Codepfad hinter den stillen -12864-Abspielfehlern (Endung lügt über
-/// den echten Container, AVFoundation vertraut bei lokalen Dateien der Endung).
+/// Tests for the magic-byte detection and extension repair of the downloads.
+/// The code path behind the silent -12864 playback errors (the extension lies
+/// about the real container, AVFoundation trusts the extension for local files).
 struct AudioSniffingTests {
 
-    // MARK: - Helfer
+    // MARK: - Helpers
 
     /// Writes bytes to a unique temp file and returns its URL.
     private func tempFile(_ bytes: [UInt8], ext: String = "bin") throws -> URL {
@@ -42,7 +42,7 @@ struct AudioSniffingTests {
         return DownloadManager.sniffedAudioExtension(url)
     }
 
-    // MARK: - Container-Erkennung
+    // MARK: - Container detection
 
     @Test func detectsMP4Family() throws {
         // "ftyp" at offset 4. The box size before it varies.
@@ -69,7 +69,7 @@ struct AudioSniffingTests {
         #expect(try sniff([0x63, 0x61, 0x66, 0x66, 0x00, 0x01, 0x00, 0x00]) == "caf")
     }
 
-    // MARK: - Rohe Frame-Syncs (ohne Tag)
+    // MARK: - Raw frame syncs (without tag)
 
     @Test func detectsBareMP3() throws {
         // 0xFB: layer bits ≠ 00 → MPEG audio.
@@ -81,7 +81,7 @@ struct AudioSniffingTests {
         #expect(try sniff([0xFF, 0xF1, 0x50, 0x80, 0x00, 0x00, 0x00, 0x00]) == "aac")
     }
 
-    // MARK: - ID3-Tag sagt nichts über den Codec
+    // MARK: - An ID3 tag says nothing about the codec
 
     @Test func id3PrefixedMP3() throws {
         #expect(try sniff(id3(tagPayload: 64, frame: [0xFF, 0xFB])) == "mp3")
@@ -91,13 +91,13 @@ struct AudioSniffingTests {
         #expect(try sniff(id3(tagPayload: 64, frame: [0xFF, 0xF1])) == "aac")
     }
 
-    @Test("Syncsafe-Größe: 7-Bit-Bytes, Tag > 127 Bytes")
+    @Test("Syncsafe size: 7-bit bytes, tag > 127 bytes")
     func id3LargeSyncsafeTag() throws {
         // 300 = 0b100101100 → syncsafe [0, 0, 0x02, 0x2C].
         #expect(try sniff(id3(tagPayload: 300, frame: [0xFF, 0xFB])) == "mp3")
     }
 
-    // MARK: - Müll wird abgelehnt
+    // MARK: - Garbage is rejected
 
     @Test func rejectsHTMLErrorPage() throws {
         #expect(try sniff([UInt8]("<html><body>error".utf8)) == nil)
@@ -115,10 +115,10 @@ struct AudioSniffingTests {
         #expect(try sniff(id3(tagPayload: 16, frame: [0x00, 0x00])) == nil)
     }
 
-    // MARK: - Frame-Sync-Klassifikation direkt
+    // MARK: - Frame sync classification, direct
 
     @Test(arguments: [
-        // (zweites Byte, erwartete Endung): alle Layer-Bit-Kombinationen
+        // (second byte, expected extension): all layer-bit combinations
         (UInt8(0xF1), "aac"), (UInt8(0xF9), "aac"),
         (UInt8(0xFB), "mp3"), (UInt8(0xFA), "mp3"), (UInt8(0xF3), "mp3"), (UInt8(0xE2), "mp3")
     ])
@@ -132,9 +132,9 @@ struct AudioSniffingTests {
         #expect(DownloadManager.classifyFrameSync([0xFF]) == nil)
     }
 
-    // MARK: - Endungs-Reparatur
+    // MARK: - Extension repair
 
-    @Test("MP3-Bytes unter .m4b-Endung werden nach .mp3 umbenannt")
+    @Test("MP3 bytes under an .m4b extension are renamed to .mp3")
     func repairsLyingExtension() throws {
         let url = try tempFile([0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00], ext: "m4b")
         defer {
@@ -147,14 +147,14 @@ struct AudioSniffingTests {
         #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 
-    @Test("mp4-Familie ist austauschbar: .m4a mit ftyp bleibt unangetastet")
+    @Test("the mp4 family is interchangeable: .m4a with ftyp is left untouched")
     func keepsMP4FamilyExtension() throws {
         let url = try tempFile([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70], ext: "m4a")
         defer { try? FileManager.default.removeItem(at: url) }
         #expect(DownloadManager.repairedAudioURL(url) == url)
     }
 
-    @Test("Nicht-Audio liefert nil (Datei bleibt für Diagnose liegen)")
+    @Test("Non-audio returns nil (the file stays for diagnosis)")
     func rejectsGarbageFile() throws {
         let url = try tempFile([UInt8]("<html>".utf8), ext: "mp3")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -163,7 +163,7 @@ struct AudioSniffingTests {
 
     /// A good track that cannot be read right now is no garbage: the
     /// folder's self-heal removes what the track map leaves out.
-    @Test("eine Spur, die sich nicht lesen laesst, bleibt eine Spur und wird nicht Abfall")
+    @Test("a track that cannot be read remains a track and does not become waste")
     func anUnreadableTrackStays() throws {
         let url = try tempFile([0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00], ext: "mp3")
         defer {

@@ -9,8 +9,8 @@ import Foundation
 @testable import Maer
 
 /// Siri hears the bare app name as the German word for "more", so every
-/// intent carries a phrase that names the APP ("in der Maer-App", "von der
-/// App Maer", "in the Maer app"), and the Info.plist offers spoken
+/// intent carries a phrase that names the APP ("in der Maer-App",
+/// "von der App Maer", "in the Maer app"), and the Info.plist offers spoken
 /// alternatives of the name. Measured on a device (GT 14.09.2026): the
 /// unregistered form fell to the generic media intent and opened another
 /// app. The phrases are string literals in `AppShortcuts.swift`, so the
@@ -34,7 +34,7 @@ struct AppShortcutPhrasesTests {
         phrase.range(of: "\\bapp\\b", options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    @Test("jede Absicht hat eine Phrase, die die App als App nennt", .needsTheSources)
+    @Test("every intent has a phrase that names the app as an app", .needsTheSources)
     func everyIntentHasAPhraseNamingTheApp() throws {
         let source = try String(contentsOf: Self.root.appendingPathComponent("Sources/AppShortcuts.swift"), encoding: .utf8)
         let blocks = Self.phraseBlocks(in: source)
@@ -70,7 +70,7 @@ struct AppShortcutPhrasesTests {
     /// table AppShortcuts; without a catalog of that name they travel with no
     /// German form. The German set holds every phrase of the source, so a
     /// German device hears what it heard before the catalog.
-    @Test("der Siri-Katalog traegt je Absicht ihren ersten Satz mit allen Saetzen auf Deutsch", .needsTheSources)
+    @Test("the Siri catalog carries per intent its first sentence with all sentences in German", .needsTheSources)
     func theShortcutCatalogCarriesEveryPhraseInGerman() throws {
         #expect(Self.catalogForm(#"                "Play \(\.$book) in the \(.applicationName) app","#)
                 == "Play ${book} in the ${applicationName} app")
@@ -96,7 +96,7 @@ struct AppShortcutPhrasesTests {
         }
     }
 
-    @Test("die Info.plist nennt gesprochene Alternativen des Namens, JE MIT ihrem Laut", .needsTheInfoPlist)
+    @Test("the Info.plist names spoken alternatives of the name, EACH WITH its sound", .needsTheInfoPlist)
     func infoPlistOffersAlternativeAppNames() throws {
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Maer-Info.plist"))
         let plist = try #require(try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
@@ -104,34 +104,34 @@ struct AppShortcutPhrasesTests {
         let names = alternatives.compactMap { $0["INAlternativeAppName"] as? String }
         #expect(names.contains("Maer App") && names.contains("Mär App"), "the two spoken forms: \(names)")
 
-        // Der Fall zaehlte bisher NUR die Namen und war gruen, waehrend kein
-        // einziger einen Aussprache-Hinweis hatte. Ein Zaun, der die eine
-        // Haelfte einer Konstruktion prueft, bestaetigt die andere als
-        // vorhanden. Eine Schreibweise interessiert bei einem GESPROCHENEN
-        // Befehl niemanden; der Laut ist die Haelfte, auf die es ankommt.
+        // The case used to count ONLY the names and was green while not a
+        // single one had a pronunciation hint. A fence that checks one
+        // half of a construction confirms the other as present. A spelling
+        // matters to nobody for a SPOKEN command; the sound is the half
+        // that counts.
         for alternative in alternatives {
             let name = (alternative["INAlternativeAppName"] as? String) ?? "(ohne Namen)"
             let hint = alternative["INAlternativeAppNamePronunciationHint"] as? String
             #expect(!(hint ?? "").isEmpty, "die Alternative \(name) traegt keinen Laut")
         }
 
-        // Wie das SYSTEM den Namen spricht. Eine englische Stimme liest
-        // "Mär" sonst als "mar".
+        // How the SYSTEM speaks the name. An English voice otherwise reads
+        // "Mär" as "mar".
         let spoken = plist["CFBundleSpokenName"] as? String
         #expect(!(spoken ?? "").isEmpty, "CFBundleSpokenName fehlt oder ist leer")
     }
 
-    @Test("was im Katalog steht, kommt im Erzeugnis an: ein Eintrag ist ein SCHLUESSEL oder er ist invariant", .needsTheSources, .needsTheInfoPlist)
+    @Test("what is in the catalog arrives in the product: an entry is a KEY or it is invariant", .needsTheSources, .needsTheInfoPlist)
     func everyCatalogEntryEitherIsAKeyOrSaysItIsNotTranslated() throws {
-        // `InfoPlist.strings` ersetzt anhand des Info.plist-SCHLUESSELS. Ein
-        // Eintrag, dessen Name ein WERT ist, erzeugt eine Zeile, die nichts
-        // ersetzt: sie steht im Erzeugnis und wirkt nicht. Genau so lagen
-        // drei Laute hier, bis es jemand am gebauten Archiv nachgesehen hat.
+        // `InfoPlist.strings` replaces by the Info.plist KEY. An entry
+        // whose name is a VALUE produces a line that replaces nothing: it is
+        // in the product and has no effect. That is exactly how three
+        // sounds lay here until someone checked the built archive.
         //
-        // Und die Laute in `INAlternativeAppNames` sind ueber diesen Weg
-        // UEBERHAUPT nicht erreichbar, weil sie in einem Array von
-        // Woerterbuechern stehen. Sie sind deshalb invariant, und das ist
-        // keine Nachlaessigkeit, sondern die einzige ehrliche Kennzeichnung.
+        // And the sounds in `INAlternativeAppNames` are NOT REACHABLE AT ALL
+        // by this route, because they sit in an array of dictionaries. They
+        // are therefore invariant, and that is no carelessness but the
+        // only honest marking.
         let plistData = try Data(contentsOf: Self.root.appendingPathComponent("Maer-Info.plist"))
         let plist = try #require(try PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any])
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Sources/InfoPlist.xcstrings"))
@@ -139,11 +139,11 @@ struct AppShortcutPhrasesTests {
         let strings = try #require(catalog["strings"] as? [String: [String: Any]])
         try #require(!strings.isEmpty, "der Sucher findet die Eintraege noch")
 
-        // Nicht jeder wirksame Schluessel steht in der DATEI: zwei kommen
-        // aus den Bau-Einstellungen und landen erst im erzeugten Info.plist.
-        // Der Grund steht im Eintrag, damit die Ausnahme nur erklaert, was
-        // sie anfasst. Beim ersten Lauf hat dieser Fall genau daran
-        // gerissen, also an seiner eigenen zu engen Fassung.
+        // Not every effective key is in the FILE: two come from the build
+        // settings and land only in the generated Info.plist. The reason
+        // is in the entry, so that the exception explains only what it
+        // touches. On the first run this case failed on exactly that,
+        // on its own too narrow wording.
         let injectedByTheBuild: [String: String] = [
             "CFBundleDisplayName": "kommt aus PRODUCT_DISPLAY_NAME, nicht aus der Datei",
             "CFBundleName": "kommt aus PRODUCT_NAME, nicht aus der Datei",
@@ -156,9 +156,9 @@ struct AppShortcutPhrasesTests {
         #expect(withoutEffect.isEmpty,
                 "diese Eintraege sind keine Info.plist-Schluessel und geben sich trotzdem als uebersetzbar: \(withoutEffect.sorted())")
 
-        // Die Gegenrichtung: der gesprochene Name IST ein oberster
-        // Schluessel, also gehoert er lokalisiert, sonst liest ihn jede
-        // Stimme in der Grundfassung.
+        // The opposite direction: the spoken name IS a top-level
+        // key, so it must be localized, otherwise every voice reads it
+        // in the base version.
         let spoken = try #require(strings["CFBundleSpokenName"], "CFBundleSpokenName steht nicht im Katalog")
         let localizations = try #require(spoken["localizations"] as? [String: Any])
         #expect(localizations["de"] != nil && localizations["en"] != nil,
@@ -169,7 +169,7 @@ struct AppShortcutPhrasesTests {
     /// them) name the app by its bundle name in the device's language, not
     /// by the display name. The build sets the bundle name from the target
     /// name; the translation in both languages carries „Mär“.
-    @Test("die gebaute App traegt den Namen des Bundles in beiden Sprachen als „Mär“")
+    @Test("the built app carries the name of the bundle in both languages as „Mär“")
     func theBuiltAppNamesItselfMaerInBothLanguages() throws {
         for language in ["de", "en"] {
             let path = try #require(Bundle.main.path(forResource: "InfoPlist", ofType: "strings", inDirectory: nil,

@@ -98,7 +98,7 @@ nonisolated enum CatalogLoaderWitness {
 struct JamendoLoaderWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    @Test("Jamendo: eine Antwort kommt als Eintraege, ein Fehlschlag mit dem geworfenen Grund")
+    @Test("Jamendo: an answer comes as entries, a failure with the thrown reason")
     func answerAndFailure() async {
         let trove = await JamendoLoader.trove(limit: 2, using: W.answering())
         #expect(W.items(trove)?.count == 2)
@@ -114,7 +114,7 @@ struct JamendoLoaderWitnessTests {
         #expect(await JamendoLoader.trove(limit: 2, using: cancelled) == .cancelled)
     }
 
-    @Test("Jamendo: eine Antwort ohne Titel fragt nach der Pause ein zweites Mal, nie ein drittes")
+    @Test("Jamendo: an answer without titles asks a second time after the pause, never a third")
     func anEmptyAnswerIsAskedOnce() async {
         let asked = Mutex(0)
         var emptyThenFilled = W.answering()
@@ -138,7 +138,7 @@ struct JamendoLoaderWitnessTests {
         #expect(asked.withLock { $0 } == 1, "a filled answer was asked again")
     }
 
-    @Test("die Jamendo-Seite sagt eine leere Antwort mit Satz und Knopf", .needsTheSources)
+    @Test("the Jamendo page reports an empty answer with a sentence and a button", .needsTheSources)
     func thePageSaysAnEmptyAnswer() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
@@ -146,7 +146,7 @@ struct JamendoLoaderWitnessTests {
         #expect(!page.contains("EmptyStateView(\"Music (Jamendo)\""), "the page falls silent on an empty answer again")
     }
 
-    @Test("Jamendo-Regale: ein scheiterndes Regal kommt als Fehlschlag, die anderen als Zeilen")
+    @Test("Jamendo shelves: a failing shelf comes as a failure, the others as rows")
     func shelvesKeepTheirFailures() async throws {
         let failingKey = try #require(CatalogGenreAxis.musicShelves.first?.key)
         let failingTags = CatalogGenreAxis.musicTags(forShelf: failingKey)
@@ -161,7 +161,7 @@ struct JamendoLoaderWitnessTests {
         #expect(shelves.rows.count == CatalogGenreAxis.musicShelves.count - 1)
     }
 
-    @Test("Jamendo-Regale: eine abgebrochene Seite bricht jede Frage ab und wartet auf keine")
+    @Test("Jamendo shelves: a cancelled page cancels every query and waits for none")
     func shelvesFollowTheCancelledPage() async {
         let asked = Mutex(0)
         var clients = W.answering()
@@ -180,7 +180,7 @@ struct JamendoLoaderWitnessTests {
         #expect(asked.withLock { $0 } == 1, "a cancelled page asked on")
     }
 
-    @Test("Jamendo-Regale: das erste Regal steht, bevor das zweite gefragt wird")
+    @Test("Jamendo shelves: the first shelf is in place before the second is asked")
     func eachShelfShowsOnArrival() async {
         let shown = Mutex<[String]>([])
         let shownBeforeSecondAsk = Mutex<[String]?>(nil)
@@ -201,7 +201,7 @@ struct JamendoLoaderWitnessTests {
         #expect(shelves.rows.count == CatalogGenreAxis.musicShelves.count)
     }
 
-    @Test("die Jamendo-Seite stellt jedes Regal bei seiner Ankunft hin", .needsTheSources)
+    @Test("the Jamendo page puts each shelf in place on its arrival", .needsTheSources)
     func thePageTakesEachShelfOnArrival() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift"), encoding: .utf8))
@@ -209,7 +209,7 @@ struct JamendoLoaderWitnessTests {
         #expect(!page.contains("for (key, row) in shelves.rows"), "the page waits for all shelves again")
     }
 
-    @Test("Jamendo-Regale fragen der Reihe nach, in keiner eigenen Aufgabe", .needsTheSources)
+    @Test("Jamendo shelves ask one after another, in no task of their own", .needsTheSources)
     func shelvesAskInTurn() throws {
         let loader = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/JamendoLoader.swift"), encoding: .utf8))
@@ -227,7 +227,7 @@ struct JamendoLoaderWitnessTests {
 struct ArchiveMusicLoaderWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    @Test("Archiv-Musik: eine Antwort kommt als Eintraege, ein Fehlschlag mit dem geworfenen Grund")
+    @Test("Archive music: an answer comes as entries, a failure with the thrown reason")
     func answerAndFailure() async throws {
         let area = ArchiveMusicCatalog.classical
         #expect(W.items(await ArchiveMusicLoader.areaPage(area, rows: 2, page: 1, using: W.answering()))?.count == 2)
@@ -246,7 +246,7 @@ struct ArchiveMusicLoaderWitnessTests {
 struct ArchiveMetadataLoaderWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    @Test("Archiv-Metadaten: eine Antwort, ein Fehlschlag mit dem geworfenen Grund, und kein Archiv heisst nichts")
+    @Test("Archive metadata: an answer, a failure with the thrown reason, and no archive means nothing")
     func answerAndFailure() async throws {
         let id = FreeCatalog.archivePrefix + "witness-meta"
         guard case .found(let found) = await ArchiveMetadataLoader.quickMetadata(
@@ -269,7 +269,7 @@ struct ArchiveMetadataLoaderWitnessTests {
         }
     }
 
-    @Test("zurueckgezogen wird gemessen, und der Vermerk landet in der gereichten Ablage")
+    @Test("withdrawn is measured, and the note lands in the store that is passed")
     func withdrawnIsMeasuredAndNotedWhereHandedIn() async throws {
         let suite = "witness-dead-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -291,7 +291,7 @@ struct ArchiveMetadataLoaderWitnessTests {
 struct FreeCatalogLoaderWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    @Test("Entdecken-Reihen: Antworten fuellen die Reihen, Fehlschlaege stehen als Probleme, ohne Netz")
+    @Test("Discover rows: answers fill the rows, failures appear as problems, without network")
     func answerAndFailure() async throws {
         let suite = "witness-day-\(UUID().uuidString)"
         let dayStore = try #require(UserDefaults(suiteName: suite))
@@ -314,7 +314,7 @@ struct FreeCatalogLoaderWitnessTests {
 
     /// Invariant 3: the day's Jamendo answer lands in the handed-in store,
     /// and a run with stand-ins leaves the app's own store as it was.
-    @Test("ein Lauf mit Attrappen beruehrt den Tages-Speicher der App nicht")
+    @Test("a run with dummies does not touch the day store of the app")
     func aStandInRunLeavesTheAppStoreAlone() async throws {
         let suite = "witness-day-\(UUID().uuidString)"
         let dayStore = try #require(UserDefaults(suiteName: suite))
@@ -338,7 +338,7 @@ struct FreeCatalogLoaderWitnessTests {
 struct CatalogSourceLoaderWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    @Test("Quellen-Reihen: Antworten fuellen die Reihen, Fehlschlaege tragen den geworfenen Grund")
+    @Test("Source rows: answers fill the rows, failures carry the thrown reason")
     func answerAndFailure() async {
         let rows = await CatalogSourceLoader.load(using: W.answering(), gates: W.allOn, keptStock: { _ in nil })
         #expect(!rows.librivoxNew.isEmpty && !rows.librivoxPopular.isEmpty)
@@ -356,7 +356,7 @@ struct CatalogSourceLoaderWitnessTests {
 struct CatalogPopularSourceWitnessTests {
     typealias W = CatalogLoaderWitness
 
-    @Test("Beliebt-Seite: eine Antwort kommt als Seite, ein Fehlschlag mit dem geworfenen Grund")
+    @Test("Popular page: an answer comes as a page, a failure with the thrown reason")
     func answerAndFailure() async {
         guard case .loaded(let items, _, _) = await CatalogPopularSource.page(
             source: .oldTimeRadio, page: 1, rows: 2, unfiltered: false, using: W.answering(), languages: []) else {
@@ -405,7 +405,7 @@ struct LibriVoxCoverLoaderWitnessTests {
         return clients
     }
 
-    @Test("Hi-Res-Cover: der Feed antwortet das Bild, einmal je Sitzung, auch ein leeres")
+    @Test("Hi-res cover: the feed answers with the image, once per session, an empty one too")
     func theFeedAnswersTheCoverOncePerSession() async {
         let asks = Asks()
         let (id, book) = Self.withFeed()
@@ -424,7 +424,7 @@ struct LibriVoxCoverLoaderWitnessTests {
         #expect(broken == nil && asks.count == 2, "ein kaputter Feed wird einmal gefragt und bleibt still")
     }
 
-    @Test("Hi-Res-Cover: ohne LibriVox-Buch mit Feed wird nicht gefragt")
+    @Test("Hi-res cover: without a LibriVox book with a feed nothing is asked")
     func withoutAFeedNothingIsAsked() async {
         let asks = Asks()
         let (id, book) = Self.withFeed()
@@ -435,7 +435,7 @@ struct LibriVoxCoverLoaderWitnessTests {
         #expect(asks.count == 0, "weder ein fremder Katalog noch ein unbekanntes Buch fragt das Netz")
     }
 
-    @Test("Upload-Cover: das Hi-Res-Bild, sonst das Vorschaubild")
+    @Test("Upload cover: the hi-res image, otherwise the thumbnail")
     func theUploadTakesTheHiresElseTheThumb() async {
         let thumb = URL(string: "https://example.org/thumb.jpg")
         let (id, book) = Self.withFeed()

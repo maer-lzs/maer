@@ -12,7 +12,7 @@ import Foundation
 /// episode of a show as unplayed, and deleting a Mär playlist at each of
 /// its three places.
 struct AskFirstTests {
-    @Test("Alle als ungehoert markieren fragt zuerst; erst die Rueckfrage markiert", .needsTheSources)
+    @Test("Mark all as unplayed asks first; only the confirmation prompt marks", .needsTheSources)
     func markingAllUnplayedAsksFirst() throws {
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(page.contains("Button { showUnplayedConfirm = true } label: { Label(\"Mark All as Unplayed\""),
@@ -22,7 +22,7 @@ struct AskFirstTests {
                 "the marking stands outside the question")
     }
 
-    @Test("eine Mär-Playlist wird an jeder ihrer drei Stellen erst nach der Rueckfrage geloescht", .needsTheSources)
+    @Test("a Mär playlist is deleted at each of its three places only after the confirmation prompt", .needsTheSources)
     func deletingAPlaylistAsksFirst() throws {
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
         #expect(page.contains("Button(role: .destructive) { deleting = true } label: { Label(\"Delete\", systemImage: \"trash\") }"),

@@ -8,9 +8,9 @@ import Foundation
 import UIKit
 @testable import Maer
 
-/// Die Bild-Tuer sagt, ob sie ein Bild hat, ob die Adresse keines nennt,
-/// oder ob sie nichts gelernt hat. Nur das saubere Nein darf jemand als
-/// „kein Bild“ merken; alles andere wird beim naechsten Mal wieder gefragt.
+/// The image door says whether it has an image, whether the address names none,
+/// or whether it has learned nothing. Only the clean no may be remembered by anyone as
+/// „kein Bild“; everything else is asked again the next time.
 ///
 /// `.serialized`: several cases set the one disk hook of the shared cache
 /// (`ImageCache.shared.testDiskHold`); run side by side, one case's hook
@@ -67,7 +67,7 @@ struct ArtworkVerdictTests {
     /// downloaded album's cover, but the read paths found the persistent
     /// copy first, so the old cover stayed for good. Now the next display
     /// asks the server, and its picture replaces the persistent copy.
-    @Test("nach einer Invalidierung zeigt ein geschuetztes Cover das Bild vom Server und steht danach geschuetzt als neues")
+    @Test("after an invalidation a protected cover shows the image from the server and is protected as new afterwards")
     func anInvalidatedKeptCoverIsReplacedByTheServer() async throws {
         let served = try await BulkImportTests.Stand.start(.answer(status: 200, body: Self.png(pixels: 24)))
         defer { served.stop() }
@@ -97,7 +97,7 @@ struct ArtworkVerdictTests {
 
     /// Offline, or with a server that fails, the kept cover is not lost: it
     /// stays on disk and on screen, and the next display asks again.
-    @Test("scheitert das Laden nach einer Invalidierung, bleibt das alte geschuetzte Cover stehen und sichtbar")
+    @Test("if loading fails after an invalidation, the old protected cover remains and stays visible")
     func aFailedLoadKeepsTheOldCover() async throws {
         let broken = try await BulkImportTests.Stand.start(.answer(status: 403, body: Data()))
         defer { broken.stop() }
@@ -114,7 +114,7 @@ struct ArtworkVerdictTests {
     /// CarPlay and the widget read without the network (`Artwork.thumbnail`):
     /// after an invalidation they still get the kept picture, and their read
     /// does not answer the network gate's next look in its place.
-    @Test("nach einer Invalidierung liefert der Leseweg ohne Netz die geschuetzte Fassung, und das Netz-Tor fragt trotzdem den Server")
+    @Test("after an invalidation the read path without network delivers the protected version, and the network gate still asks the server")
     func aReaderWithoutTheNetworkStillGetsTheKeptCover() async throws {
         let served = try await BulkImportTests.Stand.start(.answer(status: 200, body: Self.png(pixels: 24)))
         defer { served.stop() }
@@ -131,7 +131,7 @@ struct ArtworkVerdictTests {
     /// An answer to a request that left before the invalidation is the old
     /// picture: it does not become the new kept copy, and the address keeps
     /// waiting for a fresh one.
-    @Test("eine Antwort, die vor der Invalidierung losging, wird nicht die neue geschuetzte Fassung")
+    @Test("an answer that started before the invalidation does not become the new protected version")
     func anAnswerOlderThanTheInvalidationIsNotKept() async throws {
         let url = URL(string: "http://127.0.0.1:9/stale-\(UUID().uuidString).png")!
         #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
@@ -164,7 +164,7 @@ struct ArtworkVerdictTests {
 
     /// The answer passed `set`'s entry, then a second pull invalidated
     /// before its background write began: nothing of it reaches the disk.
-    @Test("eine Invalidierung nach dem Eintritt von set und vor dem Schreiben laesst weder Cache noch geschuetzte Fassung mit dem Bild davor")
+    @Test("an invalidation after the entry of set and before the write leaves neither cache nor protected version with the image from before")
     func anInvalidationBeforeTheWriteKeepsTheDiskClean() async throws {
         let url = URL(string: "http://127.0.0.1:9/race-\(UUID().uuidString).png")!
         #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
@@ -184,7 +184,7 @@ struct ArtworkVerdictTests {
     /// The invalidation comes while the write runs, after its last look at
     /// the count: the removal runs after the write, as if the invalidation
     /// had come after a finished write.
-    @Test("eine Invalidierung waehrend des Schreibens raeumt die Cache-Datei danach, und der Speicher bleibt leer")
+    @Test("an invalidation during the write cleans up the cache file afterwards, and the memory stays empty")
     func anInvalidationDuringTheWriteRemovesWhatTheWriteLeft() async throws {
         let url = URL(string: "http://127.0.0.1:9/race-hold-\(UUID().uuidString).png")!
         let key = ImageCache.shared.testKey(for: url)
@@ -219,7 +219,7 @@ struct ArtworkVerdictTests {
 
     /// A read that began before an invalidation and ended after it holds
     /// the picture from before it: it is handed to its caller, not stored.
-    @Test("ein Lesen ueber eine Invalidierung hinweg legt das Bild davor nicht in den Speicher")
+    @Test("a read across an invalidation does not put the image from before into memory")
     func aReadAcrossAnInvalidationIsNotStored() async throws {
         let url = URL(string: "http://127.0.0.1:9/race-read-\(UUID().uuidString).png")!
         let key = ImageCache.shared.testKey(for: url)
@@ -249,7 +249,7 @@ struct ArtworkVerdictTests {
     /// Offline an invalidated address waits the whole session. Its kept
     /// picture stays in memory under its own name: the second look does not
     /// decode from disk again, and the network gate still never sees it.
-    @Test("offline trifft der zweite Blick auf eine wartende Adresse den Speicher, das Netz-Tor nie")
+    @Test("offline the second look at a waiting address hits the memory, the network gate never")
     func aWaitingAddressIsWarmForReadersButNotForTheGate() async throws {
         let url = URL(string: "http://127.0.0.1:9/waiting-\(UUID().uuidString).png")!
         #expect(ImageCache.shared.testPlacePersistent(Self.png(pixels: 8), for: url), "the precondition: an old kept cover")
@@ -299,7 +299,7 @@ struct ArtworkVerdictTests {
     /// A read after the invalidation and before its queued removal finds
     /// the old cache file first. The reader gets it, the waiting name does
     /// not: under it stand only bytes of the persistent copy.
-    @Test("ein Lesen zwischen Invalidierung und Loeschen legt die alte Cache-Datei nicht unter den Wartenamen")
+    @Test("a read between invalidation and deletion does not put the old cache file under the waiting name")
     func theWaitingNameHoldsOnlyKeptBytes() async throws {
         let url = URL(string: "http://127.0.0.1:9/window-\(UUID().uuidString).png")!
         #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: an old cache file")
@@ -319,7 +319,7 @@ struct ArtworkVerdictTests {
     /// copy): the kept bytes the read holds are stored nowhere, so the
     /// network gate finds the new picture, not the old one under the plain
     /// name.
-    @Test("endet das Warten waehrend eines Lesens, findet das Netz-Tor danach das neue Bild, nicht das alte")
+    @Test("if the waiting ends during a read, the network gate afterwards finds the new image, not the old one")
     func aWaitThatEndsDuringAReadStoresNothing() async throws {
         let url = URL(string: "http://127.0.0.1:9/ended-\(UUID().uuidString).png")!
         let key = ImageCache.shared.testKey(for: url)
@@ -356,7 +356,7 @@ struct ArtworkVerdictTests {
 
     /// A download that finishes while an invalidation's removal is queued
     /// does not lift the old cache file into the persistent tier.
-    @Test("ein Download waehrend des eingereihten Loeschens hebt die alte Cache-Datei nicht in die geschuetzte Ablage")
+    @Test("a download during the queued deletion does not lift the old cache file into the protected store")
     func makePersistentLeavesAWaitingCacheFileDown() async throws {
         let url = URL(string: "http://127.0.0.1:9/persist-\(UUID().uuidString).png")!
         #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: an old cache file")
@@ -369,7 +369,7 @@ struct ArtworkVerdictTests {
     }
 
     /// The sweep's lift of an active cover asks the same question.
-    @Test("der Fegelauf hebt die Cache-Datei einer wartenden Adresse nicht hoch")
+    @Test("the sweep run does not lift the cache file of a waiting address")
     func theSweepLeavesAWaitingCacheFileDown() async throws {
         let url = URL(string: "http://127.0.0.1:9/sweep-\(UUID().uuidString).png")!
         #expect(ImageCache.shared.testPlaceInCache(Self.png(pixels: 8), for: url), "the precondition: an old cache file")
@@ -385,7 +385,7 @@ struct ArtworkVerdictTests {
     /// name, but not the cache file of a waiting address. The rename runs in
     /// the disk chain of both addresses, so it waits for the removal the
     /// invalidation queued; nothing moves while that is held.
-    @Test("ein Umbenennen hebt die Cache-Datei einer wartenden Adresse nicht unter den neuen Namen")
+    @Test("a rename does not lift the cache file of a waiting address under the new name")
     func aRenameLeavesAWaitingCacheFileDown() async throws {
         let old = URL(string: "http://127.0.0.1:9/rename-old-\(UUID().uuidString).png")!
         let new = URL(string: "http://127.0.0.1:9/rename-new-\(UUID().uuidString).png")!
@@ -401,7 +401,7 @@ struct ArtworkVerdictTests {
     }
 
     /// Only the gates that go to the network next skip the kept copy.
-    @Test("die geschuetzte Fassung ueberspringen nur die Tore, die danach ins Netz gehen", .needsTheSources)
+    @Test("only the gates that go onto the network afterwards skip the protected version", .needsTheSources)
     func onlyNetworkGatesSkipTheKeptCopy() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
@@ -413,7 +413,7 @@ struct ArtworkVerdictTests {
         #expect(skipping == ["Artwork.swift", "ImageCache.swift"], "a reader skips the kept copy: \(skipping.sorted())")
     }
 
-    @Test("Tuer: ein 404 ist absent, ein 403 und Bytes ohne Bild sind unanswered und werden noch einmal gefragt, ein Bild ist picture und liegt danach auf der Platte")
+    @Test("Door: a 404 is absent, a 403 and bytes without an image are unanswered and are asked again, an image is picture and lies on the disk afterwards")
     func theVerdictNamesWhatWasLearned() async throws {
         let gone = try await BulkImportTests.Stand.start(.answer(status: 404, body: Data("{\"error\":\"none\"}".utf8)))
         defer { gone.stop() }
@@ -443,7 +443,7 @@ struct ArtworkVerdictTests {
         #expect(Self.name(await Artwork.verdict(for: picture)) == "picture:full", "the second look asked the network again")
     }
 
-    @Test("Tuer: eine Kachel, die waehrend ihrer Frist verschwindet, bekommt unanswered, kein Nein")
+    @Test("Door: a tile that disappears during its period gets unanswered, no no")
     func aTileThatLeftLearnsNothing() async throws {
         let served = try await BulkImportTests.Stand.start(.answer(status: 200, body: Self.png()))
         defer { served.stop() }
@@ -456,7 +456,7 @@ struct ArtworkVerdictTests {
         #expect(await served.settledCount(expected: 0) == 0, "a tile that left was asked")
     }
 
-    @Test("Zaun: die zwei Merker rufen verdict, nie image, und ihr unanswered-Zweig bucht nichts", .needsTheSources)
+    @Test("Fence: the two markers call verdict, never image, and their unanswered branch records nothing", .needsTheSources)
     func theRememberersReadTheVerdict() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         for path in ["Sources/Networking/CoverArtArchive.swift", "Sources/Networking/RadioArtworkService.swift"] {

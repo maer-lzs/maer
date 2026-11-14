@@ -13,7 +13,7 @@ import Foundation
 @MainActor
 struct CarPlayLayoutTests {
 
-    @Test("Radio ist ein eigener Tab nur, wenn das System ihn erlaubt; sonst stehen die Favoriten auf Start")
+    @Test("Radio is a tab of its own only if the system allows it; otherwise the favorites are on Start")
     func radioIsATabOnlyWhenAllowed() {
         let four = CarPlayLayout.tabs(audiobooks: true, podcasts: true, music: true, radio: true, maximumTabCount: 4)
         #expect(four.tabs == [.start, .audiobooks, .podcasts, .music])
@@ -25,7 +25,7 @@ struct CarPlayLayoutTests {
         #expect(few.tabs == [.start, .podcasts, .radio] && !few.radioOnStart)
     }
 
-    @Test("ein Tab nur mit eingerichteter Quelle, Start immer, nie mehr Tabs als das System nimmt")
+    @Test("a tab only with a configured source, Start always, never more tabs than the system takes")
     func aTabOnlyWithItsSource() {
         let none = CarPlayLayout.tabs(audiobooks: false, podcasts: false, music: false, radio: false, maximumTabCount: 4)
         #expect(none.tabs == [.start] && !none.radioOnStart)
@@ -34,7 +34,7 @@ struct CarPlayLayoutTests {
         #expect(tight.tabs.first == .start)
     }
 
-    @Test("Als Naechstes und Geschwindigkeit im Player nur bei Hoerbuechern und Folgen")
+    @Test("Up Next and speed in the player only for audiobooks and episodes")
     func playerExtrasForSpokenTitles() {
         #expect(CarPlayLayout.playerExtras(for: "rss:feed:episode-1"))
         #expect(CarPlayLayout.playerExtras(for: "abspod:show:episode"))
@@ -42,7 +42,7 @@ struct CarPlayLayoutTests {
         #expect(!CarPlayLayout.playerExtras(for: nil))
     }
 
-    @Test("die Geschwindigkeit geht die Stufen der App durch und beginnt nach der letzten von vorn")
+    @Test("the speed goes through the steps of the app and starts over after the last one")
     func theRateStepsThroughTheAppsRates() {
         let rates = SpeedMenu.rates
         #expect(CarPlayLayout.nextRate(after: 1.0, rates: rates) == 1.1)
@@ -50,7 +50,7 @@ struct CarPlayLayoutTests {
         #expect(CarPlayLayout.nextRate(after: 1.3, rates: rates) == 1.5)
     }
 
-    @Test("CarPlay fragt die Regeln der App, keine eigene Fassung", .needsTheSources)
+    @Test("CarPlay asks the rules of the app, no version of its own", .needsTheSources)
     func theCarAsksTheAppsRules() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         for asked in ["CarPlayLayout.tabs(", "SharedRows.continueIds(", "SharedRows.playlists(at: .start)",
@@ -78,14 +78,14 @@ struct CarPlayLayoutTests {
         }
     }
 
-    @Test("Alle Buecher im Auto fragt die Liste ohne Filter", .needsTheSources)
+    @Test("All Books in the car asks the list without a filter", .needsTheSources)
     func allBooksInTheCarIgnoresTheAppsFilter() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         #expect(car.contains("library.sortedEntries.map("), "All Books does not ask the list without a filter")
         #expect(!car.contains("sortedFilteredEntries"), "the car inherits the app's filter")
     }
 
-    @Test("eine gescheiterte Abfrage ist im Auto keine leere Bibliothek", .needsTheSources)
+    @Test("a failed query is not an empty library in the car", .needsTheSources)
     func aFailedFetchIsNoEmptyLibraryInTheCar() throws {
         #expect(CarPlayLayout.emptyNote(failed: true) == .noAnswer)
         #expect(CarPlayLayout.emptyNote(failed: false) == .nothing)
@@ -102,7 +102,7 @@ struct CarPlayLayoutTests {
                 "a failed page does not say so")
     }
 
-    @Test("Start im Auto traegt die Reihen von Start, jeder Tab beginnt wie in der App", .needsTheSources)
+    @Test("Start in the car carries the rows of Start, every tab begins as in the app", .needsTheSources)
     func startCarriesStartsRowsAndEveryTabBeginsAsInTheApp() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         // Start's rows in Start's order.
@@ -134,7 +134,7 @@ struct CarPlayLayoutTests {
         #expect(!car.contains("text: station.name"), "the car shows a station's raw name")
     }
 
-    @Test("Als Naechstes im Player, sobald etwas hinter dem Titel wartet, nie bei einem Sender")
+    @Test("Up Next in the player as soon as something waits behind the title, never for a station")
     func upNextWheneverSomethingWaits() {
         #expect(CarPlayLayout.offersUpNext(for: "book-1", waiting: 1))
         #expect(CarPlayLayout.offersUpNext(for: "sub:song-1", waiting: 3))
@@ -143,7 +143,7 @@ struct CarPlayLayoutTests {
         #expect(!CarPlayLayout.offersUpNext(for: nil, waiting: 2))
     }
 
-    @Test("ein Katalogtitel ohne Namen steht nicht im Auto, der Knopf der Geschwindigkeit traegt die Zahl der App",
+    @Test("a catalog title without a name is not in the car, the speed button carries the number of the app",
           .needsTheSources)
     func noNamelessTitleAndTheChosenSpeedWhilePaused() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
@@ -154,7 +154,7 @@ struct CarPlayLayoutTests {
         #expect(!car.contains("CPNowPlayingPlaybackRateButton {"), "the system's rate button shows no speed of the app")
     }
 
-    @Test("CarPlay folgt jeder Aenderung, solange das Auto verbunden ist", .needsTheSources)
+    @Test("CarPlay follows every change as long as the car is connected", .needsTheSources)
     func theCarFollowsEveryChange() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         for signal in ["ListeningRevision.shared.objectWillChange", "queue.$ids",

@@ -17,7 +17,7 @@ struct CatalogShuffleSongsTests {
         (0..<count).map { item(CatalogSongID.make(album: album, index: $0)) }
     }
 
-    @Test("Ein gezogenes Album wird zu seinen Liedern, ein Titel mit einem Lied bleibt ein Lied")
+    @Test("A drawn album becomes its songs, a title with one song stays a song")
     func anAlbumBecomesItsSongs() async {
         var asked: [String] = []
         let counts = ["lva:a": 3, "lva:one": 1]
@@ -34,7 +34,7 @@ struct CatalogShuffleSongsTests {
         #expect(unanswered.map(\.id) == ["lva:gone"], "without an answer the title stays itself")
     }
 
-    @Test("Ein abgebrochener Rufer bekommt nichts, auch nicht den Titel")
+    @Test("A cancelled caller gets nothing, not even the title")
     func aCancelledCallerGetsNothing() async {
         let task = Task { @MainActor in
             await CatalogShuffleSongs.songs(of: self.item("lva:called-off")) { _ in
@@ -45,7 +45,7 @@ struct CatalogShuffleSongsTests {
         #expect(await task.value.isEmpty, "a cancelled start would play the title")
     }
 
-    @Test("Der Wurf startet die Lieder des ersten Albums, die uebrigen werden an ihrem Platz zu Liedern")
+    @Test("The shuffle starts the songs of the first album, the rest become songs in place")
     func theDrawStartsSongsAndExpandsTheRest() async {
         let context = PlaybackContext()
         var played: [String] = []
@@ -68,7 +68,7 @@ struct CatalogShuffleSongsTests {
         #expect(context.sourceTitle == "Netlabels")
     }
 
-    @Test("Ein neuer Start mitten im Wurf: die uebrigen Titel werden nicht mehr gefragt")
+    @Test("A new start in the middle of the shuffle: the remaining titles are no longer asked")
     func aNewStartEndsTheExpansion() async {
         let context = PlaybackContext()
         var asked: [String] = []
@@ -83,7 +83,7 @@ struct CatalogShuffleSongsTests {
         #expect(asked == ["lva:a", "lva:b"], "the title that left is not asked")
     }
 
-    @Test("Ein Eintrag des Kontexts wird an seinem Platz zu seinen Teilen")
+    @Test("An entry of the context becomes its parts in place")
     func contextExpandsAnEntryInPlace() {
         let context = PlaybackContext()
         context.replace(ids: ["lva:x", "lva:b", "lva:y"], source: "s")
@@ -94,7 +94,7 @@ struct CatalogShuffleSongsTests {
         #expect(context.ids == ["lva:x", "lva:b#0", "lva:b#1", "lva:y"])
     }
 
-    @Test("Der Zufall auf Musikbereichen startet die Lieder, Jamendo bleibt beim Titel", .needsTheSources)
+    @Test("Random on music areas starts the songs, Jamendo stays at the title", .needsTheSources)
     func theAreaShuffleStartsSongs() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/CatalogShuffle.swift"),
                               encoding: .utf8)

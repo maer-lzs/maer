@@ -50,8 +50,8 @@ struct ArchiveItemFormTests {
         #expect(ArchiveItemForm.of(collections: ["georgeblood", "oldtimeradio"]) == .work)
     }
 
-    /// Aus EINEM Namen sind ZWEI Fragen geworden, weil es zwei waren.
-    @Test("kuratierte Seriensammlung: nur dort ist das Buendel die Einheit")
+    /// ONE name has become TWO questions, because there were two.
+    @Test("curated series collection: only there is the bundle the unit")
     func curatedSeriesCollection() {
         #expect(ArchiveItemForm.isCuratedSeriesCollection(collections: ["oldtimeradio", "radioprograms"]))
         // The sibling collection alone is not the curated one we query.
@@ -60,21 +60,21 @@ struct ArchiveItemFormTests {
         #expect(!ArchiveItemForm.isCuratedSeriesCollection(collections: []))
     }
 
-    /// Ein Archive-Hoerbuch mit acht benannten Dateien hatte keine
-    /// auswaehlbare Teileliste: die Liste haengt an der FORM, nicht an der
-    /// Sammlung. Vorher fielen die Archive-Hoerbuecher durch beide
-    /// Raster. Keine LibriVox-Kapitel, keine OTR-Folgenseite.
-    @Test("ein Werk hat Teile, gleich in welcher der drei Sammlungen es liegt")
+    /// An Archive audiobook with eight named files had no selectable
+    /// parts list: the list depends on the FORM, not on the
+    /// collection. Before, the Archive audiobooks fell through both
+    /// grids. No LibriVox chapters, no OTR episode page.
+    @Test("a work has parts, whichever of the three collections it lies in")
     func everyWorkHasParts() {
         #expect(ArchiveItemForm.hasParts(collections: ["oldtimeradio"]))
         #expect(ArchiveItemForm.hasParts(collections: ["librivoxaudio"]))
-        // Der gemessene Fall. Vorher fiel er durch.
+        // The measured case. It used to fall through.
         #expect(ArchiveItemForm.hasParts(collections: ["audio_bookspoetry"]),
                 "das Archive-Hoerbuch bekommt wieder keine Teileliste")
-        // Ein ALBUM hat keine Teile. Seine Stuecke sind eigene Eintraege.
+        // An ALBUM has no parts. Its pieces are entries of their own.
         #expect(!ArchiveItemForm.hasParts(collections: ["netlabels"]))
         #expect(!ArchiveItemForm.hasParts(collections: ["georgeblood"]))
-        // Und ohne Aussage der Quelle wird nichts geraten.
+        // And without a statement of the source, nothing is guessed.
         #expect(!ArchiveItemForm.hasParts(collections: []))
         #expect(!ArchiveItemForm.hasParts(collections: ["radioprograms"]))
     }

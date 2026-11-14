@@ -33,7 +33,7 @@ struct AbsCoverFormsTests {
         }
     }
 
-    @Test("das Raster fragt width=400, die grossen Ansichten raw=1")
+    @Test("the grid asks width=400, the large views raw=1")
     func theGridAsksTheWidthTheLargeViewsTheOriginal() throws {
         let client = Self.client()
         let grid = try #require(client.coverURL(forItemId: "li_1"))
@@ -45,7 +45,7 @@ struct AbsCoverFormsTests {
         #expect(ImageCache.shared.testKey(for: grid) != ImageCache.shared.testKey(for: large), "both forms under one name")
     }
 
-    @Test("die Kette frueherer Namen: das Raster liest das gesicherte grosse Bild, dann den Namen von vor 57")
+    @Test("the chain of earlier names: the grid reads the saved large image, then the name from before 57")
     func theGridReadsTheKeptOriginalThenTheOldName() throws {
         let client = Self.client()
         let grid = try #require(client.coverURL(forItemId: "li_2"))
@@ -60,7 +60,7 @@ struct AbsCoverFormsTests {
                 "the original leads to its name by address, then to the name from before 57")
     }
 
-    @Test("offline dekodiert die Rasterzelle das gesicherte grosse Bild verkleinert")
+    @Test("offline the grid cell decodes the saved large image downscaled")
     func offlineTheCellDecodesTheKeptOriginalReduced() async throws {
         let client = Self.client()
         let id = "li_reduced_\(UUID().uuidString)"
@@ -73,7 +73,7 @@ struct AbsCoverFormsTests {
         #expect(max(cell.size.width, cell.size.height) * cell.scale <= 400, "the cell holds the full original")
     }
 
-    @Test("nach forget steht keine Stufe der Namenskette mehr im geschuetzten Ordner")
+    @Test("after forget no step of the name chain is left in the protected folder")
     func forgettingTakesTheWholeChainOutOfTheKeptFolder() throws {
         let client = Self.client()
         let id = "li_forget_\(UUID().uuidString)"
@@ -92,7 +92,7 @@ struct AbsCoverFormsTests {
         #expect(cache.testIsInCache(named: cache.testKey(for: large)) || cache.testIsInCache(named: old))
     }
 
-    @Test("ein Download sichert beide Formen, Fegelauf und forget fragen dieselben", .needsTheSources)
+    @Test("a download saves both forms, the sweep run and forget ask the same ones", .needsTheSources)
     func theDownloadKeepsBothForms() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
@@ -107,7 +107,7 @@ struct AbsCoverFormsTests {
         #expect(DownloadManager.keptCoverURLs(grid: grid, large: grid) == [grid], "one form kept once")
     }
 
-    @Test("Neustart und offline: ein geladener Archiv-Titel zeigt in Raster und grosser Ansicht ein Cover")
+    @Test("Restart and offline: a loaded archive title shows a cover in grid and large view")
     func afterARestartBothFormsStandOffline() async throws {
         let provider = FreeCatalogProvider.shared
         let album = "lva:restart-witness-\(UUID().uuidString)"
@@ -149,7 +149,7 @@ struct AbsCoverFormsTests {
     /// of 2000 pixels, asked the way the grid asked before (the original's
     /// own address) and the way it asks now (its width, through the former
     /// name). The peak over the baseline stands in the log (`COVERPEAK`).
-    @Test("Messung: Speicherspitze, zwoelf Rasterzellen offline, vorher und nachher")
+    @Test("Measurement: memory peak, twelve grid cells offline, before and after")
     func offlineGridPeak() async throws {
         let client = Self.client()
         let cache = ImageCache.shared

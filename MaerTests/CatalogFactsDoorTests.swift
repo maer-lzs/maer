@@ -11,14 +11,14 @@ import Foundation
 /// A view asks the catalogue's register only through `\.catalogFacts`, and
 /// the one route decision five tiles made by hand stands once.
 struct CatalogFactsDoorTests {
-    @Test("eine Teileliste oeffnet die Liste, alles andere die eigene Seite")
+    @Test("a parts list opens the list, everything else the page of its own")
     func theRouteFollowsThePartsList() {
         #expect(CatalogFacts.route(itemId: "lva:a", hasParts: true) == .series(itemId: "lva:a"))
         #expect(CatalogFacts.route(itemId: "lva:a", hasParts: false) == .catalogBook(itemId: "lva:a"))
     }
 
     @MainActor
-    @Test("die lebende Tuer antwortet aus dem Register, die leere antwortet nichts")
+    @Test("the living door answers from the register, the empty one answers nothing")
     func theLiveDoorReadsTheRegisterTheEmptyOneNothing() throws {
         let provider = FreeCatalogProvider.shared
         let bundle = try #require(provider.remember(popular: ArchivePopularDoc(
@@ -56,7 +56,7 @@ struct CatalogFactsDoorTests {
     /// one fails here.
     nonisolated static let stock: [String: Int] = [:]
 
-    @Test("Ansichten lesen das Register nur durch die Tuer, der Bestand faellt nur", .needsTheSources)
+    @Test("views read the register only through the door, the stock only falls", .needsTheSources)
     func viewsReadTheRegisterOnlyThroughTheDoor() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
@@ -87,7 +87,7 @@ struct CatalogFactsDoorTests {
     /// seven. A new one fails here.
     nonisolated static let writeStock: [String: Int] = [:]
 
-    @Test("das Register wird nur unterhalb der Ansichten gefuellt, der Bestand faellt nur", .needsTheSources)
+    @Test("the register is filled only below the views, the stock only falls", .needsTheSources)
     func onlyLoadersFillTheRegister() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
@@ -124,7 +124,7 @@ struct CatalogFactsDoorTests {
     /// fails here.
     nonisolated static let awaitStock: [String: Int] = [:]
 
-    @Test("keine Ansicht wartet auf den Katalog-Provider, der Bestand faellt nur", .needsTheSources)
+    @Test("no view waits for the catalog provider, the stock only falls", .needsTheSources)
     func noViewAwaitsTheProvider() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")

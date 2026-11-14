@@ -12,7 +12,7 @@ import Foundation
 /// entry with three switches on the rows page, and a page holding every
 /// foreign source but the radio catalog.
 struct BrowseTests {
-    @Test("Rang um Rang, leere Anteile fallen weg, die Grenze haelt")
+    @Test("Rank by rank, empty shares drop out, the limit holds")
     func rankByRank() {
         #expect(BrowseMix.interleave([["r1", "r2", "r3"], ["m1"], ["b1", "b2"]], limit: 10)
                 == ["r1", "m1", "b1", "r2", "b2", "r3"])
@@ -22,7 +22,7 @@ struct BrowseTests {
         #expect(BrowseMix.columns(["a", "b", "c"]) == [["a", "b"], ["c"]])
     }
 
-    @Test("nur eine Reihe mit mehr als einer Art zeichnet die Art je Kachel")
+    @Test("only a row with more than one kind draws the kind per tile")
     func onlyAMixedRowMarksKinds() {
         #expect(!BrowseMix.marksKinds([MediaType.music, .music, .music]), "a music row")
         #expect(!BrowseMix.marksKinds([MediaType.audiobooks, .audiobooks]), "a books row")
@@ -32,7 +32,7 @@ struct BrowseTests {
         #expect(BrowseMix.marksKinds([MediaType.music, .audiobooks]))
     }
 
-    @Test("jede Kachel der Reihe nennt ihre Art, die Zeichen der Reihe fragen die Regel", .needsTheSources)
+    @Test("every tile of the row names its kind, the drawing of the row asks the rule", .needsTheSources)
     func theRowAsksTheRule() throws {
         #expect(BrowseTile.music(LibraryItem(id: "jam:7", media: nil, addedAt: nil)).kind == .music)
         #expect(BrowseTile.catalog(.item(LibraryItem(id: "lv:123", media: nil, addedAt: nil))).kind == .audiobooks)
@@ -43,7 +43,7 @@ struct BrowseTests {
                 && !row.contains("marksKind: true"), "a pure row marks its tiles")
     }
 
-    @Test("die Seite teilt ihre Abschnitte am Falz: die erste Haelfte davor, der Rest danach, in Folge")
+    @Test("the page splits its sections at the fold: the first half before it, the rest after it, in sequence")
     func thePageSplitsAtTheFold() {
         let all: (String) -> Bool = { _ in true }
         let music = BrowseSection.columns(BrowseSection.shown(in: .music, isAllowed: all))
@@ -55,7 +55,7 @@ struct BrowseTests {
         #expect(BrowseSection.columns([]).leading.isEmpty && BrowseSection.columns([]).trailing.isEmpty)
     }
 
-    @Test("jeder Abschnitt der Seite ist eine Reihe mit Kacheln, zweispaltig am Falz", .needsTheSources)
+    @Test("every section of the page is a row with tiles, two columns at the fold", .needsTheSources)
     func everySectionIsALane() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
@@ -75,7 +75,7 @@ struct BrowseTests {
         var names: [String] = []
     }
 
-    @Test("die Seite laedt ihre Bereiche gleichzeitig: die Dauer ist die des laengsten, jeder kommt mit seiner Antwort")
+    @Test("the page loads its areas at the same time: the duration is that of the longest, each comes with its answer")
     @MainActor func theLoadsRunSideBySide() async {
         let finished = Finished()
         func step(_ name: String, _ ms: Int) -> BrowseLoad.Step {
@@ -94,7 +94,7 @@ struct BrowseTests {
         await BrowseLoad.together([])
     }
 
-    @Test("die Seite Stoebern gibt jeden Bereich an das gleichzeitige Laden, keiner wartet auf einen anderen", .needsTheSources)
+    @Test("the Browse page hands every area to the simultaneous loading, none waits for another", .needsTheSources)
     func thePageLoadsItsSectionsTogether() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
@@ -110,7 +110,7 @@ struct BrowseTests {
         }
     }
 
-    @Test("ein eingeschalteter, leerer Anteil nennt seinen Grund, ein ausgeschalteter nicht")
+    @Test("a switched-on, empty share names its reason, a switched-off one does not")
     func aDroppedShareSaysWhy() {
         #expect(BrowseMix.dropReason(.music, enabled: true, isEmpty: true, failure: "Jamendo: 429") == "music: Jamendo: 429")
         #expect(BrowseMix.dropReason(.books, enabled: true, isEmpty: true, failure: nil) == "books: no tiles")
@@ -118,7 +118,7 @@ struct BrowseTests {
         #expect(BrowseMix.dropReason(.recommended, enabled: true, isEmpty: false, failure: nil) == nil)
     }
 
-    @Test("die Seite haelt jede Quelle ausser dem Radio-Katalog")
+    @Test("the page holds every source except the radio catalog")
     func thePageHoldsEverySourceButRadio() {
         let keys = Set(BrowseSection.allCases.flatMap(\.sourceKeys))
         for key in keys { #expect(ExternalSources.source(key: key) != nil, "\(key) is no source") }
@@ -131,7 +131,7 @@ struct BrowseTests {
         #expect(BrowseSection.shown(isAllowed: { $0 == "jamendo" }).contains(.jamendo))
     }
 
-    @Test("auf der Seite Reihen ist Stoebern eine Zeile mit drei Unter-Schaltern, die ihre Schluessel behalten")
+    @Test("on the Rows page Browse is one line with three sub-switches that keep their keys")
     func browseIsOneEntryWithThreeSwitches() throws {
         let shares = AppRows.all.filter { $0.group == "home.browse" }
         #expect(shares.map(\.key) == ["home.recommendations", "home.discoverMusic", "home.discoverBooks"])
@@ -143,7 +143,7 @@ struct BrowseTests {
         #expect(AppRows.all.filter { $0.group != nil }.allSatisfy { AppRows.groupTitle($0.group!) != nil })
     }
 
-    @Test("jeder Reiter hat seinen Bereich der Seite, Radio und Start keinen")
+    @Test("every tab has its area of the page, Radio and Start have none")
     func eachTabHasItsArea() {
         #expect(TabBrowse.area(for: .audiobooks) == .books)
         #expect(TabBrowse.area(for: .music) == .music)
@@ -160,7 +160,7 @@ struct BrowseTests {
         #expect(BrowseSection.shown(in: .books, isAllowed: { _ in false }).isEmpty)
     }
 
-    @Test("ohne Server die Abschnitte des Bereichs, mit Server die eine Reihe, je Reiter mit seinem Server")
+    @Test("without a server the sections of the area, with a server the one row, per tab with its server")
     func sectionsWithoutServerRowWithServer() {
         #expect(TabBrowse.form(hasServer: false) == .sections)
         #expect(TabBrowse.form(hasServer: true) == .row)
@@ -179,7 +179,7 @@ struct BrowseTests {
         #expect(form(.podcasts, abs: true, podcasts: true) == .row)
     }
 
-    @Test("jeder Reiter fragt die Regel und zieht seine Reihe aus den Abschnitten der Seite", .needsTheSources)
+    @Test("every tab asks the rule and draws its row from the sections of the page", .needsTheSources)
     func everyTabTakesTheRule() throws {
         func flat(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(
@@ -204,7 +204,7 @@ struct BrowseTests {
         #expect(page.contains("BrowseMix.interleave(BrowseSection.shown(in:area,isAllowed:isAllowed).map(lane)"))
     }
 
-    @Test("der Start zeichnet Stoebern aus den drei Anteilen und sagt, warum einer fehlt", .needsTheSources)
+    @Test("Start draws Browse from the three shares and says why one is missing", .needsTheSources)
     func startDrawsBrowse() throws {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
@@ -233,7 +233,7 @@ struct BrowseTests {
     /// section the heading's destination and the store its tiles read, and
     /// for the two archive lanes the area the loader fills them from. A new
     /// section has to name its pair here.
-    @Test("jede Ueberschrift einer Reihe auf Stoebern fuehrt auf die Flaeche, aus der ihre Kacheln kommen", .needsTheSources)
+    @Test("every heading of a row on Browse leads to the surface its tiles come from", .needsTheSources)
     func everyHeadingLeadsWhereItsTilesComeFrom() throws {
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/BrowseRow.swift")
         let pairs: [BrowseSection: (heading: String, tiles: String)] = [

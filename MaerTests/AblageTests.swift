@@ -21,7 +21,7 @@ struct AblageTests {
         return url
     }
 
-    @Test("Spaeterer Schrieb gewinnt, auch wenn zwanzig auf einmal kommen; laden sieht den letzten")
+    @Test("A later write wins, even if twenty come at once; load sees the last one")
     func laterSaveWins() async throws {
         let dir = scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -36,7 +36,7 @@ struct AblageTests {
         #expect(files == ["doc.json"])
     }
 
-    @Test("Fehlt die Datei, ist es frisch; unlesbar wandert beiseite und sperrt einen leeren Schrieb, nicht einen echten")
+    @Test("If the file is missing, it is fresh; unreadable moves aside and blocks an empty write, not a real one")
     func corruptIsKeptAsideAndNeverBuriedByEmptiness() async throws {
         let dir = scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -59,7 +59,7 @@ struct AblageTests {
         #expect(await ablage.load(Doc.self, name: "doc.json").value == Doc(items: []))
     }
 
-    @Test("unlesbar bleibt unlesbar ueber einen Neustart, bis ein echter Schrieb oder eine Entfernung kommt")
+    @Test("unreadable stays unreadable across a restart, until a real write or a removal comes")
     func unreadableOutlivesARestart() async throws {
         let dir = scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -91,7 +91,7 @@ struct AblageTests {
     /// The synchronous removal and the lever that empties the catalog stocks
     /// retire the file aside as `remove` does: the name reads as none yet
     /// afterwards, not as unreadable for ever.
-    @Test("removeNow und das Leeren der Katalog-Bestaende nehmen die Beiseite-Datei mit, der Name liest sich danach als neu")
+    @Test("removeNow and the clearing of the catalog stocks take the aside file along, the name reads as new afterwards")
     func theSynchronousRemovalsRetireTheFileAside() async throws {
         let dir = scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -114,7 +114,7 @@ struct AblageTests {
     /// as unreadable, the empty save is refused, and it stays untouched where
     /// it is. Measured before (W-Sammel 12a): both read as fresh, and the
     /// empty save over a folder in the file's place replaced the folder.
-    @Test("eine vorhandene, nicht lesbare Datei ist nie neu: sie bleibt an ihrem Platz, der leere Schrieb ist gesperrt")
+    @Test("an existing, unreadable file is never new: it stays in its place, the empty write is blocked")
     func aPresentUnreadableFileIsNeverFresh() async throws {
         let dir = scratch()
         let file = dir.appendingPathComponent("doc.json")
@@ -151,7 +151,7 @@ struct AblageTests {
 
     /// Without a load before: a folder in the document's place is refused
     /// the empty save as the load would answer it, and stays.
-    @Test("ohne vorheriges Laden sperrt die Sperre den leeren Schrieb ueber einem vorhandenen, unlesbaren Dokument")
+    @Test("without a prior load the block stops the empty write over an existing, unreadable document")
     func theLockCoversAPresentUnreadableDocumentWithoutALoad() async throws {
         let dir = scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -178,7 +178,7 @@ struct AblageTests {
 
     /// The lock reads the same sign as the load: a new instance that never
     /// loaded refuses the empty save over a file aside.
-    @Test("die Sperre liest dasselbe Zeichen wie das Laden: ohne vorher zu laden ist der leere Schrieb ueber einer Beiseite-Datei gesperrt")
+    @Test("the block reads the same sign as the load: without loading first the empty write over an aside file is blocked")
     func theLockReadsTheFileAsideWithoutALoad() async throws {
         let dir = scratch()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -194,7 +194,7 @@ struct AblageTests {
         #expect(await Ablage(directory: dir).load(Doc.self, name: "doc.json").value == Doc(items: []))
     }
 
-    @Test("Ein Schreibfehler wirft und verschwindet nicht")
+    @Test("A write error throws and does not vanish")
     func writeFailureThrows() async throws {
         // A FILE where the store's directory should be: no temporary file
         // can be created, the save cannot land.

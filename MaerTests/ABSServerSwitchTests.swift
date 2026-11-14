@@ -82,7 +82,7 @@ struct ABSServerSwitchTests {
         return (SyncQueue(storage: SyncQueueRowStorage(database: database)), directory)
     }
 
-    @Test("die Regel: geraeumt wird nur nach der vollen Ladung desselben Servers, ein fremder Stand wartet")
+    @Test("the rule: cleanup happens only after the full load of the same server, a foreign state waits")
     func theRule() {
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: false) == .clean)
         #expect(ABSServerScope.cleanup(lastFullLoad: "https://a", current: "https://a", moreThanOneServer: true) == .cleanOwned,
@@ -121,7 +121,7 @@ struct ABSServerSwitchTests {
 
     /// The queue stamps a title of Jellyfin or Subsonic with the address of
     /// its server now, so the rule above can hold it after a switch.
-    @Test("die Warteschlange stempelt einen Titel von Jellyfin und Subsonic mit der Adresse seines Servers")
+    @Test("the queue stamps a title from Jellyfin and Subsonic with the address of its server")
     @MainActor
     func theQueueStampsMusicServers() async {
         let jellyfin = AppStorageKeys.jellyfinServerURLValue
@@ -142,7 +142,7 @@ struct ABSServerSwitchTests {
 
     /// A source's page counts what that source can send now: its own titles,
     /// without a mark waiting for another server of its family.
-    @Test("die Zahl wartender Staende einer Quelle zaehlt nur, was sie jetzt senden kann")
+    @Test("the count of waiting states of a source counts only what it can send now")
     @MainActor
     func aSourceCountsWhatItCanSend() async {
         let jellyfin = AppStorageKeys.jellyfinServerURLValue
@@ -170,14 +170,14 @@ struct ABSServerSwitchTests {
 
     /// The page shows the count of its own sendable stands, never the
     /// whole queue.
-    @Test("die Seite des Audiobookshelf-Servers zeigt die Zahl, die sie senden kann, nie die ganze Warteschlange", .needsTheSources)
+    @Test("the page of the Audiobookshelf server shows the count it can send, never the whole queue", .needsTheSources)
     func theSourcePageCountsItsOwn() throws {
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/ABSSourceView.swift")
         #expect(!page.contains("allPending().count"), "the page counts the whole queue")
         #expect(page.components(separatedBy: "pendingSyncCount = SyncQueue.shared.sendableCount(where: ItemNamespace.isAudiobookshelf)").count - 1 == 2)
     }
 
-    @Test("ein Eintrag der Warteschlange aus der Zeit vor dem Server liest sich ohne Server")
+    @Test("a queue entry from the time before the server reads without a server")
     func anOlderEntryReadsWithoutAServer() throws {
         let old = Data(#"{"currentTime":321,"duration":1000,"isFinished":false,"queuedAt":5}"#.utf8)
         let entry = try JSONDecoder().decode(SyncQueue.PendingUpdate.self, from: old)
@@ -194,7 +194,7 @@ struct ABSServerSwitchTests {
         return model.keySweep != nil
     }
 
-    @Test("Wechsel von A zu B und zurueck: der offline gehoerte Stand von A bleibt und geht an A, nie an B")
+    @Test("Switch from A to B and back: the state of A played offline stays and goes to A, never to B")
     func aSwitchKeepsTheUnsentStand() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -234,7 +234,7 @@ struct ABSServerSwitchTests {
         #expect(!queue.hasPendingUpdate(itemId: bookA))
     }
 
-    @Test("derselbe Server raeumt weiter, der erste Start ohne gemerkten Server raeumt einmal nicht")
+    @Test("the same server keeps cleaning up, the first start without a remembered server does not clean up once")
     func theSameServerStillCleans() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -267,7 +267,7 @@ struct ABSServerSwitchTests {
 
     /// A model that loads twice answers for its last load: a load that sets
     /// off no sweep holds none of the load before.
-    @Test("ein Modell, zweimal geladen: die zweite Ladung ohne Raeumen haelt keine Aufgabe der ersten")
+    @Test("a model loaded twice: the second load without cleanup holds no task of the first")
     func aSecondLoadHoldsNoSweepOfTheFirst() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -286,7 +286,7 @@ struct ABSServerSwitchTests {
         #expect(model.keySweep == nil, "the second load still holds the first one's sweep")
     }
 
-    @Test("zwei Server raeumen je ihre eigenen Buecher: das gegangene Buch von A geht mit der Ladung von A, die von B und der Altbestand bleiben")
+    @Test("two servers each clean up their own books: the departed book of A goes with the load of A, those of B and the old stock stay")
     func twoServersCleanTheirOwn() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -323,7 +323,7 @@ struct ABSServerSwitchTests {
     /// The ids that go are decided when a load ends, as a value: a second
     /// load that notes its ids while the first one's sweep runs changes
     /// nothing that sweep cleans.
-    @Test("zwei volle Ladungen in einem Zug: A raeumt sein gegangenes Buch, ein Buch von B, das A nicht nennt, bleibt")
+    @Test("two full loads in one go: A cleans up its departed book, a book of B that A does not name stays")
     func twoLoadsInOneGo() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -360,7 +360,7 @@ struct ABSServerSwitchTests {
         #expect(Self.owner(of: shared) == "https://b.example")
     }
 
-    @Test("nach einem Wechsel raeumt auch die zweite volle Ladung von B nichts von A")
+    @Test("after a switch the second full load of B also cleans up nothing of A")
     func aSecondLoadOfTheNewServerKeepsTheOld() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -392,7 +392,7 @@ struct ABSServerSwitchTests {
         #expect(d.object(forKey: PlayedTail.key(bookA)) != nil, "a load of B cleaned A's played tail")
     }
 
-    @Test("ein Server hat einen Namen: ohne Zugangswerte, Wirt klein, ohne Standard-Port und Schraegstrich")
+    @Test("a server has a name: without credentials, host lowercase, without default port and slash")
     func aServerHasOneName() {
         let name = "https://abs.example.com"
         #expect(ABSServerScope.identity(of: "https://Name:Secret@ABS.Example.com:443/") == name)
@@ -403,7 +403,7 @@ struct ABSServerSwitchTests {
         #expect(ABSServerScope.identity(of: "https://other.example.com") != name)
     }
 
-    @Test("die Anmeldung merkt den Namen ohne Zugangswerte, eine andere Schreibweise ist derselbe Server")
+    @Test("the sign-in remembers the name without credentials, another spelling is the same server")
     func theSignInKeepsNoSecret() {
         let saved = Saved()
         defer { saved.restore() }
@@ -430,7 +430,7 @@ struct ABSServerSwitchTests {
         let startReadFailed = false
     }
 
-    @Test("gemerkte Server von vor dem Namen ziehen einmal um: Einstellungen und Warteschlange ohne Zugangswerte")
+    @Test("remembered servers from before the name move once: settings and queue without credentials")
     func olderServersMoveToTheirName() async {
         let saved = Saved()
         defer { saved.restore() }
@@ -454,7 +454,7 @@ struct ABSServerSwitchTests {
                                        moreThanOneServer: false) == .clean)
     }
 
-    @Test("die Marke eines zweiten Servers, die eine andere Schreibweise setzte, faellt beim Umzug, wo das Register keinen zweiten zeigt")
+    @Test("the mark of a second server that another spelling set drops in the move where the register shows no second one")
     func aSpellingsMarkFallsWhereTheRegisterShowsOneServer() {
         let saved = Saved()
         defer { saved.restore() }
@@ -496,7 +496,7 @@ struct ABSServerSwitchTests {
 
     /// Every look at the mark writes its line: one line after every case,
     /// no return between the look and it.
-    @Test("jeder Blick auf die Marke schreibt eine Zeile mit dem, was er fand", .needsTheSources)
+    @Test("every look at the mark writes a line with what it found", .needsTheSources)
     func everyLookAtTheMarkWritesALine() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/AppStorageKeys.swift"), encoding: .utf8))
@@ -512,7 +512,7 @@ struct ABSServerSwitchTests {
     /// The register travels: a removal by hand on another device arrives as
     /// `forget` here. Once the first start looked, no later start lowers a
     /// mark that stands rightly, whatever the register then shows.
-    @Test("die Marke wird einmal je Geraet zurueckgenommen: nach einer Loeschung im Register bleibt eine zu Recht gesetzte Marke beim naechsten Start")
+    @Test("the mark is withdrawn once per device: after a deletion in the register a rightly set mark stays at the next start")
     func theMarkIsReviewedOncePerDevice() {
         let saved = Saved()
         defer { saved.restore() }
@@ -539,7 +539,7 @@ struct ABSServerSwitchTests {
                 "a removal on another device lowered a right mark, the next full load would clean the books of X")
     }
 
-    @Test("ein Eintrag von vor dem Wechsel ohne Server geht an den neuen Server, dessen 404 verwirft ihn nicht")
+    @Test("an entry from before the switch without a server goes to the new server, whose 404 does not discard it")
     func anOlderEntryIsKeptOnAbsenceAfterASwitch() async throws {
         let saved = Saved()
         defer { saved.restore() }
@@ -557,7 +557,7 @@ struct ABSServerSwitchTests {
         #expect(queue.pendingUpdate(itemId: book)?.currentTime == 77, "the absence answer after a switch dropped the stand")
     }
 
-    @Test("ein Eintrag ohne Server, dessen Buch Server A gehoert, wartet unter B, auch wenn B das Buch kennt")
+    @Test("an entry without a server whose book belongs to server A waits under B, even if B knows the book")
     func anOlderEntryOfAnOwnedBookWaits() async throws {
         let saved = Saved()
         defer { saved.restore() }

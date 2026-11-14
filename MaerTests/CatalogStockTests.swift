@@ -7,8 +7,8 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der dauerhaft gehaltene Katalog-Bestand: die Regeln daruber sind pur,
-/// also ohne Netz und ohne Platte pruefbar.
+/// The permanently held catalog stock: the rules about it are pure,
+/// so they can be checked without network and without disk.
 struct CatalogStockTests {
 
     private func eintrag(_ id: String, subjects: [String] = [],
@@ -17,37 +17,37 @@ struct CatalogStockTests {
                           subjects: subjects, downloads: 1, licenseurl: lizenz, year: nil)
     }
 
-    /// Die Popularitaets-Seite wird auf den JETZIGEN Bestand gelegt: laeuft
-    /// zwischen zwei Seiten ein Bezug fertig, bleiben dessen Eintraege,
-    /// Stempel und der geloeschte Zeiger stehen. Der alte Schnappschuss
-    /// haette sie zurueckgeschrieben, und der naechste Start haette die
-    /// ganze Sammlung neu indiziert.
-    @Test("eine Popularitaets-Seite ueberschreibt keinen fertigen Bezug")
+    /// The popularity page is laid onto the CURRENT stock: if a retrieval
+    /// finishes between two pages, its entries, stamp and the deleted
+    /// pointer stay in place. The old snapshot would have written them
+    /// back, and the next start would have re-indexed the
+    /// whole collection.
+    @Test("a popularity page does not overwrite a finished retrieval")
     func popularityPageKeepsTheFinishedRun() {
-        // Seite 1 auf einem halben Bestand (Zeiger, Stempel 0).
+        // Page 1 on a half stock (pointer, stamp 0).
         let halb = CatalogStockRules.partial(nil, surface: "gutenberg",
                                              entries: [eintrag("a")], cursor: "c1")
         let seite1 = CatalogStockRules.withPopularity(halb, counts: ["a": 5], nextPage: 2, complete: false)
         #expect(seite1.entries.map(\.id) == ["a"] && seite1.takenAt == 0 && seite1.fetchCursor == "c1")
-        // Dazwischen wird der Bezug fertig: neue Eintraege, Stempel heute, kein Zeiger.
+        // In between the retrieval finishes: new entries, stamp today, no pointer.
         var fertig = seite1
         fertig.entries = [eintrag("a"), eintrag("b")]
         fertig.takenAt = 1_700_000_000
         fertig.fetchCursor = nil
-        // Seite 2 auf dem FRISCH geladenen Bestand.
+        // Page 2 on the FRESHLY loaded stock.
         let seite2 = CatalogStockRules.withPopularity(fertig, counts: ["a": 5, "b": 7], nextPage: 3, complete: true)
         #expect(seite2.entries.map(\.id) == ["a", "b"], "der fertige Bezug hat seine Eintraege verloren")
         #expect(seite2.takenAt == 1_700_000_000, "der Stempel lief rueckwaerts")
         #expect(seite2.fetchCursor == nil, "der Zeiger ist zurueckgekommen")
         #expect(seite2.popularity == ["a": 5, "b": 7] && seite2.popularityComplete == true)
-        // Rot-Probe: der alte Schnappschuss (seite1) haette genau das getan.
+        // Red test: the old snapshot (seite1) would have done exactly that.
         #expect(seite1.entries.count == 1 && seite1.takenAt == 0)
     }
 
-    /// Ein Zeiger neben einem gueltigen Stempel kann nicht entstehen: die
-    /// halbe Form setzt den Stempel immer auf null, und das Urteil beim
-    /// Laden liest dieselbe Invariante.
-    @Test("halb heisst Zeiger UND Stempel null; das Urteil sagt resume")
+    /// A pointer next to a valid stamp cannot arise: the
+    /// half form always sets the stamp to zero, and the verdict on
+    /// loading reads the same invariant.
+    @Test("half means pointer AND stamp zero; the verdict says resume")
     func partialAlwaysCarriesAZeroStamp() {
         var voll = CatalogStock(surface: "netlabels", takenAt: 1_700_000_000,
                                 watermark: nil, entries: [eintrag("x")])
@@ -60,10 +60,10 @@ struct CatalogStockTests {
         #expect(CatalogStockRules.loadVerdict(voll, isDump: false) != "resume")
     }
 
-    /// Die Fach-Zuordnung wandert vom Dienst in die App, und genau dort
-    /// koennte die Teilstring-Klasse wieder auferstehen, die einmal ein
-    /// Didaktik-Drama ins Krimi-Fach gestellt hat. Sie tut es nicht.
-    @Test("die Fach-Zuordnung trifft GANZE Begriffe, nie Teilstuecke")
+    /// The shelf assignment moves from the service into the app, and right
+    /// there the substring class could rise again, which once put a
+    /// didactic drama on the crime shelf. It does not.
+    @Test("the shelf assignment matches WHOLE terms, never fragments")
     func shelfAssignmentIsExact() {
         let krimi = ["crime", "detective"]
         #expect(CatalogStockRules.belongs(eintrag("a", subjects: ["Crime"]),
@@ -74,37 +74,37 @@ struct CatalogStockTests {
             toShelfTerms: krimi),
                 "ein Begriff in einer Aufzaehlung wird nicht gefunden")
 
-        // Rot-Probe: das Teilstueck trifft NICHT. „Crimea" enthaelt „crime",
-        // und genau daran ist die alte Form gescheitert.
+        // Red test: the fragment does NOT match. „Crimea" enthaelt „crime",
+        // and that is exactly where the old form failed.
         #expect(!CatalogStockRules.belongs(eintrag("c", subjects: ["Crimea"]),
                                            toShelfTerms: krimi),
                 "die Teilstring-Klasse ist lokal wieder auferstanden")
         #expect(!CatalogStockRules.belongs(eintrag("d", subjects: ["Detective work"]),
                                            toShelfTerms: krimi))
-        // Und ohne Begriffe gehoert nichts irgendwohin.
+        // And without terms nothing belongs anywhere.
         #expect(!CatalogStockRules.belongs(eintrag("e", subjects: ["Crime"]),
                                            toShelfTerms: []))
     }
 
-    /// Die EINE Normierung (Go nach der Buendel-6-Messung): beide
-    /// Zuordnungswege splitten jetzt auch die LCSH-Facette. Gemessen war
-    /// der Riss 68 gegen 420 Romane; die Teilstring-Rot-Probe wandert mit.
-    @Test("die Facetten-Haelfte zaehlt, das Teilstueck weiter nicht")
+    /// The ONE normalization (go after the bundle-6 measurement): both
+    /// assignment routes now also split the LCSH facet. The measured
+    /// gap was 68 against 420 novels; the substring red test moves along.
+    @Test("the facet half counts, the fragment still does not")
     func facetsCountSubstringsStillDoNot() {
         let romane = ["fiction"]
-        // Die Facette traegt den Begriff als GANZE Haelfte: zaehlt.
+        // The facet carries the term as a WHOLE half: counts.
         #expect(CatalogStockRules.belongs(
             eintrag("f", subjects: ["England -- Fiction"]), toShelfTerms: romane),
                 "die Facetten-Haelfte erreicht das Fach nicht")
-        // Beide Wege sehen denselben Titel (eine Wahrheit je Flaeche).
+        // Both routes see the same title (one truth per surface).
         #expect(CatalogGenreAxis.shelves(forSubjects: ["England -- Fiction"])
             .contains("fiction"))
         #expect(CatalogGenreAxis.shelves(
             forSubjects: ["Detective and mystery stories, English"])
             .contains("crime"),
                 "der Kachel-Weg kennt den Komma-Split immer noch nicht")
-        // Rot-Probe bleibt: „Juvenile fiction" ist KEIN ganzer Treffer
-        // fuer „fiction", auch nicht als Facetten-Haelfte.
+        // Red test stays: „Juvenile fiction" is NOT a whole match
+        // for „fiction", not even as a facet half.
         #expect(!CatalogStockRules.belongs(
             eintrag("g", subjects: ["Juvenile fiction"]), toShelfTerms: romane),
                 "die Teilstring-Klasse ist durch die Facette zurueckgekommen")
@@ -113,18 +113,18 @@ struct CatalogStockTests {
             toShelfTerms: romane))
     }
 
-    /// Das Stoebern-Fach macht den GANZEN Bestand erreichbar: gemessen
-    /// tragen 84 Prozent der Archive-Hoerbuecher keine Subjects, kein
-    /// Genre-Fach kann sie je zeigen. Hier zaehlt jeder Titel, die Zahl
-    /// ist der ganze Bestand, und der Tages-Ausschnitt hat seinen EIGENEN
-    /// Startwert (die Geteilter-Platz-Klasse ueberschrieb einst den Tag
-    /// der Nachbar-Reihe).
-    @Test("Stoebern erreicht das Subjektlose; das Tor laesst nur Deklariertes hinein")
+    /// The Browse shelf makes the WHOLE stock reachable: measured,
+    /// 84 percent of the Archive audiobooks carry no subjects, no
+    /// genre shelf can ever show them. Here every title counts, the count
+    /// is the whole stock, and the daily excerpt has its OWN
+    /// start value (the shared-place class once overwrote the day
+    /// of the neighboring row).
+    @Test("Browse reaches the subjectless; the gate lets in only what is declared")
     func browseReachesTheSubjectless() throws {
-        // 40 mit deklarierter Lizenz, 10 ohne: die Beliebtheits-Ordnung
-        // hatte Piraten-Uploads nach oben verstaerkt, deshalb ist die
-        // deklarierte Lizenz das Einschluss-Tor und die getragene Zahl
-        // die GEFILTERTE.
+        // 40 with a declared license, 10 without: the popularity order
+        // had pushed pirate uploads to the top, so the
+        // declared license is the inclusion gate and the carried count
+        // the FILTERED one.
         var eintraege = (1...40).map { i in
             CatalogStockEntry(id: "iar:\(i)", title: "T\(i)", creator: nil,
                               subjects: [], downloads: 1000 - i,
@@ -144,16 +144,16 @@ struct CatalogStockTests {
         }
         #expect(total == 40, "die Zahl ist nicht der gefilterte Bestand")
         #expect(docs.count == 12)
-        // Die Unlizenzierten stehen trotz hoechster Downloads NICHT drin.
+        // The unlicensed ones are NOT in despite the highest downloads.
         #expect(!docs.contains { ($0.title?.first ?? "").hasPrefix("Pirat") })
-        // Andere Quellen passieren das Tor ungefiltert (andere
-        // Bestands-Natur; die Rot-Probe der Regel).
+        // Other sources pass the gate unfiltered (different
+        // nature of stock; the red test of the rule).
         #expect(CatalogStockRules.browseEligible(eintraege[45], source: .oldTimeRadio))
         #expect(!CatalogStockRules.browseEligible(eintraege[45], source: .archiveBooks))
-        // Kein Fach sieht diese Titel; das Stoebern schon.
+        // No shelf sees these titles; Browse does.
         #expect(!CatalogStockRules.belongs(eintraege[0], toShelfTerms: ["fiction"]))
-        // Eigener Startwert: das Salz unterscheidet sich vom Beliebt-Weg
-        // (Regel am Abdruck: browseAll hat seinen eigenen).
+        // Own start value: the salt differs from the Popular route
+        // (rule on the imprint: browseAll has its own).
         #expect(CatalogRotation.salt(forShelf: CatalogGenreAxis.browseAllKey)
                 != CatalogRotation.salt(forShelf: "popular"))
     }
@@ -161,7 +161,7 @@ struct CatalogStockTests {
     /// The gate of the browse shelf and the gate of a copy are one
     /// question: is a licence declared. A title the page labels "Rights
     /// not stated" never passes either.
-    @Test("das Tor des Stoeberns fragt die Regel des Downloads; ohne erklaerte Lizenz nie ein Ja", .needsTheSources)
+    @Test("the gate of Browse asks the rule of the download; without a declared license never a yes", .needsTheSources)
     func browseAsksTheCopyRule() throws {
         for licence in [nil, "", "   "] as [String?] {
             let entry = CatalogStockEntry(id: "iar:x", title: "T", creator: nil, subjects: [],
@@ -178,17 +178,17 @@ struct CatalogStockTests {
         #expect(code.contains("FreeCatalog.mayDownload(licenceURL: entry.licenseurl)"), "the browse gate decides past the copy rule")
     }
 
-    /// Ein Fehlschlag beim Nachladen darf den Bestand NIE zerstoeren, und
-    /// eine gueltige leere Antwort auch nicht. Das ist die Klasse, in der
-    /// ein Erzeuger sauber endete und eine tote Datei hinterliess.
-    @Test("eine leere Antwort loescht den Bestand nicht")
+    /// A failure while reloading must NEVER destroy the stock, and
+    /// neither may a valid empty answer. That is the class in which
+    /// a producer ended cleanly and left a dead file behind.
+    @Test("an empty answer does not delete the stock")
     func anEmptySliceKeepsTheStock() {
         let bestand = [eintrag("1"), eintrag("2")]
         #expect(CatalogStockRules.merged(bestand, with: []) == bestand,
                 "eine leere Antwort hat den Bestand geleert")
 
-        // Rot-Probe am Instrument: eine NICHT leere Antwort wirkt sehr wohl,
-        // und ein bekannter Eintrag wird ersetzt statt verdoppelt.
+        // Red test on the instrument: a NON-empty answer certainly takes effect,
+        // and a known entry is replaced instead of doubled.
         let frisch = [eintrag("2", subjects: ["neu"]), eintrag("3")]
         let zusammen = CatalogStockRules.merged(bestand, with: frisch)
         #expect(zusammen.map(\.id) == ["1", "2", "3"])
@@ -196,9 +196,9 @@ struct CatalogStockTests {
                 "der frische Eintrag hat den alten nicht abgeloest")
     }
 
-    /// Der Nachlade-Takt haengt am selben Tageswechsel wie die Rotation und
-    /// der Tages-Speicher. Eine eigene Frist waere die dritte Uhr.
-    @Test("nachgeladen wird am Tageswechsel, nicht nach einer eigenen Frist")
+    /// The reload cadence hangs on the same day change as the rotation and
+    /// the day store. A deadline of its own would be the third clock.
+    @Test("reloading happens at the day change, not after a deadline of its own")
     func refreshFollowsTheOneClock() {
         let heute = Date(timeIntervalSince1970: 1_756_000_000)
         let bestand = CatalogStock(surface: "librivoxaudio",
@@ -213,26 +213,26 @@ struct CatalogStockTests {
         #expect(CatalogStockRules.needsRefresh(bestand, now: morgen))
     }
 
-    /// Die Rechtelage reist im Bestand mit. Gemessen: der Schoepf-Endpunkt
-    /// liefert `licenseurl` (netlabels 872 von 1000), georgeblood hat
-    /// schlicht keine. Fehlt sie, bleibt sie leer statt geraten zu werden.
-    @Test("die Rechtelage reist mit und wird nie erfunden")
+    /// The rights situation travels with the stock. Measured: the scoop endpoint
+    /// delivers `licenseurl` (netlabels 872 of 1000), georgeblood simply
+    /// has none. If it is missing, it stays empty instead of being guessed.
+    @Test("the rights situation travels along and is never invented")
     func theLicenceTravelsAndIsNeverInvented() {
         let mit = eintrag("a", lizenz: "https://creativecommons.org/licenses/by-sa/4.0/")
         let ohne = eintrag("b")
         #expect(mit.licenseurl != nil)
         #expect(ohne.licenseurl == nil, "eine fehlende Lizenz ist erfunden worden")
-        // Und sie ueberlebt den Schreibweg: was gespeichert wird, muss
-        // gelesen werden koennen, sonst waere die Kapsel eines Tages leer.
+        // And it survives the write path: what is stored must
+        // be readable, otherwise the capsule would one day be empty.
         let wieder = try? JSONDecoder().decode(
             CatalogStockEntry.self, from: JSONEncoder().encode(mit))
         #expect(wieder?.licenseurl == mit.licenseurl)
     }
 
-    /// Der Bestand ist ABGELEITET: der Hebel raeumt ihn, und er liegt nicht
-    /// bei den Nutzer-Sachen. Ohne diesen Fall raeumte der Hebel nur
-    /// Schluessel und liesse das Groesste auf dem Geraet liegen.
-    @Test("der Bestand ist abgeleitet und wird vom Hebel geraeumt")
+    /// The stock is DERIVED: the lever clears it, and it does not lie
+    /// among the user's things. Without this case the lever would clear only
+    /// keys and leave the largest part on the device.
+    @Test("the stock is derived and is cleared by the lever")
     func theStockIsDerivedAndTheLeverClearsIt() throws {
         let store = CatalogStockStore.shared
         let name = "pruef-\(UUID().uuidString)"
@@ -248,18 +248,18 @@ struct CatalogStockTests {
                 "die Marke fuer das Nachladen ueberlebt den Schreibweg nicht")
         #expect(store.keptSurfaces().contains(name))
 
-        // Der Name des Hebel-Eintrags steht an EINER Stelle, damit Meldung
-        // und Zaun dasselbe sagen.
+        // The name of the lever entry stands in ONE place, so that report
+        // and fence say the same thing.
         #expect(!DerivedStores.stockLabel.isEmpty)
         #expect(!DerivedStores.userOwnedPrefixes.contains { name.hasPrefix($0) },
                 "der Bestand liegt bei den Nutzer-Sachen")
     }
 
-    /// Ein Fach aus dem gehaltenen Bestand: dieselbe Ordnung wie vorher vom
-    /// Server, nur ohne Netz. Und es antwortet NICHT, wo der Bestand die
-    /// Popularitaet gar nicht kennt — dort waere jede lokale Reihenfolge
-    /// erfunden.
-    @Test("ein Fach kommt aus dem Bestand, aber nur mit echter Popularitaet")
+    /// A shelf from the held stock: the same order as before from the
+    /// server, only without network. And it does NOT answer where the stock does not
+    /// know the popularity at all. There every local order would be
+    /// invented.
+    @Test("a shelf comes from the stock, but only with real popularity")
     func aShelfComesFromTheStockOnlyWithRealPopularity() throws {
         func mit(_ id: String, _ downloads: Int?, _ subjects: [String]) -> CatalogStockEntry {
             CatalogStockEntry(id: id, title: "T\(id)", creator: nil, subjects: subjects,
@@ -280,9 +280,9 @@ struct CatalogStockTests {
         #expect(total == 2, "der fremde Eintrag ist im Fach gelandet")
         #expect(docs.first?.identifier == "b", "die Popularitaet ordnet nicht")
 
-        // OHNE Popularitaet antwortet es gar nicht: der Gutenberg-Abzug
-        // traegt keine Download-Zahlen, und eine erfundene Reihenfolge waere
-        // schlimmer als eine Abfrage.
+        // WITHOUT popularity it does not answer at all: the Gutenberg dump
+        // carries no download counts, and an invented order would be
+        // worse than a query.
         // The rule itself, not the surface entry: a Gutenberg shelf does not
         // answer from the stock at all, and that would hide what is asked here.
         let ohne = CatalogStock(surface: "gutenberg", takenAt: 1_756_000_000, watermark: nil,
@@ -292,10 +292,10 @@ struct CatalogStockTests {
                 "ein Fach ohne Popularitaet erfindet eine Reihenfolge")
     }
 
-    /// Weg 3: die Popularitaet, die der Abzug nicht traegt, wird nachtraeglich
-    /// aufgezaehlt. Eine HALBE Aufzaehlung darf ein Fach nicht ordnen, sonst
-    /// staende dort die Reihenfolge dessen, was zufaellig schon geholt war.
-    @Test("eine halbe Aufzaehlung ordnet kein Fach, eine ganze schon")
+    /// Route 3: the popularity that the dump does not carry is enumerated
+    /// afterwards. A HALF enumeration must not order a shelf, otherwise
+    /// the order of whatever happened to be fetched already would stand there.
+    @Test("a half enumeration orders no shelf, a whole one does")
     func aPartialRankingOrdersNothing() throws {
         let begriff = try #require(CatalogGenreAxis.subjects(forShelf: "crime").first)
         func ohneZahl(_ id: String) -> CatalogStockEntry {
@@ -312,7 +312,7 @@ struct CatalogStockTests {
                                               rows: 12, stock: bestand) == nil,
                 "eine halbe Aufzaehlung ordnet das Fach schon")
 
-        // Ganz: jetzt ordnet sie, und zwar nach der echten Zahl.
+        // Whole: now it orders, and by the real count.
         bestand.popularityComplete = true
         let antwort = try #require(CatalogShelfSource.localShelf(
             terms: terms, shelf: "crime", rows: 12, stock: bestand))
@@ -320,18 +320,18 @@ struct CatalogStockTests {
             Issue.record("das Fach antwortet nicht"); return
         }
         #expect(docs.first?.identifier == "gut:2", "die aufgezaehlte Zahl ordnet nicht")
-        // Und die eigene Zahl der Quelle schlaegt die aufgezaehlte, weil eine
-        // Quelle, die sie nennt, der bessere Zeuge ist.
+        // And the source's own count beats the enumerated one, because a
+        // source that names it is the better witness.
         let mitEigener = CatalogStockEntry(id: "gut:1", title: "T", creator: nil,
                                            subjects: [begriff], downloads: 500,
                                            licenseurl: nil, year: nil)
         #expect(bestand.downloads(of: mitEigener) == 500)
     }
 
-    /// Alle dreissig Tage kommt die Sammlung ganz neu. Der taegliche Lauf
-    /// holt nur Neuzugaenge, also wuerde er die driftenden Zahlen nie
-    /// berichtigen.
-    @Test("alle dreissig Tage wird die Sammlung ganz neu geholt")
+    /// Every thirty days the collection comes anew in full. The daily run
+    /// fetches only new arrivals, so it would never correct the
+    /// drifting counts.
+    @Test("every thirty days the collection is fetched anew in full")
     func everyThirtyDaysTheWholeCollectionComesAgain() {
         let heute = Date(timeIntervalSince1970: 1_756_000_000)
         let bestand = CatalogStock(surface: "librivoxaudio",
@@ -343,26 +343,26 @@ struct CatalogStockTests {
                 "29 Tage sind noch keine 30")
         let dreissig = heute.addingTimeInterval(30 * 24 * 3600)
         #expect(CatalogStockRules.needsFullRefetch(bestand, now: dreissig))
-        // Und der taegliche Takt bleibt davon unberuehrt.
+        // And the daily cadence stays untouched by it.
         #expect(CatalogStockRules.needsRefresh(bestand, now: heute.addingTimeInterval(24 * 3600)))
     }
 
-    /// Eine Statuszeile spricht Nutzersprache. Der Zustand traegt darum
-    /// GAR KEINEN Text: er kann keinen Roh-Fehler, keine Adresse und keine
-    /// Aufgaben-Kennung mehr auf eine Flaeche bringen.
+    /// A status line speaks the user's language. The state therefore carries
+    /// NO text at all: it can no longer bring a raw error, an address or a
+    /// task identifier onto a surface.
     ///
-    /// Genau das war passiert: die Beliebt-Vollseite trug den kompletten
-    /// NSError samt Schoepf-Adresse mit Zeiger-Token, weil der Zustand
-    /// nahm, was der Fehler beim Stringifizieren hergab.
-    @Test("der Fehlzustand kann keinen Rohtext mehr tragen", .needsTheSources)
+    /// That is exactly what had happened: the Popular full page carried the complete
+    /// NSError including the scoop address with the pointer token, because the state
+    /// took whatever the error yielded when stringified.
+    @Test("the failed state can no longer carry raw text", .needsTheSources)
     func theFailedStateCannotCarryRawText() throws {
-        // Der Zustand ist eine Aufzaehlung OHNE zugeordneten Wert. Waere er
-        // es nicht, liesse sich hier ein beliebiger Text hineinlegen.
+        // The state is an enumeration WITHOUT an associated value. If it were
+        // not, any text could be put in here.
         let zustand = CatalogStockService.State.failed
         #expect(zustand == .failed)
         #expect(zustand != .idle)
 
-        // Rot-Probe am Quelltext: der Zustand darf keinen String bekommen.
+        // Red test on the source text: the state must not get a string.
         let text = try String(
             contentsOf: URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent().deletingLastPathComponent()
@@ -371,11 +371,11 @@ struct CatalogStockTests {
         #expect(!text.contains("case failed(String)"),
                 "der Fehlzustand traegt wieder Text von aussen")
 
-        // Und die MELDESTELLE reicht keinen rohen Fehler an die Flaeche.
-        // Auf die Funktion begrenzt, nicht auf die Datei: in einer LOG-Zeile
-        // ist der rohe Fehler richtig, und ein Zaun ueber die ganze Datei
-        // verbietet das Richtige mit. Genau daran ist er beim ersten Lauf
-        // gerissen.
+        // And the REPORTING POINT passes no raw error to the surface.
+        // Limited to the function, not to the file: in a LOG line
+        // the raw error is right, and a fence across the whole file
+        // forbids the right thing too. That is exactly where it failed
+        // on the first run.
         let rumpf = try #require(functionBody(
             of: "private func report(_ error: Error, surface: String) {", in: text))
         #expect(rumpf.contains("guard !error.isCancellation"),
@@ -384,10 +384,10 @@ struct CatalogStockTests {
                 "der Fehlzustand bekommt wieder einen Text gereicht")
     }
 
-    /// Der Erstbezug UEBERLEBT. Ein App-Wechsel kostet die letzte Scheibe,
-    /// nie den Lauf: das Erreichte wird mit dem Zeiger niedergeschrieben,
-    /// an dem es stand.
-    @Test("ein unterbrochener Erstbezug traegt seinen Zeiger und gilt nicht als heute")
+    /// The first retrieval SURVIVES. An app switch costs the last slice,
+    /// never the run: what was reached is written down with the pointer
+    /// at which it stood.
+    @Test("an interrupted first retrieval carries its pointer and does not count as today")
     func anInterruptedFirstFetchKeepsItsCursor() throws {
         let store = CatalogStockStore.shared
         let name = "teil-\(UUID().uuidString)"
@@ -400,17 +400,17 @@ struct CatalogStockTests {
         let gelesen = try #require(store.load(surface: name))
         #expect(gelesen.fetchCursor == "abc123", "der Zeiger ueberlebt den Schreibweg nicht")
 
-        // Und der halbe Bestand gilt NICHT als Antwort von heute: sonst
-        // haette die Auffrisch-Regel ihn fuer fertig gehalten und der Rest
-        // waere nie geholt worden.
+        // And the half stock does NOT count as an answer from today: otherwise
+        // the refresh rule would have taken it for finished and the rest
+        // would never have been fetched.
         #expect(CatalogStockRules.needsRefresh(gelesen),
                 "ein halber Bestand gilt als die Antwort von heute")
     }
 
-    /// Ohne WLAN wird GEFRAGT, nicht gesperrt — und die Frage nennt eine
-    /// GEMESSENE Groesse. Eine geschaetzte Zahl in dieser Frage waere eine
-    /// Behauptung ueber fremdes Geld.
-    @Test("die Mobilfunk-Frage nennt eine gemessene Groesse je Sammlung")
+    /// Without Wi-Fi the user is ASKED, not blocked, and the question names a
+    /// MEASURED size. An estimated number in this question would be a
+    /// claim about someone else's money.
+    @Test("the cellular question names a measured size per collection")
     func theCellularQuestionNamesAMeasuredSize() {
         for flaeche in ["librivox", "archiveBooks", "oldTimeRadio", "netlabels",
                         ArchiveMusicCatalog.shellacAll.key, "gutenberg"] {
@@ -418,19 +418,19 @@ struct CatalogStockTests {
             #expect(mb != nil, "\(flaeche) hat keine Groesse fuer die Frage")
             #expect((mb ?? 0) > 0)
         }
-        // Die Groessen folgen den Bestaenden: die groesste Sammlung kostet
-        // am meisten. Ohne diese Probe koennte ueberall dieselbe Zahl stehen.
+        // The sizes follow the stocks: the largest collection costs
+        // the most. Without this check the same number could stand everywhere.
         let gross = CatalogStockFetch.transferMegabytes(surface: "netlabels") ?? 0
         let klein = CatalogStockFetch.transferMegabytes(surface: "oldTimeRadio") ?? 0
         #expect(gross > klein * 5, "die Zahlen unterscheiden die Sammlungen nicht")
-        // Rot-Probe: eine Flaeche, die es nicht gibt, hat keine Zahl.
+        // Red test: a surface that does not exist has no number.
         #expect(CatalogStockFetch.transferMegabytes(surface: "gibt-es-nicht") == nil)
     }
 
     /// The word the start log carries for a loaded stock. A partial run
     /// keeps `takenAt` at zero; without the cursor being read it looked
     /// like "never fetched" at every start.
-    @Test("das Lade-Urteil: bereit, Delta, Fortsetzen, voll")
+    @Test("the load verdict: ready, delta, resume, full")
     func loadVerdict() {
         let now = Date(timeIntervalSince1970: 1_756_900_000)
         let today = now.timeIntervalSince1970 - 60
@@ -449,7 +449,7 @@ struct CatalogStockTests {
 
     /// A full refetch replaces the stock and never appends to it; a stock
     /// that holds an id twice is healed once at its next read.
-    @Test("ein voller Neuabruf ersetzt, haengt nicht an; ein verdoppelter Bestand wird einmal entdoppelt")
+    @Test("a full refetch replaces and does not append; a doubled stock is de-duplicated once")
     func aFullRefetchReplaces() {
         let old = [eintrag("a"), eintrag("b")]
         var fresher = eintrag("a")
@@ -461,7 +461,7 @@ struct CatalogStockTests {
         #expect(CatalogStockRules.deduplicated(old) == old)
     }
 
-    @Test("der volle Neuabruf saet nicht aus einem ganzen Bestand und schreibt keinen Teil darueber", .needsTheSources)
+    @Test("the full refetch does not seed from a whole stock and writes no part over it", .needsTheSources)
     func theRefetchLeavesTheWholeStockStanding() throws {
         let service = try FetchAnswerTests.squeezedSource("Sources/ViewModels/CatalogStockService.swift")
         #expect(service.contains("let replacesWhole = stored != nil && stored?.fetchCursor == nil let angefangen = replacesWhole ? nil : stored"),

@@ -24,7 +24,7 @@ struct CatalogAlbumSongsTests {
 
     private static func freshAlbum() -> String { "lva:album-songs-witness-\(UUID().uuidString)" }
 
-    @Test("alle Lieder aus einer Antwort in Reihenfolge, ein fehlendes wird genannt")
+    @Test("all songs from an answer in order, a missing one is named")
     func songsInOrderAndTheMissingNamed() async throws {
         let album = Self.freshAlbum()
         let meta = try Self.release(["a", "b", "c"])
@@ -40,7 +40,7 @@ struct CatalogAlbumSongsTests {
         #expect(answer.missing == [3])
     }
 
-    @Test("ohne Antwort spielt, was die Sitzung schon haelt, der Rest wird genannt")
+    @Test("without an answer what the session already holds plays, the rest is named")
     func withoutAnAnswerTheHeldSongsStay() async throws {
         let album = Self.freshAlbum()
         let meta = try Self.release(["a", "b"])
@@ -55,7 +55,7 @@ struct CatalogAlbumSongsTests {
         #expect(asked == 1)
     }
 
-    @Test("ohne Zahl zaehlt und baut eine Antwort die Lieder, ein Titel ausserhalb des Archivs fragt nichts")
+    @Test("without a count an answer counts and builds the songs, a title outside the archive asks nothing")
     func withoutTheCountOneAnswerCountsAndBuilds() async throws {
         let album = Self.freshAlbum()
         let meta = try Self.release(["a", "b", "c"])
@@ -71,7 +71,7 @@ struct CatalogAlbumSongsTests {
         #expect(foreign == 0, "a title outside the archive asked the archive")
     }
 
-    @Test("ohne Antwort bleiben die gehaltenen Lieder, ohne Lieder spielt die Kachel den Titel")
+    @Test("without an answer the held songs stay, without songs the tile plays the title")
     func withoutAnAnswerTheTileKeepsItsHeldSongs() async throws {
         let album = Self.freshAlbum()
         let meta = try Self.release(["a", "b"])
@@ -89,7 +89,7 @@ struct CatalogAlbumSongsTests {
         #expect(await menu.songs().items.map(\.id) == [fresh], "the long-press Shuffle starts nothing")
     }
 
-    @Test("der Wurf einer Kachel merkt Form und Album aus seiner Antwort wie der Detailabruf")
+    @Test("the shuffle of a tile remembers form and album from its answer like the detail fetch")
     func theShuffleKeepsFormAndDetail() async throws {
         let album = Self.freshAlbum()
         let meta = try Self.release(["a", "b", "c"], collection: "netlabels")
@@ -101,14 +101,14 @@ struct CatalogAlbumSongsTests {
         #expect(provider.libraryItem(forId: album)?.media?.tracks?.count == 3, "the release's detail was not kept")
     }
 
-    @Test("ein Buendel ueber der Grenze spielt als Titel")
+    @Test("a bundle over the limit plays as a title")
     func aBundlePastTheCapPlaysAsItsTitle() async throws {
         let names = (0...FreeCatalog.defaultTrackCap).map { "t\($0)" }
         let meta = try Self.release(names)
         #expect(await ArchiveMusicLoader.albumSongs(albumId: Self.freshAlbum()) { _ in meta }.isEmpty)
     }
 
-    @Test("die Kachel nimmt den Weg des Wurfs, eine ausgefallene Antwort steht einmal im Log", .needsTheSources)
+    @Test("the tile takes the path of the shuffle, a failed answer appears once in the log", .needsTheSources)
     func theTileTakesTheDrawsWay() throws {
         let menu = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
@@ -122,7 +122,7 @@ struct CatalogAlbumSongsTests {
         #expect(provider.contains("CATALOG album songs, release answer failed for"))
     }
 
-    @Test("die Katalogseite nimmt die Liste des Anbieters ueber den Lader und nennt fehlende Lieder mit Zahl", .needsTheSources)
+    @Test("the catalog page takes the list of the provider through the loader and names missing songs with a count", .needsTheSources)
     func thePageTakesTheProvidersList() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
@@ -137,7 +137,7 @@ struct CatalogAlbumSongsTests {
         #expect(page.contains("Self.missingSongsLine(count: missingSongs)"))
     }
 
-    @Test("eine sichtbare Zeile nennt die Zahl fehlender Lieder, deutsch und englisch in Einzahl und Mehrzahl")
+    @Test("a visible line names the number of missing songs, German and English in singular and plural")
     func theLineCountsTheMissingSongs() throws {
         #expect(ArchiveSeriesPage.missingSongsLine(count: 0) == nil)
         #expect(ArchiveSeriesPage.missingSongsLine(count: 1) == String(localized: "\(1) tracks not available"))

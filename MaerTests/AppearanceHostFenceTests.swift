@@ -22,7 +22,7 @@ struct AppearanceHostFenceTests {
 
     static let marker = "followsAppearanceChoice()"
 
-    @Test("Jedes Blatt traegt die Wahl: je Datei so viele Bausteine wie Blaetter, Ausnahmen namentlich", .needsTheSources)
+    @Test("Every sheet carries the choice: per file as many building blocks as sheets, exceptions by name", .needsTheSources)
     func everyPresentedLeafCarriesTheChoice() throws {
         // Per file, the presentations that do not carry the choice; the
         // exceptions are that count, both ways.
@@ -42,7 +42,7 @@ struct AppearanceHostFenceTests {
         #expect(drift.isEmpty, "these presentations do not follow the appearance, or an exception is stale: \(drift)")
     }
 
-    @Test("Der Pruefer sieht den Unterschied: eine Praesentation ohne Baustein faellt auf, eine im Kommentar zaehlt nicht")
+    @Test("The checker sees the difference: a presentation without the building block stands out, one in a comment does not count")
     func theCheckerWouldSeeIt() {
         func offends(_ source: String, allowed: Int = 0) -> Bool {
             let code = source.split(separator: "\n")
@@ -60,7 +60,7 @@ struct AppearanceHostFenceTests {
                 "a marker in a comment carries nothing")
     }
 
-    @Test("Die Wahl liest EINE Stelle: system folgt dem Geraet, hell und dunkel setzen sich durch, Unbekanntes folgt dem System", .needsTheSources)
+    @Test("The choice reads ONE place: system follows the device, light and dark prevail, unknown values follow the system", .needsTheSources)
     func theChoiceIsReadInOnePlace() throws {
         #expect(AppearanceChoice.of("light") == .light)
         #expect(AppearanceChoice.of("dark") == .dark)

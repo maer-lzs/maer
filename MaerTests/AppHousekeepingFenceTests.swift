@@ -8,18 +8,18 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Start der App und jeder Szenenwechsel gehoerten `LibraryView`: 42
-/// Singleton-Griffe in einer Ansicht, deren Aufgabe das Beherbergen der Tabs
-/// ist. Sie standen dort aus einem einzigen Grund, naemlich dass die
-/// Bibliothek zufaellig der erste Bildschirm ist.
+/// The start of the app and every scene change belonged to `LibraryView`: 42
+/// singleton handles in a view whose job is hosting the tabs. They were
+/// there for a single reason, namely that the library happens to be the
+/// first screen.
 ///
-/// Der Zaun haelt zwei Sachen, und die zweite ist die wichtigere:
+/// The fence holds two things, and the second is the more important:
 ///
-/// 1. Die Ansicht holt den Haushalt nicht zurueck.
-/// 2. **Die REIHENFOLGE.** Sie war vorher eine Eigenschaft eines 1584-zeiligen
-///    Ansichts-Rumpfs und nirgends aussprechbar. Sie folgt derselben Regel,
-///    der die Katalog-Laeufe folgen: Haushalt kommt
-///    NACH dem Inhalt, auf den gewartet wird.
+/// 1. The view does not take the housekeeping back.
+/// 2. **The ORDER.** It used to be a property of a 1584-line view body and
+///    could not be stated anywhere. It follows the same rule that the
+///    catalog runs follow: housekeeping comes
+///    AFTER the content that is waited for.
 struct AppHousekeepingFenceTests {
     private func sourceText(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -33,10 +33,10 @@ struct AppHousekeepingFenceTests {
             .joined(separator: "\n")
     }
 
-    /// Bestand mit Grund je Name. Alle auf NULL: keiner dieser Dienste hat in
-    /// der Ansicht etwas zu suchen, und wer einen zurueckholt, muss diesen
-    /// Eintrag anfassen.
-    @Test("Die Tab-Wirtin ruft keinen App-Dienst mehr selbst", .needsTheSources)
+    /// Stock with a reason per name. All at ZERO: none of these services has
+    /// any business in the view, and whoever brings one back must touch this
+    /// entry.
+    @Test("The tab host no longer calls an app service itself", .needsTheSources)
     func theTabHostCallsNoAppServiceItself() throws {
         let forbidden: [String: String] = [
             "SyncQueue": "Fortschritts-Warteschlange, gehoert AppHousekeeping.flushQueues (zwei Rufer)",
@@ -54,38 +54,38 @@ struct AppHousekeepingFenceTests {
         #expect(offenders.isEmpty, "LibraryView ruft App-Dienste selbst: \(offenders)")
     }
 
-    /// `Artwork` steht bewusst NICHT in der Liste oben, und der Grund gehoert
-    /// hierher statt in eine Ausnahme: die zwei bedingungslosen Fegelaeufe
-    /// (Start, Hintergrund) sind Haushalt und sind umgezogen. Der dritte
-    /// haengt am RUHE-TOR, und „wann ruht das Scrollen" ist die Frage der
-    /// Ansicht. Haette ich ihn mitgenommen, waere `AppHousekeeping` ein Typ
-    /// geworden, der keine Ansicht ist und UI-Arbeit einplant — genau der
-    /// Bestand, den `ScrollCalmFenceTests` als Weg B herunterzaehlt. Dieser
-    /// Zaun hat es einen Lauf vor dem Commit gefangen.
-    @Test("Der Cover-Deckel beim Zurueckkommen bleibt am Ruhe-Tor der Ansicht", .needsTheSources)
+    /// `Artwork` is deliberately NOT in the list above, and the reason
+    /// belongs here instead of in an exception: the two unconditional
+    /// sweep runs (start, background) are housekeeping and have moved. The
+    /// third hangs on the CALM GATE, and „wann ruht das Scrollen" is the
+    /// question of the view. Had I taken it along, `AppHousekeeping` would
+    /// have become a type that is not a view and schedules UI work, exactly
+    /// the stock that `ScrollCalmFenceTests` counts down as way B. This
+    /// fence caught it one run before the commit.
+    @Test("The cover cap on coming back stays at the calm gate of the view", .needsTheSources)
     func theCalmGatedSweepStaysInTheView() throws {
         let code = try codeOf("Sources/Views/LibraryView.swift")
         #expect(code.contains("Artwork.sweepIfOverCap"),
                 "der Deckel-Lauf beim Zurueckkommen ist verschwunden")
         #expect(!code.contains("Artwork.sweep()"),
                 "ein bedingungsloser Fegelauf ist in die Ansicht zurueckgekehrt")
-        // Und er haengt wirklich am Tor, nicht daneben.
+        // And it really hangs on the gate, not beside it.
         guard let calm = code.range(of: "ScrollCalm.run"),
               let sweep = code.range(of: "Artwork.sweepIfOverCap") else {
             Issue.record("eine der zwei Marken fehlt"); return
         }
         #expect(calm.lowerBound < sweep.lowerBound,
                 "der Fegelauf steht nicht mehr im Ruhe-Tor")
-        // Gegenprobe: der Haushalt haelt das Tor NICHT, sonst waere der
-        // Weg-B-Bestand um eins gestiegen.
+        // Counter-check: the housekeeping does NOT hold the gate, otherwise
+        // the way-B stock would have gone up by one.
         #expect(!(try codeOf("Sources/ViewModels/AppHousekeeping.swift")).contains("ScrollCalm"),
                 "AppHousekeeping plant UI-Arbeit ein und erhoeht damit Weg B")
     }
 
-    /// Die Reihenfolge am Quelltext. Ein Zeuge kann eine `.task` nicht
-    /// ausfuehren, also wird die STELLUNG geprueft — das ist genau die
-    /// Aussage, die vorher nirgends stand.
-    @Test("Der Haushalt steht hinter Bibliothek und Weiterhoeren", .needsTheSources)
+    /// The order in the source text. A witness cannot run a `.task`, so the
+    /// POSITION is checked, which is exactly the statement that stood
+    /// nowhere before.
+    @Test("The housekeeping comes after Library and Continue Listening", .needsTheSources)
     func housekeepingStandsBehindTheContent() throws {
         let code = try codeOf("Sources/Views/LibraryView.swift")
         guard let cachedLibrary = code.range(of: "showCachedLibraryIfAvailable"),
@@ -104,10 +104,10 @@ struct AppHousekeepingFenceTests {
                 "die Wartung ist nicht mehr der letzte Schritt")
     }
 
-    /// Und die Gegenrichtung, damit der Fall oben nicht gruen ist, weil die
-    /// Marken irgendwo stehen: der Haushalt selbst nennt seine Dienste auch
-    /// wirklich, sonst bewacht der Bestand oben eine leere Datei.
-    @Test("Der Haushalt nennt die Dienste, die er uebernommen hat", .needsTheSources)
+    /// And the opposite direction, so that the case above is not green
+    /// because the marks stand somewhere: the housekeeping itself really
+    /// names its services too, otherwise the stock above guards an empty file.
+    @Test("The housekeeping names the services it has taken over", .needsTheSources)
     func housekeepingActuallyHoldsThem() throws {
         let code = try codeOf("Sources/ViewModels/AppHousekeeping.swift")
         for name in ["SyncQueue", "BookmarkQueue", "CloudQuotaWatch", "PodcastCloudSync",
@@ -115,8 +115,8 @@ struct AppHousekeepingFenceTests {
                      "PlaybackClaimSync", "Artwork"] {
             #expect(code.contains(name), "\(name) ist nirgends: der Umzug ist unvollstaendig")
         }
-        // Der Szenenwechsel fragt die Fahrmodus-Uhr fuer JEDE Phase, auch
-        // `.inactive`, also darf sie nicht in einem der zwei Zweige stehen.
+        // The scene change asks the driving-mode clock for EVERY phase, even
+        // `.inactive`, so it must not stand in one of the two branches.
         guard let driveMode = code.range(of: "DriveModeController"),
               let firstBranch = code.range(of: "case .active:") else {
             Issue.record("der Szenenwechsel wurde umgebaut"); return

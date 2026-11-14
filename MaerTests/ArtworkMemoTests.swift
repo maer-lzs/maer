@@ -20,7 +20,7 @@ struct ArtworkMemoTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
-    @Test("gefunden bleibt bis zum Ablauf, ein Nein gilt bis zum Ablauf")
+    @Test("found stays until expiry, a no counts until expiry")
     func foundAndMissingExpire() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -33,7 +33,7 @@ struct ArtworkMemoTests {
         #expect(Artwork.Memo.remembered("feed|unknown", now: 200, defaults: defaults) == nil)
     }
 
-    @Test("ein Nein gilt nur unter seinem Stempel, ein Ja unter jedem")
+    @Test("a no counts only under its stamp, a yes under any")
     func negativesCarryTheirStamp() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -46,7 +46,7 @@ struct ArtworkMemoTests {
         #expect(Artwork.Memo.remembered("radio|yes", now: 1e12, defaults: defaults) == .found("commons:A.svg"))
     }
 
-    @Test("Namensraeume: answers und entries liefern ohne Praefix, nur den eigenen Raum")
+    @Test("Namespaces: answers and entries deliver without prefix, only their own space")
     func namespacesStayApart() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -60,7 +60,7 @@ struct ArtworkMemoTests {
         #expect(Artwork.Memo.entries(prefix: "radio|", defaults: defaults)["r"]?.resolvedAt == 100)
     }
 
-    @Test("vergessen oeffnet die Frage; schreiben fegt Abgelaufenes")
+    @Test("forgetting reopens the question; writing sweeps what has expired")
     func forgetAndPrune() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -77,7 +77,7 @@ struct ArtworkMemoTests {
 
     /// An answer that never expires grew the directory without end. Past
     /// the ceiling the oldest search goes, never the one just written.
-    @Test("ueber dem Deckel geht die aelteste Suche, nie die eben geschriebene")
+    @Test("above the cap the oldest search goes, never the one just written")
     func theOldestGoesPastTheCeiling() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -95,7 +95,7 @@ struct ArtworkMemoTests {
     /// The diagnosis reads what the chain stored with its age and the
     /// address the tile loads today: a Commons file at today's width, a
     /// touch icon at its address, a negative without one.
-    @Test("die Diagnose liest das Gespeicherte mit Alter und heutiger Adresse")
+    @Test("the diagnostic reads what is stored with age and today's address")
     func theDiagnosisReadsTheStoredForm() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -115,7 +115,7 @@ struct ArtworkMemoTests {
         #expect(outcomes["radio:rb:commons"]?.resolvedAt == 1_000)
     }
 
-    @Test("ausserhalb der Tuer nennt niemand das Verzeichnis", .needsTheSources)
+    @Test("outside the door nobody names the directory", .needsTheSources)
     func theDirectoryKeyStaysInTheDoor() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

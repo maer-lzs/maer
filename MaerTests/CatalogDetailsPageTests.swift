@@ -11,7 +11,7 @@ import Foundation
 /// "Details" on a catalogue tile opens the title's page, the one the full
 /// player's source tap opens; no surface presents a floating details sheet.
 struct CatalogDetailsPageTests {
-    @Test("Details waehlt die Seite wie der Player: Lied zur Veroeffentlichung, Album zur Albumseite, Lesung zur Buchseite")
+    @Test("Details picks the page like the player: song to the release, album to the album page, reading to the book page")
     func detailsPicksThePlayersPage() {
         // A release not started yet on a music surface: its album page.
         guard case .catalogAlbum(let album) = CatalogDetailsPage.target(
@@ -43,7 +43,7 @@ struct CatalogDetailsPageTests {
         }
     }
 
-    @Test("kein schwebendes Detailblatt mehr; jedes Details einer Katalog-Kachel ist der eine Knopf", .needsTheSources)
+    @Test("no floating detail sheet anymore; every Details of a catalog tile is the one button", .needsTheSources)
     func noSurfacePresentsTheDetailsSheet() throws {
         let sources = ProjectFileIntegrityTests.sourceTexts(in: ["Sources/Views"])
         try #require(sources.count > 100, "the fence did not read the views")
@@ -64,7 +64,7 @@ struct CatalogDetailsPageTests {
         #expect(row.contains("CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,"))
     }
 
-    @Test("die Seite eines Jamendo-Titels nennt den Anbieter und fuehrt zur Quelle", .needsTheSources)
+    @Test("the page of a Jamendo title names the provider and leads to the source", .needsTheSources)
     func aJamendoPageNamesItsProvider() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))

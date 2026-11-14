@@ -50,7 +50,7 @@ struct ABSSignInSwitchTests {
         })
     }
 
-    @Test("die Anmelde-Anfrage an eine neue Adresse traegt keinen Bearer von A")
+    @Test("the sign-in request to a new address carries no bearer of A")
     func theSignInToANewAddressCarriesNoTokenOfA() async throws {
         let stand = Stand()
         defer { stand.restore() }
@@ -68,7 +68,7 @@ struct ABSSignInSwitchTests {
         #expect(!seen.contains { $0.authorization?.contains("token-of-a") == true }, "a request to B carried the token of A")
     }
 
-    @Test("eine gescheiterte Anmeldung laesst den geteilten Client auf A mit dem Token von A, mit Passwort und mit Token")
+    @Test("a failed sign-in leaves the shared client on A with the token of A, with password and with token")
     func aFailedSignInLeavesTheSharedClient() async throws {
         let stand = Stand()
         defer { stand.restore() }
@@ -89,7 +89,7 @@ struct ABSSignInSwitchTests {
         }
     }
 
-    @Test("eine gelungene Anmeldung gibt dem geteilten Client die Adresse und den Token von B")
+    @Test("a successful sign-in gives the shared client the address and the token of B")
     func aSignInThatWorkedHandsOverBoth() async throws {
         let stand = Stand()
         defer { stand.restore() }
@@ -112,7 +112,7 @@ struct ABSSignInSwitchTests {
     /// the device's search, as a sign out does; a sign-in again to the same
     /// server keeps them. The widget's files and the index are put back
     /// after the witness.
-    @Test("eine Anmeldung an einem anderen Server vergisst die Titel des Widgets und die Buecher der Suche, eine erneute an demselben nicht")
+    @Test("a sign-in to another server forgets the titles of the widget and the books of the search, a repeated one to the same server does not")
     func aSignInToAnotherServerForgetsTheWidgetsTitles() async throws {
         let recorder = SpotlightRecorder()
         var restoreIndex: () -> Void = {}
@@ -165,7 +165,7 @@ struct ABSSignInSwitchTests {
 
     /// One place forgets what a server leaves on the device; the sign out
     /// and the switch both call it, the switch before the sources change.
-    @Test("der alte Server wird an einer Stelle vergessen, von der Abmeldung und vom Wechsel, beim Wechsel vor dem Anstoss der Quellen", .needsTheSources)
+    @Test("the old server is forgotten in one place, by the sign-out and by the switch, at the switch before the sources are kicked off", .needsTheSources)
     func theFormerServerIsForgottenInOnePlace() throws {
         let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
         #expect(auth.contains("static func forgetFormerServer(player: PlayerCoordinator? = nil) async { await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, covers: .audiobookshelf, allRows: true, player: player) if #available(iOS 27, *) { await SpotlightIndex.forget() } }"),
@@ -179,7 +179,7 @@ struct ABSSignInSwitchTests {
                 "the switch does not forget the former server before the sources change")
     }
 
-    @Test("dieselbe Adresse, nur anderes Schema: die Anmeldung uebernimmt wie bei jeder Adresse erst nach Erfolg")
+    @Test("the same address, only another scheme: the sign-in adopts only after success, as with every address")
     func theSameServerSignsInTheSameWay() async throws {
         let stand = Stand()
         defer { stand.restore() }
@@ -199,7 +199,7 @@ struct ABSSignInSwitchTests {
         #expect(auth.apiClient.baseURL.absoluteString == server.address && auth.apiClient.token == "token-new")
     }
 
-    @Test("die Anmeldung laeuft nie ueber den geteilten Client, und Clients entstehen an einer Stelle", .needsTheSources)
+    @Test("the sign-in never runs through the shared client, and clients are created in one place", .needsTheSources)
     func theSignInNeverRunsOnTheSharedClient() throws {
         let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
         #expect(!auth.contains("apiClient.login("), "the sign-in runs on the shared client")

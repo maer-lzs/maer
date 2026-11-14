@@ -22,7 +22,7 @@ struct BrowsedEpisodesTests {
                                               duration: 1800, description: nil, imageURL: nil, chaptersURL: nil)])
     }
 
-    @Test("Browsed merken, unter http:// abonnieren: beide Haelften leer")
+    @Test("Browsed remembering, subscribing under http://: both halves empty")
     func subscribingUnderAnotherSchemeClearsBothHalves() {
         let suite = "browsed-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -43,7 +43,7 @@ struct BrowsedEpisodesTests {
 
     /// The kept list decodes once per stored list: reads without a write
     /// decode nothing more, a write is seen.
-    @Test("die gemerkte Liste wird einmal je Stand dekodiert, nicht je Lesen; ein Schreiben wird gesehen")
+    @Test("the remembered list is decoded once per state, not per read; a write is noticed")
     func theKeptListDecodesOncePerWrite() {
         let suite = "browsed-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -62,7 +62,7 @@ struct BrowsedEpisodesTests {
         #expect(store.allListened(defaults: defaults).count == 2)
     }
 
-    @Test("ein anderer Feed bleibt unberuehrt")
+    @Test("another feed stays untouched")
     func anotherFeedStays() {
         let suite = "browsed-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -81,7 +81,7 @@ struct BrowsedEpisodesTests {
     /// A kept list that stands and does not decode is set aside before the
     /// keep writes: the keep stands, the unreadable list lies under
     /// `CorruptStore.asideKey`, and the forget after it finds a readable list.
-    @Test("eine gemerkte Liste, die nicht dekodiert, liegt beiseite; Merken und Vergessen schreiben den neuen Stand")
+    @Test("a remembered list that does not decode is set aside; remembering and forgetting write the new state")
     func anUnreadableListIsSetAside() {
         let suite = "browsed-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

@@ -22,11 +22,11 @@ struct CatalogStockServiceHeldTests {
                           downloads: 1, licenseurl: nil, year: nil)
     }
 
-    @Test("nach dem Leeren antwortet stock() mit nil")
+    @Test("after clearing, stock() answers with nil")
     func clearedStockIsGone() {
         let stock = CatalogStock(surface: surface, takenAt: 1, entries: [entry("a")])
         #expect(CatalogStockStore.shared.save(stock))
-        // Rot-Probe: gehalten und gelesen, BEVOR geleert wird.
+        // Red test: held and read BEFORE clearing.
         #expect(CatalogStockService.shared.stock(surface)?.entries.count == 1)
         #expect(CatalogStockService.shared.index(surface) != nil)
         // The lever's path: files go, the service is not told.
@@ -39,7 +39,7 @@ struct CatalogStockServiceHeldTests {
     /// once called itself instead of the store and overflowed the stack
     /// on the first write of a day; with that line this witness does not
     /// return.
-    @Test("der Schreibweg des Dienstes schreibt die Datei und liest sie zurueck")
+    @Test("the write path of the service writes the file and reads it back")
     func serviceWritePathPersists() {
         let held = CatalogStock(surface: surface, takenAt: 1, entries: [entry("old")])
         #expect(CatalogStockStore.shared.save(held))

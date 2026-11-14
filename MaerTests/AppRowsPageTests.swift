@@ -12,7 +12,7 @@ import Foundation
 /// one class carries one name, the second lines stand beside the switch,
 /// and the logo diagnosis is no control for the person.
 struct AppRowsPageTests {
-    @Test("jede schaltbare Reihe hat eine Unterzeile")
+    @Test("every switchable row has a subline")
     func everySwitchableRowHasASecondLine() {
         for configured in [false, true] {
             let without = AppRows.all.filter {
@@ -22,14 +22,14 @@ struct AppRowsPageTests {
         }
     }
 
-    @Test("der Katalog der Hoerbuecher und Hoerspiele heisst am Start und im Reiter gleich")
+    @Test("the catalog of audiobooks and radio plays has the same name on Start and in the tab")
     func theCatalogCarriesOneName() throws {
         let home = try #require(AppRows.row(key: "home.discoverBooks"))
         let books = try #require(AppRows.row(key: "books.catalog"))
         #expect(home.title.hasSuffix(books.title), "\(home.title) and \(books.title) name one class twice")
     }
 
-    @Test("die Unterzeilen stehen im Label des Schalters, in einem Grau", .needsTheSources)
+    @Test("the sublines sit in the label of the switch, in a gray", .needsTheSources)
     func theSecondLinesStandBesideTheSwitch() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/RowsSettingsView.swift"), encoding: .utf8))
@@ -42,7 +42,7 @@ struct AppRowsPageTests {
         #expect(!code.contains(".tertiary"), "a second line in the grey that measured 1.7 to 1")
     }
 
-    @Test("ein Schalter, ein Wert: kein Schluessel schaltet zwei Reihen")
+    @Test("one switch, one value: no key switches two rows")
     func oneSwitchOneValue() {
         let keys = AppRows.all.compactMap(\.storageKey)
         let shared = Dictionary(grouping: keys, by: { $0 }).filter { $0.value.count > 1 }.keys.sorted()
@@ -51,7 +51,7 @@ struct AppRowsPageTests {
                 "Rediscover hangs on another row's switch")
     }
 
-    @Test("ein neuer Reihen-Schluessel beginnt einmal mit der alten Wahl")
+    @Test("a new row key starts once with the old choice")
     func aNewRowKeyStartsFromTheOldChoice() throws {
         let suite = "rows-carry-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -65,7 +65,7 @@ struct AppRowsPageTests {
         #expect(defaults.object(forKey: AppStorageKeys.rowHomeDiscoverBooksVisible) as? Bool == true, "a set key was overwritten")
     }
 
-    @Test("jede Reihe hat einen Schreibweg, und Start-Klassik folgt ihrer eigenen Reihe", .needsTheSources)
+    @Test("every row has a write path, and Start Classical follows its own row", .needsTheSources)
     func oneWritePathAndTheClassicalHalfFollowsItsRow() throws {
         let settings = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8))
@@ -81,7 +81,7 @@ struct AppRowsPageTests {
         #expect(home.contains("if rediscoverRowVisible { rediscoverSection }"))
     }
 
-    @Test("beide Empfohlen nennen jede Quelle, die ihr Vorrat fragen kann", .needsTheSources)
+    @Test("both Recommended name every source that their stock can ask", .needsTheSources)
     func bothRecommendedRowsNameEveryDirectory() throws {
         let store = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastRecommendationsStore.swift"), encoding: .utf8))
@@ -101,7 +101,7 @@ struct AppRowsPageTests {
         #expect(AppRows.unsourcedTitles(row, podcastIndexConfigured: true, isAllowed: { $0 == "podcastIndex" }) == nil)
     }
 
-    @Test("ohne Anmeldung haelt der Schalter des Katalogs die eingebettete Seite", .needsTheSources)
+    @Test("without a sign-in the switch of the catalog holds the embedded page", .needsTheSources)
     func theEmbeddedCatalogFollowsTheRowSwitch() throws {
         let code = StockDriftTests.squeezed(SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)))
@@ -111,7 +111,7 @@ struct AppRowsPageTests {
         #expect(code.contains("@AppStorage(AppStorageKeys.freeAudiobooksEnabled)privatevarcatalogRowVisible"))
     }
 
-    @Test("die Chart-Reihe hat ihre eigene Quelle und ihren eigenen Schalter, ausgeblendet fragt sie nicht", .needsTheSources)
+    @Test("the chart row has its own source and its own switch, hidden it does not ask", .needsTheSources)
     func theChartRowStandsUnderItsOwnSwitch() throws {
         let row = try #require(AppRows.row(key: "books.charts"))
         #expect(row.sourceKeys == ["appleCatalog"])
@@ -128,7 +128,7 @@ struct AppRowsPageTests {
                 "showing the row again does not load its charts")
     }
 
-    @Test("die Logo-Diagnose steht nur im Entwicklungsbau", .needsTheSources)
+    @Test("the logo diagnostic exists only in the development build", .needsTheSources)
     func theLogoDiagnosisIsDebugOnly() throws {
         let code = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Radio/RadioView.swift"), encoding: .utf8)
         #expect(Self.namesOutsideDebug("logoDiagnosisSection", in: code) == 0, "the diagnosis reaches a release build")

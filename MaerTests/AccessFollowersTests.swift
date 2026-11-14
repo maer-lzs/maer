@@ -8,23 +8,23 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Eine Anmeldung bei Mär Sync im laufenden Prozess bringt jede Familie
-/// sofort auf den Dienst, eine Abmeldung sofort zurueck, ohne Neustart.
-/// Vorher waehlte jeder Laeufer seinen Traeger einmal, beim Bau, und eine
-/// Familie, die vor der Anmeldung schon gebraucht wurde, blieb bis zum
-/// naechsten Start bei iCloud (am Geraet: die Abos kamen erst nach einem
-/// Neustart).
+/// A sign-in to Mär Sync in the running process brings every family
+/// to the service at once, a sign-out back at once, without a restart.
+/// Before, every runner chose its carrier once, at build, and a family
+/// that had already been used before the sign-in stayed on iCloud until
+/// the next start (on the device: the subscriptions came only after a
+/// restart).
 ///
-/// Die Fakes nennen sich wie die echten Traeger: ein Name mit dem Stamm
-/// des Dienstes ist der Dienst, jeder andere ist es nicht.
+/// The fakes are named like the real carriers: a name with the stem of
+/// the service is the service, any other is not.
 @MainActor
 struct AccessFollowersTests {
     static let service = MaerSyncCarriers.carrierNameStem
     static let apple = "kvs"
 
-    // MARK: - Die Regel
+    // MARK: - The rule
 
-    @Test("die Regel: wechseln, wenn der gehaltene Weg nicht der des Zugangs ist")
+    @Test("the rule: switch when the held route is not that of the access")
     func theRule() {
         #expect(CarrierWay.isService(carrierName: Self.service))
         #expect(CarrierWay.isService(carrierName: "\(Self.service) signed out"))
@@ -37,7 +37,7 @@ struct AccessFollowersTests {
         #expect(!CarrierWay.mustChange(holdsService: false, signedIn: false))
     }
 
-    // MARK: - Die Staende
+    // MARK: - The states
 
     private final class StandFake: StandCarrier {
         let name: String
@@ -58,7 +58,7 @@ struct AccessFollowersTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("Staende: Wechsel im Lauf auf den Dienst und zurueck, nichts geht verloren, der alte Traeger bewegt nichts mehr")
+    @Test("States: switch at runtime to the service and back, nothing is lost, the old carrier moves nothing anymore")
     func theStandsFollowBothWays() throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -101,7 +101,7 @@ struct AccessFollowersTests {
         #expect(back.held[mine]?[0] == 420 && back.held[theirs]?[0] == 90, "stands: the way back lost a stand")
     }
 
-    // MARK: - Der Anspruch
+    // MARK: - The claim
 
     private final class ClaimFake: ClaimCarrier {
         let name: String
@@ -117,7 +117,7 @@ struct AccessFollowersTests {
         func stop() { stops += 1 }
     }
 
-    @Test("Anspruch: Wechsel im Lauf auf den Dienst und zurueck, der alte Traeger bewegt nichts mehr")
+    @Test("Claim: switch at runtime to the service and back, the old carrier moves nothing anymore")
     func theClaimFollowsBothWays() throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -153,7 +153,7 @@ struct AccessFollowersTests {
         #expect(back.onChange != nil, "claim: the way back was not started")
     }
 
-    // MARK: - Die Statistik
+    // MARK: - The statistics
 
     private final class StatsFake: StatsCarrier {
         let name: String
@@ -174,7 +174,7 @@ struct AccessFollowersTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("Statistik: Wechsel im Lauf auf den Dienst und zurueck, der alte Traeger bewegt nichts mehr")
+    @Test("Statistics: switch at runtime to the service and back, the old carrier moves nothing anymore")
     func theStatsFollowBothWays() throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -203,7 +203,7 @@ struct AccessFollowersTests {
         #expect(!back.published.isEmpty, "stats: the own pot did not reach the way back")
     }
 
-    // MARK: - Die Listen
+    // MARK: - The lists
 
     private final class PlaylistFake: PlaylistCarrier {
         let name: String
@@ -219,7 +219,7 @@ struct AccessFollowersTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("Listen: Wechsel im Lauf auf den Dienst und zurueck, der alte Traeger bewegt nichts mehr")
+    @Test("Lists: switch at runtime to the service and back, the old carrier moves nothing anymore")
     func thePlaylistsFollowBothWays() throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -255,7 +255,7 @@ struct AccessFollowersTests {
         #expect(back.snapshot.lists[mine.id]?.itemIds == ["rss:eins"], "playlists: the way back lost the list")
     }
 
-    // MARK: - Die Wahlen, der Fall vom Geraet
+    // MARK: - The choices, the case from the device
 
     /// A key-value carrier under the name of the way it stands for.
     private final class NamedChoiceCarrier: ChoiceCarrier {
@@ -280,7 +280,7 @@ struct AccessFollowersTests {
         return (sync, defaults, suite)
     }
 
-    @Test("Wahlen, der Fall vom Geraet: zuerst ohne Dienst gebraucht, dann angemeldet, Abos und bekannte Server kommen ohne Neustart")
+    @Test("Choices, the case from the device: first used without the service, then signed in, subscriptions and known servers arrive without a restart")
     func theChoicesBringSubscriptionsAndServersAtTheSignIn() throws {
         let serviceStore = UserChoiceFakeCloud()
         let feed = "https://example.org/follow-\(UUID().uuidString).xml"
@@ -323,7 +323,7 @@ struct AccessFollowersTests {
         #expect(here.defaults.object(forKey: "followStray") == nil, "choices: the old carrier's round was applied")
     }
 
-    // MARK: - Die Ruhe des alten Traegers
+    // MARK: - The quiet of the old carrier
 
     /// A key-value store that counts what is written into it.
     private final class CountingStore: UserChoiceCloudStore {
@@ -337,7 +337,7 @@ struct AccessFollowersTests {
         func removeObject(forKey key: String) { writes += 1; values[key] = nil }
     }
 
-    @Test("Ruhe: ein gestoppter Schluessel-Traeger schreibt nichts mehr, auch den vorher eingereihten Schrieb nicht, und meldet nichts")
+    @Test("Quiet: a stopped key carrier writes nothing anymore, not even the write queued before, and reports nothing")
     func aStoppedKeyValueCarrierRests() async throws {
         let store = CountingStore()
         let stands = KeyValueStandCarrier(cloud: store, spacingSeconds: 0.3)
@@ -382,7 +382,7 @@ struct AccessFollowersTests {
         #expect(store.writes == 1, "a stopped key-value carrier wrote: \(store.writes - 1) writes")
     }
 
-    @Test("Ruhe: ein gestoppter CloudKit-Traeger holt und sendet nichts mehr, auch den vorher eingereihten Schrieb nicht")
+    @Test("Quiet: a stopped CloudKit carrier fetches and sends nothing anymore, not even the write queued before")
     func aStoppedCloudKitCarrierRests() async throws {
         let suite = "follow-rest-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -413,7 +413,7 @@ struct AccessFollowersTests {
     /// The same rest for the other three CloudKit carriers: a write queued
     /// just before the stop is not sent, and a later round fetches and
     /// wakes nothing.
-    @Test("Ruhe: auch die CloudKit-Traeger der Statistik, der Playlisten und der Wahlen holen und senden nach stop nichts")
+    @Test("Quiet: the CloudKit carriers of the statistics, the playlists and the choices also fetch and send nothing after stop")
     func theOtherCloudKitCarriersRestToo() async throws {
         let suite = "follow-rest-three-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -472,13 +472,13 @@ struct AccessFollowersTests {
         #expect(choiceWakes == choiceWakesBefore, "choices: the stopped carrier fetched and delivered")
     }
 
-    // MARK: - Die Naht
+    // MARK: - The seam
 
     /// Every runner that holds a carrier enrolls where its shared instance
     /// is built, and the one place that writes the access moves them. A
     /// sixth way to write the access, or a runner that does not enroll,
     /// brings the class back silently.
-    @Test("die Naht: jeder geteilte Laeufer folgt, und nur Anmelden und Abmelden schreiben den Zugang", .needsTheSources)
+    @Test("the seam: every shared runner follows, and only signing in and signing out write the access", .needsTheSources)
     func theSeam() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -510,7 +510,7 @@ struct AccessFollowersTests {
     /// or a round of it land in the new generation. The runners are whoever
     /// asks the rule, found over the whole app and not from a list: a sixth
     /// runner, whatever its signature, is measured too.
-    @Test("jeder der fuenf Laeufer wechselt den Traeger in denselben Schritten", .needsTheSources)
+    @Test("each of the five runners switches the carrier in the same steps", .needsTheSources)
     func everyRunnerChangesItsCarrierInTheSameSteps() throws {
         let steps = ["mustChange(", "carrier.stop()", "CarrierRefreshers.unregister(carrier)",
                      "carrier = next()", "generation.advance()", "guard didStart else { return }",

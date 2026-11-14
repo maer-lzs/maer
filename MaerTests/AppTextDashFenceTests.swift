@@ -59,7 +59,7 @@ struct AppTextDashFenceTests {
         return literals.filter { $0.contains(where: { dashes.contains($0) }) }
     }
 
-    @Test("Kein Katalog-Schluessel und kein deutscher Wert traegt einen Gedankenstrich", .needsTheSources)
+    @Test("No catalog key and no German value carries an em dash", .needsTheSources)
     func catalogCarriesNoDash() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"))
@@ -100,7 +100,7 @@ struct AppTextDashFenceTests {
             .map { $0.offset + 1 }
     }
 
-    @Test("Kein veroeffentlichter Text traegt einen Gedankenstrich", .needsTheDocs)
+    @Test("No published text carries an em dash", .needsTheDocs)
     func publishedTextsCarryNoDash() throws {
         #expect(Self.dashLines(in: "a\nb — c\n────\nd – e") == [2, 4], "the reader sees both dashes and no box line")
         var offenders: [String] = []
@@ -117,7 +117,7 @@ struct AppTextDashFenceTests {
         #expect(offenders.isEmpty, "a published text writes a dash; a comma, colon, bracket or full stop instead: \(offenders)")
     }
 
-    @Test("Kein sichtbares Literal in Sources traegt einen Gedankenstrich", .needsTheSources)
+    @Test("No visible literal in Sources carries an em dash", .needsTheSources)
     func sourceLiteralsCarryNoDash() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles()
@@ -131,7 +131,7 @@ struct AppTextDashFenceTests {
         #expect(offenders.isEmpty, "dashes in app text: \(offenders)")
     }
 
-    @Test("Der Pruefer saehe den Strich (Rot-Probe in beide Richtungen)")
+    @Test("The checker would see the dash (red test in both directions)")
     func checkerSeesTheDash() {
         #expect(Self.offendingLiterals(in: #"Text("Offline — last known state")"#) == ["Offline — last known state"])
         #expect(Self.offendingLiterals(in: #"return String(localized: "Name A–Z")"#) == ["Name A–Z"])

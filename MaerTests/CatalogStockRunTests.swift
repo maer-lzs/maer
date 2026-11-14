@@ -17,7 +17,7 @@ struct CatalogStockRunTests {
 
     // MARK: - Which run a surface has
 
-    @Test("Laeufe: jede Flaeche mit Bestand hat ihren Lauf aus dem Schluessel allein, wie die Seiten ihn geben")
+    @Test("Runs: every surface with a stock has its run from the key alone, as the pages give it")
     func everySurfaceHasItsRun() throws {
         #expect(CatalogStockSurfaces.fetch(for: CatalogSource.gutenberg.rawValue) == .dump)
         for source in [CatalogSource.librivox, .archiveBooks, .oldTimeRadio] {
@@ -33,7 +33,7 @@ struct CatalogStockRunTests {
         #expect(CatalogStockSurfaces.fetch(for: "somethingElse") == nil)
     }
 
-    @Test("Laeufe: nur eine Quelle, die an ist, wird beim Start gefragt")
+    @Test("Runs: only a source that is on is asked at start")
     func onlyAnAllowedSourceRuns() {
         let everything: (ExternalSource) -> Bool = { _ in true }
         #expect(CatalogStockSurfaces.mayRun(surface: "gutenberg", allowed: everything))
@@ -43,7 +43,7 @@ struct CatalogStockRunTests {
         #expect(CatalogStockSurfaces.mayRun(surface: "librivox", allowed: { $0.key != ExternalSources.gutenberg.key }))
     }
 
-    @Test("Laeufe: der Start kennt jede Sammlung mit Bestand oder Teilstueck, und nur sie")
+    @Test("Runs: the start knows every collection with a stock or a partial piece, and only those")
     func theStartKnowsWhatIsHeld() {
         let names = ["librivox.json", "gutenberg" + CatalogStockFetch.partialSuffix,
                      "gutenberg" + CatalogStockFetch.partialSuffix + ".total",
@@ -52,7 +52,7 @@ struct CatalogStockRunTests {
         #expect(CatalogStockSurfaces.known(inDirectoryNamed: []).isEmpty, "nothing held on this device")
     }
 
-    @Test("Laeufe: der Start faehrt jede Sammlung mit Lauf, die gehaltenen zuerst, jede einmal", .needsTheSources)
+    @Test("Runs: the start drives every collection with a run, the held ones first, each once", .needsTheSources)
     func theStartRunsEveryCollection() throws {
         let all = CatalogStockSurfaces.all
         #expect(all.count == 4 + ArchiveMusicCatalog.all.count && ArchiveMusicCatalog.all.count == 11,
@@ -69,7 +69,7 @@ struct CatalogStockRunTests {
                 "a source that is off is still not asked")
     }
 
-    @Test("Gutenberg: zwischen zwei vollen Laeufen kein Lauf, Tag 30 voll; ein Archiv fragt taeglich nach Neuem", .needsTheSources)
+    @Test("Gutenberg: no run between two full runs, day 30 full; an archive asks daily for new items", .needsTheSources)
     func gutenbergRunsOnlyWhole() throws {
         let day: TimeInterval = 86_400
         let now = Date(timeIntervalSince1970: 1_756_900_000)
@@ -97,7 +97,7 @@ struct CatalogStockRunTests {
 
     // MARK: - The unfinished dump on the disk
 
-    @Test("Teilstueck: es liegt auf der Platte, waechst je Scheibe, nennt seine Groesse und verschwindet am Ende")
+    @Test("Partial piece: it lies on the disk, grows per slice, names its size and disappears at the end")
     func thePartialDumpLivesOnTheDisk() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("dump-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -113,7 +113,7 @@ struct CatalogStockRunTests {
         #expect(partial.load().body.isEmpty && partial.load().total == nil)
     }
 
-    @Test("Teilstueck: ein Dump, der sich dazwischen aenderte, beginnt von vorn")
+    @Test("Partial piece: a dump that changed in between starts from the beginning")
     func aChangedDumpStartsOver() {
         #expect(CatalogStockFetch.dumpChangedUpstream(held: 4_194_304, known: 21_196_613, stated: 21_200_000))
         #expect(!CatalogStockFetch.dumpChangedUpstream(held: 4_194_304, known: 21_196_613, stated: 21_196_613))
@@ -121,7 +121,7 @@ struct CatalogStockRunTests {
         #expect(!CatalogStockFetch.dumpChangedUpstream(held: 4_194_304, known: nil, stated: 21_200_000))
     }
 
-    @Test("Teilstueck: eine 416 auf ein fortgesetztes Teilstueck heisst geschrumpft, ausser es ist das ganze", .needsTheSources)
+    @Test("Partial piece: a 416 on a continued partial piece means shrunk, unless it is the whole", .needsTheSources)
     func a416OnAResumedDumpIsAShrunkenFile() throws {
         #expect(CatalogStockFetch.dumpShrankUnderResume(resumed: true, held: 8_388_608, known: 21_223_958),
                 "held the head of a longer file that is now shorter than that head")
@@ -140,7 +140,7 @@ struct CatalogStockRunTests {
 
     // MARK: - Wiring
 
-    @Test("Verdrahtung: der Dump liest das Teilstueck, schreibt jede Scheibe, und sein einziger Weg reicht es", .needsTheSources)
+    @Test("Wiring: the dump reads the partial piece, writes every slice, and its only route passes it on", .needsTheSources)
     func theDumpIsWired() throws {
         let fetch = try Self.source("Sources/Networking/CatalogStockFetch.swift")
         #expect(fetch.contains("var (body, knownTotal) = partial?.load() ?? (Data(), nil)"))
@@ -156,7 +156,7 @@ struct CatalogStockRunTests {
                 "a cancelled run says so in the log")
     }
 
-    @Test("Verdrahtung: die Laeufe starten mit der App, ausser im Test-Wirt", .needsTheSources)
+    @Test("Wiring: the runs start with the app, except in the test host", .needsTheSources)
     @MainActor
     func theRunsStartWithTheApp() throws {
         let housekeeping = try Self.source("Sources/ViewModels/AppHousekeeping.swift")

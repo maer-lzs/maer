@@ -55,7 +55,7 @@ struct BookmarkProgressMathTests {
     /// item's own bookmarks count, each goes back on the time line by its
     /// song's offset, the most recently changed wins, a song that left the
     /// item is dropped, and nothing is nothing.
-    @Test("ein Booksonic-Buch: der juengste Bookmark gewinnt, ein Song ausserhalb faellt, fremde Items bleiben aussen")
+    @Test("a Booksonic book: the newest bookmark wins, a song outside drops, foreign items stay out")
     func resumeFromBookmarks() throws {
         func bookmark(_ song: String, _ ms: Int, _ changed: String, comment: String = "sub:album:book") throws -> SubsonicBookmark {
             try JSONDecoder().decode(SubsonicBookmark.self, from: Data(
@@ -87,7 +87,7 @@ struct BookmarkProgressMathTests {
     /// The local stand of a playlist that grew since it was heard to the
     /// end: finished is judged against the duration the stand was written
     /// with. One of three copies judged against today's and lost it.
-    @Test("eine gewachsene Playlist behaelt ihr fertig: der lokale Stand zaehlt gegen seine geschriebene Dauer")
+    @Test("a grown playlist keeps its finished: the local state counts against its written duration")
     func aGrownPlaylistStaysFinished() {
         let stand: [Double] = [3600, 1_700_000_000_000, 3600]
         let grown = BookmarkProgressMath.progress(fromStand: stand, duration: 4200)
@@ -99,7 +99,7 @@ struct BookmarkProgressMathTests {
 
     /// Every source whose continue lives on the device asks the one rule;
     /// a second copy is how the drift came.
-    @Test("jede Quelle mit lokalem Weiterhoeren fragt dieselbe Regel, keine eigene Kopie", .needsTheSources)
+    @Test("every source with local continue listening asks the same rule, no copy of its own", .needsTheSources)
     func everyLocalContinueAsksTheOneRule() throws {
         func code(_ name: String) throws -> String {
             SyncContractFenceTests.stripped(try String(

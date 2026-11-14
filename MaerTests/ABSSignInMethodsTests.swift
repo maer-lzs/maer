@@ -16,37 +16,37 @@ struct ABSSignInMethodsTests {
         try ABSSignInMethods.from(statusBody: Data(json.utf8))
     }
 
-    @Test("Nur Passwort: kein Knopf fuer SSO")
+    @Test("Password only: no button for SSO")
     func passwordOnly() throws {
         let read = try methods(#"{"app":"audiobookshelf","serverVersion":"2.37.2","isInit":true,"authMethods":["local"],"authFormData":{"authLoginCustomMessage":null}}"#)
         #expect(read == ABSSignInMethods(offersPassword: true, offersSSO: false, ssoButtonText: nil))
     }
 
-    @Test("Passwort und SSO: der Text des Servers kommt mit")
+    @Test("Password and SSO: the text of the server comes along")
     func passwordAndSSO() throws {
         let read = try methods(#"{"app":"audiobookshelf","isInit":true,"authMethods":["local","openid"],"authFormData":{"authLoginCustomMessage":null,"authOpenIDButtonText":"Login with Authentik","authOpenIDAutoLaunch":false}}"#)
         #expect(read == ABSSignInMethods(offersPassword: true, offersSSO: true, ssoButtonText: "Login with Authentik"))
     }
 
-    @Test("Nur SSO: kein Passwort")
+    @Test("SSO only: no password")
     func ssoOnly() throws {
         let read = try methods(#"{"app":"audiobookshelf","authMethods":["openid"],"authFormData":{"authOpenIDButtonText":"  "}}"#)
         #expect(read == ABSSignInMethods(offersPassword: false, offersSSO: true, ssoButtonText: nil))
     }
 
-    @Test("Eine leere oder fehlende Liste heisst Passwort, wie der Server sie liest")
+    @Test("An empty or missing list means password, as the server reads it")
     func emptyMeansPassword() throws {
         #expect(try methods(#"{"app":"audiobookshelf","authMethods":[]}"#).offersPassword)
         #expect(try methods(#"{"app":"audiobookshelf"}"#) == ABSSignInMethods(offersPassword: true, offersSSO: false, ssoButtonText: nil))
     }
 
-    @Test("Ein Text ohne openid bleibt draussen")
+    @Test("A text without openid stays out")
     func textWithoutSSOIsDropped() throws {
         let read = try methods(#"{"app":"audiobookshelf","authMethods":["local"],"authFormData":{"authOpenIDButtonText":"Login"}}"#)
         #expect(read.ssoButtonText == nil)
     }
 
-    @Test("Eine Seite, die kein Status von Audiobookshelf ist, wirft")
+    @Test("A page that is not a status of Audiobookshelf throws")
     func foreignAnswerThrows() {
         #expect(throws: ABSSignInMethods.Unreadable.self) { try methods("<html><body>Sign in</body></html>") }
         #expect(throws: ABSSignInMethods.Unreadable.self) { try methods(#"{"authMethods":["openid"]}"#) }

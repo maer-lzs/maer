@@ -15,7 +15,7 @@ import Foundation
 /// stock; the stock is the count (`StockDrift`), a new site and a free
 /// place are red. Comment lines do not count.
 struct AblageFenceTests {
-    /// Die Heimaten der Naht, jede mit ihrem Grund IM Eintrag.
+    /// The homes of the seam, each with its reason IN the entry.
     nonisolated static let homes: [(suffix: String, reason: String)] = [
         ("/Sources/Storage/", "die Zeilen-Schicht; sie SCHREIBT die Dateien, an denen die Naht haengt"),
         ("/Ablage.swift", "die Naht selbst"),
@@ -56,7 +56,7 @@ struct AblageFenceTests {
         "DownloadManager.swift": (3, "the head of a downloaded file read through a handle to tell audio from an error page; the write of the item id into a download folder's .item-id, raw text beside the tracks: it moves and goes with the folder, and the seam writes JSON by name in one directory and lays an unreadable file aside, which would leave a second file in the folder; the read goes through a file handle with a length limit"),
     ]
 
-    @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund", .needsTheSources)
+    @Test("Files outside the store and the rows: only the stock, each with a reason", .needsTheSources)
     func filesOnlyThroughTheSeam() throws {
         var counts: [String: Int] = [:]
         var seen: Set<String> = []
