@@ -43,7 +43,7 @@ struct JellyfinSourceView: View {
                     .accessibilityIdentifier("jellyfin-source-toggle")
                     .onChange(of: enabled) { _, _ in save() }
             } footer: {
-                Text("When on (and Subsonic off), your Jellyfin albums, artists and playlists appear in the Music tab.")
+                Text("When on, your Jellyfin albums, artists and playlists appear in the Music tab.")
             }
 
             Section {

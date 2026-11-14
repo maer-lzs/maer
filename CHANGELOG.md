@@ -20,6 +20,10 @@ an Audiobookshelf episode you finish elsewhere leaves Up Next also when
 Mär was closed meanwhile: the app remembers which titles the server held
 as unfinished.
 
+**The sentence under the Jellyfin switch says what happens.** It no
+longer says Subsonic has to be off: your Jellyfin albums, artists and
+playlists appear in the Music tab beside those of a Subsonic server.
+
 ## v3.7 (Build 65)
 
 **A station link that does not load opens the station's page with
