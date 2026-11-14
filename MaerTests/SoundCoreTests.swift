@@ -188,6 +188,23 @@ struct SoundCoreTests {
         state.unregister(second)
     }
 
+    @Test("a chain the audio thread still runs is not freed, however long ago it was handed over")
+    func aUsedChainStays() throws {
+        let state = SoundTapState()
+        let slot = SoundSlot(sampleRate: 44100, channels: 2)
+        state.register(slot, now: 0)
+        // The audio thread runs the first chain, then the tap pauses.
+        slot.noteUsing(try #require(slot.load()))
+        state.set(SoundSetting(presetID: "speech", gain: 1), now: 1)
+        state.set(SoundSetting(presetID: "louder", gain: 1), now: 3_000_000_001)
+        #expect(state.retiredCount == 2, "the first chain is old but still named by the paused tap, so it stays")
+        // The tap runs again and moves to the newest chain.
+        slot.noteUsing(slot.load())
+        state.set(SoundSetting(presetID: "oldRecordings", gain: 1), now: 6_000_000_002)
+        #expect(state.retiredCount == 1, "old chains nobody runs are freed; the one just handed over waits")
+        state.unregister(slot)
+    }
+
     @Test("a chain takes over the filter memory of the one before when the shape fits")
     func chainContinues() {
         let before = SoundChain(setting: SoundSetting(presetID: "speech", gain: 1), sampleRate: 44100, channels: 2)
@@ -226,7 +243,8 @@ struct SoundCoreTests {
         for forbidden in ["withLock", "Mutex", ".state", "SoundChain(", "allocate", "Array(", "[Float]", ".set(", "register("] {
             #expect(!perBuffer.contains(forbidden), "the audio thread's buffer loop holds \(forbidden)")
         }
-        #expect(perBuffer.contains("context.slot?.load()"), "the buffer loop reads its chain without a lock")
+        #expect(perBuffer.contains("let raw = slot.load()"), "the buffer loop reads its chain without a lock")
+        #expect(perBuffer.contains("slot.noteUsing(raw)"), "the buffer loop names the chain it runs")
         #expect(tap.contains("address.load(ordering: .acquiring)"), "the slot's read is atomic")
     }
 }

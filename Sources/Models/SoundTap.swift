@@ -81,22 +81,45 @@ nonisolated final class SoundSlot: Sendable {
     func exchange(_ chain: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
         UnsafeMutableRawPointer(bitPattern: address.exchange(UInt(bitPattern: chain), ordering: .acquiringAndReleasing))
     }
+
+    /// The address of the chain the audio thread runs and keeps its filter
+    /// memory in; a retired chain it still names is not freed.
+    private let using = Atomic<UInt>(0)
+
+    /// The audio thread names the chain it runs from now on.
+    func noteUsing(_ chain: UnsafeMutableRawPointer?) {
+        using.store(UInt(bitPattern: chain), ordering: .releasing)
+    }
+
+    /// Whether the audio thread still runs this chain.
+    func isUsing(_ chain: UnsafeMutableRawPointer) -> Bool {
+        using.load(ordering: .acquiring) == UInt(bitPattern: chain)
+    }
 }
 
 /// The setting the filter plays with now, shared between the player and
 /// the taps. A new setting builds a chain for every tap here, off the
-/// audio thread, and hands it over; a chain handed over is kept a while
-/// before it is freed, so the audio thread never frees one.
+/// audio thread, and hands it over. A chain handed over is freed only when
+/// it is old enough that the audio thread cannot still be on its way to it,
+/// and when the audio thread no longer names it as the one it runs, so a
+/// tap that was paused through several changes still finds the memory of
+/// its last chain.
 nonisolated final class SoundTapState: Sendable {
+    private struct Retired {
+        let chain: UnsafeMutableRawPointer
+        let slot: SoundSlot
+        let at: UInt64
+    }
     private struct Book {
         var setting = SoundSetting.off
         var generation = 0
         var builds = 0
         var slots: [ObjectIdentifier: SoundSlot] = [:]
-        var retired: [(chain: UnsafeMutableRawPointer, at: UInt64)] = []
+        var retired: [Retired] = []
     }
     private let book = Mutex(Book())
-    /// How long a chain handed over stays alive: far longer than a buffer.
+    /// The time between the audio thread loading a chain and naming it as
+    /// the one it runs: far longer than a buffer.
     static let retireAfterNanos: UInt64 = 2_000_000_000
 
     var setting: SoundSetting { book.withLock { $0.setting } }
@@ -104,51 +127,57 @@ nonisolated final class SoundTapState: Sendable {
     var generation: Int { book.withLock { $0.generation } }
     /// Counts the chains built, for every tap and every new setting.
     var builds: Int { book.withLock { $0.builds } }
+    /// The chains handed over and not yet freed.
+    var retiredCount: Int { book.withLock { $0.retired.count } }
 
-    func set(_ setting: SoundSetting) {
+    func set(_ setting: SoundSetting, now: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         let freed: [UnsafeMutableRawPointer] = book.withLock { book in
             guard book.setting != setting else { return [] }
             book.setting = setting
             book.generation += 1
-            let now = DispatchTime.now().uptimeNanoseconds
             for slot in book.slots.values {
                 let fresh = Unmanaged.passRetained(SoundChain(setting: setting, sampleRate: slot.sampleRate, channels: slot.channels))
                 book.builds += 1
                 if let old = slot.exchange(fresh.toOpaque()) {
-                    book.retired.append((old, now))
+                    book.retired.append(Retired(chain: old, slot: slot, at: now))
                 }
             }
-            return Self.takeExpired(&book, now: now)
+            return Self.takeFree(&book, now: now)
         }
         for chain in freed { Unmanaged<SoundChain>.fromOpaque(chain).release() }
     }
 
     /// A tap that knows its format joins: its chain for the setting now.
-    func register(_ slot: SoundSlot) {
+    func register(_ slot: SoundSlot, now: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         book.withLock { book in
             let fresh = Unmanaged.passRetained(SoundChain(setting: book.setting, sampleRate: slot.sampleRate, channels: slot.channels))
             book.builds += 1
             if let old = slot.exchange(fresh.toOpaque()) {
-                book.retired.append((old, DispatchTime.now().uptimeNanoseconds))
+                book.retired.append(Retired(chain: old, slot: slot, at: now))
             }
             book.slots[ObjectIdentifier(slot)] = slot
         }
     }
 
-    /// A tap that stops leaves; its chain retires like a replaced one.
-    func unregister(_ slot: SoundSlot) {
+    /// A tap that stops leaves: its audio thread runs no chain any more, and
+    /// its chain retires like a replaced one.
+    func unregister(_ slot: SoundSlot, now: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         book.withLock { book in
             book.slots.removeValue(forKey: ObjectIdentifier(slot))
+            slot.noteUsing(nil)
             if let old = slot.exchange(nil) {
-                book.retired.append((old, DispatchTime.now().uptimeNanoseconds))
+                book.retired.append(Retired(chain: old, slot: slot, at: now))
             }
         }
     }
 
-    private static func takeExpired(_ book: inout Book, now: UInt64) -> [UnsafeMutableRawPointer] {
-        let expired = book.retired.filter { now - $0.at > retireAfterNanos }.map(\.chain)
-        book.retired.removeAll { now - $0.at > retireAfterNanos }
-        return expired
+    private static func takeFree(_ book: inout Book, now: UInt64) -> [UnsafeMutableRawPointer] {
+        func free(_ entry: Retired) -> Bool {
+            now - entry.at > retireAfterNanos && !entry.slot.isUsing(entry.chain)
+        }
+        let freed = book.retired.filter(free).map(\.chain)
+        book.retired.removeAll(where: free)
+        return freed
     }
 }
 
@@ -204,15 +233,17 @@ nonisolated enum SoundTap {
                 guard MTAudioProcessingTapGetSourceAudio(tap, numberFrames, bufferList, flagsOut, nil, numberFramesOut) == noErr else { return }
                 let context = Unmanaged<SoundTapContext>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).takeUnretainedValue()
                 // An integer format passes as it came; the chain is read without a lock.
-                guard context.isFloat, let raw = context.slot?.load() else { return }
+                guard context.isFloat, let slot = context.slot, let raw = slot.load() else { return }
                 let chain = Unmanaged<SoundChain>.fromOpaque(raw)
                 if raw != context.current {
+                    // The chain before is the one this slot names as used, so it is still alive.
                     if let before = context.current {
                         chain._withUnsafeGuaranteedRef { fresh in
                             Unmanaged<SoundChain>.fromOpaque(before)._withUnsafeGuaranteedRef { fresh.continueFrom($0) }
                         }
                     }
                     context.current = raw
+                    slot.noteUsing(raw)
                 }
                 let frames = Int(numberFramesOut.pointee)
                 let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
