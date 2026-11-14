@@ -311,9 +311,16 @@ struct StandOwnerTests {
         #expect(followers.contains("viewModel?.holdForAccountSwitch()"), "the app's register does not hold the player")
         let player = try code("Sources/ViewModels/PlayerViewModel.swift")
         let hold = try #require(ABSPodcastRefreshTests.body(of: "func holdForAccountSwitch() {", in: player))
-        let record = try #require(hold.range(of: "epoch: standEpoch)"), "the hold records without the epoch")
-        let pause = try #require(hold.range(of: "pause(caller:"), "the hold does not pause")
-        #expect(record.lowerBound < pause.lowerBound, "the hold pauses before it records")
+        // The stand is recorded through the one helper, with the epoch: by
+        // the pause of a running piece, before the pause writes anything,
+        // or by the hold itself for a paused piece whose record waits.
+        let helper = try #require(ABSPodcastRefreshTests.body(of: "func recordHaltStand() {", in: player))
+        #expect(helper.contains("epoch: standEpoch)"), "the hold records without the epoch")
+        #expect(hold.contains("} else { recordHaltStand() }"), "a paused piece whose record waits is not recorded")
+        let pauseBody = try #require(ABSPodcastRefreshTests.body(of: "func pause(caller: String = #function) {", in: player))
+        let record = try #require(pauseBody.range(of: "if wasPlaying { recordHaltStand() }"), "the pause records no stand")
+        let write = try #require(pauseBody.range(of: "Task { await syncProgress(.pause) }"), "the pause writes nothing")
+        #expect(record.lowerBound < write.lowerBound, "the pause writes before it records")
         // A paused piece whose record still waits for the server is held
         // too: the hold asks the rule, the pause of a running piece sets the
         // mark, and only a round that began after it clears the mark.
@@ -744,9 +751,9 @@ struct StandOwnerTests {
             sites += Self.playerSites(in: SyncContractFenceTests.stripped(
                 try String(contentsOf: folder.appendingPathComponent(file), encoding: .utf8)))
         }
-        // Eight: the hold at a change of account and the stand of a pause
-        // or a stop record with the epoch too.
-        #expect(sites.count == 8, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
+        // Seven: the stand of every hold (pause, stop, interruption, a
+        // change of account) records through one helper, with the epoch.
+        #expect(sites.count == 7, "the player writes or claims at \(sites.count) sites; a new one needs its place here")
         for site in sites where !site.carriesEpoch {
             #expect(Self.epochExceptions[site.function] != nil, "\(site.function) writes or claims without the epoch")
         }

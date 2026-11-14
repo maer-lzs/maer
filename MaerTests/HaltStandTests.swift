@@ -128,6 +128,36 @@ struct HaltStandTests {
         #expect(SyncQueue.shared.pendingUpdate(itemId: id)?.currentTime == 34, "the newer queued stand was retired by an older write")
     }
 
+    @Test("an interruption whose write fails records the same stand on the device, and the next start writes it", .needsAudio)
+    func interruptionWithoutServerThenStart() async throws {
+        let file = try TickWorkTests().tone(seconds: 60)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "halt-interrupt-\(UUID().uuidString)"
+        defer { Task { await Self.clean(id) } }
+        let server = Server(file: file.path, position: 5)
+        let first = try await Self.device(server, id)
+        // The last tick, three seconds before the call came in.
+        ListeningStore.record(id, position: 31, duration: 60, atMs: Date().timeIntervalSince1970 * 1000 - 3000)
+        server.refuses = true
+        first.isPlaying = true
+        first.currentTime = 34
+        first.handleInterruption(began: true, shouldResume: false)
+        #expect(try await Self.waitForQueued(id)?.currentTime == 34, "the precondition: the failed write queued the stand")
+        #expect(ListeningStore.backup(id)?.first == 34, "the interruption recorded its stand on the device before the write")
+
+        server.refuses = false
+        _ = try await Self.device(server, id)
+        #expect(server.position == 34, "the next start wrote the stand of the interruption, not the last tick: \(server.position)")
+    }
+
+    @Test("every way out of a load clears the restored stand's moment", .needsTheSources)
+    func theRestoredMomentIsClearedOnEveryExit() throws {
+        let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
+        #expect(text.contains("defer { restoredStandMs = nil }"), "an early exit of the load leaves the moment standing")
+        #expect(text.components(separatedBy: "restoredStandMs = nil").count - 1 == 2,
+                "the moment is cleared at the start and on the way out, nowhere else")
+    }
+
     @Test("a rewind before the stop: the server gets the smaller, newer stand", .needsAudio)
     func rewindBeforeTheStop() async throws {
         let file = try TickWorkTests().tone(seconds: 60)

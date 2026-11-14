@@ -446,7 +446,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    private func handleInterruption(began: Bool, shouldResume: Bool) {
+    func handleInterruption(began: Bool, shouldResume: Bool) {
         if began {
             holds += 1
             // Don't overwrite on nested interruptions (second .began while the
@@ -455,9 +455,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 resumeAfterInterruption = true
                 // Same bookkeeping as pause(), minus player.pause() (the
                 // system already halted the audio): Smart-Rewind anchor, the
-                // stand this device owes, and a prompt sync while we still
-                // have CPU.
+                // stand this device owes, recorded on the device before the
+                // write is tried, and a prompt sync while we still have CPU.
                 pausedAt = Date()
+                recordHaltStand()
                 pauseRecordPending = true
                 Task { await syncProgress(.interruption) }
             }
@@ -581,7 +582,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
         var startTime = serverProgress
         var restoredFromLocal = false
+        // Only the flush of the restored stand writes at its moment; every
+        // way out of the load clears it, the early ones too.
         restoredStandMs = nil
+        defer { restoredStandMs = nil }
         // Crash safety: if the per-second local backup is NEWER than the server
         // state and differs noticeably (the app died before the next sync),
         // continue there and flush it right away.
@@ -717,8 +721,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
             suppressConflictForNextSync = true
             await syncProgress(.restoreFlush)
         }
-        // Only the flush of the restored stand writes at its moment.
-        restoredStandMs = nil
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward
@@ -1425,13 +1427,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// is left alone, so it is never stamped anew.
     func holdForAccountSwitch() {
         guard AccountSwitchHold.records(isPlaying: isPlaying, pauseRecordPending: pauseRecordPending) else { return }
-        if let id = item?.id {
-            let nowMs = Date().timeIntervalSince1970 * 1000
-            ListeningStore.record(id, position: currentTime, duration: duration,
-                                  atMs: nowMs, epoch: standEpoch)
-            ownStandMs = nowMs
-        }
-        if isPlaying { pause(caller: "account switch") }
+        // A running piece is recorded by its pause; a paused one whose
+        // record still waits is recorded here.
+        if isPlaying { pause(caller: "account switch") } else { recordHaltStand() }
     }
 
     /// A hold of a running piece (pause, stop) records its stand on the

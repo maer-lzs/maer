@@ -2,9 +2,10 @@
 
 ## Next build (not yet cut)
 
-**Signing out while a book plays keeps the last position.** Pausing or
-stopping now saves the position on the device before it is sent to the
-server. Signing out of Audiobookshelf during playback, or stopping
+**Signing out while a book plays keeps the last position.** Pausing,
+stopping, or a call that interrupts playback now saves the position on the
+device before it is sent to the server. Signing out of Audiobookshelf
+during playback, or stopping
 without a network, then sends exactly that position once the server is
 reachable again. Before, the next start sent the position from up to
 five seconds earlier and dropped the newer one.
