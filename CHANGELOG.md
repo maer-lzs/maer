@@ -18,7 +18,9 @@ as new; the first refresh after a show appears adds nothing. Subscribing
 again to a show you already follow adds its new episodes too. A book or
 an Audiobookshelf episode you finish elsewhere leaves Up Next also when
 Mär was closed meanwhile: the app remembers which titles the server held
-as unfinished.
+as unfinished. Signing out, or switching to another server or account,
+forgets what the former one held, so the next account's titles are
+compared only with its own and nothing leaves Up Next by mistake.
 
 **The sentence under the Jellyfin switch says what happens.** It no
 longer says Subsonic has to be off: your Jellyfin albums, artists and

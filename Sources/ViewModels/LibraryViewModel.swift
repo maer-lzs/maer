@@ -1140,9 +1140,13 @@ final class LibraryViewModel: ObservableObject {
         } else {
             fraction = known?.fraction ?? 0
         }
-        lastProgress[itemId] = BookProgress(fraction: fraction, isFinished: isFinished,
-                                            lastUpdate: Date().timeIntervalSince1970 * 1000,
-                                            currentTime: currentTime)
+        let written = BookProgress(fraction: fraction, isFinished: isFinished,
+                                   lastUpdate: Date().timeIntervalSince1970 * 1000,
+                                   currentTime: currentTime)
+        lastProgress[itemId] = written
+        // What this device wrote is the baseline too: a book finished here
+        // is not taken out again by the next answer that says the same.
+        answeredProgress[itemId] = written
     }
 
     /// A server item + (server/local) progress + queued updates → a
@@ -1202,6 +1206,10 @@ final class LibraryViewModel: ObservableObject {
     /// Progress used by the last rebuild, and what a rebuild without a fresh
     /// server answer keeps (otherwise all bars and Continue would blank out).
     private var lastProgress: [String: BookProgress] = [:]
+    /// What the server's last answer of this run said, with what this device
+    /// wrote since: the baseline a new answer is compared with. A rebuild
+    /// from the disk cache never sets it, since the cache knows no account.
+    private var answeredProgress: [String: BookProgress] = [:]
 
     /// The Up Next a book finished on the server leaves; none for a model
     /// built without one.
@@ -1216,6 +1224,7 @@ final class LibraryViewModel: ObservableObject {
     func forgetHeldUnfinished() {
         heldUnfinished?.forget()
         lastProgress = [:]
+        answeredProgress = [:]
     }
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.
@@ -1368,8 +1377,9 @@ final class LibraryViewModel: ObservableObject {
     /// starts moves with the server's answers alone, never with a rebuild
     /// from the cache, from known progress or without a source.
     func noteServerAnswer(_ progress: [String: BookProgress]) {
-        let finished = heldUnfinished?.adopt(before: lastProgress, after: progress)
-            ?? HeardElsewhere.newlyFinished(before: lastProgress, after: progress)
+        let finished = heldUnfinished?.adopt(before: answeredProgress, after: progress)
+            ?? HeardElsewhere.newlyFinished(before: answeredProgress, after: progress)
+        answeredProgress = progress
         if !finished.isEmpty { upNext?.markedPlayed(finished) }
     }
 

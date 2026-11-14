@@ -227,7 +227,8 @@ struct HaltStandTests {
         await model.load(item: try await server.fetchItemDetail(itemId: id), restart: true)
         #expect(server.position == 0, "the precondition: the restart wrote the beginning: \(server.position)")
         #expect(SyncQueue.shared.pendingUpdate(itemId: id) == nil,
-                "the restart wrote at the restored stand's older moment and left the queued stand behind")    }
+                "the restart wrote at the restored stand's older moment and left the queued stand behind")
+    }
 
     @Test("a rewind before the stop: the server gets the smaller, newer stand", .needsAudio)
     func rewindBeforeTheStop() async throws {

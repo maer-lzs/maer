@@ -121,7 +121,17 @@ struct HeardElsewhereTests {
         let refresh = try #require(functionBody(of: "func refreshProgress() async {", in: text))
         #expect(refresh.contains("noteServerAnswer(progress)"))
         let forget = try #require(functionBody(of: "func forgetHeldUnfinished() {", in: text))
-        #expect(forget.contains("lastProgress = [:]"), "the run's answer of the former server stays the baseline")
+        #expect(forget.contains("answeredProgress = [:]"), "the run's answer of the former server stays the baseline")
+        // The baseline of a comparison is what an answer said and what this
+        // device wrote, never the disk cache, which knows no account.
+        let answer = try #require(functionBody(of: "func noteServerAnswer(_ progress: [String: BookProgress]) {", in: text))
+        #expect(answer.contains("before: answeredProgress") && !answer.contains("before: lastProgress"),
+                "an answer compares with what the cache laid down")
+        #expect(text.components(separatedBy: "answeredProgress = ").count - 1 == 2
+                && text.components(separatedBy: "answeredProgress[itemId] = ").count - 1 == 1,
+                "the baseline is set past an answer, a local write and the leave of a server")
+        let cached = try #require(functionBody(of: "func showCachedLibraryIfAvailable() async {", in: text))
+        #expect(!cached.contains("answeredProgress"), "the cached render sets the baseline")
         let provider = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/Providers/ABSPodcastProvider.swift"), encoding: .utf8))
         let sets = try #require(functionBody(of: "func forgetServerSets() {", in: provider))
@@ -222,7 +232,7 @@ struct HeardElsewhereTests {
         }
         // The two server answers ask through the kept set, so the first
         // answer after a start has a before too.
-        for (file, call) in ["LibraryViewModel.swift": "heldUnfinished?.adopt(before: lastProgress, after: progress)",
+        for (file, call) in ["LibraryViewModel.swift": "heldUnfinished?.adopt(before: answeredProgress, after: progress)",
                              "ABSPodcastProvider.swift": "heldUnfinished.adopt(before: episodeProgress, after: fresh)"] {
             #expect(texts[file]?.contains(call) == true, "\(file) asks for the change without the set kept across starts")
         }
