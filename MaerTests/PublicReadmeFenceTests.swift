@@ -704,18 +704,19 @@ struct PublicReadmeFenceTests {
 
     /// The public source lies on GitHub; the old host appears only in the
     /// history of the changelog.
-    @Test("keine Adresse des frueheren Wirts in der App, den READMEs und docs", .needsTheSources)
+    @Test("Fence: no address of the former host in the app, the READMEs, docs and the page", .needsTheSources)
     func noAddressOfTheFormerHost() throws {
         var texts = try Self.readmeTexts()
         texts.append(("LICENSE-ADDITIONAL-TERMS", try String(contentsOf: SourceTree.root.appendingPathComponent("LICENSE-ADDITIONAL-TERMS"), encoding: .utf8)))
-        for folder in ["Sources", "docs"] {
+        for folder in ["Sources", "docs", "site"] {
             for file in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
-            where ["swift", "md", "xcstrings", "plist", "html"].contains(file.pathExtension) {
+            where ["swift", "md", "xcstrings", "plist", "html", "js", "css", "json", "svg"].contains(file.pathExtension) {
                 texts.append((SourceTree.relativePath(of: file), try String(contentsOf: file, encoding: .utf8)))
             }
         }
         #expect(texts.count > 10, "the precondition: the fence read the files")
-        let found = texts.filter { $0.1.contains("codeberg.org/LzS") }.map(\.0)
+        #expect(texts.contains { $0.0 == "site/l/l.js" }, "the precondition: the fence read the page")
+        let found = texts.filter { $0.1.lowercased().contains("codeberg.org") }.map(\.0)
         #expect(found.isEmpty, "these name the former host: \(found)")
     }
 

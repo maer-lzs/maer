@@ -83,7 +83,15 @@ struct AppTextDashFenceTests {
     /// lines are not dashes.
     nonisolated static let publishedTexts = [
         "README.md", "README.de.md", "CHANGELOG.md", "docs/EULA.md", "LICENSE-ADDITIONAL-TERMS", "docs/appstore.md",
+        "site/l/index.html", "site/l/l.js",
     ] + PublicReadmeFenceTests.detailPages
+
+    /// Lines of a published text that keep a dash because they are no prose,
+    /// by file and exact line: a changed line loses its exception.
+    nonisolated static let dashLineExceptions: [String: Set<String>] = [
+        // The characters a shortened description drops at its end.
+        "site/l/l.js": [#"    return cut.replace(/[\s.,;:!?…–—-]+$/, "") + "…";"#],
+    ]
 
     /// The one-based lines of a text that carry an em or en dash.
     nonisolated static func dashLines(in text: String) -> [Int] {
@@ -98,7 +106,12 @@ struct AppTextDashFenceTests {
         var offenders: [String] = []
         for name in Self.publishedTexts {
             let text = try String(contentsOf: SourceTree.root.appendingPathComponent(name), encoding: .utf8)
-            let lines = Self.dashLines(in: text)
+            let rows = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            let kept = Self.dashLineExceptions[name] ?? []
+            for line in kept {
+                #expect(rows.contains(line), "an exception in \(name) names a line that is gone: \(line)")
+            }
+            let lines = Self.dashLines(in: text).filter { !kept.contains(rows[$0 - 1]) }
             if !lines.isEmpty { offenders.append("\(name): \(lines)") }
         }
         #expect(offenders.isEmpty, "a published text writes a dash; a comma, colon, bracket or full stop instead: \(offenders)")

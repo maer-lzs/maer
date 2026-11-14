@@ -534,7 +534,7 @@
     return parts.join(" · ");
   }
 
-  // "3600", "61:30" or "1:01:30" as "1 h 1 min" or "42 min".
+  // "3600", "61:30" or "1:01:30" as "1 h" or "1 h 2 min", "2520" as "42 min".
   function duration(raw) {
     if (!raw || !/^[0-9:]+$/.test(raw)) { return ""; }
     var seconds = 0;
