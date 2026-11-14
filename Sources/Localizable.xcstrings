@@ -6147,6 +6147,16 @@
         }
       }
     },
+    "Mär could not read the audio of this title, so sound effects do not work on it. They apply from the next title." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär konnte den Ton dieses Titels nicht lesen, darum wirkt der Klang hier nicht. Er gilt ab dem nächsten Titel."
+          }
+        }
+      }
+    },
     "Mär is a home for audiobooks, music, podcasts, radio and open catalogs: your own servers and the open net in one app." : {
       "localizations" : {
         "de" : {

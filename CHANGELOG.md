@@ -29,13 +29,14 @@ playlists appear in the Music tab beside those of a Subsonic server.
 **Sound effects for each device.** Next to the speed in the player,
 Effects opens a sheet for the device the sound goes out on now: Off,
 Clearer Speech, Old Recordings or Louder, and a volume boost up to twice
-the volume with a limiter that keeps loud passages clean. The choice
-stays with that device, so headphones, a hearing aid and the car each
+the volume with a limiter that keeps loud passages clean; Off also takes
+the boost back to 100 percent. The choice stays with that device, so headphones, a hearing aid and the car each
 keep their own. Settings, Playback, Sound holds the default for other
 devices and every device Mär has played on; a car is listed as CarPlay
 with its name. Sound effects do not work on stations, nor on a title the
 server converts while it streams; the sheet says so, and a downloaded
-title works.
+title works. When the audio of a title cannot be read, the sheet says
+that instead, and the choice still applies from the next title.
 
 ## v3.7 (Build 65)
 

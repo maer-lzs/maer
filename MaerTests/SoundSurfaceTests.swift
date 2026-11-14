@@ -38,8 +38,22 @@ struct SoundSurfaceTests {
         #expect(SoundSurface.block(isRadio: false, lastAttach: nil) == nil)
         #expect(SoundSurface.block(isRadio: false, lastAttach: .hung) == nil)
         #expect(SoundSurface.block(isRadio: false, lastAttach: .noAudioTrack) == .convertedStream)
-        #expect(SoundSurface.block(isRadio: false, lastAttach: .tracksNotRead(reason: "x")) == .convertedStream)
+        #expect(SoundSurface.block(isRadio: false, lastAttach: .tracksNotRead(reason: "x")) == .tracksUnread,
+                "tracks that could not be read are no measured conversion")
         #expect(SoundSurface.block(isRadio: false, lastAttach: .alreadyHung) == nil)
+        #expect(SoundSurface.Block.station.locks && SoundSurface.Block.convertedStream.locks)
+        #expect(!SoundSurface.Block.tracksUnread.locks, "unread tracks lock a choice that still applies to the next title")
+    }
+
+    @Test("a tap on Off takes the gain back to 100 percent, every other preset keeps it")
+    func offResetsTheGain() {
+        let boosted = SoundSetting(presetID: "speech", gain: 1.6)
+        #expect(SoundSurface.choosing(preset: "off", in: boosted) == .off)
+        #expect(SoundSurface.choosing(preset: "louder", in: boosted) == SoundSetting(presetID: "louder", gain: 1.6))
+        #expect(SoundSurface.choosing(preset: "unknown", in: boosted) == .off, "an unknown preset reads as Off")
+        // Off with a gain pushed up again stays, and its row says so.
+        let offBoosted = SoundSetting(presetID: "off", gain: 1.4)
+        #expect(SoundSurface.summary(offBoosted) == .preset(id: "off", gainPercent: 140))
     }
 
     @Test("the gain runs from 100 to 200 percent, held at both ends")
@@ -77,6 +91,8 @@ struct SoundSurfaceTests {
         let views = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/Views/SoundViews.swift"), encoding: .utf8))
         #expect(views.components(separatedBy: "SoundChoiceSections(setting:").count - 1 == 3, "a place draws its own choice")
+        #expect(views.contains("setting = SoundSurface.choosing(preset: preset.id, in: setting)") && !views.contains("presetID = "),
+                "a preset is set past the rule that takes Off back to 100 percent")
         for head in ["struct EffectsSheet: View {", "struct SoundDefaultView: View {", "struct SoundDeviceView: View {"] {
             let body = try #require(functionBody(of: head, in: views), "\(head) was not found")
             #expect(body.contains("SoundChoiceSections(setting:"), "\(head) does not draw the one choice")

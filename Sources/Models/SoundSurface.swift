@@ -44,8 +44,17 @@ nonisolated enum SoundSurface {
     enum Block: Equatable {
         /// A station: its stream reports no audio track the filter could hang on.
         case station
-        /// A title the server converts on the fly, sent without byte ranges.
+        /// A title the server converts on the fly, sent without byte ranges:
+        /// the filter found no audio track on it.
         case convertedStream
+        /// The title's tracks could not be read (a network error, for one);
+        /// nothing is known about the title, only that the filter did not hang.
+        case tracksUnread
+
+        /// Whether the choice is locked: a station or a converted stream
+        /// never takes the filter. Unread tracks lock nothing, since the
+        /// choice still applies to the next title.
+        var locks: Bool { self != .tracksUnread }
     }
 
     /// The block for what plays now: a station always, a title only once
@@ -53,9 +62,19 @@ nonisolated enum SoundSurface {
     static func block(isRadio: Bool, lastAttach: SoundTap.Attached?) -> Block? {
         if isRadio { return .station }
         switch lastAttach {
-        case .noAudioTrack, .tracksNotRead: return .convertedStream
+        case .noAudioTrack: return .convertedStream
+        case .tracksNotRead: return .tracksUnread
         default: return nil
         }
+    }
+
+    /// A tap on a preset: "Off" also takes the gain back to 100 percent,
+    /// every other preset keeps the gain as it is.
+    static func choosing(preset id: String, in setting: SoundSetting) -> SoundSetting {
+        if SoundPresets.preset(id).id == SoundPresets.off.id { return .off }
+        var chosen = setting
+        chosen.presetID = id
+        return chosen
     }
 
     /// The gain as the slider shows it, in whole percent.

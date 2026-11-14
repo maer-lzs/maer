@@ -15,6 +15,9 @@ struct SoundChoiceSections: View {
     /// The gain in percent while a finger drags it, not yet written.
     @State private var draftPercent: Double?
 
+    /// Whether the choice is locked for what plays now (`SoundSurface.Block.locks`).
+    private var locked: Bool { block?.locks ?? false }
+
     private var shownPercent: Int {
         SoundSurface.gainPercent(draftPercent.map(SoundSurface.gain(percent:)) ?? setting.gain)
     }
@@ -23,7 +26,7 @@ struct SoundChoiceSections: View {
         Section {
             ForEach(SoundPresets.all) { preset in
                 Button {
-                    setting.presetID = preset.id
+                    setting = SoundSurface.choosing(preset: preset.id, in: setting)
                 } label: {
                     HStack {
                         Text(SoundPresetName.name(preset.id))
@@ -45,7 +48,7 @@ struct SoundChoiceSections: View {
         } footer: {
             if let block { SoundBlockText(block: block) }
         }
-        .disabled(block != nil)
+        .disabled(locked)
 
         Section {
             VStack(alignment: .leading, spacing: 8) {
@@ -76,13 +79,13 @@ struct SoundChoiceSections: View {
                     .accessibilityIdentifier("sound-gain")
                     // The bar draws itself and does not read `isEnabled`:
                     // a blocked choice takes no input and looks it.
-                    .takesInput(block == nil)
+                    .takesInput(!locked)
             }
-            .opacity(block == nil ? 1 : 0.4)
+            .opacity(locked ? 0.4 : 1)
         } footer: {
             Text("Raises quiet recordings up to twice the volume. A limiter keeps loud passages from distorting.")
         }
-        .disabled(block != nil)
+        .disabled(locked)
     }
 }
 
@@ -108,6 +111,8 @@ struct SoundBlockText: View {
             Text("Sound effects do not work on stations. They apply again as soon as an audiobook, an episode or a song plays.")
         case .convertedStream:
             Text("Sound effects do not work on this title: the server sends it converted as a continuous stream. Downloaded, they work.")
+        case .tracksUnread:
+            Text("Mär could not read the audio of this title, so sound effects do not work on it. They apply from the next title.")
         }
     }
 }
