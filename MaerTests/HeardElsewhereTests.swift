@@ -87,6 +87,47 @@ struct HeardElsewhereTests {
                 "the next account's first answer compared with the former server's set")
     }
 
+    @Test("the library's first server answer after a start takes out a book finished elsewhere, by the set kept from the run before")
+    func theLibrarysFirstAnswerAsksTheKeptSet() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("held-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let path = folder.appendingPathComponent("maer.sqlite").path
+        let run = UUID().uuidString.prefix(8)
+        let book = "held-book-\(run)", other = "held-other-\(run)"
+        let before = HeldUnfinished(database: MaerDatabase(path: path), kind: .books)
+        _ = before.adopt(before: [:], after: [book: Self.progress(0.5)])
+        await before.awaitPendingWrites()
+        let queue = PlayQueue(isPlayable: { _ in true })
+        queue.playLast(book)
+        queue.playLast(other)
+        let model = LibraryViewModel(provider: ABSServerSwitchTests.Server(books: []), upNext: queue,
+                                     heldUnfinished: HeldUnfinished(database: MaerDatabase(path: path), kind: .books))
+        model.noteServerAnswer([book: Self.progress(1, finished: true), other: Self.progress(1, finished: true)])
+        #expect(!queue.contains(book), "a book finished while the app was closed stayed in Up Next")
+        #expect(queue.contains(other), "a book no answer held unfinished was taken out")
+    }
+
+    @Test("only a server answer moves the library's kept set; leaving a server forgets this run's answer too", .needsTheSources)
+    func onlyAnAnswerMovesTheKeptSet() throws {
+        let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/ViewModels/LibraryViewModel.swift"), encoding: .utf8))
+        let rebuild = try #require(functionBody(of: "private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) async {", in: text))
+        #expect(!rebuild.contains(".adopt(") && !rebuild.contains("newlyFinished("),
+                "a rebuild from the cache, from known progress or without a source moves the kept set")
+        #expect(text.components(separatedBy: "noteServerAnswer(").count - 1 == 3, "the declaration and the two answers")
+        #expect(text.contains("if let fetchedProgress { noteServerAnswer(fetchedProgress) }"),
+                "the load asks with what it knows instead of what the server answered")
+        let refresh = try #require(functionBody(of: "func refreshProgress() async {", in: text))
+        #expect(refresh.contains("noteServerAnswer(progress)"))
+        let forget = try #require(functionBody(of: "func forgetHeldUnfinished() {", in: text))
+        #expect(forget.contains("lastProgress = [:]"), "the run's answer of the former server stays the baseline")
+        let provider = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/Providers/ABSPodcastProvider.swift"), encoding: .utf8))
+        let sets = try #require(functionBody(of: "func forgetServerSets() {", in: provider))
+        #expect(sets.contains("episodeProgress = [:]"), "the run's episode progress of the former server stays the baseline")
+    }
+
     private static func log(in folder: URL, queue: PlayQueue) -> PodcastListenLog {
         PodcastListenLog(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path), upNext: queue)
     }

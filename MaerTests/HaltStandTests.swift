@@ -44,7 +44,19 @@ struct HaltStandTests {
         func coverURL(forItemId itemId: String) -> URL? { nil }
         func streamURL(forContentPath contentPath: String) -> URL? { URL(fileURLWithPath: contentPath) }
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        /// The next write waits until `release()`, so a round stays in flight.
+        var holdsNextWrite = false
+        private var held: CheckedContinuation<Void, Never>?
+        var isHolding: Bool { held != nil }
+        func release() {
+            held?.resume()
+            held = nil
+        }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
+            if holdsNextWrite {
+                holdsNextWrite = false
+                await withCheckedContinuation { held = $0 }
+            }
             if refuses { throw URLError(.notConnectedToInternet) }
             writes += 1
             position = currentTime
@@ -148,6 +160,35 @@ struct HaltStandTests {
         server.refuses = false
         _ = try await Self.device(server, id)
         #expect(server.position == 34, "the next start wrote the stand of the interruption, not the last tick: \(server.position)")
+    }
+
+    @Test("a restored flush that waits behind a running round writes at its own moment and keeps a newer queued stand", .needsAudio)
+    func aWaitingFlushKeepsItsMoment() async throws {
+        let file = try TickWorkTests().tone(seconds: 60)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let first = "halt-first-\(UUID().uuidString)", second = "halt-second-\(UUID().uuidString)"
+        defer { Task { await Self.clean(first); await Self.clean(second) } }
+        let server = Server(file: file.path, position: 5)
+        let model = try await Self.device(server, first)
+        // A pause of the first title, whose write hangs: a round in flight.
+        model.isPlaying = true
+        model.currentTime = 20
+        server.holdsNextWrite = true
+        let pausing = Task { await model.syncProgress(.pause) }
+        for _ in 0..<100 where !server.isHolding { try await Task.sleep(nanoseconds: 20_000_000) }
+        try #require(server.isHolding, "the precondition: the pause's write is in flight")
+        // The second title starts over a restored older stand while a newer
+        // one waits in the queue: its flush becomes the round's follow-up.
+        let now = Date().timeIntervalSince1970 * 1000
+        ListeningStore.record(second, position: 31, duration: 60, atMs: now - 3000)
+        await SyncQueue.shared.enqueue(itemId: second, currentTime: 34, duration: 60, isFinished: false)
+        try #require(SyncQueue.shared.pendingUpdate(itemId: second) != nil, "the precondition: a stand is queued")
+        await model.load(item: try await server.fetchItemDetail(itemId: second))
+        server.release()
+        await pausing.value
+        #expect(server.position == 31, "the follow-up did not flush the restored stand: \(server.position)")
+        #expect(SyncQueue.shared.pendingUpdate(itemId: second)?.currentTime == 34,
+                "the follow-up wrote at the moment now and retired the newer queued stand")
     }
 
     @Test("the restored moment travels with its one flush: no write reads it from the player, a follow-up carries it", .needsTheSources)

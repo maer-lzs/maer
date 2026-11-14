@@ -970,6 +970,7 @@ final class LibraryViewModel: ObservableObject {
             fetchedProgress = nil
         }
         let progress = ProgressAnswer.of(fetchedProgress, known: lastProgress)
+        if let fetchedProgress { noteServerAnswer(fetchedProgress) }
         do {
             librarySeed = try await seedTask
         } catch {
@@ -1101,6 +1102,7 @@ final class LibraryViewModel: ObservableObject {
             items = Self.plausibleFreshItems(fresh, cached: cachedItems)
         }
         isShowingOfflineCache = false
+        noteServerAnswer(progress)
         await rebuild(items: items, progress: progress)
         saveLibraryDiskCache(items: items, progress: progress)
     }
@@ -1209,9 +1211,11 @@ final class LibraryViewModel: ObservableObject {
     private let heldUnfinished: HeldUnfinished?
 
     /// The server left the device (`AuthViewModel.forgetFormerServer`): the
-    /// books it held unfinished are no baseline for the next server or account.
+    /// books it held unfinished are no baseline for the next server or
+    /// account, neither the set kept across starts nor this run's answer.
     func forgetHeldUnfinished() {
         heldUnfinished?.forget()
+        lastProgress = [:]
     }
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.
@@ -1357,6 +1361,18 @@ final class LibraryViewModel: ObservableObject {
                              recentlyAdded: recentlyAdded, sorted: sorted, grouped: grouped)
     }
 
+    /// A server's answer of the books' progress, before the rebuild takes it:
+    /// a book it finished that the answer before held as unfinished, in this
+    /// run or the last answer of an earlier one, leaves Up Next, as with a
+    /// mark set here. Only a real answer asks this, so the set kept across
+    /// starts moves with the server's answers alone, never with a rebuild
+    /// from the cache, from known progress or without a source.
+    func noteServerAnswer(_ progress: [String: BookProgress]) {
+        let finished = heldUnfinished?.adopt(before: lastProgress, after: progress)
+            ?? HeardElsewhere.newlyFinished(before: lastProgress, after: progress)
+        if !finished.isEmpty { upNext?.markedPlayed(finished) }
+    }
+
     /// Coalescing: while one off-main rebuild runs, later calls just replace the
     /// pending snapshot (merge to latest) instead of queuing up.
     private var rebuildRunning = false
@@ -1372,13 +1388,7 @@ final class LibraryViewModel: ObservableObject {
         // an empty library and a wiped one look the same.
         Logger.library.notice("LIBRARY rebuild items=\(items.count) progress=\(progress.count) local=\(self.localCache.count) before=\(self.entries.count)")
         cachedItems = items
-        // A book the server's answer finished that the answer before held
-        // as unfinished, in this run or the last answer of an earlier one,
-        // leaves Up Next, as with a mark set here.
-        let finished = heldUnfinished?.adopt(before: lastProgress, after: progress)
-            ?? HeardElsewhere.newlyFinished(before: lastProgress, after: progress)
         lastProgress = progress
-        if !finished.isEmpty { upNext?.markedPlayed(finished) }
         let input = rebuildInput(items: items, progress: progress)
         // detached because the rebuild is CPU work and the view model is MainActor by default
         let output = await Task.detached(priority: .userInitiated) {

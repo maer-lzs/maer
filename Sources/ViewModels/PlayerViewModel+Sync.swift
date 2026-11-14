@@ -83,6 +83,7 @@ extension PlayerViewModel {
         var coversPause = false
         repeat {
             syncFollowUpOrigin = nil
+            syncFollowUpRestoredAt = nil
             let beganPending = pauseRecordPending
             let wrote = await performSync(runOrigin, restoredAt: runRestoredAt)
             if AccountSwitchHold.clearsPauseMark(roundBeganPending: beganPending, roundWrote: wrote) {

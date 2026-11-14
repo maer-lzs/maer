@@ -45,10 +45,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// The server left the device (`AuthViewModel.forgetFormerServer`): the
     /// episodes it named and held unfinished are no baseline for the next
-    /// server or account.
+    /// server or account, neither the sets kept across starts nor this
+    /// run's progress.
     func forgetServerSets() {
         known.forget()
         heldUnfinished.forget()
+        episodeProgress = [:]
     }
 
     /// The server's progress replaces the held one; an episode it finished
