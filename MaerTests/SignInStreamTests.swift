@@ -26,7 +26,7 @@ struct SignInStreamTests {
         { SignInReach.mayCarry(own: own, target: $0) ? signIn : [:] }
     }
 
-    @Test("die Regel: das Ende am eigenen Host bekommt die Anmeldung, ein fremder Host und https nach http nicht, ein unbekanntes Ende wird nicht gefragt")
+    @Test("the rule: the end on the own host gets the sign-in, a foreign host and https to http do not, an unknown end is not asked")
     func theRule() async throws {
         let own = try #require(URL(string: "https://feed.example.org/feed.xml"))
         let start = try #require(URL(string: "https://feed.example.org/audio/1.mp3"))
@@ -78,7 +78,7 @@ struct SignInStreamTests {
             userMediaProgress: nil)
     }
 
-    @Test("das Ziel einer Umleitung zu einem anderen Host sieht in keiner Anfrage des Stroms die Anmeldung, auch nach einem Sprung",
+    @Test("the target of a redirect to another host sees the sign-in in no request of the stream, also after a jump",
           .needsAudio)
     func theTargetOfARedirectNeverSeesTheSignIn() async throws {
         let (origin, other) = try await hosts()
@@ -106,7 +106,7 @@ struct SignInStreamTests {
         #expect(atTarget.contains { $0.contains("authorization:") } == false)
     }
 
-    @Test("ein Strom, dessen Quelle nicht umleitet, behaelt die Anmeldung am eigenen Host", .needsAudio)
+    @Test("a stream whose source does not redirect keeps the sign-in on the own host", .needsAudio)
     func aStreamThatStaysKeepsItsSignIn() async throws {
         let (origin, other) = try await hosts()
         defer { origin.stop(); other.stop() }
@@ -128,7 +128,7 @@ struct SignInStreamTests {
         #expect(other.recorded.isEmpty)
     }
 
-    @Test("benannte Grenze: leitet der eigene Host seine Endadresse spaeter selbst um, traegt der Strom die Anmeldung mit (gemessen)")
+    @Test("named limit: if the own host later redirects its end address itself, the stream carries the sign-in along (measured)")
     func theNamedLimit() async throws {
         let (origin, other) = try await hosts()
         defer { origin.stop(); other.stop() }
@@ -153,7 +153,7 @@ struct SignInStreamTests {
         #expect(!atTarget.isEmpty, "the later redirect was not followed, the limit was not measured")
     }
 
-    @Test("scheitert die Frage nach dem Ende, geht der Strom nicht mit der Anmeldung an die bekannte Adresse: die Wiedergabe haelt mit einem Satz, und das naechste Abspielen fragt neu", .needsTheSources)
+    @Test("if the question for the end fails, the stream does not go to the known address with the sign-in: playback stops with a sentence, and the next play asks again", .needsTheSources)
     func aFailedAskHolds() async throws {
         let own = try #require(URL(string: "https://feed.example.org/feed.xml"))
         let start = try #require(URL(string: "https://feed.example.org/audio/1.mp3"))
@@ -175,7 +175,7 @@ struct SignInStreamTests {
         }
     }
 
-    @Test("nach einem Ladefehler wird die Spur neu geplant: eine Endadresse, die nicht mehr antwortet, haelt den Titel nicht fest",
+    @Test("after a load error the track is planned again: an end address that no longer answers does not hold the title",
           .needsAudio)
     func aLapsedEndIsPlannedAnew() async throws {
         let body = try Data(contentsOf: try TickWorkTests().tone(seconds: 60))
@@ -211,7 +211,7 @@ struct SignInStreamTests {
         #expect(atFresh.contains { $0.contains("authorization:") } == false, "the new end saw the sign-in")
     }
 
-    @Test("ein Sprung auf eine Spur, deren gehaltener Plan auf ein abgelaufenes Ende zeigt, faellt in den Ladefehler, und der naechste Druck auf Wiedergabe fragt das Ende neu",
+    @Test("a jump to a track whose held plan points to an expired end falls into the load error, and the next press on play asks for the end again",
           .needsAudio)
     func aJumpToALapsedEndIsPlannedAnew() async throws {
         let body = try Data(contentsOf: try TickWorkTests().tone(seconds: 60))
@@ -250,7 +250,7 @@ struct SignInStreamTests {
                 "the play after the failed jump built its stream from the lapsed plan again")
     }
 
-    @Test("ein Wirt, der die Frage nach dem Ende zwei Sekunden haelt, haelt den Start, und der Strom traegt am fremden Ende keine Anmeldung",
+    @Test("a host that holds the question for the end for two seconds holds the start, and the stream carries no sign-in at the foreign end",
           .needsAudio)
     func aHostThatHoldsTheAskHoldsTheStart() async throws {
         let body = try HeaderRedirectMeasureTests.tone()
@@ -279,7 +279,7 @@ struct SignInStreamTests {
         #expect(other.recorded.contains { $0.contains("authorization:") } == false, "the foreign end saw the sign-in")
     }
 
-    @Test("ein Laden, das auf den Plan seiner ersten Spur wartet, meldet nach einem Stopp keinen Fehler")
+    @Test("a load that waits for the plan of its first track reports no error after a stop")
     func aLoadThatWaitedLeavesAStoppedModelSilent() async throws {
         let body = try HeaderRedirectMeasureTests.tone()
         let slow = try Host(body: body, contentType: "audio/x-caf", delay: 2)
@@ -299,7 +299,7 @@ struct SignInStreamTests {
         #expect(model.sourceHint == nil, "the load spoke for a title that was left: \(String(describing: model.sourceHint))")
     }
 
-    @Test("stop() beendet die Fragen des Planers im Voraus")
+    @Test("stop() ends the planner's questions in advance")
     func stopEndsTheAsksAhead() async throws {
         let body = try HeaderRedirectMeasureTests.tone()
         let quick = try Host(body: body, contentType: "audio/x-caf")

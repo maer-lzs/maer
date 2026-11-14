@@ -42,7 +42,7 @@ struct ServerTimestampTests {
         ("not a date", nil),
     ]
 
-    @Test("Server-Zeitstempel: dieselben Millisekunden wie vorher, auch mit mehr als drei Nachkommastellen")
+    @Test("Server timestamps: the same milliseconds as before, also with more than three decimal places")
     func sameMomentsAsBefore() {
         for (raw, expected) in Self.table {
             #expect(ServerTimestamp.milliseconds(raw) == expected, "\(raw)")
@@ -52,7 +52,7 @@ struct ServerTimestampTests {
         }
     }
 
-    @Test("Beide Leser der Server-Zeitstempel fragen die eine Regel", .needsTheSources)
+    @Test("Both readers of the server timestamps ask the one rule", .needsTheSources)
     func bothReadersAskTheRule() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let subsonic = try String(contentsOf: root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8)

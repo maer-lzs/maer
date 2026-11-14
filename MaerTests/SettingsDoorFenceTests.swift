@@ -14,9 +14,9 @@ import Foundation
 /// else asks the door. The stock below is the count, both ways
 /// (`StockDrift`); it is empty since the move is complete.
 struct SettingsDoorFenceTests {
-    /// Die drei Heimaten des Schluessel-Topfs, jede mit ihrem Grund IM
-    /// Eintrag. `AppStorageKeys` steht als PRAEFIX, weil die Tuer auf
-    /// mehrere Dateien verteilt ist.
+    /// The three homes of the key pot, each with its reason IN the entry.
+    /// `AppStorageKeys` is given as a PREFIX because the door is spread
+    /// over several files.
     nonisolated static let homes: [(match: String, reason: String)] = [
         ("/Sources/Storage/", "die Zeilen-Schicht, die ihren eigenen Bestand haelt"),
         ("/Ablage.swift", "die Datei-Naht, die neben den Zeilen steht"),
@@ -62,7 +62,7 @@ struct SettingsDoorFenceTests {
     // Both counts read the source tree: without it they are skipped, never
     // red (a stock with entries) and never green (an empty stock). The
     // readers are probed apart from them and run everywhere.
-    @Test("die Vorgabe UserDefaults = .standard im Funktionskopf ist als Pruefnaht gezaehlt, je Datei gleich der Zaehlung", .needsTheSources)
+    @Test("the default UserDefaults = .standard in a function head is counted as a test seam, per file equal to the count", .needsTheSources)
     func theSeamDefaultIsCounted() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
@@ -74,7 +74,7 @@ struct SettingsDoorFenceTests {
         #expect(drift.isEmpty, "a seam default reaches the store past the door unseen, or a stock above the count: \(drift)")
     }
 
-    @Test("die Leser beider Zaehlungen: die Vorgabe im Funktionskopf, das Literal, die Heimaten")
+    @Test("the readers of both counts: the default in a function head, the literal, the homes")
     func theReadersRead() {
         #expect(Self.seamSites(in: "func f(defaults: UserDefaults = .standard) {}") == 1)
         #expect(Self.seamSites(in: "func f(defaults:UserDefaults=.standard) {}") == 1)
@@ -86,7 +86,7 @@ struct SettingsDoorFenceTests {
         #expect(!Self.isAHome("/x/Sources/Views/SettingsView.swift"))
     }
 
-    @Test("UserDefaults.standard nur in der Tuer, dem Bestand und der Ablage; der Rest schrumpft", .needsTheSources)
+    @Test("UserDefaults.standard only in the door, the stock and the storage layer; the rest shrinks", .needsTheSources)
     func onlyTheDoorsTouchTheStore() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {

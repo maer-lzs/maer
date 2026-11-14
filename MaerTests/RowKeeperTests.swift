@@ -20,7 +20,7 @@ struct RowKeeperTests {
         return (MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path), directory)
     }
 
-    @Test("awaitAll wartet jede lebende Kette ab, ein Keeper meldet sich beim Entstehen an, ein toter faellt raus")
+    @Test("awaitAll waits for every living chain, a keeper registers when created, a dead one drops out")
     func awaitAllSettlesEveryLivingKeeper() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -43,7 +43,7 @@ struct RowKeeperTests {
 
     /// Rows that do not open at one moment (before the first unlock) open at
     /// the next write: a failed opening is not held for the run.
-    @Test("oeffnen die Zeilen einmal nicht, oeffnet der naechste Schrieb neu und landet")
+    @Test("if the rows do not open once, the next write opens anew and lands")
     func aFailedOpeningIsAskedAgain() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("keeper-late-\(UUID().uuidString)", isDirectory: true)
@@ -65,7 +65,7 @@ struct RowKeeperTests {
 
     /// The totals keep a chain of their own; it writes to the rows, so the
     /// app's two ends wait for it like for every row chain.
-    @Test("awaitAll wartet auch die eigene Kette der Statistik ab")
+    @Test("awaitAll also waits for the statistics' own chain")
     func awaitAllSettlesTheTotals() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -95,7 +95,7 @@ struct RowKeeperTests {
         "MaerDatabase.swift": "the Siri book query reads the library rows and writes nothing",
     ]
 
-    @Test("jede Schreibkette in die Datenbank ist angemeldet oder namentlich gewartet, bevor der Checkpoint laeuft", .needsTheSources)
+    @Test("every write chain into the database is registered or awaited by name before the checkpoint runs", .needsTheSources)
     func everyWriterIsWaitedForBeforeTheCheckpoint() throws {
         var found: Set<String> = []
         var codeOf: [String: String] = [:]
@@ -117,7 +117,7 @@ struct RowKeeperTests {
         #expect(ends.upperBound <= checkpoint.lowerBound, "the checkpoint runs before the chains landed")
     }
 
-    @Test("die Erlaubnis zum Leeren gilt im Moment des Aufrufs: nur wenn die Handlung selbst leer liess")
+    @Test("the permission to empty applies at the moment of the call: only if the action itself left it empty")
     func thePermissionIsFixedAtTheCall() {
         #expect(RowEmptying.allowed.atCall(memoryIsEmpty: true) == .allowed)
         #expect(RowEmptying.allowed.atCall(memoryIsEmpty: false) == .refused, "a permission granted while rows stood")
@@ -125,7 +125,7 @@ struct RowKeeperTests {
         #expect(RowEmptying.refused.atCall(memoryIsEmpty: false) == .refused)
     }
 
-    @Test("eine verweigerte Leerung spricht nach ihrem Fall: spaeterer Schrieb, abgewertete Erlaubnis, Verdacht")
+    @Test("a refused emptying speaks by its case: later write, narrowed permission, suspicion")
     func aRefusedWipeSpeaksByItsCase() {
         #expect(WipeRefusal.of(laterQueued: true, narrowedPermission: false) == .laterQueued)
         #expect(WipeRefusal.of(laterQueued: true, narrowedPermission: true) == .laterQueued)
@@ -140,7 +140,7 @@ struct RowKeeperTests {
     /// A write allowed to empty, handed over while a row still stood, and a
     /// refused change that empties the memory before the first one runs:
     /// the permission does not ride along on the refused emptying.
-    @Test("eine Erlaubnis zum Leeren faehrt nicht auf einem verweigerten Leeren mit (Keeper)")
+    @Test("a permission to empty does not ride along on a refused emptying (keeper)")
     func aPermissionDoesNotCoverALaterRefusedEmptying() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -166,7 +166,7 @@ struct RowKeeperTests {
     /// The narrowing lives in the chain alone: it covers the write that
     /// narrows and the writes queued by then, never one queued later, and a
     /// second narrowing moves the bound forward with its own write.
-    @Test("eine Abwertung gilt fuer ihren Schrieb und die schon eingereihten, nie fuer einen spaeteren; eine zweite schiebt die Grenze nach vorn")
+    @Test("a narrowing applies to its write and those already queued, never to a later one; a second one moves the bound forward")
     func aNarrowingCoversOnlyTheWritesQueuedByThen() async {
         let chain = RowChain<[String: Int]>(label: "PROBE")
         let heard = Heard()
@@ -200,7 +200,7 @@ struct RowKeeperTests {
     /// base becomes it, and the stock before is let go. Left on the older
     /// value, a refresh that changed nothing kept a second whole stock
     /// alive beside the memory. Under an unknown base nothing moves.
-    @Test("ein leerer Diff ueber bekannten Zeilen schiebt die Grundlage auf den Schnappschuss, ueber unbekannten nicht; uebersprungen schiebt nichts")
+    @Test("an empty diff over known rows moves the base to the snapshot, over unknown ones not; skipped moves nothing")
     func anUnchangedWriteLetsTheStockBeforeGo() async {
         let chain = RowChain<Stock>(label: "PROBE")
         let before = Stock(["a"]), same = Stock(["a"])
@@ -224,7 +224,7 @@ struct RowKeeperTests {
 
     /// The two stores that diff a whole stock answer an empty diff with
     /// `.unchanged`; `.skipped` stays for rows that could not be opened.
-    @Test("die Bibliothek und die Abos melden einen leeren Diff als unveraendert, nicht als uebersprungen", .needsTheSources)
+    @Test("the library and the subscriptions report an empty diff as unchanged, not as skipped", .needsTheSources)
     func theStoresSayUnchangedForAnEmptyDiff() throws {
         var codeOf: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles()
@@ -241,7 +241,7 @@ struct RowKeeperTests {
     /// A chain's label is the name its lines carry (`save failed`, `wipe
     /// REFUSED`, `start: skipped=`); two stores under one name could not be
     /// told apart in a log.
-    @Test("jede Schreibkette traegt ihren eigenen Namen in den Logzeilen", .needsTheSources)
+    @Test("every write chain carries its own name in the log lines", .needsTheSources)
     func everyChainHasItsOwnLabel() throws {
         var labels: [String: [String]] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -262,7 +262,7 @@ struct RowKeeperTests {
     /// write. A reader that reads at once holds while a write is on its
     /// way; a reader that reads off the main actor waits the chain out and
     /// gets nothing when a write was handed over while it read.
-    @Test("rohe Zeilen liest niemand neben einem Schrieb: das Lesen wartet die Kette ab und verwirft sich, wenn waehrenddessen einer kam")
+    @Test("nobody reads raw rows beside a write: the read waits out the chain and discards itself if one came in the meantime")
     func aReadBesideTheChainWaitsAndDropsWhenOvertaken() async {
         let chain = RowChain<[String: Int]>(label: "PROBE")
         let landed = Landed()
@@ -286,7 +286,7 @@ struct RowKeeperTests {
 
     /// A removal given while rows stood narrows its own write; a write
     /// queued afterwards that is refused empty speaks as a suspicion.
-    @Test("im Keeper deckt eine abgewertete Erlaubnis nur ihren eigenen Schrieb")
+    @Test("in the keeper a narrowed permission covers only its own write")
     func aNarrowedPermissionCoversItsOwnWriteInTheKeeper() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -305,7 +305,7 @@ struct RowKeeperTests {
         #expect(keeper.lastRefusal == .suspected, "a later write rode on the narrowing: \(String(describing: keeper.lastRefusal))")
     }
 
-    @Test("ausserhalb der Kette haelt niemand eine Abwertung als Zustand", .needsTheSources)
+    @Test("outside the chain nobody holds a narrowing as state", .needsTheSources)
     func noStoreKeepsANarrowingOfItsOwn() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
@@ -342,7 +342,7 @@ struct RowKeeperTests {
         try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try #require(try database.readerNow()))
     }
 
-    @Test("bei unbekannter Grundlage entfernt der Keeper eine gelesene Zeile, die fehlt, und laesst die ungelesene stehen")
+    @Test("with an unknown base the keeper removes a read row that is missing and leaves the unread one in place")
     func aReadRowThatIsGoneLeavesTheRows() async throws {
         let (keeper, database, directory) = try await keeperOverUnreadableRows()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -353,7 +353,7 @@ struct RowKeeperTests {
         #expect(after.skipped == 1, "the row nobody could read was buried")
     }
 
-    @Test("ein Start, der eine Zeile nicht lesen konnte, bleibt unvollstaendig, auch nach einem gelandeten Schrieb")
+    @Test("a start that could not read a row stays incomplete, even after a landed write")
     func aStartThatMissedARowStaysIncomplete() async throws {
         let (keeper, database, directory) = try await keeperOverUnreadableRows()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -371,7 +371,7 @@ struct RowKeeperTests {
         #expect(complete.startNow() == ["a": 1] && !complete.startIncomplete)
     }
 
-    @Test("ein leerer Schnappschuss ohne Absicht entfernt im Keeper nichts, mit Absicht die gelesenen Zeilen")
+    @Test("an empty snapshot without intent removes nothing in the keeper, with intent the read rows")
     func anEmptySnapshotWithoutIntentLeavesTheRows() async throws {
         let (keeper, database, directory) = try await keeperOverUnreadableRows()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -410,7 +410,7 @@ struct RowKeeperTests {
         var adopted: [[String: Int]] = []
     }
 
-    @Test("ueber ungelesenen Zeilen schreibt der Keeper nicht; gelesen nimmt der Speicher sie auf, dann wird geschrieben")
+    @Test("over unread rows the keeper does not write; once read the store takes them up, then it writes")
     func aWriteOverUnreadRowsReadsFirst() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -437,7 +437,7 @@ struct RowKeeperTests {
         #expect(!keeper.startReadFailed, "a read that succeeded ends the mark")
     }
 
-    @Test("ein Keeper ohne Uebernahme haelt jeden Schrieb ueber ungelesenen Zeilen an")
+    @Test("a keeper without an adoption holds every write over unread rows")
     func aKeeperWithoutAdoptionHolds() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -453,7 +453,7 @@ struct RowKeeperTests {
 
     /// A store gone before its write ran: the write takes nothing and writes
     /// nothing (the chain says so in a line), and the base stays.
-    @Test("ein Speicher, der vor seinem Schrieb fort ist: nichts wird geschrieben, die Grundlage bleibt")
+    @Test("a store that is gone before its write: nothing is written, the base stays")
     func aStoreGoneBeforeItsWriteWritesNothing() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -470,7 +470,7 @@ struct RowKeeperTests {
     /// Two writes queued in one go before the adoption, the rows readable by
     /// then: the second write takes the memory after the adoption, so no row
     /// the first one read leaves.
-    @Test("zwei Schriebe in einem Zug vor der Uebernahme: der zweite entfernt keine gelesene Zeile")
+    @Test("two writes in one go before the adoption: the second removes no read row")
     func aWriteQueuedBeforeTheAdoptionKeepsTheReadRows() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -492,7 +492,7 @@ struct RowKeeperTests {
     /// The positions that never reached the server, after a failed start:
     /// what this run queues waits until the rows are read, and then both
     /// stay, in memory and in the rows.
-    @Test("die Sync-Warteschlange nach gescheitertem Start: gelesen bleiben die alten Eintraege neben den neuen")
+    @Test("the sync queue after a failed start: once read, the old entries stay beside the new ones")
     func theSyncQueueKeepsTheEntriesItCouldNotRead() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -520,7 +520,7 @@ struct RowKeeperTests {
     /// The adoption of each store with rows of many keys, after a failed
     /// start: the rows read stand in memory and on disk after the next
     /// write, whichever write it is (here: a delete of nothing, a check).
-    @Test("Downloads und Sync-Verlauf nehmen nach gescheitertem Start die gelesenen Zeilen auf")
+    @Test("Downloads and sync history take up the read rows after a failed start")
     func eachStoreAdoptsTheRowsItRead() async throws {
         let (database, directory) = try database()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -553,7 +553,7 @@ struct RowKeeperTests {
 
     /// Every keeper and every chain a store builds itself has the store's
     /// adoption: one without it holds every write over unread rows for good.
-    @Test("jeder Keeper und jede eigene Kette in den Quellen hat die Uebernahme ihres Speichers", .needsTheSources)
+    @Test("every keeper and every own chain in the sources has the adoption of its store", .needsTheSources)
     func everyKeeperHasItsAdoption() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources)
@@ -581,7 +581,7 @@ struct RowKeeperTests {
     /// the podcast rows, whose start reads in stages and hands the base it
     /// reckoned to its chain (`started(base:skipped:)`). Both ways of a start
     /// say rows that did not decode in the one line of the chain.
-    @Test("die Mechanik lesen, uebernehmen, schreiben steht an einer Stelle", .needsTheSources)
+    @Test("the mechanism read, adopt, write stands in one place", .needsTheSources)
     func theMechanismStandsInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }

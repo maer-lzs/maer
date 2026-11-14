@@ -22,30 +22,30 @@ struct SourceMapAreasTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    /// Die drei Stellen, die die Karte zeigen: Einrichtung, Einstellungen
-    /// und die naechsten Schritte nach der Einrichtung.
+    /// The three places that show the card: setup, settings
+    /// and the next steps after setup.
     static let doors = ["Sources/Views/SetupView.swift",
                         "Sources/Views/SettingsView.swift",
                         "Sources/Views/NextStepsView.swift"]
 
-    /// Der Rueckweg zur Onboarding-Karte ist kein eigener Weg, sondern
-    /// EINE Komponente an zwei Tueren: der Einrichtungsbildschirm und die
-    /// Quellen-Uebersicht in den Einstellungen. Wer die Karte einmal
-    /// weggetippt hat, findet sie darum ohne eine zweite Route.
+    /// The way back to the onboarding card is no path of its own, but
+    /// ONE component at two doors: the setup screen and the
+    /// sources overview in settings. Whoever has tapped the card
+    /// away once therefore finds it without a second route.
     ///
-    /// Ohne diesen Fall koennte eine der beiden Seiten sich eine eigene
-    /// Fassung bauen, und der Rueckweg fuehrte auf etwas anderes als die
-    /// Karte von damals.
-    @Test("Einrichtung und Einstellungen erreichen DIESELBE Karte", .needsTheSources)
+    /// Without this case one of the two sides could build its own
+    /// version, and the way back would lead to something other than the
+    /// card from back then.
+    @Test("Setup and settings reach the SAME card", .needsTheSources)
     func bothDoorsReachTheSameCard() throws {
         for tuer in Self.doors {
             let text = try sourceText(tuer)
             #expect(text.contains("SourceMapCard("),
                     "\(tuer) zeichnet die Karte nicht mehr")
         }
-        // Rot-Probe am Instrument: die Karte gibt es genau EINMAL. Zwei
-        // Definitionen waeren zwei Wahrheiten, und der Zaun oben saehe es
-        // nicht, weil beide Tueren weiter „SourceMapCard(" enthielten.
+        // Red probe at the instrument: the card exists exactly ONCE. Two
+        // definitions would be two truths, and the fence above would not see it,
+        // because both doors would still contain „SourceMapCard(".
         let karte = try sourceText("Sources/Views/SourceMapCard.swift")
         #expect(karte.contains("struct SourceMapCard: View"))
         for andere in Self.doors {
@@ -54,12 +54,12 @@ struct SourceMapAreasTests {
         }
     }
 
-    /// GEWANDERT mit dem Zwei-Fragen-Neubau: die Bereichs-Schalter leben
-    /// als REIHEN auf der Reihen-Seite. Die Vollstaendigkeits-Aussage gilt
-    /// weiter (Freie Musik steuerte monatelang eine Flaeche ohne Schalter
-    /// in der Liste) und haelt jetzt die Bereichs-Aufzaehlung gegen die
-    /// Reihen-Aufzaehlung: jeder Katalog-Bereich hat seine abschaltbare
-    /// Reihe.
+    /// MOVED with the two-questions rebuild: the area switches live
+    /// as ROWS on the rows page. The completeness statement still
+    /// holds (Free music steered a surface for months without a switch
+    /// in the list) and now holds the area enumeration against the
+    /// rows enumeration: every catalog area has its switchable
+    /// row.
     @Test("every catalog area resolves to a toggleable row")
     func everyAreaHasItsRow() throws {
         for area in FreeCatalog.Area.allCases {
@@ -71,9 +71,9 @@ struct SourceMapAreasTests {
         }
     }
 
-    /// Die Karte traegt KEINEN Bereichs-Schalter mehr — ein einzelner
-    /// zurueckgekehrter Schalter schriebe an der Aufraeum-Regel vorbei
-    /// (der eine Schreibweg ist `AppRows.setVisible`).
+    /// The card carries NO area switch any more: a single
+    /// returned switch would write past the cleanup rule
+    /// (the one write path is `AppRows.setVisible`).
     @Test("the source map card carries no area switch any more", .needsTheSources)
     func noAreaToggleOnTheCard() throws {
         let text = try sourceText("Sources/Views/SourceMapCard.swift")
@@ -93,7 +93,7 @@ struct SourceMapAreasTests {
     /// At an accessibility size the card had no room: the tick took width,
     /// and "example.invalid" broke as "example.in-valid". The host may break
     /// after a dot, and the tick stays out where the line says it.
-    @Test("ein Host bricht nach einem Punkt statt mit Trennstrich, und bei Bedienhilfe-Groessen steht kein Haken", .needsTheSources)
+    @Test("a host breaks after a dot instead of with a hyphen, and at accessibility sizes no tick stands", .needsTheSources)
     func theHostBreaksAtADot() throws {
         #expect(SourceMapCard.breakableHost("example.invalid") == "example.\u{200B}invalid")
         #expect(SourceMapCard.breakableHost("abs.home.example.net") == "abs.\u{200B}home.\u{200B}example.\u{200B}net")
@@ -106,7 +106,7 @@ struct SourceMapAreasTests {
         #expect(card.components(separatedBy: "Self.showsTick(connected:").count - 1 == 2, "a row draws its tick past the rule")
     }
 
-    @Test("Bereit ist abgehakt; nur ein Bereich, der einen Server braucht, bleibt ohne Haken")
+    @Test("Ready is ticked; only an area that needs a server stays without a tick")
     func readyAreasAreTicked() {
         let none = SourceMapFacts()
         #expect(SourceMapCard.isConnected(.radio, facts: none))
@@ -125,7 +125,7 @@ struct SourceMapAreasTests {
     /// symbol, and at the usual size too): it is part of the label's title.
     /// Both kinds of row on the card, the areas and Mär Sync, go through
     /// the one row label.
-    @Test("die Unterzeile einer Kartenzeile steht bei jeder Groesse an der Titelkante, beide Zeilenarten nehmen denselben Baustein", .needsTheSources)
+    @Test("a card row's subline stands at the title edge at every size, both kinds of row take the same part", .needsTheSources)
     func theLineKeepsTheTitleEdge() throws {
         let card = SyncContractFenceTests.stripped(try sourceText("Sources/Views/SourceMapCard.swift"))
         let uses = card.components(separatedBy: "SourceMapRowLabel(title:").count - 1
@@ -140,14 +140,14 @@ struct SourceMapAreasTests {
         #expect(!row.contains("dynamicTypeSize"), "the edge depends on the size again")
     }
 
-    /// Mär Sync ist kein Medienbereich, steht aber auf der Karte: sonst
-    /// fehlt dort der Weg, auf dem die Daten zwischen den Geraeten reisen.
-    /// Die Zeile sagt jeden Zustand der einen Regel, und nur der tragende
-    /// bekommt den Haken.
-    @Test("Die Mär-Sync-Zeile sagt jeden Zustand, nur der tragende ist abgehakt")
+    /// Mär Sync is no media area, but it stands on the card: otherwise
+    /// the way the data travels between the devices is missing there.
+    /// The row says every state of the one rule, and only the carrying one
+    /// gets the tick.
+    @Test("The Mär Sync row says every state, only the carrying one is ticked")
     func syncLineTable() {
-        // Der Testwirt laeuft in der Sprache des Simulators: erwartet wird
-        // der uebersetzte Satz, wie in den anderen Zeugen des Katalogs.
+        // The test host runs in the simulator's language: the translated
+        // sentence is expected, as in the other witnesses of the catalog.
         let host = "sync.example.net"
         let erwartet: [(MaerSyncStanding, String, Bool)] = [
             (.carrying, String(localized: "Connected to \(host)"), true),
@@ -163,19 +163,19 @@ struct SourceMapAreasTests {
             #expect(line.connected == connected, "\(standing)")
             saetze.insert(line.text)
         }
-        // Sieben Zustaende, sieben verschiedene Saetze: keiner spricht fuer
-        // einen anderen.
+        // Seven states, seven different sentences: none speaks for
+        // another.
         #expect(saetze.count == erwartet.count)
         #expect(SourceMapSyncLine.of(.carrying, host: host).text.contains(host))
         #expect(SourceMapSyncLine.of(.carrying, host: nil).text.contains("Mär Sync"))
         #expect(SourceMapFacts().syncStanding == .notInUse)
     }
 
-    /// Die Zeile sitzt IN der Komponente (alle drei Tueren zeigen sie
-    /// gleich), fuehrt zur Mär-Sync-Seite und liest ihren Zustand ueber den
-    /// einen Leser; der liest den Zugang ueber `stored()`, und die Seite des
-    /// Dienstes tut dasselbe statt am Token vorbei.
-    @Test("Die Karte fuehrt zu Mär Sync und liest den Zustand ueber den einen Leser", .needsTheSources)
+    /// The row sits IN the component (all three doors show it
+    /// the same), leads to the Mär Sync page and reads its state through the
+    /// one reader; that one reads the access through `stored()`, and the
+    /// service's page does the same instead of going past the token.
+    @Test("The card leads to Mär Sync and reads the state through the one reader", .needsTheSources)
     func syncRowWiring() throws {
         let karte = try sourceText("Sources/Views/SourceMapCard.swift")
         for teil in ["MaerSyncSettingsView()", "SourceMapSyncLine.of(facts.syncStanding",
@@ -203,7 +203,7 @@ struct SourceMapAreasTests {
     /// The card reads its facts at every draw and is drawn again when the
     /// sources change or it comes back into view: a sign-in on the page it
     /// led to shows at once, not at the next start.
-    @Test("die Quellenkarte liest ihren Stand bei jedem Zeichnen, nicht einmal", .needsTheSources)
+    @Test("the sources card reads its state at every draw, not once", .needsTheSources)
     func theCardReadsItsStandEachTime() throws {
         let card = FetchAnswerTests.squeezed(try sourceText("Sources/Views/SourceMapCard.swift"))
         #expect(card.contains("let facts: () -> SourceMapFacts"), "the card holds a stand read once")

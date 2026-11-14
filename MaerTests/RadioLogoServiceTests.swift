@@ -27,7 +27,7 @@ struct RadioLogoCacheTests {
 
     /// The chain asks the rule and books in one place only, so a second
     /// write (a failure booked after all) or a switch past the rule shows.
-    @Test("die Logo-Kette bucht nur ueber die Regel, an einer Stelle", .needsTheSources)
+    @Test("the logo chain books only through the rule, in one place", .needsTheSources)
     func theChainBooksThroughTheRuleOnly() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/RadioLogoService.swift"),
@@ -64,7 +64,7 @@ struct RadioLogoGateVersioningTests {
     /// the 64 px gate blocked the retry, so a threshold change never reached
     /// the device. The same class as the baked-in width, for verdicts
     /// instead of URLs.
-    @Test("die Tor-Signatur leitet sich aus den Schwellen ab — kein Handzaehler")
+    @Test("the gate signature derives from the thresholds, no hand-kept counter")
     func signatureFollowsTheThresholds() {
         let signature = RadioLogoService.gateSignature
         #expect(signature.contains("\(RadioFaviconGate.minSide)"))
@@ -78,7 +78,7 @@ struct RadioLogoGateVersioningTests {
 // MARK: - The generated data is the first stage
 
 struct RadioLogoDataTests {
-    @Test("die Tabelle traegt DATEINAMEN, nie fertige URLs")
+    @Test("the table carries FILE NAMES, never finished URLs")
     func storesFileNamesOnly() {
         // No entry is a URL; a URL would bake the width in again.
         for (_, file) in RadioLogoData.commonsFiles {
@@ -87,7 +87,7 @@ struct RadioLogoDataTests {
         }
     }
 
-    @Test("Kern-Sender werden ohne Netz beantwortet")
+    @Test("core stations are answered without the network")
     func coreStationsResolveOffline() {
         // Samples from the DACH cores, each bound to its station object.
         // They are why the table exists: the device does not run the chain
@@ -176,7 +176,7 @@ struct RadioLogoBundesligaTests {
     /// truth for the same assignment. No radio station object carries this
     /// logo, so the entry stands in belegt.json as the one entry without a
     /// binding.
-    @Test("ein Eintrag traegt beide Bundesliga-Familien")
+    @Test("one entry carries both Bundesliga families")
     func oneEntryCarriesBothFamilies() {
         let expected = "Bundesliga logo.svg"
         #expect(RadioLogoData.commonsFile(forName: "Fußball-Bundesliga") == expected)
@@ -192,7 +192,7 @@ struct RadioLogoBundesligaTests {
     /// The prefix rule is not "happens to start alike": the rest MUST begin
     /// at a word boundary (a text match carries no meaning, measured on
     /// laut.fm names).
-    @Test("ein fortgesetztes Wort erbt NICHT")
+    @Test("a continued word does NOT inherit")
     func aContinuedWordIsNoFamily() {
         #expect(RadioLogoService.curatedFile(forName: "Fußball-Bundesligahasser") == nil)
     }
@@ -202,7 +202,7 @@ struct RadioLogoBundesligaTests {
     /// raster, an SVG renders at every width. A raster here would need a
     /// network measurement, and that belongs in the generator
     /// (`renders_at_tile_size`), not in the fence.
-    @Test("der Eintrag kann am Tor nicht sterben")
+    @Test("the entry cannot die at the gate")
     func theEntryCannotBeAGateCorpse() {
         let file = RadioLogoData.commonsFile(forName: "Fußball-Bundesliga")
         #expect(file?.lowercased().hasSuffix(".svg") == true,
@@ -319,7 +319,7 @@ struct RadioLogoRefusalTests {
         #expect(!broken.booked, "a server error leaves no negative memo")
     }
 
-    @Test("die Wurzel des Wirts ist die Adresse ohne Pfad, eine Seite an der Wurzel hat keine")
+    @Test("the root of the host is the address without a path, a page at the root has none")
     func theRootOfTheHost() {
         let deep = URL(string: "https://www.radio.test/webradio/deutschrap?x=1#top")!
         #expect(RadioLogoLookup.rootPageURL(of: deep)?.absoluteString == "https://www.radio.test/")
@@ -374,7 +374,7 @@ struct RadioLogoRefusalTests {
     /// The station page refuses (403) and the root of the same host
     /// declares an icon: the logo comes from the root. A refusing root, or
     /// one without an icon, leaves the refusal as it was: nothing booked.
-    @Test("eine Seite, die abweist, nimmt das Icon der Wurzel desselben Wirts, und eine Abweisung bleibt ohne Befund")
+    @Test("a page that refuses takes the icon of the root of the same host, and a refusal stays without a finding")
     func aRefusingPageTakesTheIconOfItsRoot() async {
         let declared = #"<html><head><link rel="apple-touch-icon" sizes="512x512" href="https://file.radio.test/icon.png"></head></html>"#
         let icon = png(side: 512)
@@ -409,7 +409,7 @@ struct RadioLogoRefusalTests {
     }
 
     /// When the root is asked, by the page's status alone.
-    @Test("die Wurzel wird nach Abweisung und nach nicht da gefragt, nach Pause, Serverfehler und ohne Antwort nicht")
+    @Test("the root is asked after a refusal and after not found, not after a pause, a server error and no answer")
     func whenTheRootIsAsked() {
         let table: [(Int?, Bool)] = [(401, true), (403, true), (404, true), (410, true),
                                      (429, false), (500, false), (503, false), (200, false), (nil, false)]

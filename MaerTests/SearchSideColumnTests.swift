@@ -12,7 +12,7 @@ import Foundation
 /// stand there as the tabs do, the close button at the search's place, and
 /// the X stands once.
 struct SearchSideColumnTests {
-    @Test("jeder Bereich der Suche traegt das Zeichen seines Reiters, die Bibliothek das Haus")
+    @Test("every scope of the search carries the symbol of its tab, the library the house")
     func everyScopeWearsItsTabsGlyph() {
         #expect(SearchScope.library.tab == .home)
         for scope in SearchScope.allCases where scope != .library {
@@ -20,7 +20,7 @@ struct SearchSideColumnTests {
         }
     }
 
-    @Test("die Spalte bleibt in der Suche, die Bereiche stehen nur dort, das X steht einmal", .needsTheSources)
+    @Test("the column stays in the search, the scopes stand only there, the X stands once", .needsTheSources)
     func theColumnStaysInTheSearch() throws {
         let library = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))

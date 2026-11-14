@@ -441,7 +441,7 @@ func radioBrowserCancellationPropagates() async {
 /// A failed discovery run never replaces the rows that stand, nor the
 /// cache they came from, and does not count as loaded.
 struct RadioDiscoveryStepTests {
-    @Test("ein gescheiterter Entdecken-Lauf ersetzt weder die stehende Reihe noch den Zwischenstand und zaehlt nicht als geladen; ohne Reihe sagt er es", .needsTheSources)
+    @Test("a failed discover run replaces neither the standing row nor the interim state and does not count as loaded; without a row it says so", .needsTheSources)
     func aFailedRunKeepsWhatStands() throws {
         #expect(RadioStore.discoveryStep(failed: false, standing: true) == .replace)
         #expect(RadioStore.discoveryStep(failed: false, standing: false) == .replace)
@@ -501,7 +501,7 @@ struct RadioStateQueryTests {
         #expect(RadioMapping.displayName("A | Station") == "A | Station")
     }
 
-    @Test("AAC+ am Namensende faellt wie AAC: in der Anzeige und im Gruppenschluessel, ein Plus mitten im Namen bleibt")
+    @Test("AAC+ at the end of a name drops like AAC: in the display and in the group key, a plus in the middle of a name stays")
     func aacPlusAtTheEndIsStripped() {
         #expect(RadioMapping.displayName("Radio Wien AAC+") == "Radio Wien")
         #expect(RadioMapping.displayName("Radio Wien AAC+ 64k") == "Radio Wien")
@@ -575,7 +575,7 @@ struct RadioStateQueryTests {
     /// audit caught it booking the LIFE magazine for Life Radio and Reset
     /// Media for the Reshet networks. All seven decided cases, verbatim from
     /// the live search API.
-    @Test("Teilmengen-Label brauchen ein Radio-Wort; die Datei muss das Label tragen")
+    @Test("subset labels need a radio word; the file must carry the label")
     func foreignMarkGuards() {
         func hit(_ id: String, _ label: String, _ desc: String) -> Data {
             Data("""
@@ -641,7 +641,7 @@ struct RadioStateQueryTests {
     /// station, the last best: each stream stands once, the shown one first,
     /// the others best first (before, `a, b, a`: the earlier loser twice and
     /// the winner missing from its own list).
-    @Test("die Auswahl eines gefalteten Senders zeigt jeden Strom einmal, den gezeigten zuerst")
+    @Test("the choice of a folded station shows each stream once, the shown one first")
     func aLaterWinnerCarriesEachVariantOnce() {
         let deduped = RadioMapping.dedupeForDisplay([Self.rock("a", 64), Self.rock("b", 96), Self.rock("c", 192)])
         let winner = deduped.first
@@ -653,7 +653,7 @@ struct RadioStateQueryTests {
     /// An entry that already brings variants keeps them in the bundle,
     /// whether it wins or loses, and a stream it brings twice (itself among
     /// its own variants) stands once.
-    @Test("mitgebrachte Varianten bleiben in der Faltung erhalten, jeder Strom einmal")
+    @Test("brought-along variants are kept in the folding, each stream once")
     func broughtVariantsStayInTheBundle() {
         var winning = Self.rock("c", 192)
         winning.variants = [Self.rock("c", 192), Self.rock("x", 32)]
@@ -668,7 +668,7 @@ struct RadioStateQueryTests {
     /// The shown entry is the best of the ENTRIES, not of every stream: one
     /// may bring a better stream than itself. The shown one still stands
     /// first, the better stream after it, none twice.
-    @Test("ist der gezeigte Strom nicht der beste, steht er trotzdem zuerst, der beste danach, keiner doppelt")
+    @Test("if the shown stream is not the best, it still comes first, the best after it, none twice")
     func theShownStreamLeadsEvenWhenABetterOneRidesAlong() {
         var shown = Self.rock("c", 192)
         shown.variants = [Self.rock("c", 192), Self.rock("z", 320)]
@@ -682,7 +682,7 @@ struct RadioStateQueryTests {
     /// several ids (measured: Rock Antenne three times with one address,
     /// name, homepage and bitrate). Each address stands once, the shown
     /// entry for its own address, the best id for another.
-    @Test("in der Auswahl steht jede Stromadresse einmal, auch wenn Radio Browser sie unter mehreren Kennungen fuehrt")
+    @Test("each stream address appears once in the choice, even if Radio Browser lists it under several ids")
     func eachStreamAddressStandsOnce() {
         let twin = "http://mp3channels.webradio.rockantenne.de/rockantenne"
         let other = "https://cdn.example/rock-aac"
@@ -700,7 +700,7 @@ struct RadioStateQueryTests {
     /// address: two answers of the catalog can give one id two addresses,
     /// and a list keyed by id would then hold the same id twice. The fence
     /// reads every file under Sources, so a new list is seen where it lands.
-    @Test("Entdoppeln, Waehlen und Zeichnen der Varianten nehmen denselben Schluessel, die Stromadresse", .needsTheSources)
+    @Test("de-duplicating, choosing and drawing the variants use the same key, the stream address", .needsTheSources)
     func variantsAreKeyedByAddressEverywhere() throws {
         let models = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/RadioModels.swift"), encoding: .utf8))
@@ -726,7 +726,7 @@ struct RadioStateQueryTests {
 
     /// The station page lists the streams of every station, a single one
     /// too: a station is at least one stream.
-    @Test("Jeder Sender nennt mindestens einen Stream, mit Format, Bitrate und Wirt")
+    @Test("Every station names at least one stream, with format, bitrate and host")
     func everyStationListsAtLeastOneStream() {
         let single = RadioStation(id: "radio:rb:one", name: "Single", streamURL: "http://live.example.at/one-q2a",
                                   bitrate: 192, codec: "MP3")
@@ -747,7 +747,7 @@ struct RadioStateQueryTests {
 
     /// The streams stand on the station page under no condition; a count
     /// gate would leave the column empty for a station with one stream.
-    @Test("Die Senderseite zeichnet ihre Streams immer, nicht erst ab zweien", .needsTheSources)
+    @Test("The station page always draws its streams, not only from two on", .needsTheSources)
     func theStationPageAlwaysDrawsItsStreams() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Radio/RadioStationDetailView.swift"),
@@ -817,7 +817,7 @@ struct RadioStateQueryTests {
         "Sources/Views/Radio/RadioGenreView.swift": (1, "genre family members are separate stations"),
     ]
 
-    @Test("Der Varianten-Zaun sieht eine Liste nach Kennung und nach Adresse, auch mehrzeilig und unter anderem Namen")
+    @Test("The variants fence sees a list by id and by address, also over several lines and under another name")
     func theVariantFenceSeesBothKeys() {
         let planted = """
         ForEach(station.variantList) { variant in
@@ -1134,26 +1134,26 @@ struct RadioListenerCoreTests {
     }
 }
 
-// MARK: - National- und Regional-Wahl sind entkoppelt
+// MARK: - National and regional choice are decoupled
 
 struct RadioCountryDecouplingTests {
-    @Test("ohne eigene National-Wahl gilt die geteilte Kaskade (Migration ohne Sprung)")
+    @Test("without its own national choice the shared cascade applies (migration without a jump)")
     func migrationKeepsTodaysBehaviour() {
-        // Niemand hat entkoppelt: National folgt dem gemeinsamen Wert.
-        // Exakt das heutige Verhalten, ohne dass etwas geschrieben wird.
+        // Nobody decoupled: national follows the shared value.
+        // Exactly today's behavior, without anything being written.
         #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: "DE") == "DE")
         #expect(RadioCountryCascade.nationalCode(explicitNational: "", shared: "DE") == "DE")
         #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: nil) == nil)
     }
 
-    @Test("National CH und Region NRW gleichzeitig")
+    @Test("National CH and region NRW at the same time")
     func nationalAndRegionAreIndependent() {
-        // Die Region impliziert DE (NRW), die National-Wahl ist CH.
+        // The region implies DE (NRW), the national choice is CH.
         let shared = RadioCountryCascade.effectiveCode(explicit: nil, regionImplied: "DE",
                                                        locale: "DE")
         #expect(shared == "DE")                                   // Region-Reihe
         #expect(RadioCountryCascade.nationalCode(explicitNational: "CH", shared: shared) == "CH")
-        // Und die Kerne folgen je Reihe ihrem Land.
+        // And the cores follow their country row by row.
         #expect(RadioListenerCores.national(countryCode: "CH")
                 == RadioListenerCores.switzerlandNational)
         #expect(RadioListenerCores.regional(countryCode: "DE",
@@ -1161,26 +1161,26 @@ struct RadioCountryDecouplingTests {
     }
 }
 
-// MARK: - EINE Session-Titel-Quelle fuer den laufenden Track
+// MARK: - ONE session title source for the running track
 
 struct NowPlayingTitleSourceTests {
-    /// Der Zaun in Textform (die Flaechen selbst brauchen eine Session):
-    /// keine Now-Playing-Flaeche darf den laufenden Titel aus der
-    /// ITEM-Aufloesung nehmen. Die liefert fuer Katalog-Kennungen einen
-    /// Stub mit Platzhalter, und genau so trug die Mini-Leiste einen
-    /// Platzhalternamen, waehrend der grosse Player recht hatte.
-    @Test("Now-Playing-Flaechen lesen den Titel aus der Session, nicht vom Item", .needsTheSources)
+    /// The fence in text form (the surfaces themselves need a session):
+    /// no now-playing surface may take the running title from the
+    /// ITEM resolution. For catalog ids that yields a stub with a
+    /// placeholder, and that is exactly how the mini bar carried a
+    /// placeholder name while the big player was right.
+    @Test("Now-playing surfaces read the title from the session, not from the item", .needsTheSources)
     func surfacesReadTheSessionTitle() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         for name in ["Sources/Views/MiniPlayerBar.swift", "Sources/Views/DriveModeView.swift"] {
             let text = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
             #expect(text.contains("nowPlayingTitle"), "\(name) liest die Session nicht")
-            // Nur die ANZEIGE ist gemeint: `activeItem.title` bleibt dort
-            // richtig, wo der Sender-NAME gebraucht wird (Artwork-Initialen).
-            // Deshalb prueft der Zaun Text(...)-Zeilen, nicht jede
-            // Verwendung. Die Praezisierung kam aus einem Fehlschlag genau
-            // dieser Art.
+            // Only the DISPLAY is meant: `activeItem.title` stays correct
+            // where the station NAME is needed (artwork initials).
+            // That is why the fence checks Text(...) lines, not every
+            // use. The refinement came from a failure of exactly
+            // this kind.
             for line in text.split(separator: "\n") where line.contains("Text(") {
                 let collapsed = line.replacingOccurrences(of: " ", with: "")
                 #expect(!collapsed.contains("Text(item.title)"), "\(name): \(line)")
@@ -1190,37 +1190,37 @@ struct NowPlayingTitleSourceTests {
     }
 }
 
-// MARK: - Das Tor kennt die Zielgroesse (EINE Stelle)
+// MARK: - The gate knows the target size (ONE place)
 
 struct RadioGateTargetSizeTests {
-    @Test("die Anforderung folgt der Flaeche, gedeckelt vom strengen Default")
+    @Test("the requirement follows the surface, capped by the strict default")
     func requirementFollowsTheSurface() {
-        // Ohne Zielgroesse: unveraendert streng.
+        // Without a target size: strict as before.
         #expect(RadioFaviconGate.required(targetSide: nil) == RadioFaviconGate.minSide)
-        // Eine WINZIGE Flaeche darf weniger verlangen …
+        // A TINY surface may ask for less …
         #expect(RadioFaviconGate.required(targetSide: 16, scale: 3) == 48)
-        // … eine grosse aber NIE mehr als die allgemeine Regel (Deckel):
+        // … a large one NEVER more than the general rule (cap):
         #expect(RadioFaviconGate.required(targetSide: 128, scale: 3) == RadioFaviconGate.minSide)
         #expect(RadioFaviconGate.required(targetSide: 64, scale: 3) == RadioFaviconGate.minSide)
-        // Und das Tor selbst nutzt genau diese Anforderung.
+        // And the gate itself uses exactly this requirement.
         #expect(RadioFaviconGate.acceptable(pixelWidth: 50, pixelHeight: 50, targetSide: 16))
         #expect(!RadioFaviconGate.acceptable(pixelWidth: 50, pixelHeight: 50))
     }
 }
-/// Die Augenbraue ueber dem Sendernamen: nur was wir in der Sprache des
-/// Lesers BENENNEN koennen, steht dort. Der rohe erste Tag war
-/// englisch und in der Sorte gemischt (MUSIC/ARD/MOSCOW) und stand in
-/// der Nachrichten-Reihe als "MUSIC" da, also aktiv falsch.
+/// The eyebrow above the station name: only what we can NAME in the
+/// reader's language appears there. The raw first tag was
+/// English and mixed in kind (MUSIC/ARD/MOSCOW) and appeared in
+/// the news row as "MUSIC", so actively wrong.
 struct RadioEyebrowTests {
-    @Test("nur benennbare Kategorien erscheinen")
+    @Test("only nameable categories appear")
     func onlyNameableTagsPass() {
         #expect(RadioCatalog.eyebrow(forTags: ["news", "ard"]) == String(localized: "News"))
         #expect(RadioCatalog.eyebrow(forTags: ["  JAZZ "]) == String(localized: "Jazz"))
-        // Sendernetz, Ort, Unbekanntes: die Zeile schweigt lieber.
+        // Station network, place, unknown: the line stays silent.
         #expect(RadioCatalog.eyebrow(forTags: ["ard"]) == nil)
         #expect(RadioCatalog.eyebrow(forTags: ["moscow"]) == nil)
         #expect(RadioCatalog.eyebrow(forTags: []) == nil)
-        // Die erste BENENNBARE gewinnt, nicht die erste ueberhaupt.
+        // The first NAMEABLE one wins, not the first at all.
         #expect(RadioCatalog.eyebrow(forTags: ["moscow", "rock"]) == String(localized: "Rock"))
     }
 }

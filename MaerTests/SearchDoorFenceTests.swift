@@ -8,12 +8,12 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// GOAL 3.0, Punkt 1: die Suchansicht ruft keinen Provider und entscheidet
-/// kein Ziel. Beides lag vorher bei ihr: sie fragte den Musik-Provider und
-/// das Podcast-Verzeichnis selbst, und wohin ein Treffer führt, entschied
-/// `LibraryView`, ein Rufer, der mit Suchen nichts zu tun hat. Der Zaun
-/// hält die Naht; die Rot-Probe steht im Test selbst, weil ein Zaun, der
-/// nur „0 Verstöße" meldet, nichts beweist.
+/// GOAL 3.0, point 1: the search view calls no provider and decides
+/// no destination. Both used to lie with it: it asked the music provider and
+/// the podcast directory itself, and where a hit leads was decided by
+/// `LibraryView`, a caller that has nothing to do with searching. The fence
+/// holds the seam; the red probe is in the test itself, because a fence that
+/// only reports „0 Verstöße" proves nothing.
 struct SearchDoorFenceTests {
     private static func source(_ name: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -21,7 +21,7 @@ struct SearchDoorFenceTests {
         return try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
     }
 
-    /// Die Provider-Namen, die eine Suchfläche nie selbst kennen soll.
+    /// The provider names a search surface must never know itself.
     private static let providerReaches = [
         "AppSession.shared",
         "ITunesDirectory(",
@@ -31,8 +31,8 @@ struct SearchDoorFenceTests {
         "PodcastSubscriptions.shared",
     ]
 
-    /// Der Code ohne Kommentarzeilen. Ein Zaun, der ueber Rohtext sucht,
-    /// reisst sonst an der Begruendung, die erklaert, warum der Griff fort ist.
+    /// The code without comment lines. A fence that searches raw text
+    /// would otherwise trip on the rationale that explains why the grip is gone.
     static func code(in text: String) -> String {
         text.components(separatedBy: "\n").filter {
             let trimmed = $0.trimmingCharacters(in: .whitespaces)
@@ -49,29 +49,29 @@ struct SearchDoorFenceTests {
         hits(providerReaches, in: text)
     }
 
-    @Test("Die Suchansicht fragt keinen Provider selbst", .needsTheSources)
+    @Test("The search view asks no provider itself", .needsTheSources)
     func theSearchViewAsksNoProvider() throws {
         #expect(Self.reaches(in: try Self.source("Sources/Views/SearchScreen.swift")).isEmpty)
-        // Rot-Probe in beide Richtungen: der Prüfer sieht den Griff…
+        // Red probe in both directions: the checker sees the grip…
         #expect(Self.reaches(in: "let x = AppSession.shared.musicProvider") == ["AppSession.shared"])
-        // …und einen Kommentar darüber sieht er NICHT (die Lehre aus dem
-        // Zaun, der an seiner eigenen Begründung riss).
+        // …and a comment above it he does NOT see (the lesson from the
+        // fence that tripped on its own rationale).
         #expect(Self.reaches(in: "// uses AppSession.shared.musicProvider").isEmpty)
     }
 
-    @Test("Die Ansicht entscheidet kein Ziel mehr: kein switch über die Trefferart", .needsTheSources)
+    @Test("The view no longer decides a destination: no switch over the hit kind", .needsTheSources)
     func theViewDecidesNoTarget() throws {
-        // `LibraryView` führt das Ziel aus, aber die ENTSCHEIDUNG steht in
-        // `SearchRouting`. Erkennungsmerkmal ist der Griff auf die ART.
+        // `LibraryView` carries out the destination, but the DECISION is in
+        // `SearchRouting`. The telltale is the grip on the KIND.
         let library = try Self.source("Sources/Views/LibraryView.swift")
         #expect(!library.contains("switch result.kind"))
         #expect(library.contains("SearchDoor.target"))
     }
 
-    /// Was das Deck fuettert und wie es gebaut wird, gehoert hinter die Tuer.
-    /// Vorher stand beides in der Ansicht: sie holte die Sendungen und die
-    /// Alben selbst, gruppierte die eigene Bibliothek und schob die Arbeit
-    /// selbst vom Hauptstrang.
+    /// What feeds the deck and how it is built belongs behind the door.
+    /// Before, both were in the view: it fetched the shows and the
+    /// albums itself, grouped the own library and moved the work
+    /// off the main thread itself.
     private static let deckReaches = [
         "PodcastAutoContinue.allShows",
         "LibraryViewModel.authorGroups",
@@ -79,38 +79,38 @@ struct SearchDoorFenceTests {
         "Task.detached",
     ]
 
-    @Test("Die Suchansicht baut das Deck nicht selbst", .needsTheSources)
+    @Test("The search view does not build the deck itself", .needsTheSources)
     func theSearchViewDoesNotBuildTheDeck() throws {
         let view = try Self.source("Sources/Views/SearchScreen.swift")
         let found = Self.hits(Self.deckReaches, in: view)
         #expect(found.isEmpty, "die Ansicht baut wieder selbst: \(found)")
-        // Und sie fragt die Tuer danach, statt gar nichts zu zeigen.
+        // And it asks the door for it, instead of showing nothing at all.
         #expect(Self.code(in: view).contains("SearchDoor.deck("))
-        // Rot-Probe in beide Richtungen: der Pruefer saehe die alte Form…
+        // Red probe in both directions: the checker would see the old form…
         #expect(Self.hits(Self.deckReaches, in: "let shows = PodcastAutoContinue.allShows()")
                     == ["PodcastAutoContinue.allShows"])
-        // …und einen Kommentar ueber die alte Form sieht er NICHT.
+        // …and a comment above the old form he does NOT see.
         #expect(Self.hits(Self.deckReaches, in: "// was PodcastAutoContinue.allShows()").isEmpty)
     }
 
-    @Test("Die Ansicht entscheidet nicht, welche Kacheln ein Bereich hat", .needsTheSources)
+    @Test("The view does not decide which tiles a scope has", .needsTheSources)
     func theViewDoesNotDecideTheTiles() throws {
         let view = try Self.source("Sources/Views/SearchScreen.swift")
-        // Die Einstiege standen als Listen von Verschluessen in der Ansicht,
-        // je Bereich eine. Sie sind fort; die Ansicht ruft die Regel.
+        // The entry points stood as lists of closures in the view,
+        // one per scope. They are gone; the view calls the rule.
         let builders = ["deckEntries", "musicDeckEntries", "audiobookDeckEntries", "artistDeckEntry"]
         #expect(Self.hits(builders, in: view).isEmpty, "ein Einstiegs-Bauer ist zurueck")
         #expect(Self.code(in: view).contains("SearchDeckTiles"))
-        // Rot-Probe: der Pruefer saehe die alte Form, wenn sie wiederkaeme.
+        // Red probe: the checker would see the old form if it came back.
         #expect(Self.hits(builders, in: "private var musicDeckEntries: [DeckEntry] {")
                     == ["musicDeckEntries"])
     }
 
-    @Test("Jede Trefferart hat ein benanntes Ziel")
+    @Test("Every hit kind has a named destination")
     func everyKindHasATarget() {
-        // Kein Zufallsergebnis: die Regel ist erschöpfend über die Art, und
-        // dieser Fall fährt jede einmal, damit eine neue Art nicht still
-        // ins Leere führt.
+        // No chance result: the rule is exhaustive over the kind, and
+        // this case runs each one once, so that a new kind does not lead
+        // silently nowhere.
         let lookups = SearchLookups(item: { _ in true }, catalogHasParts: { _ in false },
                                     catalogKnows: { _ in true }, artistId: { _ in "a1" },
                                     artistKnown: { _ in true })
@@ -121,10 +121,10 @@ struct SearchDoorFenceTests {
         }
     }
 
-    /// Regel 3 an der Such-Tuer: ein Fehlschlag ist kein leeres Ergebnis.
-    /// Gemessen: der Kuenstler-Drill stand ohne Server leer und ohne Wort,
-    /// und dieselbe Form stand an den Playlists und an den Genre-Sendungen.
-    @Test("Die Such-Tuer macht aus einem Fehlschlag keine leere Liste, und jede Flaeche sagt ihn in einem Satz", .needsTheSources)
+    /// Rule 3 at the search door: a failure is not an empty result.
+    /// Measured: the artist drill stood empty without a server and without a word,
+    /// and the same form stood at the playlists and at the genre shows.
+    @Test("The search door does not turn a failure into an empty list, and every surface says it in one sentence", .needsTheSources)
     func aFailureIsNoEmptyList() throws {
         let door = try Self.source("Sources/ViewModels/SearchDoor.swift")
         #expect(!door.contains("?? []"), "a failed question of the door turns into an empty list again")
@@ -142,9 +142,9 @@ struct SearchDoorFenceTests {
                 "every question of the door has its sentence")
     }
 
-    /// Regel 3 ganz: der Fehlschlag steht im Log mit Grund, und die Seite
-    /// bietet „Erneut versuchen", das dieselbe Frage noch einmal stellt.
-    @Test("Die Such-Tuer protokolliert jeden Fehlschlag mit Grund, und die Fehler-Seite fragt auf Wunsch erneut", .needsTheSources)
+    /// Rule 3 in full: the failure is in the log with a reason, and the page
+    /// offers „Erneut versuchen", which asks the same question once more.
+    @Test("The search door logs every failure with a reason, and the error page asks again on request", .needsTheSources)
     func aFailureIsLoggedAndCanBeRetried() throws {
         let door = try Self.source("Sources/ViewModels/SearchDoor.swift")
         for question in ["artists", "playlists", "genreShows"] {

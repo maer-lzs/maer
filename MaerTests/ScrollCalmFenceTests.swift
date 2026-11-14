@@ -8,23 +8,23 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// GOAL 3.0 Punkt 3, Ruhe-Tor: „fuehre das aus, wenn das Scrollen ruht" ist
-/// EINE Frage mit EINEM Namen. Vorher fragten ZWEIUNDZWANZIG Rufer die
-/// untere Leiste direkt, darunter VIERZEHN Speicher und Ansichtsmodelle.
-/// (Die erste Fassung dieses Kopfes sagte siebzehn und neun. Das waren die
-/// Zahlen aus einer Zaehlung, die nur `Sources/Views` ansah; der Fall
-/// darunter hat sie im selben Commit widerlegt, der Satz nicht.)
+/// GOAL 3.0 point 3, calm gate: „fuehre das aus, wenn das Scrollen ruht" is
+/// ONE question with ONE name. Before, TWENTY-TWO callers asked the
+/// bottom bar directly, among them FOURTEEN stores and view models.
+/// (The first version of this header said seventeen and nine. Those were the
+/// numbers from a count that only looked at `Sources/Views`; the case
+/// below refuted them in the same commit, the sentence did not.)
 ///
-/// Der Zaun haelt zwei Sachen, und die zweite ist die wichtigere:
+/// The fence holds two things, and the second is the more important:
 ///
-/// 1. Niemand ausser der Tuer ruft die Warteschlange der Leiste selbst.
-/// 2. **Weg B als Rest MIT ZAHL, nicht als Absichtserklaerung.** Ein
-///    Speicher, der UI-Arbeit einplant, ist die eigentliche
-///    Schichtverletzung; das Tor umzubenennen hat sie nur besser benannt.
-///    Der tiefere Schnitt dreht sie um: der Speicher gibt seinen frischen
-///    Wert HERAUS, die Ansicht entscheidet, wann sie ihn anwendet. Er
-///    gehoert zum Tab-Schnitt, wo diese Ansichtsmodelle ohnehin geoeffnet
-///    werden. **Fertig ist er, wenn dieser Bestand null ist.**
+/// 1. Nobody except the door calls the bar's queue itself.
+/// 2. **Way B as a remainder WITH A NUMBER, not as a statement of intent.** A
+///    store that schedules UI work is the actual
+///    layer violation; renaming the gate only named it better.
+///    The deeper cut turns it around: the store hands its fresh
+///    value OUT, the view decides when to apply it. It
+///    belongs to the tab cut, where these view models are opened
+///    anyway. **It is done when this stock is zero.**
 struct ScrollCalmFenceTests {
     static func calls(of token: String, in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
@@ -34,20 +34,20 @@ struct ScrollCalmFenceTests {
             }.count
     }
 
-    /// Wer die Warteschlange der Leiste noch selbst ruft. Nur die Tuer.
+    /// Who still calls the bar's queue itself. Only the door.
     nonisolated static let queueStock: [String: (count: Int, reason: String)] = [
         "ScrollCalm.swift": (1, "IST die Tuer; der eine Griff, der die einundzwanzig anderen ersetzt hat"),
         "BottomBarState.swift": (1, "die Leiste selbst, die die Warteschlange haelt und leert"),
     ]
 
-    /// **Weg B, der benannte Rest mit Zahl.** Typen, die KEINE Ansicht sind
-    /// und trotzdem UI-Arbeit einplanen. Er ist die Zaehlung; ein leerer
-    /// Bestand heisst, dass kein solcher Typ mehr einplant.
+    /// **Way B, the named remainder with a number.** Types that are NOT views
+    /// and still schedule UI work. It is the count; an empty
+    /// stock means no such type schedules any more.
     ///
-    /// Gezaehlt wird am umschliessenden TYP, nicht an der Datei: eine Datei
-    /// haelt oft einen Speicher UND seine Ansichten, und eine Zaehlung je
-    /// Datei haette den halben Rest verschwiegen (`FreeCatalogRows.swift`
-    /// hatte beides, bis der Speicher in eine eigene Datei zog).
+    /// Counting happens at the enclosing TYPE, not at the file: a file
+    /// often holds a store AND its views, and a count per
+    /// file would have hidden half the remainder (`FreeCatalogRows.swift`
+    /// had both, until the store moved into a file of its own).
     nonisolated static let schedulingStoresStock: [String: (count: Int, reason: String)] = [
         "MusicViewModel":
             (6, "Alben, Neuestes, Zuletzt, Haeufig, Kuenstler und Playlisten kommen nach; das "
@@ -62,7 +62,7 @@ struct ScrollCalmFenceTests {
             (1, "das Bibliotheks-Modell wendet seine berechnete Ausgabe selbst an"),
     ]
 
-    @Test("Die Warteschlange der Leiste ruft nur die Tuer", .needsTheSources)
+    @Test("The bar's queue is called only by the door", .needsTheSources)
     func onlyTheDoorAsksTheQueue() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -70,23 +70,23 @@ struct ScrollCalmFenceTests {
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.queueStock.mapValues(\.count))
         #expect(drift.isEmpty, "a caller asks the bar itself again, or a stock above the count: \(drift)")
-        // Rot-Probe in beide Richtungen.
+        // Red probe in both directions.
         #expect(Self.calls(of: "runWhenCalm", in: "BottomBarState.shared.runWhenCalm { x() }") == 1)
         #expect(Self.calls(of: "runWhenCalm", in: "// war BottomBarState.shared.runWhenCalm") == 0)
     }
 
-    /// Wie oft ein Typ, der KEINE Ansicht ist, UI-Arbeit einplant. Der
-    /// umschliessende Typ ist die naechste Deklaration ueber der Zeile.
+    /// How often a type that is NOT a view schedules UI work. The
+    /// enclosing type is the nearest declaration above the line.
     static func schedulingNonViews(in text: String) -> [String: Int] {
         var out: [String: Int] = [:]
         var enclosing = ""
         var isView = false
         for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            // NUR Deklarationen der obersten Ebene. Ein verschachtelter Typ
-            // (eine Aufzaehlung in einer Ansicht) waere sonst der
-            // vermeintliche Wirt jedes Aufrufs darunter, und der Zaun
-            // meldete Namen, die es als Rufer gar nicht gibt.
+            // ONLY top-level declarations. A nested type
+            // (an enumeration in a view) would otherwise be the
+            // supposed host of every call below it, and the fence
+            // would report names that do not exist as callers at all.
             if !trimmed.hasPrefix("//"), line.first != " ", line.first != "\t",
                let name = Self.declaredType(in: trimmed) {
                 enclosing = name
@@ -110,7 +110,7 @@ struct ScrollCalmFenceTests {
         return nil
     }
 
-    @Test("Typen, die keine Ansicht sind und UI-Arbeit einplanen, werden nur weniger", .needsTheSources)
+    @Test("Types that are not views and schedule UI work only get fewer", .needsTheSources)
     func storesThatScheduleUIWorkOnlyShrink() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -122,8 +122,8 @@ struct ScrollCalmFenceTests {
         // stock's total as well.
         let drift = StockDrift.findings(counts: counts, stock: Self.schedulingStoresStock.mapValues(\.count))
         #expect(drift.isEmpty, "a new store schedules UI work, or a stock above the count: \(drift)")
-        // Rot-Probe: eine Ansicht darf einplanen, das ist ihre Aufgabe; ein
-        // Speicher daneben nicht.
+        // Red probe: a view may schedule, that is its job; a
+        // store next to it may not.
         let mixed = """
             struct EinBild: View {
                 func f() { ScrollCalm.run { x() } }

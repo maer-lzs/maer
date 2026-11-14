@@ -17,7 +17,7 @@ struct RadioCountryListTests {
     private let german = ["DE": "Deutschland", "AT": "Österreich", "CH": "Schweiz", "AL": "Albanien",
                           "NO": "Norwegen", "VA": "Vatikanstadt"]
 
-    @Test("die Laender stehen nach ihrem gezeigten Namen, nicht nach der Zahl der Sender; unter zwei Sendern faellt ein Land")
+    @Test("countries sort by their shown name, not by the number of stations; a country with fewer than two stations drops out")
     func theCountriesStandByTheirShownName() {
         let list = RadioCountryList.curated(raw) { german[$0] }
         #expect(list.map(\.shown) == ["Albanien", "Deutschland", "Norwegen", "Österreich", "Schweiz"],
@@ -29,7 +29,7 @@ struct RadioCountryListTests {
         #expect(english.map(\.shown) == ["Albania", "Austria", "Germany", "Norway", "Switzerland"])
     }
 
-    @Test("die Suche findet ein Land ueber beide Namen, ohne Akzente und Gross-Klein, nie ueber die Grenze der zwei Namen")
+    @Test("search finds a country by either name, ignoring accents and case, never across the boundary of the two names")
     func theSearchAsksBothNames() {
         let list = RadioCountryList.curated(raw) { german[$0] }
         #expect(RadioCountryList.filtered(list, query: "oster").map(\.code) == ["AT"])

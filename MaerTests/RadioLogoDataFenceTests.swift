@@ -20,7 +20,7 @@ import Foundation
 /// reason for exactly its file; a name under four characters never passes
 /// the probe and always needs one.
 struct RadioLogoDataFenceTests {
-    @Test("Jeder Eintrag der Logo-Tabelle besteht die Probe der Tabelle oder steht mit Grund fuer genau seine Datei im Bestand")
+    @Test("Every entry of the logo table passes the table's probe or is in the vouched set with a reason for exactly its file")
     func everyLogoEntryCarriesItsNameOrAReason() {
         let table = RadioLogoData.commonsFiles
         #expect(table.count > 300, "the fence read the table")
@@ -58,7 +58,7 @@ struct RadioLogoDataFenceTests {
 
     /// The generator holds new entries to the same probe in Python; its
     /// words are the app's words.
-    @Test("die generischen Woerter der Tabellen-Probe sind in der App und im Generator dieselben", .needsTheSources)
+    @Test("the generic words of the table probe are the same in the app and in the generator", .needsTheSources)
     func theGenericWordsAreTheGenerators() throws {
         let script = try String(contentsOf: SourceTree.root.appendingPathComponent("tools/radio-logo-data/generate.py"),
                                 encoding: .utf8)
@@ -74,7 +74,7 @@ struct RadioLogoDataFenceTests {
     /// A key of a regional table names a region, not a station; searched as a
     /// name it booked a football club for "Bayern" and party logos for two
     /// states.
-    @Test("kein Schluessel einer Regionen-Tabelle steht als Sender in der Logo-Tabelle", .needsTheSources)
+    @Test("no key of a region table appears as a station in the logo table", .needsTheSources)
     func noRegionKeyStandsInTheTable() throws {
         let cores = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/RadioListenerCores.swift"),
                                encoding: .utf8)
@@ -92,7 +92,7 @@ struct RadioLogoDataFenceTests {
     /// entry of its own. So every entry of belegt.json stands in the table
     /// with exactly its file, and one that does not is a leftover that a
     /// later run must not read as a binding.
-    @Test("jeder Beleg in belegt.json gehoert zu einem Eintrag der Tabelle mit genau seiner Datei", .needsTheSources)
+    @Test("every voucher in belegt.json belongs to an entry of the table with exactly its file", .needsTheSources)
     func everyVouchedEntryBelongsToATableEntry() throws {
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent("tools/radio-logo-data/belegt.json"))
         let parsed = try JSONSerialization.jsonObject(with: data)

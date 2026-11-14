@@ -233,12 +233,12 @@ struct PodcastCategoryMappingTests {
     /// charts and the reverse lookup for the reason.
     nonisolated static let mapping = SharedCases.cases("category-mapping")
 
-    @Test("gemeinsame Faelle: category-mapping traegt dreizehn Faelle")
+    @Test("shared cases: category-mapping carries thirteen cases")
     func mappingCasesLoaded() {
         #expect(Self.mapping.count == 13)
     }
 
-    @Test("gemeinsame Faelle: PodcastCategoryMapping antwortet je Fall wie die Datei sagt", arguments: mapping)
+    @Test("shared cases: PodcastCategoryMapping answers each case as the file says", arguments: mapping)
     func mapping(_ c: SharedCase) throws {
         switch c.ask {
         case "podcastIndexCategories":
@@ -332,7 +332,7 @@ struct PodcastCategoryMappingTests {
 
     /// The heading asks the rule above; a count compared by hand next to it
     /// would let the two drift apart unseen.
-    @Test("die Reihen-Kopfzeile fragt die Pfeil-Regel", .needsTheSources)
+    @Test("the row heading asks the arrow rule", .needsTheSources)
     func theHeadingAsksTheChevronRule() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TabContentLayout.swift"),

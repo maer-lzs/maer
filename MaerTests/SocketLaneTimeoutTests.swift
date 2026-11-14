@@ -24,10 +24,10 @@ import Foundation
 struct SocketLaneTimeoutTests {
     static let adresse = URL(string: "ws://127.0.0.1:1/v1/changes")!
 
-    @Test("die Socket-Tuer setzt die Frist des Aufstiegs selbst, statt sie zu erben")
+    @Test("the socket door sets the upgrade's deadline itself, instead of inheriting it")
     func theSocketDoorSetsTheUpgradeDeadlineItself() throws {
         let nackt = URLRequest(url: Self.adresse)
-        // Was ein selbst gebauter Request mitbringt, wenn niemand etwas sagt.
+        // What a self-built request brings along when nobody says anything.
         #expect(nackt.timeoutInterval == 60, "URLRequest bringt nicht mehr 60 Sekunden mit")
 
         let aufgabe = try HTTP.webSocket(for: nackt)
@@ -36,17 +36,17 @@ struct SocketLaneTimeoutTests {
         #expect(gestellt.timeoutInterval == HTTP.socketUpgradeTimeout,
                 "die Tuer laesst die Frist dem Zufall der Rufstelle")
         #expect(HTTP.socketUpgradeTimeout == 60)
-        // Und ausdruecklich NICHT die Stunde der Sitzung: ein Aufstieg, den
-        // niemand beantwortet, wuerde sonst eine Stunde haengen.
+        // And explicitly NOT the session's hour: an upgrade that nobody
+        // answers would otherwise hang for an hour.
         #expect(gestellt.timeoutInterval < URLSession.socket.configuration.timeoutIntervalForRequest,
                 "die Frist des Aufstiegs ist die der Sitzung geworden")
     }
 
-    /// Die Tuer BESITZT die Frist des Aufstiegs, sie erbt sie nicht: eine
-    /// Rufstelle, die eine eigene mitbringt, bekommt trotzdem die der Spur.
-    /// Eine Ausnahme waere nicht unterscheidbar von der Vorgabe, die
-    /// URLRequest ohnehin mitbringt, und damit keine Regel.
-    @Test("die Frist gehoert der Spur, nicht der Rufstelle")
+    /// The door OWNS the upgrade's deadline, it does not inherit it: a
+    /// call site that brings its own still gets the lane's. An exception
+    /// would not be distinguishable from the default that URLRequest
+    /// brings anyway, and so would be no rule.
+    @Test("the deadline belongs to the lane, not to the call site")
     func theDeadlineBelongsToTheLaneNotTheCallSite() throws {
         var eigen = URLRequest(url: Self.adresse)
         eigen.timeoutInterval = 12
@@ -55,10 +55,10 @@ struct SocketLaneTimeoutTests {
         #expect(aufgabe.originalRequest?.timeoutInterval == HTTP.socketUpgradeTimeout)
     }
 
-    /// Der Socket kommt aus genau EINER Tuer, sonst baut die naechste
-    /// Rufstelle ihren eigenen Request und erbt still, was URLRequest
-    /// vorgibt.
-    @Test("eine Socket-Aufgabe entsteht nur an der einen Tuer", .needsTheSources)
+    /// The socket comes from exactly ONE door, otherwise the next call
+    /// site builds its own request and silently inherits what URLRequest
+    /// gives.
+    @Test("a socket task arises only at the one door", .needsTheSources)
     func aSocketTaskIsMadeAtOneDoorOnly() throws {
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
         let dateien = SourceTree.files(under: wurzel)

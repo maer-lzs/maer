@@ -33,7 +33,7 @@ struct SharedLinkTests {
                                                      audioURL: "https://archive.org/download/x/x_02.mp3"))
     static let all = [episode, show, station, book, jamendoTrack, archiveSong]
 
-    @Test("Jede Art kommt aus ihrem Link unveraendert zurueck")
+    @Test("Every kind comes back unchanged from its link")
     func everyKindReadsBack() throws {
         for content in Self.all {
             let url = try #require(SharedLink.url(for: content))
@@ -41,7 +41,7 @@ struct SharedLinkTests {
         }
     }
 
-    @Test("Alles steht hinter dem #, lesbar, in fester Reihenfolge")
+    @Test("Everything is after the #, readable, in a fixed order")
     func theFormKeepsEverythingBehindTheHash() throws {
         let url = try #require(SharedLink.url(for: Self.show))
         #expect(url.absoluteString == "https://maer.fm/l/#1?k=s&f=https%3A%2F%2Ffeeds.example.org%2Fshow.xml&t=Medien&s=Ein%20Verlag")
@@ -49,7 +49,7 @@ struct SharedLinkTests {
         #expect(url.path(percentEncoded: true) == "/l/")
     }
 
-    @Test("Zeichen, die die Query trennen, ueberstehen den Rundlauf")
+    @Test("Characters that separate the query survive the round trip")
     func separatorsSurviveTheRoundTrip() throws {
         let title = "A&B=C #1 + 2 ? ü 🎧 %20"
         let content = SharedLink.Content.episode(feedURL: Self.feed + "?a=1&b=2", guid: "g&=#",
@@ -59,7 +59,7 @@ struct SharedLinkTests {
         #expect(SharedLink.read(url)?.facts.title == title)
     }
 
-    @Test("Ein Link einer anderen Form liest sich als nichts")
+    @Test("A link of another form reads as nothing")
     func anotherFormReadsAsNothing() throws {
         let good = try #require(SharedLink.url(for: Self.station)).absoluteString
         let fragment = String(good.split(separator: "#", maxSplits: 1)[1])
@@ -93,7 +93,7 @@ struct SharedLinkTests {
         #expect(SharedLink.read(try #require(URL(string: "https://MAER.fm/l/#" + fragment))) == Self.station)
     }
 
-    @Test("Ein Link liest sich mit und ohne Schraegstrich, geschrieben wird er mit")
+    @Test("A link reads with and without a slash, it is written with one")
     func bothFormsOfThePathRead() throws {
         for content in Self.all {
             let written = try #require(SharedLink.url(for: content))
@@ -106,14 +106,14 @@ struct SharedLinkTests {
         }
     }
 
-    @Test("Was teilbar ist, je Art")
+    @Test("What can be shared, per kind")
     func whatMayBeShared() {
         for content in Self.all {
             #expect(SharedLink.offers(content, staysHome: Self.open), "\(content)")
         }
     }
 
-    @Test("Ein Feed, der zu Hause bleibt, ist nie teilbar, Folge wie Sendung")
+    @Test("A feed that stays at home is never shareable, episode and show alike")
     func aFeedThatStaysHomeIsNeverShared() {
         let home: (String) -> Bool = { $0 == Self.feed }
         #expect(!SharedLink.offers(Self.episode, staysHome: home))
@@ -128,7 +128,7 @@ struct SharedLinkTests {
                                    staysHome: { PodcastSubscriptions.staysHome($0, ownHosts: ["pod.home.example"]) }))
     }
 
-    @Test("Eine Adresse mit Zugang oder fremdem Schema oeffnet nichts, je Art")
+    @Test("An address with access or a foreign scheme opens nothing, per kind")
     func anAddressWithAccessOpensNothing() throws {
         let tainted = ["https://cdn.example.org/a.mp3?token=s3cr3t", "https://u:p@cdn.example.org/a.mp3",
                        "javascript:alert(1)", "file:///etc/hosts", "cdn.example.org/a.mp3"]
@@ -146,7 +146,7 @@ struct SharedLinkTests {
         #expect(!SharedLink.offers(.episode(feedURL: "ftp://feeds.example.org/x", guid: "g", .init()), staysHome: Self.open))
     }
 
-    @Test("Ein Cover mit Zugang oder fremdem Schema im Link oeffnet nichts, je Art")
+    @Test("A cover with access or a foreign scheme in the link opens nothing, per kind")
     func aCoverWithAccessOpensNothing() throws {
         let tainted = ["https://cdn.example.org/c.jpg?token=s3cr3t", "https://u:p@cdn.example.org/c.jpg",
                        "javascript:alert(1)", "file:///etc/hosts"]
@@ -164,7 +164,7 @@ struct SharedLinkTests {
         }
     }
 
-    @Test("Das Cover der Seite kommt nur als oeffentliche https-Adresse in den Link, sonst ohne Cover")
+    @Test("The page's cover goes into the link only as a public https address, otherwise without a cover")
     func onlyAPublicHttpsCoverEntersTheLink() throws {
         let cover = "https://cdn.example.org/show.jpg"
         for content in Self.all {
@@ -183,7 +183,7 @@ struct SharedLinkTests {
         #expect(url.absoluteString.hasSuffix("&c=https%3A%2F%2Fcdn.example.org%2Fshow.jpg"), "\(url)")
     }
 
-    @Test("Ein Sender nur mit uuid, ein Buch nur aus einem Buchkatalog")
+    @Test("A station only with a uuid, a book only from a book catalog")
     func stationsAndBooksByTheirIdentity() {
         #expect(!SharedLink.offers(.station(uuid: "manual:1234", .init()), staysHome: Self.open))
         for id in ["jam:42", "lva:collection#3", "local:/x.m4b", "abc123", "sub:album:9", "lv:", "rss:k:g"] {
@@ -194,7 +194,7 @@ struct SharedLinkTests {
         }
     }
 
-    @Test("Ein Musiktitel nur aus Jamendo oder als Lied einer archive.org-Veroeffentlichung, Jamendo nie mit Strom")
+    @Test("A music title only from Jamendo or as a song of an archive.org release, Jamendo never with a stream")
     func tracksByTheirIdentity() {
         for id in ["jam:1848357", "lva:78_abendlied_georgeblood#0", "lva:netlabel-release#12"] {
             #expect(SharedLink.offers(.track(itemId: id, .init()), staysHome: Self.open), "\(id)")
@@ -213,7 +213,7 @@ struct SharedLinkTests {
         #expect(!SharedLink.offers(.book(itemId: "lva:78_abendlied_georgeblood#2", .init()), staysHome: Self.open))
     }
 
-    @Test("Ein Musiktitel aus der App: Jamendo ohne Strom, archive.org mit, jeder andere Titel nicht")
+    @Test("A music title from the app: Jamendo without a stream, archive.org with one, every other title not")
     func musicTracksBecomeLinks() {
         #expect(SharedLink.content(trackId: "jam:1848357", title: "Abendlicht", artist: "Die Kapelle",
                                    audioURL: "https://prod-1.storage.jamendo.com/?trackid=1848357")
@@ -226,7 +226,7 @@ struct SharedLinkTests {
         }
     }
 
-    @Test("Aus den Dingen der App: nur Feed, Radio Browser und Buchkatalog")
+    @Test("From the app's things: only feed, Radio Browser and book catalog")
     func onlyPublicThingsBecomeLinks() {
         let rss = PodcastEpisode(guid: "rss:k1:tag:example.org,2026:214", title: "Folge 214",
                                  audioURL: Self.audio, pubDate: 1, duration: 60)
@@ -253,7 +253,7 @@ struct SharedLinkTests {
                 == .book(itemId: "gut:5200", .init(title: "B", subtitle: "A")))
     }
 
-    @Test("Die Kennungen der App aus einem Link")
+    @Test("The app's ids from a link")
     func theAppIdsOfALink() {
         #expect(SharedLink.stationId(uuid: Self.uuid) == "radio:rb:\(Self.uuid)")
         let id = SharedLink.episodeId(feedURL: Self.feed, guid: "tag:example.org,2026:214")
@@ -262,7 +262,7 @@ struct SharedLinkTests {
         #expect(id == "rss:\(PodcastIdentity.feedKey(Self.feed)):tag:example.org,2026:214")
     }
 
-    @Test("Der Link einer Seite: keiner ohne Inhalt, keiner fuer etwas, das zu Hause bleibt, sonst der Link der Regel")
+    @Test("A page's link: none without content, none for something that stays at home, otherwise the rule's link")
     func thePageLinkFollowsTheRule() throws {
         #expect(SharedLink.shareURL(nil, staysHome: Self.open) == nil)
         #expect(SharedLink.shareURL(Self.show, staysHome: { _ in true }) == nil)
@@ -272,7 +272,7 @@ struct SharedLinkTests {
     /// The seam: the link is written in one place, a page shares through
     /// the one button, and the system's share link stands only where it is
     /// known to stand.
-    @Test("Zaun: der Link entsteht nur in SharedLink, geteilt wird ueber den einen Knopf auf den fuenf Seiten", .needsTheSources)
+    @Test("Fence: the link is made only in SharedLink, sharing goes through the one button on the five pages", .needsTheSources)
     func theLinkHasOneHome() throws {
         var writesTheLink: Set<String> = []
         var systemShareLink: Set<String> = []

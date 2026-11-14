@@ -10,7 +10,7 @@ import Foundation
 
 /// The one door the services ask before the network, and its reach.
 struct ReachabilityTests {
-    @Test("die Tuer folgt der Antwort des Tests, nicht dem Netz des Wirts")
+    @Test("the door follows the test's answer, not the host's network")
     func theDoorFollowsTheTestsAnswer() async {
         await Reachability.$assumed.withValue(false) {
             #expect(await Reachability.isConnected() == false)
@@ -20,7 +20,7 @@ struct ReachabilityTests {
         }
     }
 
-    @Test("ohne Netz fragt ein Dienst nichts, mit Netz fragt er, unabhaengig vom Wirt")
+    @Test("without a network a service asks nothing, with a network it asks, independent of the host")
     func aServiceAsksOnlyWhenTheDoorSaysSo() async {
         let suite = "reachability-\(UUID().uuidString)"
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -38,7 +38,7 @@ struct ReachabilityTests {
 
     /// In the unit test host the door never asks the machine's network: a
     /// suite that sets nothing gets "there", whatever the host's network is.
-    @Test("im Test-Wirt fragt die Tuer nie das Netz des Rechners, ohne Antwort des Tests ist das Netz da")
+    @Test("in the test host the door never asks the machine's network, without an answer from the test the network is there")
     func theTestHostNeverAsksTheMachine() async {
         #expect(TestProcess.isUnitTestHost, "the precondition: this process is the unit test host")
         #expect(Reachability.assumed == nil, "the precondition: the test set no answer")
@@ -47,7 +47,7 @@ struct ReachabilityTests {
 
     /// The services' network paths ask the door, none of them the monitor:
     /// a path that asks the monitor itself follows the host in every witness.
-    @Test("jeder Netzweg der Dienste fragt die Tuer, keiner den Netzwaechter", .needsTheSources)
+    @Test("every network path of the services asks the door, none the monitor", .needsTheSources)
     func everyNetworkPathAsksTheDoor() throws {
         let paths = ["ArchiveRuntimeService", "FeedArtworkService", "RadioLogoService", "ArtistPortraitService",
                      "RadioArtworkService", "CoverArtArchive", "Artwork"]
@@ -73,7 +73,7 @@ struct ReachabilityTests {
         "RoutinePlayback.swift": "a list page counts a routine's episodes synchronously; the start asks the door",
     ]
 
-    @Test("unter Networking und Providers nennt nur der Bestand den Netzwaechter, jeder mit Grund, in beide Richtungen", .needsTheSources)
+    @Test("under Networking and Providers only the vouched set names the monitor, each with a reason, in both directions", .needsTheSources)
     func onlyTheStockNamesTheMonitor() throws {
         var files: [URL] = []
         for folder in ["Sources/Networking", "Sources/Providers"] {
@@ -107,7 +107,7 @@ struct ReachabilityTests {
         "RadioArtwork.swift": "decides: a logo that does not serve is booked as a failure only online",
     ]
 
-    @Test("ausserhalb von Networking und Providers lesen nur die genannten Dateien den Netzwaechter, in beide Richtungen", .needsTheSources)
+    @Test("outside Networking and Providers only the named files read the monitor, in both directions", .needsTheSources)
     func onlyTheNamedFilesReadTheMonitorOutside() throws {
         let fenced = ["/Sources/Networking/", "/Sources/Providers/"]
         var naming: Set<String> = []
@@ -124,7 +124,7 @@ struct ReachabilityTests {
     /// The one answer to "does this process run under a test?": no other
     /// source reads the test host's environment key or asks the harness in
     /// its place.
-    @Test("nur TestProcess beantwortet, ob der Prozess unter einem Test laeuft", .needsTheSources)
+    @Test("only TestProcess answers whether the process runs under a test", .needsTheSources)
     func oneAnswerToUnderTest() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }

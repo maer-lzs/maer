@@ -60,11 +60,11 @@ import SwiftUI
         #expect(row.count == 1)
     }
 
-    /// KEIN Favorit verschwindet. Die Vollseite
-    /// zeigt ALLE Favoriten des Stores, ungefiltert von Auslass-Regel und
-    /// Deckelung. Store-Menge == Vollseiten-Menge ist die Zusicherung; damit
-    /// ist jeder markierte Favorit in hoechstens zwei Tipps erreichbar, den
-    /// Auslass-Fall eingeschlossen.
+    /// NO favorite disappears. The full page
+    /// shows ALL favorites of the store, unfiltered by the omission rule and
+    /// the cap. Store set == full-page set is the guarantee; with it
+    /// every marked favorite is reachable in at most two taps, the
+    /// omission case included.
     @Test func theFullPageShowsEveryFavoriteUnfiltered() {
         let favorites = (0..<7).map { station("fav\($0)") }
         // Exactly the full page's call: no exclusion, no cap.

@@ -39,7 +39,7 @@ struct SearchDeckTests {
                     description: nil, feedURL: feed, episodes: [])
     }
 
-    @Test("Reihen falten Gross- und Kleinschreibung und Diakritika zu EINER Gruppe")
+    @Test("Series fold upper and lower case and diacritics into ONE group")
     func seriesFoldIntoOneGroup() {
         let deck = SearchDeck.build(entries: [
             entry("b1", "Zeta", series: "Saga #2"),
@@ -49,11 +49,11 @@ struct SearchDeckTests {
         ], shows: [], albums: [])
         #expect(deck.seriesGroups.count == 1, "aus drei Schreibweisen wurde mehr als eine Reihe")
         #expect(deck.seriesGroups.first?.entries.count == 3)
-        // Ein Buch ohne Reihe steht in keiner.
+        // A book without a series is in none.
         #expect(deck.seriesGroups.first?.entries.contains { $0.id == "b4" } == false)
     }
 
-    @Test("Die Buchstaben-Bloecke folgen dem gefalteten Anfangsbuchstaben")
+    @Test("The letter blocks follow the folded first letter")
     func letterSectionsFoldTheFirstLetter() {
         let deck = SearchDeck.build(entries: [
             entry("b1", "Ärger"),
@@ -62,12 +62,12 @@ struct SearchDeckTests {
             entry("b4", "1984"),
         ], shows: [], albums: [])
         #expect(deck.letterSections.map(\.letter) == ["#", "A", "B"])
-        // „Ärger" gehoert unter A, nicht unter Ä und nicht unter #.
+        // „Ärger" belongs under A, not under Ä and not under #.
         #expect(deck.letterSections.first { $0.letter == "A" }?.entries.count == 2)
         #expect(deck.letterSections.first { $0.letter == "#" }?.entries.map(\.id) == ["b4"])
     }
 
-    @Test("Sendungen und Alben stehen alphabetisch, unabhaengig von der Ankunft")
+    @Test("Shows and albums are in alphabetical order, regardless of arrival")
     func showsAndAlbumsAreSorted() {
         let deck = SearchDeck.build(
             entries: [],
@@ -77,7 +77,7 @@ struct SearchDeckTests {
         #expect(deck.albums.map(\.title) == ["Anfang", "Zebra"])
     }
 
-    @Test("Der Bestand je Einstieg kommt aus dem Deck, die Kuenstlerzahl von aussen")
+    @Test("The stock per entry point comes from the deck, the artist count from outside")
     func countsComeFromTheDeck() {
         var deck = SearchDeck.build(entries: [
             entry("b1", "Alpha", author: "Adams", series: "Saga #1", genres: ["Krimi"]),
@@ -87,13 +87,13 @@ struct SearchDeckTests {
         #expect(deck.counts.series == 1)
         #expect(deck.counts.shows == 1)
         #expect(deck.counts.albums == 1)
-        // Die Musikquelle hat noch nicht geantwortet: keine erfundene Zahl.
+        // The music source has not answered yet: no invented number.
         #expect(deck.counts.artists == nil)
         deck.artistCount = 9
         #expect(deck.counts.artists == 9)
     }
 
-    @Test("Ein leerer Bestand gibt ein leeres Deck, keine Platzhalter")
+    @Test("An empty stock gives an empty deck, no placeholders")
     func anEmptyStockGivesAnEmptyDeck() {
         let deck = SearchDeck.build(entries: [], shows: [], albums: [])
         #expect(deck.letterSections.isEmpty)

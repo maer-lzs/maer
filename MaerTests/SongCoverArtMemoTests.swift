@@ -11,7 +11,7 @@ import Foundation
 /// A server song shows the cover its server names for it (`coverArt`),
 /// not one asked with its own id, and keeps that address across sessions.
 struct SongCoverArtMemoTests {
-    @Test("Das Gedaechtnis lernt das Cover-Feld eines Liedes und sagt, was sich aenderte")
+    @Test("The memory learns a song's cover field and says what changed")
     func learnsTheSongsCoverField() {
         var memo = SongCoverArtMemo(server: "https://gonic.example|sim")
         #expect(memo.coverArt(of: "tr-146") == nil)
@@ -24,7 +24,7 @@ struct SongCoverArtMemoTests {
         #expect(memo.coverArt(of: "tr-146") == "al-41")
     }
 
-    @Test("Ueber der Grenze geht das aelteste Lied, ein gehaltenes bleibt")
+    @Test("Over the limit the oldest song goes, a held one stays")
     func theCapDropsTheOldestButKeepsHeldSongs() {
         var memo = SongCoverArtMemo(server: "s")
         for i in 0..<SongCoverArtMemo.cap {
@@ -37,7 +37,7 @@ struct SongCoverArtMemoTests {
         #expect(memo.coverArt(of: "tr-new") == "al-new")
     }
 
-    @Test("Das Gedaechtnis ueberdauert die Sitzung und gehoert seinem Server")
+    @Test("The memory outlasts the session and belongs to its server")
     func theMemoryOutlivesTheSessionForItsServer() throws {
         let defaults = try #require(UserDefaults(suiteName: "SongCoverArtMemoTests"))
         defaults.removePersistentDomain(forName: "SongCoverArtMemoTests")
@@ -54,7 +54,7 @@ struct SongCoverArtMemoTests {
         #expect(SongCoverArtMemo.load(server: "a", defaults: defaults).order.isEmpty, "an unreadable memory starts empty")
     }
 
-    @Test("Ein gehaltenes Gedaechtnis in anderer Form liest sich: fehlende Felder leer, die Folge ohne Luecke")
+    @Test("A held memory in another form reads: missing fields empty, the sequence without a gap")
     func aKeptMemoryOfAnotherFormReads() throws {
         func read(_ json: String) throws -> SongCoverArtMemo {
             try JSONDecoder().decode(SongCoverArtMemo.self, from: Data(json.utf8))
@@ -73,7 +73,7 @@ struct SongCoverArtMemoTests {
 
     /// The provider asks the memory for a song's cover, learns from every
     /// answer that carries songs, and moves a downloaded song's kept cover.
-    @Test("Der Anbieter fragt fuer ein Lied das Cover-Feld und lernt aus jeder Antwort mit Liedern", .needsTheSources)
+    @Test("The provider asks for a song's cover field and learns from every answer with songs", .needsTheSources)
     func theProviderAsksTheSongsCoverField() throws {
         let text = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"),
@@ -113,7 +113,7 @@ struct SongCoverArtMemoTests {
     /// A song the server did not answer for is skipped by the next passes
     /// of the same server; another server, or none after signing out,
     /// inherits nothing.
-    @Test("Ein Lied ohne Antwort fragt der naechste Durchgang nicht, ein anderer Server erbt es nicht")
+    @Test("The next pass does not ask for a song without an answer, another server does not inherit it")
     func anUnansweredSongIsNotAskedAgain() {
         var silent = UnansweredSongs(server: "https://a.example|sim")
         silent.note(["tr-2"])
@@ -140,7 +140,7 @@ struct SongCoverArtMemoTests {
     /// The set notes what the server answered and nothing else: leaving a
     /// page cancels the pass, and a network that does not carry the question
     /// says nothing about the song.
-    @Test("Ohne Antwort heisst: der Server sagt, das Lied gibt es nicht; Abbruch, Netz und ein ueberlasteter Server merken nichts")
+    @Test("No answer means: the server says the song does not exist; cancellation, network and an overloaded server note nothing")
     func onlyTheServersReplyNotesASong() {
         typealias Failure = SubsonicClient.SubsonicError
         let table: [(Error, Bool)] = [
@@ -171,7 +171,7 @@ struct SongCoverArtMemoTests {
 
     /// The line that ends a pass names the failure by its case and number,
     /// never by the server's message.
-    @Test("die Zeile zum Ende eines Durchgangs nennt Fall und Nummer, nie den Text des Servers")
+    @Test("the line at the end of a pass names the case and number, never the server's text")
     func theEndOfAPassNamesItsReason() {
         typealias Failure = SubsonicClient.SubsonicError
         let table: [(Error, String)] = [
@@ -186,7 +186,7 @@ struct SongCoverArtMemoTests {
         }
     }
 
-    @Test("Eine gehaltene Liederliste ohne Cover-Feld liest sich weiter, mit Feld traegt sie es")
+    @Test("A held song list without a cover field still reads, with a field it carries it")
     func aKeptSongListWithoutTheCoverFieldReads() throws {
         let old = #"{"entries":[{"id":"tr-146","title":"Lied","albumId":"al-40","duration":200,"playCount":3}],"wholeAt":1000,"serverCount":1}"#
         let kept = try JSONDecoder().decode(SongCatalog.self, from: Data(old.utf8))
@@ -201,7 +201,7 @@ struct SongCoverArtMemoTests {
         #expect(read.entries.first?.coverArt == "al-40")
     }
 
-    @Test("Ein Eintrag der Liederliste mit Cover-Feld zeigt dieses Cover, ohne Feld bleibt das Bekannte")
+    @Test("An entry of the song list with a cover field shows that cover, without a field the known one stays")
     func aSongListEntryWithTheFieldShowsItsCover() throws {
         let entry = SongCatalog.Entry(id: "tr-146", title: "Lied", artist: nil, album: nil, albumId: "al-40",
                                       duration: nil, created: nil, played: nil, playCount: nil, coverArt: "al-40")

@@ -38,14 +38,14 @@ struct SignInDerivationTests {
         try JSONDecoder().decode(Vectors.self, from: try Data(contentsOf: fixtureURL()))
     }
 
-    @Test("die Anmelde-Vektoren sind die Bytes des Dienstes", .needsTheTests)
+    @Test("the sign-in vectors are the service's bytes", .needsTheTests)
     func vectorsAreTheServicesBytes() throws {
         let data = try Data(contentsOf: Self.fixtureURL())
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         #expect(digest == Self.vectorsDigest, "the vectors are copied from the service repository; a change belongs in both")
     }
 
-    @Test("Dehnung, Beweis und Feed-Schluessel gleich allen Vektoren", .needsTheTests)
+    @Test("stretch, proof and feed key equal all vectors", .needsTheTests)
     func derivationMatchesEveryVector() throws {
         let vectors = try Self.fixture().vectors
         try #require(vectors.count == 3, "the three published vectors")
@@ -62,7 +62,7 @@ struct SignInDerivationTests {
         }
     }
 
-    @Test("zerlegt eingegeben wird zusammengesetzt abgeleitet, nichts wird getrimmt", .needsTheTests)
+    @Test("entered in parts is derived joined, nothing is trimmed", .needsTheTests)
     func normalizationIsNFCAndNothingTrimmed() throws {
         let vectors = try Self.fixture().vectors
         let nfd = try #require(vectors.first { $0.name == "nfd input becomes nfc" })
@@ -71,7 +71,7 @@ struct SignInDerivationTests {
         #expect(SignInDerivation.passwordBytes(" a ") == Data(" a ".utf8), "spaces stay")
     }
 
-    @Test("weniger als 600000 Runden und ein Salz, das nicht 16 Byte hat, werden abgewiesen")
+    @Test("fewer than 600000 rounds and a salt that is not 16 bytes are rejected")
     func weakParametersAreRefused() {
         #expect(throws: SignInDerivation.Failure.tooFewRounds(599_999)) {
             try SignInDerivation.derive(password: "zwoelf zeichen", salt: Data(count: 16), rounds: 599_999)
@@ -81,7 +81,7 @@ struct SignInDerivationTests {
         }
     }
 
-    @Test("zu viele Runden vom Dienst sind eine Weigerung, nie ein Absturz und nie Stunden")
+    @Test("too many rounds from the service are a refusal, never a crash and never hours")
     func tooManyRoundsAreRefused() throws {
         let limit = SignInDerivation.maximumRounds
         #expect(throws: SignInDerivation.Failure.tooManyRounds(limit + 1)) {
@@ -99,7 +99,7 @@ struct SignInDerivationTests {
         #expect(keys.proof.count == 32)
     }
 
-    @Test("die Dehnung laeuft nicht auf dem Hauptthread, auch wenn der Hauptakteur fragt", .needsTheTests)
+    @Test("the stretch does not run on the main thread, even when the main actor asks", .needsTheTests)
     @MainActor
     func stretchRunsOffTheMainThread() async throws {
         let seen = OSAllocatedUnfairLock<[Bool]>(initialState: [])
@@ -112,7 +112,7 @@ struct SignInDerivationTests {
         #expect(seen.withLock { $0 } == [false], "the probe ran once, off the main thread")
     }
 
-    @Test("Messzeile: jede Dehnung schreibt ihre Dauer, Runden und Zweck, und sonst nichts", .needsTheSources)
+    @Test("Measurement line: every stretch writes its duration, rounds and purpose, and nothing else", .needsTheSources)
     func everyStretchWritesItsMeasurementLineAndNothingElse() async throws {
         let lines = OSAllocatedUnfairLock<[String]>(initialState: [])
         let vector = try #require(try Self.fixture().vectors.first)
@@ -146,7 +146,7 @@ struct SignInDerivationTests {
 
 /// The client's rule for a new password.
 struct PasswordRuleTests {
-    @Test("Neues Passwort: zwoelf Zeichen wie gesehen, und nie das alte")
+    @Test("New password: twelve characters as seen, and never the old one")
     func twelveCharactersAndNeverTheOld() {
         #expect(PasswordRule.check(new: "elf zeichen", current: nil) == .tooShort(missing: 1))
         #expect(PasswordRule.check(new: "zwoelf zeich", current: nil) == .acceptable)
@@ -160,7 +160,7 @@ struct PasswordRuleTests {
         #expect(PasswordRule.check(new: "ein ganz neues passwort", current: "das alte passwort") == .acceptable)
     }
 
-    @Test("Neues Passwort: die Wiederholung zuerst, dann die Regel")
+    @Test("New password: the repetition first, then the rule")
     func theRepetitionComesFirst() {
         #expect(PasswordRule.check(new: "ein ganz neues passwort", repeated: "ein ganz neues Passwort", current: nil) == .repeatDiffers)
         #expect(PasswordRule.check(new: "kurz", repeated: "kurz2", current: nil) == .repeatDiffers, "before the length")

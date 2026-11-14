@@ -12,7 +12,7 @@ import AVFoundation
 /// The silence the harness plays: a WAV the system decoder accepts, of the
 /// length asked for, and nothing but zeros in it.
 struct SilentAudioTests {
-    @Test("Kopf und Laenge stimmen; der Systemdecoder liest die Datei und nennt die Dauer")
+    @Test("header and length are right; the system decoder reads the file and names the duration")
     func headerLengthAndDecoder() throws {
         let data = SilentAudio.wav(seconds: 2, sampleRate: 8_000)
         #expect(data.count == 44 + 2 * 8_000 * 2)

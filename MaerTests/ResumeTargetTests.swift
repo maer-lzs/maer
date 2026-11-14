@@ -14,7 +14,7 @@ import Testing
 /// the app's process; neither carries a decision of its own.
 @MainActor
 struct ResumeTargetTests {
-    @Test("die Entscheidung als Tabelle: Siri-Titel vor allem, offener Player vor zuletzt gehoert, Warten nur bei ladender Bibliothek")
+    @Test("the decision as a table: Siri title above all, open player before last heard, waiting only while the library loads")
     func theDecision() {
         typealias Row = (named: String?, namedKnown: Bool, active: Bool, last: String?, lastKnown: Bool, loading: Bool, want: ResumeTarget)
         let rows: [Row] = [
@@ -39,7 +39,7 @@ struct ResumeTargetTests {
     /// Each way of finding nothing has its own catalog key, so a new
     /// sentence for one case is a catalog value; only a device without a
     /// last played title says there is nothing to continue yet.
-    @Test("nichts gefunden sagt je Fall den eigenen Schluessel: ohne Zeiger noch nichts zum Weiterhoeren, Zeiger ohne Titel und unbekannter Titel je einer")
+    @Test("nothing found says its own key per case: without a pointer nothing to resume yet, a pointer without a title and an unknown title one each")
     func eachNothingHasItsSentence() async {
         #expect(ResumeTarget.Missing.noLastPlayed.sentence.key == "Nothing to continue yet.")
         #expect(ResumeTarget.Missing.lastPlayedNotFound.sentence.key == "Nothing to resume: last played not found")
@@ -63,7 +63,7 @@ struct ResumeTargetTests {
     /// What was missing is a case of its own, never text: a new way of
     /// finding nothing must name its sentence and its symbol, and no caller
     /// can ask by a word the rule does not know.
-    @Test("was fehlte, ist ein eigener Fall mit Satz und Zeichen, kein Text", .needsTheSources)
+    @Test("what was missing is a case of its own with a sentence and a symbol, not text", .needsTheSources)
     func whatWasMissingIsACase() throws {
         let rule = try FetchAnswerTests.squeezedSource("Sources/Models/ResumeTarget.swift")
         #expect(rule.contains("case nothing(missing: Missing)"), "the nothing case carries text again")
@@ -77,7 +77,7 @@ struct ResumeTargetTests {
 
     /// The three sentences as the catalog holds them, each with its own
     /// wording in English and German.
-    @Test("die Saetze fuer nichts gefunden im Katalog: je Fall der eigene Wortlaut englisch und deutsch", .needsTheSources)
+    @Test("the sentences for nothing found in the catalog: its own wording per case in English and German", .needsTheSources)
     func theNothingSentencesInTheCatalog() throws {
         let catalog = try StringCatalogOrderTests.entries()
         func value(_ key: String, _ language: String) -> String? {
@@ -91,7 +91,7 @@ struct ResumeTargetTests {
         #expect(value("Nothing to resume: title not found", "de") == "Dieser Titel ist nicht mehr verfügbar.")
     }
 
-    @Test("Ansicht und Befehl treffen an der Tuer dieselbe Entscheidung: ein Titel der Bibliothek ist zuletzt gehoert, ein unbekannter ist nichts")
+    @Test("view and command make the same decision at the door: a title of the library is last heard, an unknown one is nothing")
     func theViewAndTheCommandDecideAlike() async throws {
         let known = "resume-known-\(UUID().uuidString)"
         let library = LibraryViewModel(provider: MockProvider())
@@ -111,7 +111,7 @@ struct ResumeTargetTests {
         }
     }
 
-    @Test("zuletzt gehoert, nicht im Speicher der Sitzung, aber aufloesbar: jede Art wird von Ansicht und Befehl gefunden")
+    @Test("last heard, not in the session store, but resolvable: every kind is found by view and command")
     func everyKindResolvesBeyondTheSessionsMemory() async {
         let library = LibraryViewModel(provider: MockProvider())
         let suffix = UUID().uuidString
@@ -139,7 +139,7 @@ struct ResumeTargetTests {
         }
     }
 
-    @Test("zuletzt gehoert, eine Folge, die aus Feed und Historie fiel: die Tuer spielt nicht die neueste der Sendung, sie findet nichts")
+    @Test("last heard, an episode that dropped out of feed and history: the door does not play the newest of the show, it finds nothing")
     func theLastPlayedEpisodeNeverPlaysItsNeighbour() async {
         let library = LibraryViewModel(provider: MockProvider())
         let suffix = UUID().uuidString
@@ -162,7 +162,7 @@ struct ResumeTargetTests {
         #expect(targets.allSatisfy { $0.findsNothing }, "nothing found must bring the sentence")
     }
 
-    @Test("ein genannter Titel (Siri, Zeile eines Widgets), nicht im Speicher der Sitzung, wird ueber die Kette gefunden, nie der Nachbar")
+    @Test("a named title (Siri, row of a widget), not in the session store, is found through the chain, never the neighbor")
     func aNamedTitleResolvesWithoutItsNeighbour() async {
         let library = LibraryViewModel(provider: MockProvider())
         let suffix = UUID().uuidString
@@ -186,7 +186,7 @@ struct ResumeTargetTests {
         }
     }
 
-    @Test("ein Befehl ohne Titel hinterlaesst keinen Wunsch: kein Auftrag fuer die Ansicht, kein Player")
+    @Test("a command without a title leaves no request: no order for the view, no player")
     func aCommandLeavesNoRequest() async {
         let before = (ResumeRequest.pending, ResumeRequest.pendingItemId)
         defer { (ResumeRequest.pending, ResumeRequest.pendingItemId) = before }
@@ -202,7 +202,7 @@ struct ResumeTargetTests {
         #expect(coordinator.viewModel == nil)
     }
 
-    @Test("der Befehl ohne Werk der App tut nichts, mit ihm genau einmal das Werk")
+    @Test("the command without the app's worker does nothing, with it the worker runs exactly once")
     func theCommandRunsTheAppsWork() async throws {
         let before = ResumeListeningIntent.handler
         defer { ResumeListeningIntent.handler = before }
@@ -215,7 +215,7 @@ struct ResumeTargetTests {
         #expect(runs == [nil, "row-title"], "the work did not run once per command, with the title a row names")
     }
 
-    @Test("findet der Befehl nichts, holt er die App nach vorn und sie sagt es; findet er etwas, bleibt sie im Hintergrund")
+    @Test("if the command finds nothing, it brings the app to the front and it says so; if it finds something, the app stays in the background")
     func aCommandThatFindsNothingSaysSo() async throws {
         let before = (ResumeListeningIntent.handler, ResumeListeningIntent.saysNothing, ResumeListeningIntent.opensApp)
         defer { (ResumeListeningIntent.handler, ResumeListeningIntent.saysNothing, ResumeListeningIntent.opensApp) = before }
@@ -236,7 +236,7 @@ struct ResumeTargetTests {
                     && !ResumeTarget.lastPlayed("a").findsNothing && !ResumeTarget.resumeActive.findsNothing)
     }
 
-    @Test("der Link des Widgets: ohne Titel weiterhoeren, mit Titel genau diesen, jede Kennung kommt unversehrt an")
+    @Test("the link of the widget: without a title resume, with a title exactly that one, every id arrives intact")
     func theWidgetsLink() throws {
         let plain = ResumeLink.url(itemId: nil)
         #expect(plain.absoluteString == "maer://resume")
@@ -249,7 +249,7 @@ struct ResumeTargetTests {
         #expect(!ResumeLink.asksToResume(other) && ResumeLink.itemId(in: other) == nil)
     }
 
-    @Test("Siri sagt, was es vorher weiss: weiterhoeren ohne zuletzt gehoerten Titel und ohne Player ist nichts; eine Bitte steht hoechstens zwei Minuten", .needsTheSources)
+    @Test("Siri says what it knows beforehand: resuming without a last heard title and without a player is nothing; a request stands at most two minutes", .needsTheSources)
     func siriIsHonestAndARequestHasATime() throws {
         #expect(ResumeAsk.continueFindsNothing(lastPlayedId: nil, hasActivePlayer: false))
         #expect(ResumeAsk.continueFindsNothing(lastPlayedId: "", hasActivePlayer: false))
@@ -273,7 +273,7 @@ struct ResumeTargetTests {
         #expect(app.contains("static var pendingItemId: String? { didSet { if pendingItemId != nil { askedAt = Date() } } }"))
     }
 
-    @Test("ein Link maer: wird streng gelesen: nur die Form des Widgets und eine bekannte Kennung, sonst fragt er nichts")
+    @Test("a maer: link is read strictly: only the form of the widget and a known id, otherwise it asks nothing")
     func theLinkIsReadStrictly() throws {
         typealias Check = ResumeLinkCheck
         #expect(Check.ask(in: ResumeLink.url(itemId: nil)) == .resume)
@@ -299,7 +299,7 @@ struct ResumeTargetTests {
         return String(rest[..<end])
     }
 
-    @Test("der Befehl des Widgets steht nicht neben Siris gleichnamiger Aktion in Kurzbefehlen und Suche", .needsTheSources)
+    @Test("the command of the widget does not sit beside Siri's action of the same name in Shortcuts and search", .needsTheSources)
     func theWidgetsCommandIsNotListed() throws {
         let shared = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
         let intent = try #require(shared.range(of: "struct ResumeListeningIntent: AudioPlaybackIntent {"), "the command is gone")
@@ -308,7 +308,7 @@ struct ResumeTargetTests {
                 "the widget's command is listed beside Siri's action of the same name")
     }
 
-    @Test("Ansicht, Siri und Befehl tragen keine eigene Entscheidung, alle fragen die Tuer; das Werk setzt die App beim Start", .needsTheSources)
+    @Test("view, Siri and command carry no decision of their own, all ask the door; the app sets the worker at launch", .needsTheSources)
     func noCallerDecidesOnItsOwn() throws {
         let view = try body(of: "private func handlePendingResumeRequest() async", in: "Sources/Views/LibraryView.swift")
         #expect(view.contains("playerCoordinator.resume(namedItemId: named, by: .view, library: viewModel)"), "the view does not ask the door")
@@ -351,7 +351,7 @@ struct ResumeTargetTests {
 
     /// The door waits while the title resolves; another title opened
     /// meanwhile wins over it (`WaitWindow`), and the door opens nothing.
-    @Test("die Tuer zum Weiterhoeren oeffnet nichts, wenn waehrend des Aufloesens ein anderer Titel geoeffnet wurde")
+    @Test("the door to resuming opens nothing if another title was opened during the resolving")
     func theDoorYieldsToATitleOpenedMeanwhile() async {
         let coordinator = PlayerCoordinator(provider: MockProvider())
         let library = LibraryViewModel(provider: MockProvider())
@@ -370,7 +370,7 @@ struct ResumeTargetTests {
 
     /// The standby mirror and the open on a foreign claim ask the same
     /// window after their title resolved; the mirror also yields to a play.
-    @Test("Spiegel der Bereitschaft und fremder Anspruch fragen nach dem Aufloesen das Fenster", .needsTheSources)
+    @Test("standby mirror and foreign claim ask the window after the resolving", .needsTheSources)
     func theMirrorAndTheClaimAskTheWindow() throws {
         let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("let before = waitWindow if let item = await resolveStandbyItem(itemId, allowsShowNewest: false) { guard WaitWindow.stillStands(before, waitWindow) else {"),

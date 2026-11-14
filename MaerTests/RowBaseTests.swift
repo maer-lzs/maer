@@ -11,7 +11,7 @@ import Foundation
 /// The one rule every row store follows: what the rows are known to hold
 /// decides the write, and only a landed write moves that knowledge.
 struct RowBaseTests {
-    @Test("Bekannt = Diff, frisch und ungelesen = nur Upserts, unbekannt mit Gelesenem = Gelesenes entfernen (ganz ersetzt nur der Umzug)")
+    @Test("Known = diff, fresh and unread = only upserts, unknown with something read = remove what was read (only the move replaces everything)")
     func planFollowsTheBase() {
         #expect(RowBase<[String: Int]>.known(["a": 1]).plan == .diff)
         #expect(RowBase<[String: Int]>.fresh.plan == .upsertOnly)
@@ -23,7 +23,7 @@ struct RowBaseTests {
 
     /// The plan reads the same for a fresh table and one nobody could read;
     /// the start line names the base itself.
-    @Test("Die Startzeile nennt die Grundlage: frisch, bekannt, unbekannt mit Gelesenem und ganz ungelesen sind vier Namen")
+    @Test("The start line names the base: fresh, known, unknown with something read and wholly unread are four names")
     func theBasisNamesWhatThePlanCannot() {
         #expect(RowBase<[String: Int]>.known(["a": 1]).basis == "known")
         #expect(RowBase<[String: Int]>.fresh.basis == "fresh")
@@ -33,7 +33,7 @@ struct RowBaseTests {
                 "the precondition: the plan alone does not tell them apart")
     }
 
-    @Test("die Startzeile der Statistik nennt die Grundlage, nicht nur den Plan", .needsTheSources)
+    @Test("the start line of the statistics names the base, not only the plan", .needsTheSources)
     func theStatsStartLineNamesTheBase() throws {
         let stats = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ListeningStats.swift"), encoding: .utf8))
@@ -41,7 +41,7 @@ struct RowBaseTests {
         #expect(line.contains("base=\\(base.basis"), "the start line names the plan, not the base")
     }
 
-    @Test("Uebersprungene Zeilen machen die Basis unbekannt, nie frisch, und sie behaelt das Gelesene")
+    @Test("Skipped rows make the base unknown, never fresh, and it keeps what was read")
     func skippedRowsAreNotNothing() {
         #expect(RowBase<[String: Int]>.afterLoad(rows: nil, skipped: 0).plan == .upsertOnly)
         if case .fresh = RowBase<[String: Int]>.afterLoad(rows: nil, skipped: 0) {} else { Issue.record("nothing decoded, nothing skipped: fresh") }
@@ -52,7 +52,7 @@ struct RowBaseTests {
 
     /// The diff against nothing upserts everything and removes nothing:
     /// that is why rows nobody read are safe under a write.
-    @Test("Der Diff gegen nichts entfernt nichts")
+    @Test("The diff against nothing removes nothing")
     func diffAgainstNothingRemovesNothing() {
         let diff = KeyedRowDiff.compute(previous: [:], current: ["a": 1, "b": 2])
         #expect(diff.upserted == ["a": 1, "b": 2])
@@ -62,7 +62,7 @@ struct RowBaseTests {
     /// Without a known base a write diffs against the rows the start read
     /// that are gone, so those are removed and nothing else is; with a known
     /// base against the known rows; fresh or unread against nothing.
-    @Test("Bei unbekannter Grundlage geht Gelesenes, das fehlt, als Entfernung mit, sonst nichts")
+    @Test("With an unknown base, what was read and is missing goes along as a removal, nothing else")
     func aReadRowThatIsGoneIsRemoved() {
         let current = ["a": 1, "c": 3]
         let seen = RowBase<[String: Int]>.unknown(seen: ["a": 1, "b": 2])
@@ -77,7 +77,7 @@ struct RowBaseTests {
     /// remove rows, under a known base and under one that read rows; an empty
     /// snapshot that is the action passes, and so does one that removes
     /// nothing.
-    @Test("Ein leerer Schnappschuss ohne Absicht wird verweigert, wenn er Zeilen entfernen wuerde")
+    @Test("An empty snapshot without intent is refused if it would remove rows")
     func anEmptySnapshotWithoutIntentIsRefused() {
         let empty: [String: Int] = [:]
         #expect(RowBase<[String: Int]>.known(["a": 1]).refuses(empty, .refused))
@@ -89,7 +89,7 @@ struct RowBaseTests {
         #expect(!RowBase<[String: Int]>.known(["a": 1]).refuses(["b": 2], .refused))
     }
 
-    @Test("Die Grundlage eines Teils folgt der Grundlage des Ganzen")
+    @Test("The base of a part follows the base of the whole")
     func aPartFollowsTheWhole() {
         let whole = RowBase<[String: [String: Int]]>.unknown(seen: ["days": ["d": 1]])
         #expect(whole.map { $0["days"] ?? [:] }.removable == ["d": 1])

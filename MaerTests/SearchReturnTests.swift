@@ -12,14 +12,14 @@ import Foundation
 /// the search, leads into the search with its query and results; any other
 /// push from the search closes it.
 struct SearchReturnTests {
-    @Test("ein anderer Weg aus der Suche schliesst sie")
+    @Test("any other way out of the search closes it")
     func anyOtherPushCloses() {
         var search = SearchReturn()
         #expect(search.pathChanged(from: 0, to: 1, showing: true) == .close)
         #expect(search.pathChanged(from: 1, to: 0, showing: false) == .none, "a closed search came back")
     }
 
-    @Test("eine Seite der Hoerbuecher setzt die Suche beiseite; ein Buch von dort und zurueck fuehrt erst auf die Seite, dann in die Suche")
+    @Test("a page of the audiobooks sets the search aside; a book from there and back leads first to the page, then into the search")
     func aBooksPageStepsAsideAndComesBack() {
         var search = SearchReturn()
         search.opensPage()
@@ -31,7 +31,7 @@ struct SearchReturnTests {
         #expect(search.pathChanged(from: 0, to: 1, showing: true) == .close)
     }
 
-    @Test("nach einem Vergessen kommt die Suche nicht zurueck")
+    @Test("after a forget the search does not come back")
     func forgottenComesNotBack() {
         var search = SearchReturn()
         search.opensPage()
@@ -44,7 +44,7 @@ struct SearchReturnTests {
     /// and the depth falls as on the way back. They are no way back: every
     /// root of the library's stacks is set in one place, which forgets the
     /// search set aside first.
-    @Test("Home und der Tipp auf einen Reiter holen eine beiseite getretene Suche nicht zurueck", .needsTheSources)
+    @Test("Home and a tap on a tab do not bring back a search that was set aside", .needsTheSources)
     func aJumpToTheRootForgetsTheSearch() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
@@ -59,7 +59,7 @@ struct SearchReturnTests {
                 "Home, the tab tap, the fallback to Home and the new search no longer go through the one place")
     }
 
-    @Test("die Seite oeffnet von dem Stand, auf dem die Suche stand, und kommt dorthin zurueck")
+    @Test("the page opens from the state the search was in, and returns there")
     func comesBackAtItsOwnDepth() {
         var search = SearchReturn()
         search.opensPage()

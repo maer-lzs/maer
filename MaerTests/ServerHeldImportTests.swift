@@ -24,7 +24,7 @@ struct ServerHeldImportTests {
                                               audioURL: "/api/items/s/file", pubDate: 1, duration: 60)])
     }
 
-    @Test("eine Sendung auf Audiobookshelf wird nicht lokal abonniert und nicht abgerufen, Vorschau und Ergebnis zaehlen sie, ihr Stand ohne Folge steht sichtbar als nicht zugeordnet")
+    @Test("a show on Audiobookshelf is not subscribed locally and not fetched, preview and result count it, its position without an episode shows visibly as unassigned")
     func aServerShowIsNotSubscribedHere() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }
@@ -115,7 +115,7 @@ struct ServerHeldImportTests {
                               position: position, finished: finished, stampedAt: moment)
     }
 
-    @Test("Staende einer Sendung auf Audiobookshelf gehen in ihren Fortschritt: ueber guid und Enclosure, nur eindeutig, nur wo der Import nach der Regel gewinnt")
+    @Test("positions of a show on Audiobookshelf go into its progress: via guid and enclosure, only if unambiguous, only where the import wins by the rule")
     func statesGoToTheServer() async throws {
         let rig = try await rig()
         defer { rig.cleanup() }
@@ -144,7 +144,7 @@ struct ServerHeldImportTests {
         #expect(!rig.subs.shows.contains { $0.feedURL == rig.feed }, "nothing subscribed here")
     }
 
-    @Test("was der Server nicht nahm, steht als nicht gesendet und geht im zweiten Lauf, ohne das schon Gesendete noch einmal")
+    @Test("what the server did not take shows as not sent and goes in the second run, without sending again what was already sent")
     func aRefusedWriteIsSentAgain() async throws {
         let rig = try await rig()
         defer { rig.cleanup() }
@@ -162,7 +162,7 @@ struct ServerHeldImportTests {
         #expect(rig.server.writes.map(\.id) == [rig.id("e1"), rig.id("e3")], "e1 was written twice")
     }
 
-    @Test("ohne gelesenen Serverstand wird nichts geschrieben, die Staende stehen als nicht gesendet")
+    @Test("without a read server position nothing is written, the positions show as not sent")
     func noReadNoWrite() async throws {
         let rig = try await rig()
         defer { rig.cleanup() }
@@ -174,7 +174,7 @@ struct ServerHeldImportTests {
         #expect(result.sentToServer == 0 && result.notSent.map(\.count) == [2])
     }
 
-    @Test("eine Sendung, die hier UND auf Audiobookshelf liegt, zaehlt als schon abonniert")
+    @Test("a show that is here AND on Audiobookshelf counts as already subscribed")
     func aShowHeldHereCountsAsHeld() async throws {
         let (subs, cleanup) = try await BulkImportTests.store()
         defer { cleanup() }

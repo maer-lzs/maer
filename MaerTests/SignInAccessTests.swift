@@ -18,7 +18,7 @@ struct SignInAccessTests {
         func read(_ key: String) -> KeychainRead { answers[key] ?? .missing }
     }
 
-    @Test("die Tuer trennt fehlend, unlesbar und Wert")
+    @Test("the door separates missing, unreadable and value")
     func theDoorTellsMissingFromUnreadable() {
         #expect(KeychainRead.of(status: errSecItemNotFound, data: nil) == .missing)
         #expect(KeychainRead.of(status: errSecInteractionNotAllowed, data: nil) == .unreadable,
@@ -38,7 +38,7 @@ struct SignInAccessTests {
         return "\(answer.signedIn),\(answer.unknown)"
     }
 
-    @Test("unlesbar haelt die Anmeldung, fehlend meldet ab")
+    @Test("unreadable keeps the sign-in, missing signs out")
     func unreadableKeepsTheSignIn() {
         #expect(state(url: .value("https://abs.example"), token: .value("t")) == "true,false")
         #expect(state(url: .value("https://abs.example"), token: .unreadable) == "true,true")
@@ -47,7 +47,7 @@ struct SignInAccessTests {
         #expect(state(url: .missing, token: .missing) == "false,false")
     }
 
-    @Test("unlesbar beim Start, dann lesbar: angemeldet und die Bibliothek laedt ohne Neustart")
+    @Test("unreadable at start, then readable: signed in and the library loads without a restart")
     func anUnreadableAccessIsReadAgainOnReturn() async {
         let keychain = Keychain()
         keychain.answers = [KeychainKey.serverURL: .unreadable, KeychainKey.apiToken: .unreadable]
@@ -71,7 +71,7 @@ struct SignInAccessTests {
         #expect(!auth.rereadIfUnknown(), "a known access is not read again")
     }
 
-    @Test("bei unbekanntem Zugang geht kein Abruf an den Server, und kein Zweifel an der Sitzung beginnt")
+    @Test("with an unknown access no fetch goes to the server, and no doubt about the session begins")
     func anUnknownAccessSendsNothing() async {
         let keychain = Keychain()
         keychain.answers = [KeychainKey.serverURL: .value("https://abs.invalid"), KeychainKey.apiToken: .unreadable]
@@ -90,7 +90,7 @@ struct SignInAccessTests {
         #expect(!auth.sessionSuspect && !auth.needsReauth, "an unreadable access started the doubt")
     }
 
-    @Test("ein fehlender Zugang bleibt abgemeldet, auch nach dem Nachlesen")
+    @Test("a missing access stays signed out, also after reading again")
     func aMissingAccessStaysSignedOut() {
         let keychain = Keychain()
         let auth = AuthViewModel(read: keychain.read)

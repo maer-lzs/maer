@@ -153,7 +153,7 @@ struct SharedGrowthFenceTests {
             }.count
     }
 
-    @Test("Singleton-Zugriffe in Views wachsen nicht", .needsTheSources)
+    @Test("Singleton accesses in views do not grow", .needsTheSources)
     func viewsDoNotGrowSharedAccess() throws {
         var total = 0
         var perFile: [String: Int] = [:]
@@ -171,7 +171,7 @@ struct SharedGrowthFenceTests {
         #expect(Self.sharedLines(in: "try await s.authenticate(using: u, preferredBrowserSession: .shared, x: Store.shared)") == 1)
     }
 
-    @Test("Der Gesamtbestand faellt mit, sonst war es nur ein Umzug", .needsTheSources)
+    @Test("The total stock falls too, otherwise it was only a move", .needsTheSources)
     func theWholeSourceTreeFallsToo() throws {
         var total = 0
         var perFile: [String: Int] = [:]

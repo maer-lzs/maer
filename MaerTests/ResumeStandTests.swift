@@ -14,7 +14,7 @@ import Testing
 /// (`SyncRules.storedStand`, `PlayerViewModel.storedStandTarget`).
 struct ResumeStandTests {
 
-    @Test("die Regel: ein Stand neben dem eigenen bewegt nichts, ein aelterer nie, ein neuerer schon, vor dem ersten Hoeren der frischeste")
+    @Test("the rule: a state next to one's own moves nothing, an older one never, a newer one does, before the first listen the freshest")
     func theRule() {
         let own = 1_000_000.0
         #expect(SyncRules.storedStand(position: 101, atMs: own + 5_000, ownStandMs: own, currentTime: 100) == .same)
@@ -26,7 +26,7 @@ struct ResumeStandTests {
                 "before the player listened, the freshest stand starts it")
     }
 
-    @Test("ueber den echten Player: nach der Pause laesst ein aelterer Stand im Speicher den Player stehen", .needsAudio)
+    @Test("through the real player: after the pause an older state in the store leaves the player alone", .needsAudio)
     func anOlderStandKeepsThePlayer() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)
@@ -45,7 +45,7 @@ struct ResumeStandTests {
         model.stop()
     }
 
-    @Test("ueber den echten Player: ein Stand, den ein anderes Geraet nach der Pause schrieb, bewegt den Player", .needsAudio)
+    @Test("through the real player: a state that another device wrote after the pause moves the player", .needsAudio)
     func aNewerStandMovesThePlayer() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)
@@ -64,7 +64,7 @@ struct ResumeStandTests {
         model.stop()
     }
 
-    @Test("ueber den echten Player: eine Pause auf einem stillen Geraet ist kein eigener Stand, der Stand des anderen bewegt es danach", .needsAudio)
+    @Test("through the real player: a pause on a silent device is no state of its own, the other's state moves it afterwards", .needsAudio)
     func aSilentPauseIsNoOwnStand() async throws {
         let ticks = TickWorkTests()
         let file = try ticks.tone(seconds: 12)
@@ -82,13 +82,13 @@ struct ResumeStandTests {
         model.stop()
     }
 
-    @Test("die Ruecknahme einer Pause traegt nur den Stand eines laufenden Stuecks")
+    @Test("the release after a pause carries only the state of a running piece")
     func aSilentReleaseCarriesNoPosition() {
         #expect(PlaybackClaimRules.releasePosition(wasPlaying: true, currentTime: 42) == 42)
         #expect(PlaybackClaimRules.releasePosition(wasPlaying: false, currentTime: 42) == nil)
     }
 
-    @Test("die Pause fragt die Regel der Ruecknahme und setzt den eigenen Stand nur, wenn ein Stueck lief", .needsTheSources)
+    @Test("the pause asks the release rule and sets its own state only if a piece played", .needsTheSources)
     func thePauseAsksTheReleaseRule() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
         #expect(text.contains("position: PlaybackClaimRules.releasePosition(wasPlaying: wasPlaying, currentTime: currentTime),"),
@@ -97,7 +97,7 @@ struct ResumeStandTests {
                 "a pause makes the stand its own without having played")
     }
 
-    @Test("Weiterspielen fragt die Regel und keinen blossen Abstand der Positionen", .needsTheSources)
+    @Test("Playing on asks the rule and not a bare distance of the positions", .needsTheSources)
     func playingOnAsksTheRule() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
         let start = try #require(text.range(of: "func playWithServerCheck(caller: String = #function) async {"), "playWithServerCheck is gone")
@@ -126,7 +126,7 @@ struct ResumeStandTests {
         return out
     }
 
-    @Test("jeder Weg zum Weiterhoeren fragt erst den Abgleich; nur ein bewusster Sprung (Kapitel, von vorn) startet sofort", .needsTheSources)
+    @Test("every path to resuming asks the sync first; only a deliberate jump (chapter, from the start) starts at once", .needsTheSources)
     func everyWayToPlayOnAsksFirst() throws {
         #expect(ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]).count > 100, "the fence did not read the sources")
         #expect(Self.playCalls() == ["PlayerViewModel.swift": 1, "BookDetailScreen.swift": 2],
@@ -135,7 +135,7 @@ struct ResumeStandTests {
         #expect(text.contains("play(caller: caller) }"), "the one bare call is not the end of playWithServerCheck")
     }
 
-    @Test("zwei Geraete: Weiterhoeren ueber den Abgleich startet auf dem spaeteren Stand des anderen Geraets", .needsAudio)
+    @Test("two devices: resuming through the sync starts at the later state of the other device", .needsAudio)
     func playingOnStartsAtTheLaterStand() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -152,7 +152,7 @@ struct ResumeStandTests {
         second.stop()
     }
 
-    @Test("der Plan: Pause, Stopp, Hintergrund und Unterbrechung schreiben nur einen geschuldeten Stand, eigene Handlungen immer")
+    @Test("the plan: pause, stop, background and interruption write only an owed state, own actions always")
     func onlyAnOwedStandIsWritten() {
         let owing = SyncPlanTests.state()
         var idle = owing
@@ -231,7 +231,7 @@ struct ResumeStandTests {
         ListeningStore.noteFlushed(id, position: model.lastSyncedTime, atMs: Date().timeIntervalSince1970 * 1000)
     }
 
-    @Test("zwei Geraete: ein stilles Geraet geht in den Hintergrund und wird gestoppt, das spielende springt danach nicht zurueck", .needsAudio)
+    @Test("two devices: a silent device goes to the background and is stopped, the playing one does not jump back afterwards", .needsAudio)
     func aSilentDeviceDoesNotPullThePlayingOneBack() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -251,7 +251,7 @@ struct ResumeStandTests {
         playing.stop()
     }
 
-    @Test("eine Unterbrechung waehrend des Hoerens schreibt den Stand, den das Geraet schuldet", .needsAudio)
+    @Test("an interruption while listening writes the state the device owes", .needsAudio)
     func anInterruptionWritesTheOwedStand() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }
@@ -270,7 +270,7 @@ struct ResumeStandTests {
         model.stop()
     }
 
-    @Test("zwei Geraete: spielt das andere wirklich weiter, springt das erste danach auf dessen Stand", .needsAudio)
+    @Test("two devices: if the other really plays on, the first jumps to its state afterwards", .needsAudio)
     func aRealSwitchStillMoves() async throws {
         let file = try TickWorkTests().tone(seconds: 60)
         defer { try? FileManager.default.removeItem(at: file) }

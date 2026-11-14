@@ -22,14 +22,14 @@ struct ServiceKeyFingerprintTests {
         (Data(repeating: 0xFF, count: 32), "NYB1-6XGF-E9HN-ZFDM-99D0-MRY3"),
     ]
 
-    @Test("vier Schluessel drucken hier, was der Dienst fuer sie druckt")
+    @Test("four keys print here what the service prints for them")
     func theVectorsAgreeWithTheService() {
         for vector in Self.vectors {
             #expect(ServiceKeyFingerprint.written(for: vector.bytes) == vector.written)
         }
     }
 
-    @Test("sechs Gruppen zu vier, aus dem Alphabet ohne I, L, O und U")
+    @Test("six groups of four, from the alphabet without I, L, O and U")
     func sixGroupsOfFourFromTheAlphabet() throws {
         let written = try #require(ServiceKeyFingerprint.written(for: Data(repeating: 0x42, count: 32)))
         let groups = written.split(separator: "-")
@@ -40,14 +40,14 @@ struct ServiceKeyFingerprintTests {
         for confusable in "ILOU" { #expect(!alphabet.contains(confusable)) }
     }
 
-    @Test("ein Schluessel, der nicht 32 Byte hat, bekommt keinen Abdruck")
+    @Test("a key that is not 32 bytes gets no fingerprint")
     func aKeyOfTheWrongLengthGetsNoFingerprint() {
         #expect(ServiceKeyFingerprint.written(for: Data(repeating: 7, count: 31)) == nil)
         #expect(ServiceKeyFingerprint.written(for: Data(repeating: 7, count: 33)) == nil)
         #expect(ServiceKeyFingerprint.written(for: Data()) == nil)
     }
 
-    @Test("zwei Schluessel drucken verschieden, ein Byte Unterschied genuegt")
+    @Test("two keys print differently, one byte of difference is enough")
     func oneByteApartPrintsDifferently() {
         var other = Data(repeating: 7, count: 32)
         other[31] = 8

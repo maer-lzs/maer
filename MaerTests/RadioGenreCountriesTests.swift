@@ -130,7 +130,7 @@ import Foundation
     /// 18 German stations in the broad pot filled every visible slot). The
     /// quota is bounded above AND below by construction, so it cannot tip
     /// in either direction.
-    @Test("Weltweit bleibt mehrsprachig: Heimat-Quote am Kopf, Rest global")
+    @Test("Worldwide stays multilingual: home quota at the head, rest global")
     func homeQuotaKeepsTheWorldVisible() {
         var list: [RadioStation] = []
         for i in 0..<10 { list.append(station("DE\(i)", votes: 1000 - i, languages: ["de"])) }
@@ -149,7 +149,7 @@ import Foundation
         #expect(Set(ranked.map(\.name)) == Set(list.map(\.name)))
     }
 
-    @Test("weniger Heimat-Sender als Quote: unveraendert vorn, kein Auffuellen")
+    @Test("fewer home stations than the quota: unchanged at the front, no filling up")
     func fewerHomeStationsThanTheQuota() {
         let list = [station("WORLD0", votes: 900, languages: ["en"]),
                     station("DE0", votes: 100, languages: ["de"]),
@@ -175,7 +175,7 @@ import Foundation
 
     // MARK: - World-services core on the worldwide spoken page
 
-    @Test("Reihenfolge steht: Heimat-Kopf, dann Weltsender, dann Welt-Votes")
+    @Test("The order holds: home head, then world services, then world votes")
     func worldCoreSitsBehindTheHomeHead() {
         let base = [station("DLF", votes: 900, languages: ["de"]),
                     station("WDR 5", votes: 800, languages: ["de"]),
@@ -187,7 +187,7 @@ import Foundation
                                     "Deutsche Welle", "BigVotes FM"])
     }
 
-    @Test("ein Kern-Sender, den die Seite schon trug, rueckt auf statt zu doppeln")
+    @Test("a core station the page already carried moves up instead of doubling")
     func aCoreStationAlreadyOnThePageMovesUp() {
         let dw = station("Deutsche Welle", votes: 20, homepage: "https://dw.test",
                          languages: ["de"])
@@ -197,7 +197,7 @@ import Foundation
         #expect(out.map(\.name) == ["DLF", "Deutsche Welle"])
     }
 
-    @Test("ohne Kern aendert sich nichts, ohne Heimat-Kopf steht der Kern vorn")
+    @Test("without a core nothing changes, without a home head the core leads")
     func edgesStayHonest() {
         let base = [station("A", votes: 900, languages: ["en"])]
         #expect(RadioGenreCuration.withWorldCore(base, core: [], deviceLanguage: "de")
@@ -208,7 +208,7 @@ import Foundation
     }
 
     /// The country line shows the two-letter codes at every size.
-    @Test("die Laenderzeile zeigt die zweistelligen Kuerzel der Wahl, mehrere mit Komma, ein unbekanntes wie gegeben")
+    @Test("the country line shows the two-letter codes of the choice, several with a comma, an unknown one as given")
     func theCountryLineShowsCodes() {
         #expect(RadioGenreCountries.codeLine(["US"]) == "US")
         #expect(RadioGenreCountries.codeLine(["de", "AT", "ch"]) == "DE, AT, CH")
@@ -273,7 +273,7 @@ import Foundation
     }
 
     /// The measured sportschau case: one domain, one head, the Konferenz in
-    /// front. And NOTHING lost behind the fold (Vollzähligkeit).
+    /// front. And NOTHING lost behind the fold (completeness).
     @Test func theSportschauFamilyCollapsesCompletely() {
         let family = [station("Fußball-Bundesliga: Spiel 1", votes: 86),
                       station("Fußball-Bundesliga: Konferenz", votes: 282),
@@ -327,23 +327,23 @@ import Foundation
 /// the fixed single catches.
 @Suite struct RadioGroupVerdictTests {
 
-    @Test("drei Cancels sind eine Cancellation, kein Verbindungsfehler")
+    @Test("three cancels are one cancellation, not a connection error")
     func cancelsAreNoFailures() {
         #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 3, total: 3) == .cancelled)
     }
 
-    @Test("alle Laender ECHT gescheitert = unerreichbar")
+    @Test("all countries REALLY failed = unreachable")
     func allRealFailuresAreUnreachable() {
         #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 0, total: 3) == .unreachable)
     }
 
-    @Test("ein Treffer traegt die Seite — egal was die anderen taten")
+    @Test("one hit carries the page, whatever the others did")
     func anyHitCarries() {
         #expect(RadioBrowserClient.groupVerdict(hitCount: 1, cancelCount: 2, total: 3) == .union)
         #expect(RadioBrowserClient.groupVerdict(hitCount: 1, cancelCount: 0, total: 3) == .union)
     }
 
-    @Test("gemischt ohne Treffer: ein Cancel macht den Lauf zum Abbruch")
+    @Test("mixed without a hit: one cancel turns the run into an abort")
     func mixedWithoutHitsIsCancelled() {
         #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 1, total: 3) == .cancelled)
     }

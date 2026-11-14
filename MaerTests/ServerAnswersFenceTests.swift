@@ -40,7 +40,7 @@ struct ServerAnswersFenceTests {
         return read
     }
 
-    @Test("jede gemessene Server-Antwort traegt ihre Herkunft und hat einen Leser", .needsTheTests)
+    @Test("every measured server answer carries its origin and has a reader", .needsTheTests)
     func everyAnswerHasItsOriginAndAReader() throws {
         let files = try Self.files()
         // The precondition names what the fence must see: the answer the

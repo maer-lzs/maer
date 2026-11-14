@@ -56,7 +56,7 @@ struct RoutineCarryTests {
         return directory
     }
 
-    @Test("drei Draehte tragen die Regeln einer Routine hin und zurueck, in Reihenfolge, mit ihren Stempeln")
+    @Test("three wires carry the rules of a routine there and back, in order, with their stamps")
     func threeWiresCarryTheRules() throws {
         let itemIds = ["rss:f:e1"] + Self.ruleIds
         var added: [String: Double] = [:]
@@ -80,7 +80,7 @@ struct RoutineCarryTests {
         }
     }
 
-    @Test("ein Stand ohne Routinen auf demselben Traeger: die Regeln reisen mit, eingeschwungen ueber fuenf Runden kein Schrieb am Traeger und keiner in einem Speicher")
+    @Test("a state without routines on the same carrier: the rules travel along, settled over five rounds no write on the carrier and none in a store")
     func aBuildWithoutRoutinesCarriesThemQuietly() throws {
         let restore = SyncSwitchProbe.armOn()
         defer { restore() }
@@ -126,7 +126,7 @@ struct RoutineCarryTests {
 
     /// The same file runs in a build without routines, so it asks what both
     /// builds answer alike: no source, no cover, no title, nothing to play.
-    @Test("ein Stand ohne Routinen fragt fuer eine Regel keine Quelle, spielt sie nicht als Titel und heilt keinen Titel")
+    @Test("a state without routines asks no source for a rule, does not play it as a title and heals no title")
     func aBuildWithoutRoutinesAsksNoSource() async throws {
         for id in Self.ruleIds {
             #expect(AppSession.shared.provider(for: id) is UnknownSourceProvider, "\(id) reaches no source")
@@ -154,7 +154,7 @@ struct RoutineCarryTests {
         withExtendedLifetime(watching) {}
     }
 
-    @Test("die Heilung der Titel fragt nur Eintraege ohne Abbild, die einen Titel nennen, keine Regel")
+    @Test("the healing of titles asks only entries without an image that name a title, no rule")
     func theHealingAsksTitlesNotRules() {
         var list = MaerPlaylists.Playlist(id: "l", name: "Morgens", updatedAt: 1,
                                           itemIds: ["sub:song:1", "rule:newest:abc", "rule:later:9:abc", "lva:2"])

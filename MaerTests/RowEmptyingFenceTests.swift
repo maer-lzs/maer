@@ -29,7 +29,7 @@ struct RowEmptyingFenceTests {
         code.matches(of: #/emptying:\s*(?:RowEmptying)?\.allowed/#).count
     }
 
-    @Test("jede Zeilen-Schrift, die leeren darf, steht mit Grund im Bestand, in beide Richtungen", .needsTheSources)
+    @Test("every row write that may empty is in the vouched set with a reason, in both directions", .needsTheSources)
     func onlyTheStockMayEmpty() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
@@ -56,7 +56,7 @@ struct RowEmptyingFenceTests {
         code.contains(#/apply\(previous:\s*\[:\]|knownValue\s*\?\?\s*(?:\[:?\]|ListeningStatsData\(\)|removable|\(?base\.removable)/#)
     }
 
-    @Test("jede eigene Schreibkette fragt die eine Regel, und keine Quelle vergleicht von Hand gegen nichts", .needsTheSources)
+    @Test("every own write chain asks the one rule, and no source compares by hand against nothing", .needsTheSources)
     func everyChainAsksTheRule() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }

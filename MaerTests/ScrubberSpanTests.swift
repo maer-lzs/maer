@@ -14,7 +14,7 @@ struct ScrubberSpanTests {
     /// An album of three songs, 200 s each.
     let second = ScrubberSpan.of(isMusic: true, chapterStart: 200, chapterEnd: 400, duration: 600)
 
-    @Test("Musik: der Balken ist der Song, mit seinen Zeiten")
+    @Test("Music: the bar is the song, with its times")
     func musicSpansTheSong() {
         #expect(second.length == 200)
         // Half way into the second song.
@@ -24,7 +24,7 @@ struct ScrubberSpanTests {
         #expect(second.absolute(position: 100) == 300)
     }
 
-    @Test("Gesprochenes Wort: der Balken ist das Werk, unveraendert")
+    @Test("Spoken word: the bar is the work, unchanged")
     func spokenWordSpansTheWork() {
         let book = ScrubberSpan.of(isMusic: false, chapterStart: 200, chapterEnd: 400, duration: 600)
         #expect(book == .span(start: 0, end: 600))
@@ -33,7 +33,7 @@ struct ScrubberSpanTests {
         #expect(book.absolute(position: 120) == 120)
     }
 
-    @Test("Ohne Song faellt Musik auf das Werk zurueck (ein Einzeltitel, ein Stream)")
+    @Test("Without a song, music falls back to the work (a single track, a stream)")
     func musicWithoutASongKeepsTheWork() {
         #expect(ScrubberSpan.of(isMusic: true, chapterStart: nil, chapterEnd: nil, duration: 240)
                 == .span(start: 0, end: 240))
@@ -44,7 +44,7 @@ struct ScrubberSpanTests {
         #expect(ScrubberSpan.of(isMusic: false, chapterStart: nil, chapterEnd: nil, duration: 0).length == 1)
     }
 
-    @Test("Die Raender: vor dem Song null, hinter ihm die volle Laenge, ein Zug ausserhalb bleibt drin")
+    @Test("The edges: zero before the song, the full length after it, a drag outside stays inside")
     func edgesStayInsideTheSpan() {
         #expect(second.elapsed(absolute: 0) == 0)
         #expect(second.elapsed(absolute: 999) == 200)

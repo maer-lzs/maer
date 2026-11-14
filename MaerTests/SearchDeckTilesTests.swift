@@ -16,7 +16,7 @@ struct SearchDeckTilesTests {
     private let counts = SearchDeckCounts(authors: 7, series: 3, genres: 5,
                                           shows: 11, albums: 42, artists: 9)
 
-    @Test("Der Buecher-Bereich bietet Autoren, Reihen und Genres mit ihrem Bestand")
+    @Test("The books scope offers authors, series and genres with their stock")
     func audiobooksOfferTheThreeGroups() {
         let tiles = SearchDeckTiles.tiles(scope: .audiobooks, counts: counts)
         #expect(tiles.map(\.id) == ["authors", "series", "genres"])
@@ -24,13 +24,13 @@ struct SearchDeckTilesTests {
         #expect(tiles.map(\.destination) == [.group(.authors), .group(.series), .group(.genres)])
     }
 
-    @Test("Podcasts und Radio haben keine Kacheln, dort ist die Sendung selbst die Einheit")
+    @Test("Podcasts and radio have no tiles, the show itself is the unit there")
     func podcastsAndRadioHaveNoTiles() {
         #expect(SearchDeckTiles.tiles(scope: .podcasts, counts: counts).isEmpty)
         #expect(SearchDeckTiles.tiles(scope: .radio, counts: counts).isEmpty)
     }
 
-    @Test("Der Musik-Bereich fuehrt auf die Seiten, nicht auf einen Bereichswechsel")
+    @Test("The music scope leads to the pages, not to a scope switch")
     func musicTilesLeadToThePages() {
         let tiles = SearchDeckTiles.tiles(scope: .music, counts: counts)
         #expect(tiles.map(\.id) == ["artists", "music-albums", "music-songs",
@@ -40,7 +40,7 @@ struct SearchDeckTilesTests {
         #expect(tiles.map(\.count) == [9, 42, nil, nil, nil, 0])
     }
 
-    @Test("Geladen steht als sechste Kachel und traegt die Zahl der Zaehlung")
+    @Test("Downloaded is the sixth tile and carries the number from the count")
     func downloadedStandsAsTheSixthTile() {
         var mit = counts
         mit.downloaded = 7
@@ -50,11 +50,11 @@ struct SearchDeckTilesTests {
         #expect(geladen?.id == "music-downloaded")
         #expect(geladen?.destination == .downloaded)
         #expect(geladen?.count == 7, "die Kachel erfindet ihre Zahl statt sie zu reichen")
-        // Das freie Regal ist hier weg, auf BEIDEN Flaechen.
+        // The free shelf is gone here, on BOTH surfaces.
         #expect(!tiles.contains { $0.id == "music-free-classical" })
     }
 
-    @Test("Der gemischte Bereich WECHSELT den Bereich, statt zu navigieren")
+    @Test("The mixed scope SWITCHES the scope instead of navigating")
     func theLibraryScopeSwitchesInsteadOfNavigating() {
         let tiles = SearchDeckTiles.tiles(scope: .library, counts: counts)
         #expect(tiles.map(\.id) == ["authors", "series", "genres", "shows", "artists", "albums"])
@@ -67,23 +67,23 @@ struct SearchDeckTilesTests {
         #expect(!tiles.contains { $0.id == "music-free-classical" })
     }
 
-    @Test("Ohne Antwort der Musikquelle steht GAR KEINE Ziffer, keine erfundene Null")
+    @Test("Without an answer from the music source there is NO digit at all, no invented zero")
     func artistCountWithoutAnAnswerShowsNoNumeral() {
-        // Eine 0 waere eine Zahl, die das Deck nicht weiss: solange die
-        // Quelle offline ist oder scheitert, antwortet sie nie, und die
-        // Kachel wuerde behaupten, es gebe keine Kuenstler. Die Kachel
-        // verbirgt die Ziffer bei nil, der Musik-Tab haelt dieselbe Regel.
+        // A 0 would be a number the deck does not know: as long as the
+        // source is offline or failing, it never answers, and the
+        // tile would claim there are no artists. The tile
+        // hides the digit at nil, the music tab keeps the same rule.
         let none = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).first
         #expect(none?.id == "artists")
         #expect(none?.count == nil)
-        // Und mit Antwort steht die Zahl, auch die Null einer leeren Quelle.
+        // And with an answer the number shows, also the zero of an empty source.
         let empty = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(artists: 0)).first
         #expect(empty?.count == 0)
         let answered = SearchDeckTiles.tiles(scope: .music, counts: counts).first
         #expect(answered?.count == 9)
     }
 
-    @Test("Jede Kachel jedes Bereichs hat eine Kennung und ein benanntes Ziel")
+    @Test("Every tile of every scope has an identifier and a named destination")
     func everyTileHasAnIdAndATarget() {
         var ids: Set<String> = []
         var targets: Set<SearchDeckDestination> = []

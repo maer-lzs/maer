@@ -8,27 +8,27 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// AirPods-Doppeldruck bei Songs = naechster Song: bei Songs sind nur die
-/// Titel-Befehle an, keine Spruenge um Sekunden. Ein Song aus einem freien
-/// Katalog ist ein Song, ein Katalog-Hoerbuch nicht (Entscheid 28.09.2026).
-/// „Zurueck“ in den ersten Sekunden geht zum Song davor, auch ueber die
-/// Grenze eines Eintrags; Buecher, Podcasts und Hoerbuecher wie bisher; Radio
-/// nichts.
+/// AirPods double press on songs = next song: for songs only the
+/// track commands are on, no jumps by seconds. A song from a free
+/// catalog is a song, a catalog audiobook is not (decision 28.09.2026).
+/// „Zurueck“ in the first seconds goes to the song before, also across the
+/// boundary of an entry; books, podcasts and audiobooks as before; radio
+/// nothing.
 struct RemoteCommandRuleTests {
-    @Test("Die Tabelle je Titel: Katalog-Song, Katalog-Hoerbuch, Musik, Buch, Podcast, Radio")
+    @Test("The table per title: catalog song, catalog audiobook, music, book, podcast, radio")
     func theTable() {
         typealias E = RemoteCommandRule.Enabled
         let songs = E(skip: false, track: true), spoken = E(skip: true, track: true)
         let table: [(String?, RemoteCommandRule.Kind, E)] = [
-            ("jam:12345", .songs, songs),                  // Jamendo, Musik der Art nach
-            ("lva:some_item#3", .songs, songs),            // ein Song aus archive.org
-            ("lv:1234", .spoken, spoken),                  // LibriVox-Hoerbuch
-            ("gut:5884", .spoken, spoken),                 // Gutenberg-Hoerbuch
-            ("sub:song:9", .songs, songs),                 // Musik vom Server
-            ("local:book-1", .spoken, spoken),             // Hoerbuch
+            ("jam:12345", .songs, songs),                  // Jamendo, music by kind
+            ("lva:some_item#3", .songs, songs),            // a song from archive.org
+            ("lv:1234", .spoken, spoken),                  // LibriVox audiobook
+            ("gut:5884", .spoken, spoken),                 // Gutenberg audiobook
+            ("sub:song:9", .songs, songs),                 // music from the server
+            ("local:book-1", .spoken, spoken),             // audiobook
             ("rss:feed:ep-1", .spoken, spoken),            // Podcast
             ("radio:station-1", .live, E(skip: false, track: false)),
-            (nil, .spoken, spoken),                        // nichts geladen
+            (nil, .spoken, spoken),                        // nothing loaded
         ]
         for (id, kind, enabled) in table {
             #expect(RemoteCommandRule.kind(forItem: id) == kind, "\(id ?? "nil")")
@@ -41,7 +41,7 @@ struct RemoteCommandRuleTests {
     /// hands the player (a whole album or list, a song alone as shuffle and
     /// top songs play them, from either server) is songs to the one rule,
     /// taken from the providers' own id builders, not typed here.
-    @Test("jeder Musik-Startweg, Album, Liste und einzelner Song beider Server, ist fuer die Regel Songs")
+    @Test("every music start path, album, list and single song of both servers, is songs to the rule")
     func everyMusicStartIsSongs() throws {
         let song = try JSONDecoder().decode(SubsonicSong.self, from: Data(#"{"id":"s1","title":"Song"}"#.utf8))
         let ids = [
@@ -60,7 +60,7 @@ struct RemoteCommandRuleTests {
     /// context, by the end's own rule, and keeps the context when it hops
     /// along it: a shuffled list keeps its rest in the context, and a hop
     /// that read only the orders did nothing there.
-    @Test("der Sprung zum naechsten Titel liest Auftraege und Kontext nach der Regel des Titelendes und behaelt den Kontext", .needsTheSources)
+    @Test("the hop to the next title reads orders and context by the rule of the title end and keeps the context", .needsTheSources)
     func theSkipReadsTheContext() throws {
         let hop = PlaybackAdvance.next(queueIds: [], contextIds: ["sub:song:2", "sub:song:3"],
                                        isPlayable: { _ in true }, resolves: { _ in true })
@@ -79,7 +79,7 @@ struct RemoteCommandRuleTests {
         #expect(!coordinator.contains("QueueContinuation.nextPlayable("), "a resolution of the orders alone came back")
     }
 
-    @Test("Zurueck: 1 s geht zum Song davor, 5 s an den Anfang; erster Song mit Vorgaenger geht zum Vorgaenger, der allererste an den Anfang")
+    @Test("Back: 1 s goes to the song before, 5 s to the start; a first song with a predecessor goes to the predecessor, the very first to the start")
     func theBackRule() {
         typealias B = RemoteCommandRule.Back
         #expect(RemoteCommandRule.back(withinTrack: 5, trackIndex: 2, hasSongBefore: true) == B.startOfTrack)
@@ -93,7 +93,7 @@ struct RemoteCommandRuleTests {
                 "genau drei Sekunden zaehlen noch als Anfang")
     }
 
-    @Test("Gemerkt wird nur ein Song, der einem anderen Titel weicht")
+    @Test("Only a song that yields to another title is remembered")
     func whatIsRemembered() {
         #expect(RemoteCommandRule.remembersForBack(leaving: "sub:song:1", starting: "sub:song:2"))
         #expect(RemoteCommandRule.remembersForBack(leaving: "jam:1", starting: "sub:song:2"))
@@ -102,17 +102,17 @@ struct RemoteCommandRuleTests {
         #expect(!RemoteCommandRule.remembersForBack(leaving: nil, starting: "sub:song:1"))
     }
 
-    @Test("Weiter nach Zurueck: die Tabelle, wer wiederkommt")
+    @Test("Next after Back: the table of who comes back")
     func whatReturnsWithNext() {
         let table: [(String?, Bool)] = [
-            ("sub:song:9", true),          // Musik vom Server
-            ("jam:12345", true),           // Katalog-Song
-            ("lva:some_item#3", true),     // Song aus archive.org
-            ("lv:1234", false),            // Katalog-Hoerbuch
-            ("local:book-1", false),       // Hoerbuch
+            ("sub:song:9", true),          // music from the server
+            ("jam:12345", true),           // catalog song
+            ("lva:some_item#3", true),     // song from archive.org
+            ("lv:1234", false),            // catalog audiobook
+            ("local:book-1", false),       // audiobook
             ("rss:feed:ep-1", false),      // Podcast
             ("radio:station-1", false),    // Radio
-            (nil, false),                  // nichts lief
+            (nil, false),                  // nothing played
         ]
         for (id, returns) in table {
             #expect(RemoteCommandRule.returnsWithNext(leaving: id) == returns, "\(id ?? "nil")")
@@ -123,27 +123,27 @@ struct RemoteCommandRuleTests {
         PlayQueue(persists: false, equivalents: { [$0] })
     }
 
-    /// Weiter waehlt, was die App waehlt: den ersten spielbaren Eintrag.
+    /// Next picks what the app picks: the first playable entry.
     private func next(_ q: PlayQueue) -> String? {
         QueueContinuation.nextPlayable(ids: q.ids, isPlayable: { _ in true }, resolves: { _ in true })
     }
 
-    @Test("Weiter nach Zurueck: der verlassene Song steht einmal vorn, zwei Schritte stapeln umgekehrt")
+    @Test("Next after Back: the left song sits once at the front, two steps stack in reverse")
     @MainActor
     func theLeftSongWaitsInFront() {
         let q = orders()
         q.playLast("sub:song:x")
-        // C lief, Zurueck auf B: C wartet vorn.
+        // C played, Back to B: C waits at the front.
         q.returnForNext(leaving: "sub:song:c")
         #expect(q.ids == ["sub:song:c", "sub:song:x"])
         #expect(next(q) == "sub:song:c", "Weiter spielt den verlassenen Song")
-        // Noch einmal Zurueck, von B auf A: B davor, C dahinter.
+        // Back once more, from B to A: B before, C behind.
         q.returnForNext(leaving: "sub:song:b")
         #expect(q.ids == ["sub:song:b", "sub:song:c", "sub:song:x"])
         #expect(next(q) == "sub:song:b")
     }
 
-    @Test("Weiter nach Zurueck: ein schon eingereihter Song steht danach genau einmal vorn")
+    @Test("Next after Back: an already queued song sits exactly once at the front afterwards")
     @MainActor
     func neverTwice() {
         let q = orders()
@@ -155,7 +155,7 @@ struct RemoteCommandRuleTests {
         #expect(q.ids.filter { $0 == "sub:song:c" }.count == 1)
     }
 
-    @Test("Weiter nach Zurueck: Buecher, Podcasts, Radio und nichts lassen die Auftraege, wie sie sind")
+    @Test("Next after Back: books, podcasts, radio and nothing leave the orders as they are")
     @MainActor
     func spokenStaysOut() {
         let q = orders()
@@ -166,7 +166,7 @@ struct RemoteCommandRuleTests {
         #expect(q.ids == ["sub:song:x"])
     }
 
-    @Test("Der Rueckweg haengt an der Regel und am Stapel der Sitzung", .needsTheSources)
+    @Test("The way back depends on the rule and on the stack of the session", .needsTheSources)
     func theBackWiring() throws {
         let player = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
@@ -179,9 +179,9 @@ struct RemoteCommandRuleTests {
         #expect(coordinator.contains("RemoteCommandRule.remembersForBack(leaving:activeItem?.id,starting:item.id)"))
         #expect(coordinator.contains("self.songsBefore.popLast()"))
         #expect(coordinator.contains("open(item:previous,restart:true,preservesContext:true)"))
-        // Weiter nach Zurueck: die Kennung wird VOR dem Oeffnen gemerkt (danach
-        // ist der laufende Titel schon der zurueckgeholte) und danach an die eine
-        // Tuer der Auftraege gegeben.
+        // Next after Back: the id is remembered BEFORE opening (afterwards
+        // the running title is already the fetched-back one) and then handed to the one
+        // door of the orders.
         #expect(coordinator.contains("privatevarorders:PlayQueue{PlayQueue.shared}"))
         let remember = try #require(coordinator.range(of: "letleft=self.activeItem?.id"))
         let open = try #require(coordinator.range(of: "awaitself.open(item:previous,restart:true,preservesContext:true)"))
@@ -192,7 +192,7 @@ struct RemoteCommandRuleTests {
         #expect(press.contains("switch RemoteCommandRule.kind(forItem: id, markedForm: playingForm)"),"die Taste fragt dieselbe Regel wie der Sperrbildschirm")
     }
 
-    @Test("Die Titeltasten der App: Songs gehen den Titelweg, alles andere blaettert Kapitel")
+    @Test("The title buttons of the app: songs take the title path, everything else flips chapters")
     func theAppStep() {
         #expect(RemoteCommandRule.appStep(for: .songs) == .title)
         #expect(RemoteCommandRule.appStep(for: .spoken) == .chapter)
@@ -202,7 +202,7 @@ struct RemoteCommandRuleTests {
         #expect(RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: "local:book-1")) == .chapter)
     }
 
-    @Test("Die Titeltasten heissen, was sie tun: bei Songs Titel, sonst Kapitel")
+    @Test("The title buttons are named for what they do: title for songs, otherwise chapter")
     func theKeyLabels() {
         let title = RemoteCommandRule.keyLabels(for: .title), chapter = RemoteCommandRule.keyLabels(for: .chapter)
         #expect(title.back.key == "Previous track" && title.forward.key == "Next track")
@@ -221,7 +221,7 @@ struct RemoteCommandRuleTests {
         return code.matches(of: #/(?:^|[^A-Za-z0-9_])(?:previousChapter|nextChapter)\(\)/#).count
     }
 
-    @Test("Keine Flaeche blaettert an der Regel vorbei: Titeltasten und Wischgeste gehen durch stepTitle", .needsTheSources)
+    @Test("No surface flips past the rule: title buttons and swipe gesture go through stepTitle", .needsTheSources)
     func noSurfaceTurnsChaptersPastTheRule() throws {
         #expect(Self.chapterTurns(in: "viewModel.nextChapter()\ncoordinator.viewModel?.previousChapter()\n// viewModel.nextChapter()") == 2,
                 "the finder sees both receivers and skips the comment")
@@ -252,7 +252,7 @@ struct RemoteCommandRuleTests {
         }
     }
 
-    @Test("Die drei Arten und ihre Befehle")
+    @Test("The three kinds and their commands")
     func theKinds() {
         typealias E = RemoteCommandRule.Enabled
         #expect(RemoteCommandRule.enabled(for: .songs) == E(skip: false, track: true))
@@ -260,7 +260,7 @@ struct RemoteCommandRuleTests {
         #expect(RemoteCommandRule.enabled(for: .live) == E(skip: false, track: false))
     }
 
-    @Test("Die Befehle folgen der Regel je Titel, und jeder eingehende Befehl schreibt eine Zeile", .needsTheSources)
+    @Test("The commands follow the rule per title, and every incoming command writes a line", .needsTheSources)
     func theWiring() throws {
         let source = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+NowPlaying.swift"),

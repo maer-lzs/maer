@@ -39,7 +39,7 @@ struct ShelfFollowerTests {
         return (RestingShelf(directory: directory), { try? FileManager.default.removeItem(at: directory) })
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs endet, bevor abgelegt wird: B's Ruhe ohne A, A bleibt bei A")
+    @Test("an open replacement of an earlier run ends before anything is stored: B's rest without A, A stays with A")
     func anOpenReplacementEndsBeforeTheStockIsLaid() throws {
         let (shelf, cleanup) = try shelf()
         defer { cleanup() }
@@ -58,7 +58,7 @@ struct ShelfFollowerTests {
         #expect(try shelf.holding(of: "made-up")?.owner == "account-c")
     }
 
-    @Test("ein ungelesener Bestand haelt jeden Ausgang, auch beim selben Halter und nach einem schon gehaltenen Wechsel")
+    @Test("an unread stock holds every outcome, also with the same holder and after a change already held")
     func anUnreadStockHoldsEveryWayOut() throws {
         let (shelf, cleanup) = try shelf()
         defer { cleanup() }
@@ -71,7 +71,7 @@ struct ShelfFollowerTests {
         #expect(family.follow("account-a") == .kept)
     }
 
-    @Test("eine Uebergabe, deren Halter nicht settled, versucht es beim naechsten Mal zuerst wieder")
+    @Test("a handover whose holder does not settle tries again first the next time")
     func anUnsettledHoldingIsTriedAgain() throws {
         let (shelf, cleanup) = try shelf()
         defer { cleanup() }
@@ -93,7 +93,7 @@ struct ShelfFollowerTests {
         #expect(try shelf.holding(of: "made-up") == .init(owner: "account-b"), "the unsettled holding was not tried again")
     }
 
-    @Test("nach einem Prozessende mitten im Ersetzen gilt nur die Marke: ohne sie wird ersetzt und B bekommt nichts von A, mit ihr bleibt B's Bestand")
+    @Test("after a process end in the middle of a replacement only the mark counts: without it things are replaced and B gets nothing of A, with it B's stock stays")
     func onlyTheMarkProvesTheReplacementLanded() throws {
         let (shelf, cleanup) = try shelf()
         defer { cleanup() }
@@ -120,7 +120,7 @@ struct ShelfFollowerTests {
         #expect(try shelf.holding(of: "made-up") == .init(owner: "account-b"))
     }
 
-    @Test("handOver wird nur aus dem Mantel gerufen", .needsTheSources)
+    @Test("handOver is called only from the wrapper", .needsTheSources)
     func handOverIsCalledFromTheMantleAlone() throws {
         var callers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die Zuletzt-gehört-Reihe für Alben UND Sender. Reine Zeitfolge,
-/// KEINE faire Verschränkung (Wahrheits-Reihe), Grenze ist Position.
+/// The recently-played row for albums AND stations. Pure time order,
+/// NO fair interleaving (truth row), the limit is a position.
 struct RecentlyPlayedRowTests {
-    @Test("reine Zeitfolge: wer nur Radio hoert, sieht Radio")
+    @Test("pure time order: whoever only listens to radio sees radio")
     func pureTimeOrderNeverInterleaves() {
         let out = RecentlyPlayedRow.merged(
             albums: ["alb1"], albumTimes: ["alb1": 100],
@@ -19,13 +19,13 @@ struct RecentlyPlayedRowTests {
             stations: ["st1", "st2", "st3"],
             stationTimes: ["st1": 400, "st2": 300, "st3": 200],
             limit: 10)
-        // Drei Sender vor dem Album. Genau das, was eine faire
-        // Verschraenkung verhindern wuerde und was hier RICHTIG ist.
+        // Three stations before the album. Exactly what a fair
+        // interleaving would prevent and what is RIGHT here.
         #expect(out == [.station(id: "st1"), .station(id: "st2"),
                         .station(id: "st3"), .album(id: "alb1")])
     }
 
-    @Test("Album spielen, dann Sender ⇒ Sender zuerst")
+    @Test("play an album, then a station ⇒ station first")
     func acceptanceCase() {
         let out = RecentlyPlayedRow.merged(
             albums: ["alb"], albumTimes: ["alb": 1000],
@@ -35,7 +35,7 @@ struct RecentlyPlayedRowTests {
         #expect(out == [.station(id: "st"), .album(id: "alb")])
     }
 
-    @Test("Fortsetzen gewinnt: keine Dublette auf einer Seite")
+    @Test("Resuming wins: no duplicate on one page")
     func continuedAlbumsAreNotDuplicated() {
         let out = RecentlyPlayedRow.merged(
             albums: ["running", "done"],
@@ -45,7 +45,7 @@ struct RecentlyPlayedRowTests {
         #expect(out == [.album(id: "done")])
     }
 
-    @Test("ohne Zeitstempel wird keine erfunden — Quellordnung, hinten an")
+    @Test("without a timestamp none is invented: source order, at the back")
     func undatedKeepSourceOrderBehindDated() {
         let out = RecentlyPlayedRow.merged(
             albums: ["a1", "a2"], albumTimes: [:],
@@ -53,23 +53,23 @@ struct RecentlyPlayedRowTests {
             stations: ["s1"], stationTimes: ["s1": 10],
             limit: 10)
         #expect(out == [.station(id: "s1"), .album(id: "a1"), .album(id: "a2")])
-        // Und die Grenze haelt auch die Reihenlaenge ein.
+        // And the limit also holds the row length.
         #expect(RecentlyPlayedRow.merged(albums: ["a1", "a2", "a3"], albumTimes: [:],
                                          continued: [], stations: [], stationTimes: [:],
                                          limit: 2).count == 2)
     }
 
-    // MARK: - Die Null ist keine Zeit
+    // MARK: - Zero is not a time
 
-    /// Der Sender-Zweig, gefahren durch den SPEICHER statt durch ein
-    /// Woerterbuch von Hand: der Uebernahme-Weg schreibt die Null, der
-    /// Lese-Weg muss sie als unbekannt herausgeben, und die Reihe muss den
-    /// Sender dann bei den UNDATIERTEN fuehren.
+    /// The station branch, driven through the STORE instead of a
+    /// hand-made dictionary: the takeover path writes the zero, the
+    /// read path must hand it out as unknown, and the row must then
+    /// put the station among the UNDATED.
     ///
-    /// Der Zeuge misst die RANGFOLGE, nicht die Abbildung. Ohne den Filter
-    /// zaehlt die Null als datiert und der Sender steht VOR einem Sender
-    /// ohne jeden Eintrag, also mitten in der Reihe.
-    @Test("ein Sender ohne Moment steht bei den undatierten, nicht in der Mitte")
+    /// The witness measures the RANKING, not the mapping. Without the filter
+    /// the zero counts as dated and the station sits BEFORE a station
+    /// without any entry, so in the middle of the row.
+    @Test("a station without a moment sits with the undated, not in the middle")
     func aStationWithoutAMomentRanksWithTheUndated() {
         let name = "recently-played-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -80,8 +80,8 @@ struct RecentlyPlayedRowTests {
                                 streamURL: "https://zero.example/s")
         let dated = RadioStation(id: "radio:rb:dated", name: "Mit Zeit",
                                  streamURL: "https://dated.example/s")
-        // Genau die Gestalt, die der Uebernahme-Weg erzeugt: die Zeiten
-        // kommen aus dem Blob, einer davon ohne Zeitstempel.
+        // Exactly the shape the takeover path produces: the times
+        // come from the blob, one of them without a timestamp.
         RadioStore.replaceRecents([noEntry, zero, dated],
                                   times: [zero.id: 0, dated.id: 500],
                                   defaults: defaults)
@@ -93,21 +93,21 @@ struct RecentlyPlayedRowTests {
             albums: [], albumTimes: [:], continued: [],
             stations: [noEntry.id, zero.id, dated.id], stationTimes: times,
             limit: 10)
-        // Datiert zuerst, danach die beiden Undatierten in Quell-Reihenfolge.
+        // Dated first, then the two undated in source order.
         #expect(out == [.station(id: dated.id), .station(id: noEntry.id),
                         .station(id: zero.id)])
     }
 
-    /// Der Katalog-Zweig. Die Null entsteht dort, wo eine fremde Position
-    /// ohne Moment uebernommen wird, und der Eintrag traegt sie bis in die
-    /// Reihe.
-    @Test("ein Katalog-Titel ohne Moment steht bei den undatierten")
+    /// The catalog branch. The zero arises where a foreign position
+    /// is taken over without a moment, and the entry carries it into the
+    /// row.
+    @Test("a catalog title without a moment sits with the undated")
     func aCatalogTrackWithoutAMomentRanksWithTheUndated() {
-        // Der Dritte OHNE jeden Eintrag ist der eigentliche Massstab: ohne
-        // ihn sagt der Fall nur, dass die Abbildung filtert, und die
-        // Rangfolge zweier Eintraege sieht mit und ohne Filter gleich aus.
-        // Genau daran ist die erste Fassung dieses Zeugen bei der Rot-Probe
-        // NICHT gerissen.
+        // The third one WITHOUT any entry is the real yardstick: without
+        // it the case only says that the mapping filters, and the
+        // ranking of two entries looks the same with and without the filter.
+        // That is exactly why the first version of this witness did NOT
+        // fail in the red probe.
         let noEntry = "lva:ohne#1"
         let zero = ContinueSources.Extra(id: "lva:zero#1", position: 30,
                                          updatedAtMs: 0, duration: 600)
@@ -121,14 +121,14 @@ struct RecentlyPlayedRowTests {
             albums: [], albumTimes: [:], continued: [],
             stations: [], stationTimes: [:],
             catalog: [noEntry, zero.id, dated.id], catalogTimes: times, limit: 10)
-        // Datiert zuerst, danach die beiden Undatierten in Quell-Reihenfolge.
+        // Dated first, then the two undated in source order.
         #expect(out == [.catalogTrack(id: dated.id), .catalogTrack(id: noEntry),
                         .catalogTrack(id: zero.id)])
     }
 
-    /// Die Alben-Haelfte beantwortete die Frage schon richtig, aber an jeder
-    /// Flaeche neu. Jetzt an einer Stelle, mit demselben Ergebnis.
-    @Test("die Alben-Haelfte gibt dieselbe Antwort und gibt sie an einer Stelle")
+    /// The album half already answered the question correctly, but anew on every
+    /// surface. Now in one place, with the same result.
+    @Test("the album half gives the same answer and gives it in one place")
     func albumTimesAnswerTheSameQuestionOnce() {
         let progress = [
             "alb-dated": BookProgress(fraction: 0.2, isFinished: false, lastUpdate: 500_000),
@@ -139,7 +139,7 @@ struct RecentlyPlayedRowTests {
         #expect(times["alb-zero"] == nil)
     }
 
-    @Test("die Zeit eines Server-Albums kommt aus dem Bestand dieses Geraets, sonst bleibt es undatiert")
+    @Test("the time of a server album comes from this device's set, otherwise it stays undated")
     func deviceTimesComeFromTheStock() {
         let positions: [String: [Double]] = [
             "sub:album:a": [0, 2_000_000],
@@ -157,9 +157,9 @@ struct RecentlyPlayedRowTests {
         #expect(merged == [.catalogTrack(id: "jam:1"), .album(id: "sub:album:a"), .album(id: "sub:album:d")])
     }
 
-    /// Die Regel selbst, in beide Richtungen. Eine negative Zeit ist so
-    /// wenig eine Zeit wie eine Null.
-    @Test("nicht-positiv heisst unbekannt, positiv bleibt unveraendert")
+    /// The rule itself, in both directions. A negative time is as
+    /// little a time as a zero.
+    @Test("non-positive means unknown, positive stays unchanged")
     func theRuleItself() {
         #expect(RecentlyPlayedRow.knownTime(0) == nil)
         #expect(RecentlyPlayedRow.knownTime(-1) == nil)
@@ -167,10 +167,10 @@ struct RecentlyPlayedRowTests {
         #expect(RecentlyPlayedRow.knownTime(500) == 500)
     }
 
-    /// Der Zaun: BEIDE Flaechen nennen die Tueren, und KEINE baut die
-    /// Abbildung noch einmal von Hand. Beide sind namentlich genannt, damit
-    /// eine dritte nicht stumm danebenlaeuft.
-    @Test("keine Flaeche beantwortet die Frage ein zweites Mal", .needsTheSources)
+    /// The fence: BOTH surfaces name the doors, and NEITHER builds the
+    /// mapping again by hand. Both are named, so that
+    /// a third does not run along silently beside them.
+    @Test("no surface answers the question a second time", .needsTheSources)
     func noSurfaceAnswersTheQuestionASecondTime() throws {
         // The music tab's row is asked by the tab and the car in one place.
         let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "SharedRows.swift"]
@@ -192,8 +192,8 @@ struct RecentlyPlayedRowTests {
             // passes none.
             #expect(text.contains("RadioStore.recentTimes(") || text.contains("stations: [], stationTimes: [:]"),
                     "\(leaf) holt die Sender-Zeiten nicht aus dem Speicher")
-            // Die Handschrift, die es vorher war: eine Abbildung auf
-            // `lastUpdate` oder `updatedAtMs` an der Aufrufstelle.
+            // The hand-made form it used to be: a mapping onto
+            // `lastUpdate` or `updatedAtMs` at the call site.
             #expect(!text.contains("$0.lastUpdate / 1000"),
                     "\(leaf) rechnet die Album-Zeit wieder selbst um")
             #expect(!text.contains("$0.updatedAtMs / 1000"),

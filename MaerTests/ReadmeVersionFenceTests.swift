@@ -78,7 +78,7 @@ struct ReadmeVersionFenceTests {
         return (headings, fences)
     }
 
-    @Test("die Mindestversion beider READMEs ist das Deployment-Ziel des Projekts", .needsTheSources, .needsTheProjectFile)
+    @Test("the minimum version of both READMEs is the deployment target of the project", .needsTheSources, .needsTheProjectFile)
     func theReadmesNameTheDeploymentTarget() throws {
         let project = try Self.text("Maer.xcodeproj/project.pbxproj")
         let targets = Self.settingValues("IPHONEOS_DEPLOYMENT_TARGET", in: project)
@@ -92,7 +92,7 @@ struct ReadmeVersionFenceTests {
         }
     }
 
-    @Test("jede genannte App-Version ist der Stempel des Projekts, im Changelog die neueste Ueberschrift auch", .needsTheSources, .needsTheProjectFile)
+    @Test("every named app version is the stamp of the project, in the changelog the newest heading too", .needsTheSources, .needsTheProjectFile)
     func everyNamedVersionIsTheStamp() throws {
         let project = try Self.text("Maer.xcodeproj/project.pbxproj")
         let versions = Self.settingValues("MARKETING_VERSION", in: project)
@@ -125,7 +125,7 @@ struct ReadmeVersionFenceTests {
     /// languages. A heading translated wrongly passes; a section missing in
     /// one README does not. An odd number of fence markers is an unclosed
     /// code block.
-    @Test("beide READMEs tragen dieselbe Gliederung: Ebenenfolge der Ueberschriften und Zahl der Code-Bloecke", .needsTheSources)
+    @Test("both READMEs carry the same outline: sequence of heading levels and number of code blocks", .needsTheSources)
     func bothReadmesHaveTheSameOutline() throws {
         let english = Self.outline(of: try Self.text("README.md"))
         let german = Self.outline(of: try Self.text("README.de.md"))
@@ -138,7 +138,7 @@ struct ReadmeVersionFenceTests {
 
     /// The detail pages the READMEs link carry the same outline in both
     /// languages, as the READMEs do.
-    @Test("jede Detailseite traegt in beiden Sprachen dieselbe Gliederung", .needsTheSources)
+    @Test("every detail page carries the same outline in both languages", .needsTheSources)
     func everyDetailPageHasTheSameOutlineInBothLanguages() throws {
         let english = PublicReadmeFenceTests.detailPages.filter { !$0.hasSuffix(".de.md") }
         #expect(english.count == 5, "the precondition: five detail pages in English")
@@ -153,7 +153,7 @@ struct ReadmeVersionFenceTests {
     }
 
     /// The readers on planted text: each would see the drift it guards.
-    @Test("die Leser sehen eine falsche Mindestversion, einen fremden Stempel und eine fehlende Ueberschrift")
+    @Test("the readers see a wrong minimum version, a foreign stamp and a missing heading")
     func theReadersSeeTheDrift() throws {
         #expect(Self.minimumVersions(in: "- Deployment target **iOS/iPadOS 26.5** (minimum)") == ["26.5"])
         #expect(Self.minimumVersions(in: "- Deployment-Ziel **iOS/iPadOS 18.0** (Mindest)") == ["18.0"])

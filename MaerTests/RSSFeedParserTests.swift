@@ -8,8 +8,8 @@ import Foundation
 import Testing
 @testable import Maer
 
-/// Tests fürs RSS/Atom-Parsing der Podcast-Feeds. Der Codepfad, der an
-/// echten (oft schludrigen) Feeds am ehesten bricht.
+/// Tests for the RSS/Atom parsing of podcast feeds. The code path that is
+/// most likely to break on real (often sloppy) feeds.
 struct RSSFeedParserTests {
 
     private func parse(_ xml: String) -> PodcastShow? {
@@ -44,7 +44,7 @@ struct RSSFeedParserTests {
         #expect(ep.pubDate > 0)
     }
 
-    @Test("Dauer als reine Sekunden und als MM:SS")
+    @Test("Duration as plain seconds and as MM:SS")
     func parsesDurationFormats() throws {
         let secs = try #require(parse(feed(duration: "600")))
         #expect(secs.episodes[0].duration == 600)
@@ -52,7 +52,7 @@ struct RSSFeedParserTests {
         #expect(mmss.episodes[0].duration == 750)
     }
 
-    @Test("Item ohne Audio-Enclosure bleibt als Nur-Text-Folge erhalten")
+    @Test("An item without an audio enclosure is kept as a text-only episode")
     func keepsItemsWithoutAudio() throws {
         let show = try #require(parse("""
         <rss><channel><title>S</title>

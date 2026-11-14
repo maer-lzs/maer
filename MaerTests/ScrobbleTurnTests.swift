@@ -14,7 +14,7 @@ import Foundation
 struct ScrobbleTurnTests {
     private let songs: [ScrobbleTurn.Song] = [("a", 0), ("b", 180), ("c", 400)]
 
-    @Test("der laufende Song ist der letzte begonnene, mit einer halben Sekunde Spiel")
+    @Test("the running song is the last begun one, with half a second of play")
     func thePlayingSongIsTheLastStarted() {
         #expect(ScrobbleTurn.song(at: 0, in: songs)?.id == "a")
         #expect(ScrobbleTurn.song(at: 179, in: songs)?.id == "a")
@@ -24,7 +24,7 @@ struct ScrobbleTurnTests {
         #expect(ScrobbleTurn.song(at: 5, in: []) == nil)
     }
 
-    @Test("gezaehlt wird beim Wechsel des Songs, nicht bei jedem Aufruf")
+    @Test("counting happens at the change of song, not at every call")
     func aPlayCountsOncePerSong() {
         let first = ScrobbleTurn.song(at: 10, in: songs)
         #expect(ScrobbleTurn.due(first, last: nil) == "a", "the first song counts")
@@ -38,7 +38,7 @@ struct ScrobbleTurnTests {
 
     /// The booking a provider's `updateProgress` keeps, driven call by call
     /// with a server that refuses once.
-    @Test("das Buch der Zaehlungen: einmal je Song, ein abgewiesener zaehlt beim naechsten Aufruf neu, ein neu geladenes Stueck zaehlt wieder")
+    @Test("the book of counts: once per song, a refused one counts anew at the next call, a newly loaded piece counts again")
     @MainActor
     func theBookCountsOncePerSongAndAsksARefusalAgain() async {
         final class Server { var sent: [String] = []; var refuses = false }
@@ -66,7 +66,7 @@ struct ScrobbleTurnTests {
         #expect(server.sent.last == "b", "a reloaded item counts its song again")
     }
 
-    @Test("beide Musik-Anbieter fragen die eine Regel und zaehlen keinen Song mehr selbst", .needsTheSources)
+    @Test("both music providers ask the one rule and no longer count a song themselves", .needsTheSources)
     func bothProvidersAskTheOneRule() throws {
         for name in ["SubsonicProvider.swift", "JellyfinProvider.swift"] {
             let code = SyncContractFenceTests.stripped(try String(

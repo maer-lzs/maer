@@ -7,12 +7,12 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Der Einschlaf-Zeitgeber merkt sich die Dauer, mit der er zuletzt
-/// gestartet wurde. Wer jeden Abend dieselben dreissig Minuten setzt, findet
-/// sie oben, statt jedes Mal dieselbe Zeile zu treffen.
+/// The sleep timer remembers the duration it was last started with. Whoever
+/// sets the same thirty minutes every evening finds it at the top, instead of
+/// hitting the same row every time.
 struct SleepTimerDefaultTests {
 
-    @Test("nichts gemerkt ist kein Angebot, und eine Null wird nie gemerkt")
+    @Test("nothing remembered is no offer, and a zero is never remembered")
     func nothingRememberedIsNoOffer() {
         let key = AppStorageKeys.sleepTimerLastMinutes
         let vorher = UserDefaults.standard.object(forKey: key)
@@ -24,25 +24,25 @@ struct SleepTimerDefaultTests {
         #expect(AppStorageKeys.sleepTimerRemembered == nil,
                 "ein leerer Speicher bietet eine Dauer an, die es nie gab")
 
-        // Eine Null ist keine Dauer. Ohne diese Klausel boete das Menue
-        // „Wieder: 0 min" an, sobald irgendetwas eine Null hineinschreibt.
+        // A zero is no duration. Without this clause the menu would offer
+        // „Wieder: 0 min" as soon as anything writes a zero into it.
         AppStorageKeys.rememberSleepTimer(minutes: 0)
         #expect(AppStorageKeys.sleepTimerRemembered == nil,
                 "eine Null ist als Vorgabe gemerkt worden")
 
         AppStorageKeys.rememberSleepTimer(minutes: 30)
         #expect(AppStorageKeys.sleepTimerRemembered == 30)
-        // Rot-Probe am Instrument: die Merkstelle nimmt auch eine ANDERE
-        // Dauer an. Ein Speicher, der immer dieselbe Zahl liefert, meldete
-        // die Zeile darueber genauso gruen.
+        // Red probe at the instrument: the memory spot also takes a DIFFERENT
+        // duration. A store that always returns the same number would report
+        // the line above just as green.
         AppStorageKeys.rememberSleepTimer(minutes: 45)
         #expect(AppStorageKeys.sleepTimerRemembered == 45)
     }
 
-    /// Gemerkt wird an der EINEN Stelle, an der eine Uhr-Dauer startet.
-    /// Laege es am Menue, merkte der Fahrmodus oder ein spaeterer Aufrufer
-    /// nichts, und die Vorgabe waere je nach Weg eine andere.
-    @Test("gemerkt wird beim Starten, nicht im Menue", .needsTheSources)
+    /// It is remembered at the ONE place where a clock duration starts.
+    /// If it lay at the menu, the driving mode or a later caller would
+    /// remember nothing, and the default would differ by path.
+    @Test("it is remembered on start, not in the menu", .needsTheSources)
     func theStartRemembersIt() throws {
         let quelle = try String(
             contentsOf: URL(fileURLWithPath: #filePath)
@@ -54,9 +54,9 @@ struct SleepTimerDefaultTests {
         #expect(rumpf.contains("rememberSleepTimer"),
                 "die Dauer wird beim Starten nicht mehr gemerkt")
 
-        // Und die beiden GRENZEN-Zeitgeber merken nichts: „bis zum Ende des
-        // Kapitels" ist keine Dauer und bedeutet bei jedem Stueck etwas
-        // anderes.
+        // And the two LIMIT timers remember nothing:
+        // „bis zum Ende des Kapitels" is no duration and means something
+        // different for every piece.
         for grenze in ["func startSleepTimerUntilChapterEnd() {",
                        "func startSleepTimerUntilTrackEnd() {"] {
             let anderer = try #require(functionBody(of: grenze, in: quelle))

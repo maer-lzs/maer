@@ -43,7 +43,7 @@ struct SecondaryShelfTests {
         Dictionary(entries.map { ($0.id, String($0.id.prefix { $0 != ":" })) }, uniquingKeysWith: { first, _ in first })
     }
 
-    @Test("eine Zweitquelle, die nicht antwortet, behaelt Buecher und Balken ueber zwei Runden; leer geantwortet ist leer")
+    @Test("a secondary source that does not answer keeps books and bars over two rounds; answered empty is empty")
     func aFailedSourceKeepsItsBooks() async {
         let first = await SecondaryShelf.entries(of: [Self.answering("sub", ["sub:a"], ["sub:a": 0.4]),
                                                       Self.answering("local", ["local:x"], [:])],
@@ -72,7 +72,7 @@ struct SecondaryShelfTests {
     /// The list fails, the progress answers (with nothing for the kept
     /// books, as a Subsonic fetch that never throws does): the source keeps
     /// its books of the round before and their bars.
-    @Test("scheitert nur die Liste und antwortet der Fortschritt, behaelt die Quelle Buecher und Balken")
+    @Test("if only the list fails and the progress answers, the source keeps books and bars")
     func aFailedListKeepsItsBarsWhenTheProgressAnswers() async {
         let first = await SecondaryShelf.entries(of: [Self.answering("sub", ["sub:a"], ["sub:a": 0.4])],
                                                  previous: [], owners: [:])

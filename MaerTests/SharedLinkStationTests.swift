@@ -24,7 +24,7 @@ struct SharedLinkStationTests {
                          browse: { _ in false }, resolveCatalog: { _ in false }, resolveStation: resolve)
     }
 
-    @Test("ein Link mit echter Kennung und fremdem Strom oeffnet den Sender nie mit Namen oder Strom aus dem Link")
+    @Test("a link with a real id and a foreign stream never opens the station with a name or stream from the link")
     func aStationFromALinkNeverCarriesTheLinksStream() async throws {
         let opener = opener { $0 == Self.uuid ? .found(Self.catalog) : .unknown }
         let url = try #require(SharedLink.url(for: .station(uuid: Self.uuid, .init(title: "Fremd", audioURL: Self.foreign))))
@@ -37,7 +37,7 @@ struct SharedLinkStationTests {
         #expect(station == Self.catalog, "the station is not the catalog's")
     }
 
-    @Test("findet der Katalog die Kennung nicht, oder nennt er einen anderen Sender, oeffnet der Link nichts")
+    @Test("if the catalog does not find the id, or names another station, the link opens nothing")
     func aStationTheCatalogDoesNotConfirmOpensNothing() async throws {
         let url = try #require(SharedLink.url(for: .station(uuid: Self.uuid, .init(title: "Fremd", audioURL: Self.foreign))))
         #expect(await opener { _ in .unknown }.outcome(for: url) == .refused(reason: "stationUnknown"))
@@ -111,14 +111,14 @@ struct SharedLinkStationTests {
         #expect(page.contains("SharedLinkOpener.lookUpStation("), "Retry asks another lookup")
     }
 
-    @Test("die Abfrage des Katalogs fragt die eine Kennung")
+    @Test("the catalog's query asks the one id")
     func theCatalogIsAskedForTheOneId() {
         let query = RadioBrowserClient.Query.byUUID(uuid: Self.uuid)
         #expect(query.path == "/json/stations/byuuid/\(Self.uuid)")
         #expect(query.queryItems.isEmpty)
     }
 
-    @Test("Zaun: der Sender aus einem Link liest weder Namen noch Strom aus dem Link", .needsTheSources)
+    @Test("Fence: the station from a link reads neither name nor stream from the link", .needsTheSources)
     func theStationNeverReadsTheLinksFacts() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/SharedLinkOpener.swift")
         let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))

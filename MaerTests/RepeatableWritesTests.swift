@@ -13,7 +13,7 @@ import Foundation
 /// stays. And a removal by position goes only while the position still
 /// holds the song the row showed.
 struct RepeatableWritesTests {
-    @Test("die Wiederholung: ein nicht wiederholbarer Schrieb geht nach 5xx, 429 oder Zeitueberschreitung nicht noch einmal, nach 401 einmal")
+    @Test("the retry: a non-repeatable write is not sent again after 5xx, 429 or a timeout, after 401 once")
     func aNonRepeatableWriteGoesOnce() {
         typealias Policy = RequestRetryPolicy
         for status in [500, 502, 503, 429] {
@@ -26,7 +26,7 @@ struct RepeatableWritesTests {
                 "the one probe after a 401 is gone, nothing was applied there")
     }
 
-    @Test("Subsonic nennt seine nicht wiederholbaren Aufrufe: anlegen, anhaengen, nach Position entfernen, gemeldete Wiedergabe")
+    @Test("Subsonic names its non-repeatable calls: create, append, remove by position, reported playback")
     func subsonicNamesItsWrites() {
         let add = SubsonicClient.addSongItems(["s1"])
         let remove = SubsonicClient.removeIndexItems([3])
@@ -40,7 +40,7 @@ struct RepeatableWritesTests {
         #expect(SubsonicClient.isRepeatable("star", ["id": "s"], extraItems: []))
     }
 
-    @Test("Jellyfin, Audiobookshelf und gpodder schicken ihre nicht wiederholbaren Schriebe einmal", .needsTheSources)
+    @Test("Jellyfin, Audiobookshelf and gpodder send their non-repeatable writes once", .needsTheSources)
     func theOtherClientsSendOnce() throws {
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Networking/JellyfinClient.swift")
         #expect(jellyfin.contains(#"let data = try await post("Playlists", jsonBody: [ "Name": name, "UserId": uid, "MediaType": "Audio", ], repeatable: false)"#))
@@ -54,7 +54,7 @@ struct RepeatableWritesTests {
         #expect(gpodder.contains("if repeatable, attempt < maxRetries, Self.isTransientURLError(error) {"))
     }
 
-    @Test("Entfernen nach Position nur, solange an jeder Stelle das gezeigte Lied steht")
+    @Test("Remove by position only while the shown song is at every spot")
     func aRemovalGoesOnlyWhereTheSongStillStands() {
         #expect(PlaylistRemoval.stillAt([1], drawn: ["b"], current: ["a", "b", "c"]))
         #expect(!PlaylistRemoval.stillAt([1], drawn: ["b"], current: ["a", "c", "b"]), "another song would fall")

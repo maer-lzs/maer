@@ -26,7 +26,7 @@ struct RelativePathFenceTests {
         }
     }
 
-    @Test("ein Test nennt einen gewanderten Pfad nur ueber SourceTree.relativePath", .needsTheTests)
+    @Test("a test names a moved path only through SourceTree.relativePath", .needsTheTests)
     func walkedPathsAreNamedByComponents() throws {
         var offenders: [String] = []
         var read = 0
@@ -44,7 +44,7 @@ struct RelativePathFenceTests {
 
     /// Every form the earlier fence let through is caught now, and a text
     /// replacement that is no path cut is not.
-    @Test("der Zaun faengt jede Schnittform, auch halb aufgeloest und umgebrochen")
+    @Test("the fence catches every cut form, also half resolved and line-wrapped")
     func everyCutFormIsCaught() {
         let forms = [
             #"let p = url.path.replacingOccurrences(of: root.path + "/", with: "")"#,

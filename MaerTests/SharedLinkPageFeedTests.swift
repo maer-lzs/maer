@@ -159,7 +159,7 @@ struct SharedLinkPageFeedTests {
         return try JSONDecoder().decode(Shown.self, from: Data(json.utf8))
     }
 
-    @Test("ein sauberer Feed: Herausgeber, Angaben, Beschreibung, Webseite und die Folgen, neueste zuerst, je mit eigener Seite im selben Tab", .needsTheSite)
+    @Test("a clean feed: publisher, details, description, website and the episodes, newest first, each with its own page in the same tab", .needsTheSite)
     func aCleanFeedFillsThePage() async throws {
         let feed = Self.feed(episodes: Self.episodes(gaps: 7, count: 3))
         let shown = try await Self.render(Self.showFragment(), feed: feed)
@@ -189,7 +189,7 @@ struct SharedLinkPageFeedTests {
                 "the link back is not the show's: \(back)")
     }
 
-    @Test("HTML und Skript aus dem Feed kommen nur als Text auf die Seite, nichts davon laeuft oder laedt", .needsTheSite)
+    @Test("HTML and script from the feed reach the page only as text, none of it runs or loads", .needsTheSite)
     func theFeedIsOnlyText() async throws {
         let hostile = "<p>Line one</p><script>window.pwned = 1</script><img src=\"https://evil.example/x.png\" onerror=\"window.pwned = 2\"><br>Line two"
         let feed = Self.feed(description: hostile, episodes: Self.episodes(gaps: 7, count: 1))
@@ -202,7 +202,7 @@ struct SharedLinkPageFeedTests {
         #expect(shown.images == 2 && shown.scripts == 0, "the feed added pictures or scripts: \(shown.images) \(shown.scripts)")
     }
 
-    @Test("eine Audio- oder Webadresse mit Zugang aus dem Feed fehlt auf der Seite", .needsTheSite)
+    @Test("an audio or web address with access from the feed is missing on the page", .needsTheSite)
     func anAddressWithAccessIsLeftOut() async throws {
         var episodes = Self.episodes(gaps: 7, count: 3)
         episodes[1].audio = "https://a.example/1.mp3?token=s3cr3t"
@@ -214,7 +214,7 @@ struct SharedLinkPageFeedTests {
         #expect(!shown.rows.contains { $0.href?.contains("s3cr3t") == true })
     }
 
-    @Test("ein kaputter, leerer, gesperrter oder fehlender Feed laesst die Seite wie sie war", .needsTheSite)
+    @Test("a broken, empty, blocked or missing feed leaves the page as it was", .needsTheSite)
     func aFeedThatFailsLeavesThePage() async throws {
         let cases: [(String, String?, Int)] = [
             ("broken", "<rss><channel><title>x", 200),
@@ -232,7 +232,7 @@ struct SharedLinkPageFeedTests {
         }
     }
 
-    @Test("der Rhythmus aus festen Datumsreihen: taeglich, mehrmals pro Woche, woechentlich, alle zwei Wochen, monatlich, sonst nichts", .needsTheSite)
+    @Test("the rhythm from fixed date series: daily, several times a week, weekly, every two weeks, monthly, nothing else", .needsTheSite)
     func theRhythmFollowsTheDates() async throws {
         let expected: [(Double, String?)] = [(1, "daily"), (3, "several times a week"), (7, "weekly"),
                                              (14, "every two weeks"), (30, "monthly"), (60, nil), (20, nil)]
@@ -249,7 +249,7 @@ struct SharedLinkPageFeedTests {
         #expect(two.facts.text == "Technology · English · 2 episodes", "two dates name a rhythm: \(two.facts.text)")
     }
 
-    @Test("eine lange Beschreibung endet am Wort mit einem Auslassungszeichen, ohne Satzzeichen davor; Mehr zeigt den ganzen Text", .needsTheSite)
+    @Test("a long description ends at a word with an ellipsis, without punctuation before it; More shows the whole text", .needsTheSite)
     func aLongDescriptionIsCutCleanly() async throws {
         var text = ""
         while text.count < 300 { text += "word " }
@@ -263,7 +263,7 @@ struct SharedLinkPageFeedTests {
         #expect(open.description.text == text && open.more.hidden, "More does not show the whole text")
     }
 
-    @Test("der Herausgeber kommt aus dem Link, sonst aus itunes:author, sonst aus dem Eigentuemer", .needsTheSite)
+    @Test("the publisher comes from the link, otherwise from itunes:author, otherwise from the owner", .needsTheSite)
     func thePublisherComesFromTheLinkThenTheFeed() async throws {
         let episodes = Self.episodes(gaps: 7, count: 1)
         let fromLink = try await Self.render(Self.showFragment(subtitle: "From the Link"), feed: Self.feed(episodes: episodes))
@@ -274,7 +274,7 @@ struct SharedLinkPageFeedTests {
         #expect(none.subtitle.hidden, "a publisher nobody names is shown")
     }
 
-    @Test("deutsch: Kategorie aus der Tabelle, Sprache als Name, Folgen und Rhythmus in der Sprache der Seite", .needsTheSite)
+    @Test("German: category from the table, language as a name, episodes and rhythm in the page's language", .needsTheSite)
     func theFactsSpeakThePagesLanguage() async throws {
         let shown = try await Self.render(Self.showFragment(), feed: Self.feed(episodes: Self.episodes(gaps: 7, count: 3)), language: "de-DE")
         #expect(shown.facts.text == "Technik · Englisch · 3 Folgen · wöchentlich", "the German facts line: \(shown.facts.text)")

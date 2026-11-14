@@ -69,7 +69,7 @@ struct SharedDeviceIdTests {
 
     @MainActor final class DeviceBox { weak var device: Device? }
 
-    @Test("der Melder: erst ein Wachsen unter der eigenen Kennung ueber das Eigene hinaus meldet ein zweites Geraet")
+    @Test("the reporter: only growth under the own id beyond the own reports a second device")
     func whenAnotherDeviceWrites() {
         let mine = ListeningStatsData(secondsPerDay: ["d": 100], secondsPerItem: ["a": 100])
         let other = ListeningStatsData(secondsPerDay: ["d": 50], secondsPerItem: ["b": 50])
@@ -107,7 +107,7 @@ struct SharedDeviceIdTests {
         return a.left ? (a, b) : (b, a)
     }
 
-    @Test("(a) eines verlaesst die Kennung, das andere schreibt weiter: das dritte Geraet zaehlt jedes einmal")
+    @Test("(a) one leaves the id, the other keeps writing: the third device counts each once")
     func oneLeavesTheOtherWritesOn() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -126,7 +126,7 @@ struct SharedDeviceIdTests {
         #expect(third.secondsPerItem.values.reduce(0, +) == 160)
     }
 
-    @Test("(b) und (c): bei sofortiger Lieferung sieht das zweite Geraet keinen fremden Topf mehr; schreibt es nie wieder, bleibt sein Topf")
+    @Test("(b) and (c): with immediate delivery the second device no longer sees a foreign pot; if it never writes again, its pot stays")
     func theOtherOneStaysOrStops() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -146,7 +146,7 @@ struct SharedDeviceIdTests {
         #expect(third.secondsPerItem.values.reduce(0, +) == 150)
     }
 
-    @Test("ein teilendes Geraet wird neu installiert und nimmt den Topf des anderen; das dritte zaehlt dessen Sekunden zweimal")
+    @Test("a sharing device is reinstalled and takes the other's pot; the third counts its seconds twice")
     func aSharingDeviceReinstalled() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -172,7 +172,7 @@ struct SharedDeviceIdTests {
                 "what the third device counts: the first device's seconds twice, under its new id and in the other's pot")
     }
 
-    @Test("nur der Tag waechst: das andere Geraet hoert einen Titel, den dieses laenger hoerte, an einem Tag ueber das Eigene hinaus")
+    @Test("only the day grows: the other device listens to a title that this one listened to for longer, on a day beyond the own")
     func onlyTheDayGrows() {
         let own = ListeningStatsData(secondsPerDay: ["d": 100], secondsPerItem: ["t": 200])
         let other = ListeningStatsData(secondsPerDay: ["d": 150], secondsPerItem: ["t": 150])
@@ -198,7 +198,7 @@ struct SharedDeviceIdTests {
     private static let earlier = ListeningStatsData(secondsPerDay: ["2026-01-02": 500],
                                                     secondsPerItem: ["rss:share:earlier": 500])
 
-    @Test("ein neuer Traeger: seine erste Lesung unter der eigenen Kennung waechst nicht gegen die des alten")
+    @Test("a new carrier: its first reading under the own id does not grow against the old one's")
     func aNewCarrierStartsFresh() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -229,7 +229,7 @@ struct SharedDeviceIdTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("ein neuer Besitzer: die erste Lesung unter seinem Konto waechst nicht gegen die des alten")
+    @Test("a new owner: the first reading under his account does not grow against the old one's")
     func aNewOwnerStartsFresh() async throws {
         let restoreSwitch = SyncSwitchProbe.armOn()
         defer { restoreSwitch() }
@@ -255,7 +255,7 @@ struct SharedDeviceIdTests {
         #expect(!left, "the pot of another owner is no other device writing")
     }
 
-    @Test("der Halter gibt die Kennung ab: eine neue fuer den naechsten Start, in diesem Prozess keine bleibende mehr")
+    @Test("the holder hands in the id: a new one for the next start, no lasting one in this process")
     func theHolderLeavesTheSharedId() {
         let keychain = DeviceIdHolderTests.FakeKeychain()
         keychain.answer(.value("shared"))
@@ -269,7 +269,7 @@ struct SharedDeviceIdTests {
         #expect(!holder.reread(), "the fresh id holds from the next start, not in this process")
     }
 
-    @Test("Mär Sync: ein 412 auf den eigenen Bereich liest den Topf dort und meldet ihn der Statistik")
+    @Test("Mär Sync: a 412 on the own area reads the pot there and reports it to the statistics")
     func theServiceReadsTheOwnPotOnAStaleWrite() async throws {
         let name = "share-service-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))

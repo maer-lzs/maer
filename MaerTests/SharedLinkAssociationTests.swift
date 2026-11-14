@@ -43,7 +43,7 @@ struct SharedLinkAssociationTests {
         return (parts[0], parts[1])
     }
 
-    @Test("Die App beansprucht genau maer.fm fuer ihre Links, das Widget nichts", .needsTheProjectFile)
+    @Test("The app claims exactly maer.fm for its links, the widget nothing", .needsTheProjectFile)
     func theAppClaimsTheHostOfTheLinks() throws {
         let app = try Self.plist("Maer.entitlements")
         let domains = app["com.apple.developer.associated-domains"] as? [String]
@@ -52,7 +52,7 @@ struct SharedLinkAssociationTests {
         #expect(!widget.keys.contains("com.apple.developer.associated-domains"), "the widget claims links it cannot open")
     }
 
-    @Test("Die Apple-Datei nennt genau diese App und nur den Pfad der Links", .needsTheSite, .needsTheProjectFile)
+    @Test("The Apple file names exactly this app and only the path of the links", .needsTheSite, .needsTheProjectFile)
     func theAssociationNamesThisAppAndThePath() throws {
         let identity = try Self.appIdentity()
         let data = try Data(contentsOf: SourceTree.root.appendingPathComponent(Self.association))

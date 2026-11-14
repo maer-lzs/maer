@@ -35,9 +35,9 @@ struct RowStoreFenceTests {
     /// `SQLiteConnection(` and `MaerDatabase.shared` outside Storage. The
     /// app's two lifecycle hooks (background, termination) ask the database
     /// for its checkpoint through one door (`settleRows`); they hold no rows.
-    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die eine
-    // Tuer der zwei Lebenszyklus-Haken der App, die die Datenbank um ihren
-    // Checkpoint bittet).
+    // BESTAND OHNE EINZELGRUENDE: the reason applies collectively and stands above (the one
+    // door of the app's two lifecycle hooks that ask the database for its
+    // checkpoint).
     nonisolated static let connectionStock: [String: Int] = [
         "MaerApp.swift": 1,
         "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1, "SyncQueue.swift": 1,
@@ -55,8 +55,8 @@ struct RowStoreFenceTests {
     /// the alias is a site. The totals read their two tables one by one, so
     /// a table that cannot be read leaves the other standing; that is where
     /// their stock grew.
-    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
-    // Speicher von vor der Naht).
+    // BESTAND OHNE EINZELGRUENDE: the reason applies collectively and stands above (the
+    // stores from before the seam).
     nonisolated static let keyedRowStoreStock: [String: Int] = [
         "ListeningStats.swift": 13
     ]
@@ -66,7 +66,7 @@ struct RowStoreFenceTests {
         ["KeyedRowStore<"] + code.matches(of: #/typealias\s+(\w+)\s*=\s*KeyedRowStore</#).map { String($0.1) }
     }
 
-    @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug", .needsTheSources)
+    @Test("SQLite3 only in Storage, the connection only at the row stores, replaceAll only at the move", .needsTheSources)
     func rowsHaveOneHome() throws {
         var offenders: [String] = []
         var importers: Set<String> = []
@@ -105,7 +105,7 @@ struct RowStoreFenceTests {
     /// Every write of a row store is a diff against the rows that stand; no
     /// store replaces its whole stock, Storage included. Tests fill rows
     /// through the same diff (`RowStoreSeed.swift`).
-    @Test("kein Zeilen-Speicher ersetzt seinen ganzen Bestand", .needsTheSources)
+    @Test("no row store replaces its whole stock", .needsTheSources)
     func noStoreReplacesItsStock() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         #expect(files.contains { Self.isStorage($0.path) }, "the fence read no file in Storage, so it measures nothing")

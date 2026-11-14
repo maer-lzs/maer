@@ -18,13 +18,13 @@ import Security
 struct ServiceKeyTrustTests {
     // MARK: - The rule
 
-    @Test("nichts gehalten ist die erste Begegnung, auch ein leerer Wert")
+    @Test("nothing held is the first meeting, also an empty value")
     func nothingHeldIsAFirstMeeting() {
         #expect(ServiceKeyTrust.standing(held: nil, offered: "AAAA") == .first)
         #expect(ServiceKeyTrust.standing(held: "", offered: "AAAA") == .first)
     }
 
-    @Test("derselbe Abdruck ist unveraendert, ein anderer ist ein Wechsel mit beiden Werten")
+    @Test("the same fingerprint is unchanged, another is a change with both values")
     func sameIsUnchangedAndDifferentIsAChangeCarryingBoth() {
         #expect(ServiceKeyTrust.standing(held: "AAAA", offered: "AAAA") == .unchanged)
         #expect(ServiceKeyTrust.standing(held: "AAAA", offered: "BBBB") == .changed(held: "AAAA", offered: "BBBB"))
@@ -35,7 +35,7 @@ struct ServiceKeyTrustTests {
 
     // MARK: - The account
 
-    @Test("das Konto ist Wirt und Port, klein geschrieben, ohne Pfad und ohne Schraegstrich")
+    @Test("the account is host and port, in lower case, without path and without slash")
     func theAccountIsHostAndPortOnly() throws {
         let plain = try #require(ServiceKeyPin.account(for: URL(string: "https://sync.example.test")!))
         #expect(plain == "serviceKeyPin:sync.example.test")
@@ -73,7 +73,7 @@ struct ServiceKeyTrustTests {
         URL(string: "https://\(UUID().uuidString.lowercased()).test")!
     }
 
-    @Test("gehalten wird geraete-lokal und nicht in einer Sicherung, und ein Halten ueberschreibt")
+    @Test("holding is device-local and not in a backup, and a hold overwrites")
     func heldOnThisDeviceOnlyAndHoldingOverwrites() throws {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))
@@ -96,7 +96,7 @@ struct ServiceKeyTrustTests {
         #expect(ServiceKeyPin.held(for: host) == "CCCC-DDDD", "an empty fingerprint is not held")
     }
 
-    @Test("zwei Wirte sind zwei Erinnerungen")
+    @Test("two hosts are two memories")
     func twoHostsAreTwoMemories() throws {
         let one = freshHost(), two = freshHost()
         defer {
@@ -112,7 +112,7 @@ struct ServiceKeyTrustTests {
     /// A source fence, because a behaviour case in the simulator cannot see
     /// whether an item would reach the iCloud keychain on a device. Same
     /// construction as the fence over the device link code.
-    @Test("die Ablage nennt den Reise-Parameter nie und haelt geraete-lokal", .needsTheSources)
+    @Test("the store never names the travel parameter and holds device-local", .needsTheSources)
     func theStoreNeverNamesTheTravelParameterAndHoldsLocally() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "ServiceKeyPin.swift" })
@@ -140,7 +140,7 @@ struct ServiceKeyTrustTests {
                                      acceptingKey: accepting, device: "dev-a", transport: transport)
     }
 
-    @Test("die erste Begegnung haelt den Schluessel, und zwar BEVOR das Geheimnis reist")
+    @Test("the first meeting holds the key, and BEFORE the secret travels")
     func theFirstMeetingHoldsTheKeyBeforeTheSecretTravels() async throws {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))
@@ -165,7 +165,7 @@ struct ServiceKeyTrustTests {
         #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint)
     }
 
-    @Test("ein anderer Schluessel haelt die Anmeldung an, BEVOR das Geheimnis reist")
+    @Test("another key stops the sign-in, BEFORE the secret travels")
     func aDifferentKeyStopsTheSignInBeforeTheSecretTravels() async throws {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))
@@ -193,7 +193,7 @@ struct ServiceKeyTrustTests {
         #expect(ServiceKeyPin.held(for: host) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
     }
 
-    @Test("die Annahme gilt genau dem angenommenen Schluessel und keinem naechsten")
+    @Test("the acceptance applies exactly to the accepted key and to no next one")
     func acceptanceIsForTheAcceptedKeyAndNoOther() async throws {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))
@@ -218,7 +218,7 @@ struct ServiceKeyTrustTests {
         #expect(ServiceKeyPin.held(for: host) == second)
     }
 
-    @Test("ohne Schluessel gibt es keine Anmeldung, und die zwei Gruende tragen zwei Namen")
+    @Test("without a key there is no sign-in, and the two reasons carry two names")
     func withoutAKeyThereIsNoSignInAndTheTwoReasonsHaveTwoNames() async throws {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))

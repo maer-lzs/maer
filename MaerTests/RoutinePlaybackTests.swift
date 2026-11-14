@@ -40,7 +40,7 @@ struct RoutinePlaybackTests {
                               isDownloaded: { downloaded.contains($0) }).map(\.id)
     }
 
-    @Test("eine Liste ohne Regeln startet wie bisher: jeder Eintrag, den das Geraet aufloest, in Reihenfolge, der erste von vorn")
+    @Test("a list without rules starts as before: every entry the device resolves, in order, the first from the start")
     func aListWithoutRulesStartsAsBefore() {
         let start = RoutinePlayback.expand(["a", "gone", "b"], entry: { $0 == "gone" ? nil : Self.item($0) },
                                            picks: { _ in Issue.record("no rule here"); return [] })
@@ -48,7 +48,7 @@ struct RoutinePlaybackTests {
         #expect(start.fromRule.isEmpty)
     }
 
-    @Test("eine Regel wird an ihrem Platz zu ihren Folgen, jede Folge laeuft einmal, und nur eine Folge einer Regel an erster Stelle setzt fort")
+    @Test("a rule becomes its episodes at its place, each episode plays once, and only an episode of a rule in first place resumes")
     func aRuleBecomesItsEpisodesInPlace() throws {
         let newest = try #require(RoutineRule(id: "rule:newest:aaaa"))
         let next = try #require(RoutineRule(id: "rule:next:2:bbbb"))
@@ -66,7 +66,7 @@ struct RoutinePlaybackTests {
         #expect(PlayerCoordinator.restartsFirst(silentFirst.items, resuming: silentFirst.fromRule))
     }
 
-    @Test("dieselbe Liste, lokal ungehoert und geteilt gehoert: die Routine nimmt die naechste nach dem geteilten Urteil")
+    @Test("the same list, locally unheard and heard as shared: the routine takes the next one by the shared judgement")
     func theSharedJudgementDecides() throws {
         let next = try #require(RoutineRule(kind: .next(count: 1), feedKey: Self.key))
         let local: (LibraryItem) -> EpisodePlayState = { _ in .unplayed }
@@ -81,7 +81,7 @@ struct RoutinePlaybackTests {
         #expect(Self.picks(next, state: { podcastPlayState(for: $0) }) == [Self.id(2)])
     }
 
-    @Test("begonnen ist eine halbe Minute wie beim Auto-Download: zehn Sekunden sind nicht der Stand, vierzig schon, und eine begonnene neueste setzt fort")
+    @Test("begun means half a minute as with the auto-download: ten seconds are not the state, forty are, and a begun newest resumes")
     func begunIsTheAutoDownloadsHalfMinute() throws {
         let next = try #require(RoutineRule(kind: .next(count: 1), feedKey: Self.key))
         let tasted: (LibraryItem) -> EpisodePlayState = { $0.id == Self.id(3) ? .inProgress(fraction: 0.02, remaining: 590) : .unplayed }
@@ -98,7 +98,7 @@ struct RoutinePlaybackTests {
         #expect(start.fromRule == [Self.id(5)], "so the start resumes it")
     }
 
-    @Test("der erste Platz beginnt von vorn, ausser er steht unter den fortsetzenden")
+    @Test("the first place starts from the beginning, unless it is among the resuming ones")
     func theFirstPlaceRestartsUnlessItResumes() {
         let items = [Self.item("a"), Self.item("b")]
         #expect(PlayerCoordinator.restartsFirst(items, resuming: []))
@@ -110,7 +110,7 @@ struct RoutinePlaybackTests {
     /// The card's shuffle draws from `ShufflePool`, twice from the same pool
     /// here: whichever comes first, a rule's begun episode resumes and the
     /// list's own title restarts.
-    @Test("Zufall auf einer Routine: ueber den Vorrat der Karte setzt eine begonnene Folge einer Regel fort, auch beim zweiten Zug")
+    @Test("Shuffle on a routine: through the card's pool a begun episode of a rule resumes, also on the second draw")
     func shuffleOverTheCardsPoolResumesARulesEpisode() throws {
         let newest = try #require(RoutineRule(kind: .newest, feedKey: Self.key))
         let begun: (LibraryItem) -> EpisodePlayState = { $0.id == Self.id(5) ? .inProgress(fraction: 0.5, remaining: 300) : .unplayed }
@@ -134,7 +134,7 @@ struct RoutinePlaybackTests {
         #expect(seen == [Self.id(5), "x"], "both places came first at least once: \(seen)")
     }
 
-    @Test("eine Sendung, die das Geraet nicht kennt, und eine Folge ohne Ton waehlt keine Regel; ohne Netz nur Geladenes")
+    @Test("a show the device does not know, and an episode without sound, picks no rule; without a network only what is loaded")
     func unknownShowsSilentEpisodesAndOffline() throws {
         let newest = try #require(RoutineRule(kind: .newest, feedKey: Self.key))
         #expect(Self.picks(newest, in: nil).isEmpty)
@@ -144,7 +144,7 @@ struct RoutinePlaybackTests {
         #expect(RoutinePlayback.show(feedKey: "no-such-show") == nil)
     }
 
-    @Test("keine Regel erreicht die Bestellungen oder den Kontext, eine Liste haelt sie weiter")
+    @Test("no rule reaches the orders or the context, a list keeps them on")
     func noRuleReachesTheQueueOrTheContext() {
         let rule = "rule:newest:aaaa"
         #expect(PlayQueue.canEnqueue(rule), "a list keeps its rules")
@@ -163,7 +163,7 @@ struct RoutinePlaybackTests {
         #expect(context.ids == ["rss:a:1", "rss:a:3"])
     }
 
-    @Test("das Abbild einer Regel traegt Titel und Bild der Sendung, kein Satz, und kein Bild mit Zugang")
+    @Test("the image of a rule carries the title and picture of the show, no sentence, and no picture with access")
     func aRuleTravelsWithTitleAndPublicPictureOnly() throws {
         let id = try #require(RoutineRule(kind: .next(count: 2), feedKey: Self.key)).id
         var show = Self.show(1)
@@ -190,7 +190,7 @@ struct RoutinePlaybackTests {
 
     /// Each source the answer reads moves it: the listening state, the
     /// downloads, the network, the show's episodes after a fetch.
-    @Test("jede Quelle der Antwort bewegt die Zeile: Hoerstand, Downloads, Netz, neue Folgen")
+    @Test("each source of the answer moves the row: listening state, downloads, network, new episodes")
     func everySourceMovesTheLine() throws {
         let newest = try #require(RoutineRule(kind: .newest, feedKey: Self.key))
         let answer: (PodcastShow, Bool, (LibraryItem) -> EpisodePlayState, Set<String>) -> [String] = { show, online, state, local in
@@ -210,7 +210,7 @@ struct RoutinePlaybackTests {
 
     /// The page shows the answer of the moment: it observes each source the
     /// answer reads, holds it once per pass, and every source tells.
-    @Test("die Seite einer Liste beobachtet jede Quelle der Antwort, und jede Quelle meldet sich", .needsTheSources)
+    @Test("the page of a list observes each source of the answer, and each source reports in", .needsTheSources)
     func thePageObservesEverySource() throws {
         let pages = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
         let page = try #require(pages.range(of: "struct MaerPlaylistPage: View {")).upperBound
@@ -239,7 +239,7 @@ struct RoutinePlaybackTests {
         #expect(subscriptions.contains("ListeningRevision.shared.bump(\"subscriptions\")"))
     }
 
-    @Test("die Regel in Worten sagt das lesende Geraet, aus der Art in der Kennung")
+    @Test("the rule in words is stated by the reading device, from the kind in the id")
     func theDeviceSaysTheRule() throws {
         #expect(RoutineWords.rule(.newest) == String(localized: "Newest episode"))
         #expect(RoutineWords.rule(.next(count: 1)) == String(localized: "Next episode"))
@@ -255,7 +255,7 @@ struct RoutinePlaybackTests {
     /// Both play buttons of a list, the shortcut's request and Siri's play
     /// start through the one door, and the door hands the first place's
     /// resume to `playInOrder`.
-    @Test("beide Abspielknoepfe einer Liste starten durch RoutinePlayback.start, und der Start reicht das Fortsetzen weiter", .needsTheSources)
+    @Test("both play buttons of a list start through RoutinePlayback.start, and the start passes the resuming on", .needsTheSources)
     func bothButtonsStartThroughTheOneDoor() throws {
         var starts: [String: Int] = [:]
         var bare: [String] = []
@@ -312,7 +312,7 @@ struct RoutinePlaybackTests {
         return MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
     }
 
-    @Test("eine Liste nimmt je Sendung eine Regel, auch unter mehreren, und der Satz nennt die Liste")
+    @Test("a list takes one rule per show, also among several, and the sentence names the list")
     func aListTakesOneRulePerShow() {
         let store = Self.freshStore()
         let list = store.create(name: "Morgens")
@@ -327,7 +327,7 @@ struct RoutinePlaybackTests {
         store.delete(playlistId: list.id)
     }
 
-    @Test("eine Regel geht nur in eine Liste des Geraets und bleibt eine Kennung")
+    @Test("a rule goes only into a list of the device and stays an id")
     func aRuleGoesOnlyToTheDevice() {
         let id = "rule:next:2:aaaa"
         #expect(MusicSourceRule.owner(id) == nil)
@@ -336,7 +336,7 @@ struct RoutinePlaybackTests {
         #expect(PlaylistDestination.expansion(for: id, serverKind: nil) == .asIs)
     }
 
-    @Test("nach dem Hinzufuegen fragt das Angebot nur fuer eine gefolgte Sendung ohne Auto-Download")
+    @Test("after adding, the offer asks only for a followed show without auto-download")
     func theOfferAsksOnlyWhenOff() {
         let show = Self.show(1)
         let followed: (String) -> PodcastShow? = { $0 == Self.key ? show : nil }
@@ -352,7 +352,7 @@ struct RoutinePlaybackTests {
     /// The show page offers the rules of a followed feed through the one
     /// playlist action, the offer follows a successful add only, and only
     /// its button switches the downloads on.
-    @Test("die Seite einer gefolgten Sendung bietet die Regeln ueber die eine Aktion an, und nur die Antwort schaltet den Auto-Download", .needsTheSources)
+    @Test("the page of a followed show offers the rules through the one action, and only the answer switches on the auto-download", .needsTheSources)
     func theShowPageOffersTheRules() throws {
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(page.contains("private var routineShow: PodcastShow? { isServerShow ? nil : storedShow }"))
@@ -371,7 +371,7 @@ struct RoutinePlaybackTests {
 
     // MARK: - Where a routine stands
 
-    @Test("eine Liste mit einer Regel ist eine Routine, auch mit einer Regel, die dieser Stand nicht liest")
+    @Test("a list with a rule is a routine, also with a rule this build does not read")
     func aListWithARuleIsARoutine() {
         func list(_ ids: [String]) -> MaerPlaylists.Playlist {
             MaerPlaylists.Playlist(id: "l", name: "L", updatedAt: 0, itemIds: ids)
@@ -384,7 +384,7 @@ struct RoutinePlaybackTests {
 
     /// Routines stand on Start and nowhere in the Music tab: its row and
     /// its deck read the device lists through the one rule of the home.
-    @Test("Routinen stehen auf Start und nicht im Musik-Reiter, weder in der Reihe noch in der Zaehlung", .needsTheSources)
+    @Test("Routines appear on Start and not in the Music tab, neither in the row nor in the count", .needsTheSources)
     func routinesStandOnStartOnly() throws {
         let music = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicView.swift")
         #expect(music.contains("private var musicLists: [MaerPlaylists.Playlist] { maerPlaylists.playlists.filter { $0.home == .music } }"))
@@ -407,7 +407,7 @@ struct RoutinePlaybackTests {
 
     // MARK: - The shortcut
 
-    @Test("der Kurzbefehl bietet nur Routinen an, mit ihrem Namen, und eine Liste ohne Regel faellt heraus")
+    @Test("the shortcut offers only routines, by their name, and a list without a rule drops out")
     func theShortcutOffersOnlyRoutines() {
         let lists = [
             MaerPlaylists.Playlist(id: "a", name: "Morgens", updatedAt: 0, itemIds: ["rule:newest:aaaa", "jam:1"]),
@@ -424,7 +424,7 @@ struct RoutinePlaybackTests {
     /// A request that comes before the lists are read waits and says
     /// nothing; when the list arrives it starts. Only a read store that
     /// lacks the list says so.
-    @Test("eine Bitte vor dem Lesen der Listen wartet still und startet danach, nach dem Lesen fehlt eine unbekannte mit Satz", .needsTheSources)
+    @Test("a request before the lists are read waits quietly and starts afterwards, after reading an unknown one is missing with a sentence", .needsTheSources)
     func aRequestBeforeTheListsWaits() throws {
         let morning = MaerPlaylists.Playlist(id: "a", name: "Morgens", updatedAt: 0, itemIds: ["rule:newest:aaaa"])
         #expect(RoutinePlayback.request("a", in: [], complete: false) == .wait)
@@ -441,7 +441,7 @@ struct RoutinePlaybackTests {
 
     /// A waiting routine request has an end: a later request takes its
     /// place, and leaving the foreground ends it, each with its line.
-    @Test("eine wartende Bitte einer Routine endet bei einer spaeteren Bitte und wenn die App den Vordergrund verlaesst", .needsTheSources)
+    @Test("a waiting request of a routine ends at a later request and when the app leaves the foreground", .needsTheSources)
     func aWaitingRoutineRequestHasAnEnd() throws {
         typealias Row = (routine: String?, pending: Bool, item: String?, want: ResumeRequest.Order)
         let rows: [Row] = [
@@ -471,7 +471,7 @@ struct RoutinePlaybackTests {
         #expect(request.contains("guard let id = pendingRoutineId else { return } pendingRoutineId = nil Logger.library.notice("))
     }
 
-    @Test("die Kurzbefehle lernen die Routinen nur, wenn eine kommt, geht oder ihren Namen aendert")
+    @Test("the shortcuts learn the routines only when one comes, goes or changes its name")
     func theShortcutsLearnOnlyAChangedSetOfRoutines() {
         let store = Self.freshStore()
         var told = 0

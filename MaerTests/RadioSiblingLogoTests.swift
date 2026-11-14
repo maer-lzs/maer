@@ -128,7 +128,7 @@ import Foundation
 
     /// The catalog's homepage is often `http://` (measured: 101 of the top
     /// 200 German stations). The funnel raises to https; no http fallback.
-    @Test("die Homepage-Stufe hebt auf https an — kein Rueckfall")
+    @Test("the homepage stage upgrades to https, no fallback")
     func homepageIsRaisedToHTTPS() {
         #expect(RadioLogoLookup.httpsPageURL("http://www.bigfm.de/webradio/deutschrap")?
             .absoluteString == "https://www.bigfm.de/webradio/deutschrap")

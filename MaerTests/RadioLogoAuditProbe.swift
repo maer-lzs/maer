@@ -27,9 +27,9 @@ import UIKit
     // NOT /tmp and NOT ~: both resolve into the sim container. The host
     // path is derived from #filePath. The same fact the source-scan fences
     // stand on.
-    // `nonisolated`, weil die Bedingung am Fall sie VOR dem Lauf liest und
-    // eine isolierte Eigenschaft dort nicht erreichbar ist. Der Wert ist ein
-    // Pfad und gehoert keinem Actor.
+    // `nonisolated`, because the condition on the case reads it BEFORE the run
+    // and an isolated property is not reachable there. The value is a
+    // path and belongs to no actor.
     nonisolated static let hostHome = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()   // repo root
         .deletingLastPathComponent().deletingLastPathComponent()   // user home
@@ -111,10 +111,10 @@ import UIKit
         return min(pixelWidth, pixelHeight) >= 48
     }
 
-    /// Der Lauf haengt an einer Marke auf dem Wirt, und die Bedingung steht
-    /// jetzt VOR dem Lauf: ohne Marke erscheint er als uebersprungen statt als
-    /// bestanden. Vorher stand hier ein Wachposten mit dem Satz, Swift Testing
-    /// habe kein Ueberspringen. Es hat eines, es heisst nur nicht so.
+    /// The run depends on a marker on the host, and the condition sits
+    /// BEFORE the run: without the marker it shows as skipped instead of
+    /// passed. Earlier a sentinel stood here with the sentence that Swift Testing
+    /// has no skipping. It has one, it is just not called that.
     @Test(.enabled(if: FileManager.default.fileExists(atPath: RadioLogoAuditProbe.gate),
                    "die Marke fuer den Bild-Lauf liegt nicht auf dem Wirt"))
     func auditRun() async throws {

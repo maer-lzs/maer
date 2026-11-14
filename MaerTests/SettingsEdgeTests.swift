@@ -83,7 +83,7 @@ struct SettingsEdgeTests {
                    options: .regularExpression) != nil
     }
 
-    @Test("keine Zeile der Einstellungen rueckt sich um eine eigene Zahl ein, kein Symbol ist breiter als die Spalte", .needsTheSources)
+    @Test("no settings row indents itself by its own number, no symbol is wider than the column", .needsTheSources)
     func everyRowStandsOnOneEdge() throws {
         let code = try Self.sources()
         let files = try Self.reached(from: "Sources/Views/SettingsView.swift", in: code)
@@ -135,7 +135,7 @@ struct SettingsEdgeTests {
     /// measured); `RowLabelStyle` keeps the title's edge. The settings sheet
     /// sets it for its rows, and the two components whose label a style
     /// from outside does not reach set it on their own.
-    @Test("bei Bedienungshilfen-Groessen behalten Titel ihre Kante: das Einstellungsblatt, der Schalter und die Hinweiszeile tragen den Stil", .needsTheSources)
+    @Test("at accessibility sizes titles keep their edge: the settings sheet, the switch and the hint line carry the style", .needsTheSources)
     func titlesKeepTheirEdgeAtAccessibilitySizes() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(
@@ -172,7 +172,7 @@ struct SettingsEdgeTests {
         return body[body.index(after: open)...].firstMatch(of: #/([A-Z][A-Za-z0-9_]*)\s*[({]/#).map { String($0.output.1) }
     }
 
-    @Test("jeder Stapel ausserhalb des Einstellungsblatts, der eine Seite der Einstellungen zeigt, setzt den Zeilen-Stil", .needsTheSources)
+    @Test("every stack outside the settings sheet that shows a settings page sets the row style", .needsTheSources)
     func everyStackOfASettingsPageSetsTheStyle() throws {
         let code = try Self.sources()
         let settings = try Self.reached(from: "Sources/Views/SettingsView.swift", in: code)

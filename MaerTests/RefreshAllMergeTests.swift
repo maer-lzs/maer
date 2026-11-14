@@ -20,7 +20,7 @@ struct RefreshAllMergeTests {
                     })
     }
 
-    @Test("Auffrischen aller Feeds: eine waehrenddessen abonnierte Sendung bleibt, eine abbestellte bleibt weg, die Antwort landet nach Kennung")
+    @Test("Refreshing all feeds: a show subscribed in the meantime stays, an unsubscribed one stays gone, the answer lands by id")
     func theRefreshLandsOnTheStockAsItStandsNow() {
         // The copy before the fetches held a and b; meanwhile b was dropped
         // and c subscribed, in another order.

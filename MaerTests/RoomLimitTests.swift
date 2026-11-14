@@ -121,7 +121,7 @@ struct RoomLimitTests {
         "ClaimCarrier.swift": (1, "a claim of a few hundred bytes every ten seconds; reckoning the whole store each beat costs more than the claim, and the store's refusal reaches CloudQuotaWatch.note"),
     ]
 
-    @Test("jeder Schreiber auf den Schluessel-Speicher rechnet die Obergrenze vorher; die Ausnahme ist gezaehlt, mit Grund", .needsTheSources)
+    @Test("every writer to the key store reckons the ceiling beforehand; the exception is counted, with a reason", .needsTheSources)
     func everyKeyValueWriterReckonsFirst() {
         var counts: [String: Int] = [:]
         var reckoningFiles = 0

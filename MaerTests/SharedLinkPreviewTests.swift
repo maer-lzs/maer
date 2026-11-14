@@ -14,7 +14,7 @@ import UIKit
 @MainActor
 @Suite(.serialized)
 struct SharedLinkPreviewTests {
-    @Test("Die Vorschau nimmt das Cover aus dem Speicher, sonst das Symbol der App")
+    @Test("The preview takes the cover from storage, otherwise the app's icon")
     func thePreviewTakesTheStoredCover() async throws {
         #expect(SharedLinkPreview.appIcon != nil, "the precondition: the app's icon is found in its bundle")
         let cover = try #require(URL(string: "https://covers.example/show.jpg"))
@@ -32,7 +32,7 @@ struct SharedLinkPreviewTests {
         #expect(asked.isEmpty, "without a cover nothing is asked")
     }
 
-    @Test("Die Vorschau fragt kein Netz: ein Cover, das nicht im Speicher liegt, erreicht seinen Host nicht")
+    @Test("The preview asks no network: a cover that is not in storage does not reach its host")
     func thePreviewAsksNoNetwork() async throws {
         let server = try await ABSLoopback.start(login: .refuse, libraries: .refuse)
         defer { server.stop() }
@@ -47,7 +47,7 @@ struct SharedLinkPreviewTests {
         #expect(!paths.contains { $0.hasPrefix("/cover-") }, "the preview asked the network: \(paths)")
     }
 
-    @Test("Zaun: die Vorschau liest nur ueber Artwork.thumbnail, keinen Weg ins Netz", .needsTheSources)
+    @Test("Fence: the preview reads only through Artwork.thumbnail, no way to the network", .needsTheSources)
     func thePreviewReadsOnlyTheStore() throws {
         let root = SourceTree.root.appendingPathComponent("Sources/Views/SharedLinkButton.swift")
         let code = SyncContractFenceTests.stripped(try String(contentsOf: root, encoding: .utf8))

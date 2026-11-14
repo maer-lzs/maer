@@ -23,7 +23,7 @@ struct SideColumnPartsTests {
             + SyncContractFenceTests.stripped(text).components(separatedBy: "tier: .sideColumn").count - 1
     }
 
-    @Test("keine Kapsel und kein runder Knopf der Spalte ausserhalb der zwei Bauteile", .needsTheSources)
+    @Test("no capsule and no round button of the column outside the two parts", .needsTheSources)
     func theColumnIsBuiltOnce() throws {
         var users: Set<String> = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) where name != "AdaptiveGlassBackground.swift" {
@@ -36,11 +36,11 @@ struct SideColumnPartsTests {
         #expect(bar.contains("SideCapsule {"))
         #expect(bar.contains("private static let pillGap = SideColumnStyle.pillGap"))
         #expect(!bar.contains("CGFloat = 5") && !bar.contains("CGFloat = 4"), "the bar keeps a measure of its own")
-        // Rot-Probe of the counter: a view with the column's glass is seen.
+        // Red probe of the counter: a view with the column's glass is seen.
         #expect(Self.materialLines(in: ".modifier(AdaptiveGlassBackground(shape: Circle(), tier: .sideColumn))") == 1)
     }
 
-    @Test("die Spalte nimmt die Helligkeit, die die Seite verlangt, sonst die der App")
+    @Test("the column takes the brightness the page asks for, otherwise the app's")
     @MainActor
     func theColumnTakesThePagesBrightness() {
         #expect(SideColumnStyle.scheme(page: .dark, system: .light) == .dark)
@@ -48,7 +48,7 @@ struct SideColumnPartsTests {
         #expect(SideColumnStyle.scheme(page: nil, system: .dark) == .dark)
     }
 
-    @Test("die dunkle Buchseite meldet sich, nur der sichtbare Reiter zaehlt, die Spalte fragt die Regel", .needsTheSources)
+    @Test("the dark book page reports itself, only the visible tab counts, the column asks the rule", .needsTheSources)
     func theDarkPageReachesTheColumn() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -72,7 +72,7 @@ struct SideColumnPartsTests {
                 "the dark episode page does not tell the column")
     }
 
-    @Test("die Kapsel klappt mit der unteren Leiste auf den aktiven Reiter ein, der Rand bleibt", .needsTheSources)
+    @Test("the capsule folds in to the active tab with the bottom bar, the edge stays", .needsTheSources)
     func theCapsuleCollapsesWithTheBar() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

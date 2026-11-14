@@ -26,7 +26,7 @@ struct SizingGateTests {
     /// Eight ask, each only after the one before stands in the gate, so the
     /// order of asking is known. Each works until the witness lets it go,
     /// one at a time, so each turn is recorded before the next is given.
-    @Test("acht zugleich angefragt, nie mehr als zwei in Arbeit, in der Reihenfolge der Anfrage")
+    @Test("eight asked at once, never more than two at work, in the order of the request")
     func eightAskTwoWork() async throws {
         let gate = SizingGate(width: 2)
         let state = OSAllocatedUnfairLock(initialState: (now: 0, most: 0, order: [Int](), released: Set<Int>()))
@@ -57,7 +57,7 @@ struct SizingGateTests {
         #expect(seen.order == Array(0..<8), "the line was not kept: \(seen.order)")
     }
 
-    @Test("ein Wartender, der abgebrochen wird, gibt seinen Platz frei, ohne zu arbeiten; der naechste kommt dran")
+    @Test("a waiting one that is cancelled gives up its place without working; the next one is up")
     func aCancelledWaiterGivesItsPlaceUp() async throws {
         let gate = SizingGate(width: 1)
         try await gate.enter()
@@ -88,7 +88,7 @@ struct SizingGateTests {
 
     /// The app's own path: eight large covers brought to display size at
     /// once pass two at a time.
-    @Test("die App bringt acht grosse Cover zugleich angefragt zu zweit auf Anzeigegroesse")
+    @Test("the app brings eight large covers asked at once to display size two at a time")
     func theAppSizesTwoAtATime() async throws {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1

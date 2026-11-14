@@ -21,7 +21,7 @@ struct RetiredDocumentsFenceTests {
         "DocumentMigration", "settingAside", ".migrated\""
     ]
 
-    @Test("kein Speicher liest, giesst oder legt ein Dokument von vor den Zeilen beiseite", .needsTheSources)
+    @Test("no store reads, casts or sets aside a document from before the rows", .needsTheSources)
     func noStoreReadsARetiredDocument() throws {
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -36,7 +36,7 @@ struct RetiredDocumentsFenceTests {
     /// The public file trees describe the stores as they are: a retired
     /// document or its migration named there tells a reader of a step the
     /// app no longer takes.
-    @Test("die READMEs nennen kein Dokument und keinen Umzug von vor den Zeilen", .needsTheSources)
+    @Test("the READMEs name no document and no move from before the rows", .needsTheSources)
     func theReadmesNameNoRetiredDocument() throws {
         // The file trees stand on the detail pages now; the READMEs and
         // those pages are read alike.
@@ -73,7 +73,7 @@ struct RetiredDocumentsFenceTests {
     /// The one claim key every device shared, in whatever line it would
     /// come back. The one line allowed is the list of keys the user owns,
     /// where the name is a prefix that also covers each device's own key.
-    @Test("der geteilte Anspruchs-Schluessel steht nur in der Liste der Nutzer-Schluessel", .needsTheSources)
+    @Test("the shared claim key appears only in the list of user keys", .needsTheSources)
     func theSharedClaimKeyIsGone() throws {
         var texts: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -100,7 +100,7 @@ struct RetiredDocumentsFenceTests {
         return found.sorted()
     }
 
-    @Test("kein einmaliger Schritt von vor 3.3 kehrt mit Marker oder Schluessel zurueck", .needsTheSources)
+    @Test("no one-off step from before 3.3 returns with a marker or key", .needsTheSources)
     func noRetiredStepComesBack() throws {
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {

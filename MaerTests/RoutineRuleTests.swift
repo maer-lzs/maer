@@ -30,12 +30,12 @@ struct RoutineRuleTests {
         }
     }
 
-    @Test("gemeinsame Faelle: routine-resolve traegt siebenundzwanzig Faelle")
+    @Test("shared cases: routine-resolve carries twenty-seven cases")
     func casesLoaded() {
         #expect(Self.cases.count == 27)
     }
 
-    @Test("gemeinsame Faelle: eine Regel antwortet je Fall wie die Datei sagt", arguments: cases)
+    @Test("shared cases: a rule answers each case as the file says", arguments: cases)
     func eachCase(_ c: SharedCase) throws {
         let input = try c.value("input")
         switch c.ask {
@@ -58,7 +58,7 @@ struct RoutineRuleTests {
 
     /// Next picks after the listener's place, so episodes before it that
     /// are still unheard do not count, and the line says so.
-    @Test("naechste ohne Wahl heisst ab dem Stand nichts Ungehoertes, auch wenn davor ungehoerte stehen")
+    @Test("next without a choice means nothing unheard from the place on, even if unheard ones stand before it")
     func nothingNextMeansNothingFromThePlace() throws {
         let rule = try #require(RoutineRule(kind: .next(count: 1), feedKey: "aaaa"))
         let episodes = (1...3).map { RoutineRule.Episode(guid: "e\($0)", pubDate: Double($0), isPlayed: $0 == 3,
@@ -67,7 +67,7 @@ struct RoutineRuleTests {
         #expect(RoutineRule.Absence.nothingNext.rawValue == "no unheard episode from where the listener stands")
     }
 
-    @Test("eine Regel je Sendung: die Routine findet die Regel ihrer Sendung, nicht die einer anderen")
+    @Test("one rule per show: the routine finds the rule of its show, not that of another")
     func oneRulePerShow() {
         let ids = ["rss:a:1", "rule:newest:aaaa", "rule:next:2:bbbb", "rule:next:4:cccc"]
         #expect(RoutineRule.ofShow("aaaa", in: ids)?.kind == .newest)
@@ -76,7 +76,7 @@ struct RoutineRuleTests {
         #expect(RoutineRule.ofShow("dddd", in: ids) == nil)
     }
 
-    @Test("die Regel baut nur Kennungen, die sie selbst wieder liest")
+    @Test("the rule builds only ids that it reads back itself")
     func everyRuleReadsBack() {
         #expect(RoutineRule(kind: .next(count: 0), feedKey: "aaaa") == nil)
         #expect(RoutineRule(kind: .next(count: 4), feedKey: "aaaa") == nil)
@@ -92,7 +92,7 @@ struct RoutineRuleTests {
 
     /// The carry witnesses write their rules out so they run against a build
     /// without routines; here they must be rules in their one spelling.
-    @Test("die Regeln der Traegerzeugen sind Regeln in ihrer einen Schreibweise")
+    @Test("the rules of the carrier witnesses are rules in their one spelling")
     func theCarriedIdsAreRules() {
         for id in RoutineCarryTests.ruleIds {
             #expect(RoutineRule(id: id)?.id == id, "\(id)")
@@ -102,7 +102,7 @@ struct RoutineRuleTests {
     /// The order "next" reads is the auto-download's own, with the judgement
     /// handed in: no second function that would answer "where does the
     /// listener stand" differently.
-    @Test("naechste fragt PodcastAutoDownloadRules.nextInOrder, keine zweite Reihenfolge", .needsTheSources)
+    @Test("next asks PodcastAutoDownloadRules.nextInOrder, no second order", .needsTheSources)
     func nextAsksTheOneOrder() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/RoutineRule.swift"), encoding: .utf8))
@@ -114,7 +114,7 @@ struct RoutineRuleTests {
 
     /// A rule is a namespace this build knows, never a source: the seam calls
     /// it a rule, the page shows its line, and nothing asks a server.
-    @Test("eine Regel ist bekannt und erreicht keine Quelle, die Naht nennt sie Regel")
+    @Test("a rule is known and reaches no source, the seam calls it a rule")
     func aRuleIsKnownAndReachesNoSource() {
         let id = "rule:newest:aaaa"
         #expect(ItemNamespace.isKnown(id))
@@ -125,7 +125,7 @@ struct RoutineRuleTests {
 
     /// The menu offers every rule once, and a rule over a show the routine
     /// holds a rule for clashes, the same rule among them.
-    @Test("eine Sendung bietet jede Regel einmal an, und je Sendung steht eine Regel in der Routine")
+    @Test("a show offers each rule once, and per show one rule stands in the routine")
     func aShowOffersEachRuleAndHoldsOne() {
         #expect(RoutineRule.offered(feedKey: "aaaa").map(\.id)
                 == ["rule:newest:aaaa", "rule:next:aaaa", "rule:next:2:aaaa", "rule:next:3:aaaa"])
@@ -157,7 +157,7 @@ struct RoutineMergeTests {
         func refresh(by caller: String) async {}
     }
 
-    @Test("zwei Geraete mit je einer anderen Regel derselben Sendung schwingen auf eine ein, die der neueren Seite, danach ueber fuenf Runden kein Schrieb")
+    @Test("two devices with a different rule each for the same show settle on one, that of the newer side, afterwards over five rounds no write")
     func twoRulesOfOneShowSettleOnOne() throws {
         let restore = SyncSwitchProbe.armOn()
         defer { restore() }

@@ -54,7 +54,7 @@ struct ReleaseDiagnosticsFenceTests {
         return open
     }
 
-    @Test("kein Weg in eine Diagnose-Flaeche ausserhalb von #if DEBUG", .needsTheSources)
+    @Test("no way into a diagnostics surface outside #if DEBUG", .needsTheSources)
     func noDiagnosticsInARelease() throws {
         var open: [String] = []
         var reached = 0
@@ -84,7 +84,7 @@ struct ReleaseDiagnosticsFenceTests {
         #expect(diagnostics.contains("BookProgressReport.text(for: entry)"))
     }
 
-    @Test("der Zaehler der Bedingungen: DEBUG zaehlt, #else nicht, Kommentar nicht")
+    @Test("the counter of the conditions: DEBUG counts, #else does not, a comment does not")
     func theConditionReader() {
         let code = """
         #if DEBUG

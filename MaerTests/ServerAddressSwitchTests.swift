@@ -16,7 +16,7 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct ServerAddressSwitchTests {
-    @Test("ein Wechsel ist ein anderer Wirt, Port oder Pfad, nicht das Schema, die Schreibweise oder der Schraegstrich")
+    @Test("a switch is another host, port or path, not the scheme, the spelling or the slash")
     func whatIsASwitch() {
         let cases: [(String, String, Bool)] = [
             ("https://jf.a.example", "https://jf.b.example", true),
@@ -69,7 +69,7 @@ struct ServerAddressSwitchTests {
         return kept
     }
 
-    @Test("ein anderer Benutzer an derselben Adresse ist ein anderes Konto; Gross- und Kleinschreibung und ein leeres Feld nicht")
+    @Test("another user at the same address is another account; upper and lower case and an empty field are not")
     func whatIsAnAccountSwitch() {
         let a = "https://jf.a.example"
         #expect(ServerAddressSwitch.isAccountSwitch(fromAddress: a, fromUser: "anna", toAddress: a, toUser: "ben"))
@@ -83,7 +83,7 @@ struct ServerAddressSwitchTests {
                 "the password of the stored user went to the new one")
     }
 
-    @Test("die drei Formulare fragen die Regel des Kontos auch ohne Adresse im Feld, und bevor sie den Benutzer schreiben", .needsTheSources)
+    @Test("the three forms ask the account rule even without an address in the field, and before they write the user", .needsTheSources)
     func theFormsAskBeforeTheUserIsWritten() throws {
         let forms = [("Sources/Views/SubsonicSourceView.swift", "SubsonicProvider.forgetAccessOnSwitch(to: address, user: newUser)", "subsonic"),
                      ("Sources/Views/JellyfinSourceView.swift", "JellyfinProvider.forgetAccessOnSwitch(to: address, user: newUser)", "jellyfin"),
@@ -98,7 +98,7 @@ struct ServerAddressSwitchTests {
         }
     }
 
-    @Test("Audiobookshelf: eine gescheiterte Frage nach dem Benutzer ist kein Wechsel; zwei Kennungen oder eine Antwort ohne Kennung bei bekanntem Benutzer sind einer", .needsTheSources)
+    @Test("Audiobookshelf: a failed question about the user is no switch; two identifiers or an answer without an identifier for a known user are one", .needsTheSources)
     func aFailedAskIsNoSwitch() throws {
         typealias Rule = ServerAddressSwitch
         let a = "https://abs.a.example"
@@ -124,7 +124,7 @@ struct ServerAddressSwitchTests {
         #expect(auth.contains("AUTH user id not read side="), "a failed ask for the user passes in silence")
     }
 
-    @Test("die wartenden Staende eines Servers gehen beim Wechsel des Benutzers, die anderer Server bleiben")
+    @Test("the waiting positions of a server go when the user switches, those of other servers stay")
     func theQueuedStandsOfTheServerGo() {
         typealias Update = SyncQueue.PendingUpdate
         let pending: [String: Update] = [
@@ -136,7 +136,7 @@ struct ServerAddressSwitchTests {
         #expect(Set(kept.keys) == ["jf:book:1", "li_old"], "the stands of the account before stayed: \(kept.keys.sorted())")
     }
 
-    @Test("Jellyfin: ein anderer Benutzer an derselben Adresse vergisst Zugang, Benutzerkennung und Passwort des frueheren")
+    @Test("Jellyfin: another user at the same address forgets the access, user id and password of the earlier one")
     func anotherUserForgetsTheAccess() {
         let stand = JellyfinStand()
         defer { stand.restore() }
@@ -158,7 +158,7 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.jellyfinTokenValue == "token-ben")
     }
 
-    @Test("gpodder: eine neue Adresse vergisst Passwort und Rundenstand des gespeicherten Kontos, ein getipptes Passwort bleibt")
+    @Test("gpodder: a new address forgets the password and round state of the stored account, a typed password stays")
     func gpodderForgetsOnAnAddressSwitch() {
         let url = AppStorageKeys.gpodderServerURLValue, user = AppStorageKeys.gpodderUsernameValue
         let password = AppStorageKeys.gpodderPasswordValue
@@ -185,7 +185,7 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.gpodderPasswordValue.isEmpty, "another user kept the stored password")
     }
 
-    @Test("das Passwortfeld nach einer neuen Adresse: bei einem Wechsel leer, wenn es das gespeicherte zeigt, ein getipptes bleibt")
+    @Test("the password field after a new address: empty on a switch if it shows the stored one, a typed one stays")
     func thePasswordFieldAfterANewAddress() {
         let a = "https://jf.a.example", b = "https://jf.b.example"
         #expect(ServerAddressSwitch.password(typed: "pw-a", stored: "pw-a", from: a, to: b) == ("", true),
@@ -198,7 +198,7 @@ struct ServerAddressSwitchTests {
                 "a first address has nothing to forget")
     }
 
-    @Test("Jellyfin: eine neue Adresse vergisst das Passwort von A, ein fuer B getipptes bleibt")
+    @Test("Jellyfin: a new address forgets the password of A, one typed for B stays")
     func aNewJellyfinAddressForgetsThePasswordOfA() {
         let stand = JellyfinStand()
         defer { stand.restore() }
@@ -217,7 +217,7 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.jellyfinPasswordValue == "password-of-b")
     }
 
-    @Test("Jellyfin: eine neue Adresse, keine Adresse des Clients traegt den Token von A")
+    @Test("Jellyfin: a new address, no address of the client carries the token of A")
     func aNewJellyfinAddressCarriesNoTokenOfA() throws {
         let stand = JellyfinStand()
         defer { stand.restore() }
@@ -236,7 +236,7 @@ struct ServerAddressSwitchTests {
                 "the token and the user id of A are still stored")
     }
 
-    @Test("Jellyfin: nur das Schema anders, der Token bleibt")
+    @Test("Jellyfin: only the scheme differs, the token stays")
     func onlyTheSchemeKeepsTheToken() throws {
         let stand = JellyfinStand()
         defer { stand.restore() }
@@ -251,7 +251,7 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.jellyfinTokenValue == "token-of-a" && AppStorageKeys.jellyfinUserIdValue == "user-of-a")
     }
 
-    @Test("Jellyfin: der Rueckruf eines Clients von A schreibt nach dem Wechsel nichts, bei demselben Server schon")
+    @Test("Jellyfin: the callback of a client of A writes nothing after the switch, at the same server it does")
     func aFormerClientKeepsNothingAfterTheSwitch() {
         let stand = JellyfinStand()
         defer { stand.restore() }
@@ -294,7 +294,7 @@ struct ServerAddressSwitchTests {
         }
     }
 
-    @Test("Subsonic mit Schluessel: eine neue Adresse, keine Anfrage traegt den Schluessel von A")
+    @Test("Subsonic with key: a new address, no request carries the key of A")
     func aNewSubsonicAddressCarriesNoKeyOfA() throws {
         let run = UUID().uuidString.prefix(6).lowercased()
         let serverA = "a-\(run).example/sub", serverB = "b-\(run).example/sub"
@@ -325,7 +325,7 @@ struct ServerAddressSwitchTests {
         #expect(SubsonicProvider.passwordAfterAddress("https://\(serverB)", typed: "key-of-b") == "key-of-b")
     }
 
-    @Test("Subsonic mit Token: eine neue Adresse vergisst das Passwort von A, ein fuer B getipptes bleibt")
+    @Test("Subsonic with token: a new address forgets the password of A, one typed for B stays")
     func aTokenServerForgetsThePasswordOfA() {
         let run = UUID().uuidString.prefix(6).lowercased()
         let serverA = "a-\(run).example/sub"
@@ -345,7 +345,7 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.subsonicPasswordValue == "password-of-a")
     }
 
-    @Test("beide Formulare fragen die Regel, bevor sie eine Adresse schreiben, und nur sie schreiben eine", .needsTheSources)
+    @Test("both forms ask the rule before they write an address, and only they write one", .needsTheSources)
     func bothFormsAskBeforeTheyWrite() throws {
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Views/JellyfinSourceView.swift")
         #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(address, user: newUser, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: address, user: newUser) if !trimmedURL.isEmpty { AppStorageKeys.jellyfinServerURLValue = trimmedURL }"))

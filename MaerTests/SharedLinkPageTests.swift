@@ -35,7 +35,7 @@ struct SharedLinkPageTests {
         text.components(separatedBy: needle).count - 1
     }
 
-    @Test("die Seite liest nur den Teil hinter dem #, fragt nur den Feed des Links und setzt kein Cookie", .needsTheSite)
+    @Test("the page reads only the part after the #, asks only the link's feed and sets no cookie", .needsTheSite)
     func thePageReadsOnlyTheFragment() throws {
         let js = try Self.text(Self.script)
         #expect(js.contains("location.hash"), "the page does not read the fragment")
@@ -62,7 +62,7 @@ struct SharedLinkPageTests {
                 "a description reaches the page as HTML")
     }
 
-    @Test("Zaun: die Seite laedt nur ihr eigenes Skript und ihre eigene Vorlage, nichts inline, nichts von einem fremden Host", .needsTheSite)
+    @Test("Fence: the page loads only its own script and its own style, nothing inline, nothing from a foreign host", .needsTheSite)
     func thePageLoadsNothingFromElsewhere() throws {
         let html = try Self.text(Self.page)
         let all = try [Self.page, Self.script, Self.style].map(Self.text).joined(separator: "\n")
@@ -101,7 +101,7 @@ struct SharedLinkPageTests {
         #expect(html.contains("preload=\"none\""), "the audio loads before it is played")
     }
 
-    @Test("Zaun: die Seite zeigt zwei Bilder, das Cover aus c ueber https ohne Referrer und das Abzeichen des Store von der Seite selbst", .needsTheSite)
+    @Test("Fence: the page shows two images, the cover from c over https without referrer and the store badge from the page itself", .needsTheSite)
     func thePageShowsOnlyTheCoverOfTheLink() throws {
         let html = try Self.text(Self.page)
         let js = try Self.text(Self.script)
@@ -132,7 +132,7 @@ struct SharedLinkPageTests {
                 "a cover that does not load does not leave its place empty")
     }
 
-    @Test("Zaun: ein Musiktitel nennt seinen Anbieter und seine Seite dort, Jamendo spielt nie, archive.org traegt den Satz der App", .needsTheSite)
+    @Test("Fence: a music title names its provider and its page there, Jamendo never plays, archive.org carries the app's sentence", .needsTheSite)
     func aMusicTrackNamesItsSource() throws {
         let html = try Self.text(Self.page)
         let js = try Self.text(Self.script)
@@ -157,7 +157,7 @@ struct SharedLinkPageTests {
         #expect(js.contains(FreeCatalog.archiveRightsNotice), "the rights sentence is not the app's: \(FreeCatalog.archiveRightsNotice)")
     }
 
-    @Test("Zaun: der Kopf traegt eine allgemeine Vorschau-Karte, fuer jeden Link gleich, mit dem Bild von der Seite selbst", .needsTheSite)
+    @Test("Fence: the head carries a general preview card, the same for every link, with the image from the page itself", .needsTheSite)
     func theHeadCarriesOneCardForEveryLink() throws {
         let html = try Self.text(Self.page)
         let head = try #require(html.components(separatedBy: "</head>").first)
@@ -181,7 +181,7 @@ struct SharedLinkPageTests {
         #expect(head.contains("<meta property=\"og:image:width\" content=\"600\">") && head.contains("<meta property=\"og:image:height\" content=\"600\">"))
     }
 
-    @Test("die Seite liest die Form, die SharedLink schreibt: Fassung, Arten, Schluessel", .needsTheSite)
+    @Test("the page reads the form that SharedLink writes: version, kinds, keys", .needsTheSite)
     func thePageReadsTheFormOfTheLink() throws {
         let js = try Self.text(Self.script)
         #expect(js.contains("indexOf(\"\(SharedLink.version)?\")"), "the page reads another version")

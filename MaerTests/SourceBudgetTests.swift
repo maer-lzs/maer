@@ -22,34 +22,34 @@ struct SourceBudgetTests {
     static let hanging = budget * 200
     static let late = budget * 3
 
-    @Test("eine haengende Quelle kostet das Budget, nicht die Seite")
+    @Test("a hanging source costs the budget, not the page")
     func hangingSourceIsBounded() async {
         let started = Date()
-        // Die Attrappe des unerreichbaren Tiny: sie antwortet nie.
+        // The stub of the unreachable Tiny: it never answers.
         let value = await SourceBudget.value(default: "leer", budget: Self.budget) {
             try? await Task.sleep(for: .seconds(Self.hanging))
             return "spaet"
         }
         let waited = Date().timeIntervalSince(started)
         #expect(value == "leer")
-        // Gewartet wird das Budget, nicht die URLSession-Zeitgrenze (60 s+),
-        // die im Geraetefall die ganze Seite leer hielt.
+        // The budget is waited, not the URLSession time limit (60 s+),
+        // which on the device held the whole page empty.
         //
-        // Die Grenze misst die AUSSAGE, nicht die Maschine. Mit
-        // `Budget + 4` hing sie an der Last des vollen Parallel-Laufs und
-        // ist an fuenf Tagen wiederholt gerissen (gemessen 8,9 bis 11,9 s
-        // gegen 8 s), ohne dass je etwas an der Sache falsch war. Die
-        // 60-s-Klasse diskriminiert eine weite Grenze genauso scharf: der
-        // Abstand zwischen 12 und 60 traegt den Satz, der Abstand zwischen
-        // 8 und 12 traegt nur die Maschine.
+        // The limit measures the STATEMENT, not the machine. With
+        // `Budget + 4` it hung on the load of the full parallel run and
+        // broke repeatedly over five days (measured 8.9 to 11.9 s
+        // against 8 s), without anything ever being wrong with the thing. The
+        // 60-s class discriminates a wide limit just as sharply: the
+        // distance between 12 and 60 carries the sentence, the distance between
+        // 8 and 12 carries only the machine.
         #expect(waited < Self.hanging / 2)
     }
 
-    @Test("ein SPAETES Ergebnis verfaellt nicht — es wendet sich selbst an")
+    @Test("a LATE result does not lapse: it applies itself")
     func lateResultAppliesItself() async {
-        // Messung: kuenstlich langsame Quelle (deutlich ueber dem
-        // Budget). Die Flaeche rendert sofort ohne sie, und der Wert kommt
-        // danach VON SELBST an (kein Tab-Wechsel, kein Nutzer-Anstoss).
+        // Measurement: artificially slow source (well over the
+        // budget). The surface renders at once without it, and the value
+        // arrives afterwards BY ITSELF (no tab change, no user nudge).
         actor Late { 
             var value: String?
             func set(_ v: String) { value = v }
@@ -64,14 +64,14 @@ struct SourceBudgetTests {
             return "spaet"
         }
         #expect(immediate == "leer")
-        // Was hier UNTERSCHEIDET, ist der WERT eine Zeile hoeher, nicht die
-        // Zeit: haette die Flaeche auf die Quelle gewartet, stuende dort
-        // „spaet" statt „leer". Die Zeitgrenze ist nur noch die grobe Wache
-        // gegen ein echtes Haengen, und sie misst deshalb bewusst weit
-        // genug, um nicht an der Maschinenlast zu haengen.
+        // What DISTINGUISHES here is the VALUE one line up, not the
+        // time: had the surface waited for the source, there would stand
+        // „spaet" instead of „leer". The time limit is only the coarse guard
+        // against a real hang, and so it deliberately measures wide
+        // enough not to depend on the machine load.
         #expect(Date().timeIntervalSince(started) < 30)
-        // Warten, bis die langsame Quelle geliefert hat (grosszuegig. Die
-        // Frist kostet nur im Fehlerfall).
+        // Wait until the slow source has delivered (generous. The
+        // deadline costs only in the failure case).
         var seen: String?
         for _ in 0..<80 {
             seen = await late.value
@@ -81,11 +81,11 @@ struct SourceBudgetTests {
         #expect(seen == "spaet")
     }
 
-    @Test("eine antwortende Quelle wird NICHT beschnitten")
+    @Test("an answering source is NOT cut off")
     func fastSourceIsUntouched() async {
         let value = await SourceBudget.value(default: "leer") { "da" }
         #expect(value == "da")
-        // Auch die ergebnislose Form laeuft normal durch.
+        // The form without a result also runs through normally.
         await SourceBudget.run { }
     }
 
@@ -106,7 +106,7 @@ struct SourceBudgetTests {
         }
     }
 
-    @Test("die App wartet ueberall dasselbe Budget, nur die Zeugen kuerzen es", .needsTheSources)
+    @Test("the app waits the same budget everywhere, only the witnesses shorten it", .needsTheSources)
     func theAppKeepsOneBudget() {
         let files = ProjectFileIntegrityTests.sourceTexts()
         #expect(files.contains { $0.text.contains("SourceBudget.value(") }, "der Zaun hat keinen Rufer des Budgets gelesen")

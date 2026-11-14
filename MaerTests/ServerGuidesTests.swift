@@ -18,7 +18,7 @@ struct ServerGuidesTests {
         "github.com", "docs.funkwhale.audio", "dev.funkwhale.audio"
     ]
 
-    @Test("Jeder Server hat Doku und Quellcode, beide https auf einem Projekt-Host")
+    @Test("Every server has docs and source code, both https on a project host")
     func everyAddressIsHTTPSOnAProjectHost() throws {
         for guide in ServerGuides.all {
             for url in [try #require(guide.docsURL, "\(guide.name) has no documentation"),
@@ -36,7 +36,7 @@ struct ServerGuidesTests {
         }
     }
 
-    @Test("Jede Seite sagt, was der Server kann, was er braucht und was man in Mär eintraegt; Mär Sync ist dabei")
+    @Test("Every page says what the server can do, what it needs and what to enter in Mär; Mär Sync is included")
     func everyPageSaysItsThreeThings() {
         for guide in ServerGuides.all {
             #expect(!guide.oneLiner.isEmpty && !guide.signIn.sentence.isEmpty, Comment(rawValue: guide.name))
@@ -48,7 +48,7 @@ struct ServerGuidesTests {
         #expect(Set(ServerGuides.all.map(\.signIn)) == Set(ServerGuide.SignIn.allCases), "no sign-in sentence without a server")
     }
 
-    @Test("Kein Eintrag zweimal je Bereich, jeder Server-Bereich hat Anleitungen")
+    @Test("No entry twice per area, every server area has guides")
     func noDoublesAndEveryServerAreaIsCovered() {
         let ids = ServerGuides.all.map(\.id)
         #expect(Set(ids).count == ids.count)
@@ -63,7 +63,7 @@ struct ServerGuidesTests {
         #expect(ServerGuides.guides(for: .freeCatalogs).isEmpty)
     }
 
-    @Test("Die Liste erster Ebene nennt jeden Server einmal, die Bereichsseite die des Bereichs")
+    @Test("The first-level list names every server once, the area page those of the area")
     func theListsNameEveryServer() {
         let first = ServerGuides.listed(in: nil)
         #expect(first.map(\.name) == ["Audiobookshelf", "Booksonic", "Navidrome", "Jellyfin", "gonic",
@@ -75,7 +75,7 @@ struct ServerGuidesTests {
     /// The guides stay once a server is connected, for when something
     /// changes later: no state decides whether they show, on either
     /// surface of the first level or on an area's page.
-    @Test("Die Anleitungen stehen in jedem Zustand auf erster Ebene der Einrichtung und der naechsten Schritte", .needsTheSources)
+    @Test("The guides stand in every state on the first level of the setup and of the next steps", .needsTheSources)
     func theGuidesStandInEveryState() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
@@ -91,7 +91,7 @@ struct ServerGuidesTests {
     /// The addresses are for the browser. No client of the app may name a
     /// project host: the external-sources fence lets these hosts pass
     /// because of THIS test.
-    @Test("Kein Client nennt einen Projekt-Host: die Adressen sind fuer den Browser", .needsTheSources)
+    @Test("No client names a project host: the addresses are for the browser", .needsTheSources)
     func clientsNeverCallProjectHosts() throws {
         var offenders: [String] = []
         var clients: Set<String> = []
@@ -122,7 +122,7 @@ struct ServerGuidesTests {
             || text.contains("URLSession") || text.contains("URLRequest(")
     }
 
-    @Test("Kein Werbe-Ton: kein Eintrag sagt empfohlen oder best")
+    @Test("No promotional tone: no entry says recommended or best")
     func noRanking() {
         #expect(ServerGuides.localizedKeys.count == 21, "the precondition: every guide text was read")
         for text in ServerGuides.localizedKeys {

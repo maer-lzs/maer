@@ -12,7 +12,7 @@ import Foundation
 /// does not have. The catalog source page said so; the Jamendo page logged
 /// the failure and let the row vanish without a word.
 struct ShelvesFailedLineTests {
-    @Test("die Zeile steht nur, wenn nichts ankam und etwas scheiterte")
+    @Test("the line shows only when nothing arrived and something failed")
     func theLineStandsOnlyWhenNothingArrivedAndSomethingFailed() {
         #expect(ShelvesFailedLine.isShown(arrived: 0, failed: 1))
         #expect(!ShelvesFailedLine.isShown(arrived: 2, failed: 1), "ein Teilausfall laesst die angekommenen sprechen")
@@ -21,7 +21,7 @@ struct ShelvesFailedLineTests {
 
     /// Every page that collects shelf failures shows them through the one
     /// line, and the sentence lives only there.
-    @Test("jede Seite, die Regal-Fehlschlaege sammelt, zeigt sie mit der einen Zeile", .needsTheSources)
+    @Test("every page that collects shelf failures shows them with the one line", .needsTheSources)
     func everyPageThatCollectsFailuresShowsThem() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")

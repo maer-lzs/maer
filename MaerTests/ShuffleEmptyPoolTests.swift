@@ -13,7 +13,7 @@ import Testing
 /// never a silent empty list.
 @MainActor
 struct ShuffleEmptyPoolTests {
-    @Test("ein leerer Vorrat sagt den Satz der Albumseite, offline nach dem Netz des Geraets")
+    @Test("an empty pool says the album page's sentence, offline by the device's network")
     func anEmptyPoolSaysWhyByTheDevicesNetwork() async {
         let cases: [(ShufflePool, Bool, String)] = [
             (.unavailable, true, String(localized: "Couldn't load tracks")),
@@ -29,7 +29,7 @@ struct ShuffleEmptyPoolTests {
         #expect(ShufflePlayButton.sentence(for: .unavailable, isOnline: false).1 == .network)
     }
 
-    @Test("ein verschluckter Ausfall heisst nicht leer: Liste in der Hand leer, Abruf ohne Lieder nicht gekommen")
+    @Test("a swallowed failure does not mean empty: list in hand empty, fetch without songs did not arrive")
     func aSwallowedFailureIsNotEmpty() throws {
         if case .unavailable = ShufflePool.fetched([]) {} else { Issue.record("a fetch that gave nothing reads as empty") }
         if case .empty = ShufflePool.of([]) {} else { Issue.record("an empty list in hand is not empty") }
@@ -84,7 +84,7 @@ struct ShuffleEmptyPoolTests {
         return forms
     }
 
-    @Test("der Leser der Zufall-Einstiege erkennt jede Form, auch ueber zwei Zeilen und im Kommentar nicht")
+    @Test("the reader of the shuffle entries recognizes every form, also over two lines, and not in a comment")
     func theEntryReaderSeesEveryForm() {
         #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .icon) { .fetched(await a()) }") == ["fetched"])
         #expect(Self.entryForms(in: "ShufflePlayButton(playerCoordinator: c, style: .icon) {\n    await CollectionSongs.serverPool(id)\n}") == ["server"])
@@ -96,7 +96,7 @@ struct ShuffleEmptyPoolTests {
         #expect(Self.entryForms(in: "// ShufflePlayButton(playerCoordinator: c) { .of(x) }").isEmpty)
     }
 
-    @Test("jeder Zufall-Einstieg der Ansichten steht mit seiner Form im Bestand, in beide Richtungen", .needsTheSources)
+    @Test("every shuffle entry of the views stands with its form in the inventory, in both directions", .needsTheSources)
     func everyShuffleEntryIsInTheStock() throws {
         var counts: [String: Int] = [:]
         let files = SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views"))
@@ -126,7 +126,7 @@ struct ShuffleEmptyPoolTests {
         return String(rest[..<end])
     }
 
-    @Test("die Lieder eines Musikservers fallen nie still aus", .needsTheSources)
+    @Test("a music server's songs never fail silently", .needsTheSources)
     func serverSongsNeverFailSilently() throws {
         for path in ["Sources/Providers/SubsonicProvider.swift", "Sources/Providers/JellyfinProvider.swift"] {
             let body = try Self.songItemsBody(path)

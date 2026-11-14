@@ -20,12 +20,12 @@ struct SourceLibrariesTests {
     private let two = [SourceLibrary(id: "1", name: "Musik"),
                        SourceLibrary(id: "2", name: "Hoerbuecher")]
 
-    // MARK: - Ein Modus, ein Verhalten wie heute
+    // MARK: - One mode, one behavior as today
 
-    @Test("ein Modus fragt die Bibliotheksliste gar nicht erst")
+    @Test("one mode does not ask for the library list at all")
     func oneModeIgnoresLibraries() {
-        // Ohne jede Liste und ohne jede Zuordnung. Der Zustand JEDES
-        // bestehenden Bestands beim naechsten Start.
+        // Without any list and without any assignment. The state of EVERY
+        // existing store at the next start.
         #expect(SourceLibraries.serves(.music, modes: musicOnly, known: [],
                                        assignment: SourceLibraryAssignment()))
         #expect(SourceLibraries.serves(.audiobooks, modes: booksOnly, known: [],
@@ -36,7 +36,7 @@ struct SourceLibrariesTests {
                 "wer nur Musik nutzt, darf keine Luecke gemeldet bekommen")
     }
 
-    @Test("ein Modus bedient NUR seinen Typ")
+    @Test("one mode serves ONLY its type")
     func oneModeServesOnlyItsType() {
         #expect(!SourceLibraries.serves(.audiobooks, modes: musicOnly, known: two,
                                         assignment: SourceLibraryAssignment()))
@@ -44,9 +44,9 @@ struct SourceLibrariesTests {
                                         assignment: SourceLibraryAssignment()))
     }
 
-    // MARK: - Das Tor bleibt hart
+    // MARK: - The gate stays hard
 
-    @Test("zwei Modi ohne Zuordnung bedienen NICHTS — kein leerer Tab")
+    @Test("two modes without an assignment serve NOTHING: no empty tab")
     func twoModesWithoutAssignmentServeNothing() {
         let empty = SourceLibraryAssignment()
         #expect(!SourceLibraries.serves(.music, modes: both, known: two, assignment: empty))
@@ -55,7 +55,7 @@ struct SourceLibrariesTests {
                 == [.music, .audiobooks])
     }
 
-    @Test("halbe Zuordnung: der zugeordnete Typ laeuft, der andere bleibt aus")
+    @Test("half an assignment: the assigned type runs, the other stays off")
     func halfAssignmentServesHalf() {
         let half = SourceLibraryAssignment(byLibrary: ["1": .music])
         #expect(SourceLibraries.serves(.music, modes: both, known: two, assignment: half))
@@ -66,7 +66,7 @@ struct SourceLibrariesTests {
                                           assignment: half) == ["1"])
     }
 
-    @Test("volle Zuordnung trennt die beiden Haelften")
+    @Test("a full assignment separates the two halves")
     func fullAssignmentSeparates() {
         let full = SourceLibraryAssignment(byLibrary: ["1": .music, "2": .audiobooks])
         #expect(SourceLibraries.libraries(for: .music, modes: both, known: two,
@@ -76,19 +76,19 @@ struct SourceLibrariesTests {
         #expect(SourceLibraries.incompleteModes(modes: both, known: two, assignment: full).isEmpty)
     }
 
-    // MARK: - Was der Server nicht kann, kann niemand
+    // MARK: - What the server cannot do, nobody can
 
-    @Test("ein Server mit EINER Bibliothek kann zwei Modi nicht trennen")
+    @Test("a server with ONE library cannot separate two modes")
     func oneLibraryCannotSeparateTwoModes() {
         let one = [SourceLibrary(id: "1", name: "Music Library")]
         #expect(SourceLibraries.separability(modes: both, known: one) == .impossible(libraryCount: 1))
-        // Und es bleibt dabei: der nicht zugeordnete Typ ist AUS, nicht leer.
+        // And it stays that way: the unassigned type is OFF, not empty.
         let assignment = SourceLibraryAssignment(byLibrary: ["1": .music])
         #expect(SourceLibraries.serves(.music, modes: both, known: one, assignment: assignment))
         #expect(!SourceLibraries.serves(.audiobooks, modes: both, known: one, assignment: assignment))
     }
 
-    @Test("noch keine Liste ist etwas anderes als keine Bibliotheken")
+    @Test("no list yet is something other than no libraries")
     func unknownIsNotEmpty() {
         #expect(SourceLibraries.separability(modes: both, known: []) == .unknown)
         #expect(SourceLibraries.separability(modes: both, known: two) == .possible)
@@ -96,7 +96,7 @@ struct SourceLibrariesTests {
 
     /// An unreadable stored list is not silently "none": its bytes rest
     /// under `CorruptStore.asideKey`, it reads as not fetched yet, and only once.
-    @Test("eine unlesbare Bibliotheksliste wird beiseitegelegt und liest sich als noch nicht geholt")
+    @Test("an unreadable library list is set aside and reads as not fetched yet")
     func anUnreadableListIsKeptAside() {
         let key = AppStorageKeys.subsonicLibraries
         let defaults = UserDefaults.standard
@@ -116,31 +116,31 @@ struct SourceLibrariesTests {
         #expect(AppStorageKeys.subsonicKnownLibraries == two)
     }
 
-    @Test("verschwundene Bibliotheken verlieren ihre Zuordnung")
+    @Test("vanished libraries lose their assignment")
     func vanishedLibrariesArePruned() {
         let full = SourceLibraryAssignment(byLibrary: ["1": .music, "2": .audiobooks])
         let pruned = full.pruned(toKnown: [SourceLibrary(id: "1", name: "Musik")])
         #expect(pruned.byLibrary == ["1": .music])
-        // Sonst saehe der Buch-Modus vollstaendig aus wegen eines Ordners,
-        // den es nicht mehr gibt.
+        // Otherwise the book mode would look complete because of a folder
+        // that no longer exists.
         #expect(SourceLibraries.incompleteModes(modes: both,
                                                 known: [SourceLibrary(id: "1", name: "Musik")],
                                                 assignment: pruned) == [.audiobooks])
     }
 
-    // MARK: - Der Uebergang, nicht der Endzustand
+    // MARK: - The transition, not the end state
 
-    /// Die Verbindung und die Belieferung eines Tabs sind ZWEI Fragen.
-    /// Haengt die Verbindung an der zweiten, dann sperrt das Einschalten des
-    /// zweiten Modus die Quelle aus ihrer eigenen Einrichtung aus: nichts
-    /// zugeordnet heisst kein Client heisst Bibliotheksliste nie abrufbar.
-    /// Ein Endzustands-Test sieht das nie; der Uebergang ist der Fall.
-    @Test("zweiter Modus an: die Verbindung bleibt, die Tabs bleiben aus")
+    /// The connection and the supply of a tab are TWO questions.
+    /// If the connection hangs on the second, then switching on the
+    /// second mode locks the source out of its own setup: nothing
+    /// assigned means no client means library list never fetchable.
+    /// An end-state test never sees that; the transition is the case.
+    @Test("second mode on: the connection stays, the tabs stay off")
     func switchingOnTheSecondModeKeepsTheConnection() {
         let tabs: Set<MediaType> = [.music, .audiobooks]
-        // Vorher: nur Musik, alles laeuft.
+        // Before: music only, everything runs.
         #expect(SourceLibraries.isLive(modes: musicOnly, enabled: true, enabledTabs: tabs))
-        // Der Moment des Umschaltens: beide an, nichts zugeordnet, keine Liste.
+        // The moment of switching: both on, nothing assigned, no list.
         #expect(SourceLibraries.isLive(modes: both, enabled: true, enabledTabs: tabs),
                 "sonst faellt der Client weg und die Zuordnung kann nie beginnen")
         #expect(!SourceLibraries.serves(.music, modes: both, known: [],
@@ -150,31 +150,31 @@ struct SourceLibrariesTests {
                                         assignment: SourceLibraryAssignment()))
     }
 
-    @Test("die Verbindung faellt nur, wenn wirklich nichts gewollt ist")
+    @Test("the connection drops only when really nothing is wanted")
     func connectionFallsOnlyWhenNothingIsWanted() {
         let tabs: Set<MediaType> = [.music, .audiobooks]
         let none = SourceModes(servesMusic: false, servesAudiobooks: false)
         #expect(!SourceLibraries.isLive(modes: none, enabled: true, enabledTabs: tabs))
         #expect(!SourceLibraries.isLive(modes: both, enabled: false, enabledTabs: tabs))
-        // Und wenn der Nutzer den Tab des einzigen Modus abgeschaltet hat.
+        // And when the user has switched off the tab of the only mode.
         #expect(!SourceLibraries.isLive(modes: musicOnly, enabled: true, enabledTabs: [.audiobooks]))
         #expect(SourceLibraries.isLive(modes: both, enabled: true, enabledTabs: [.audiobooks]),
                 "ein abgeschalteter Tab von zweien laesst die Quelle leben")
     }
 
-    // MARK: - Die Migration ist keine
+    // MARK: - The migration is none
 
-    @Test("das Paar liest den Altbestand, ohne etwas zu schreiben")
+    @Test("the pair reads the old store without writing anything")
     func pairReadsLegacyStockWithoutWriting() {
-        // Ein Bestand, den nie jemand angefasst hat: NUR der alte Inhaltstyp
-        // steht da, die Paar-Schluessel fehlen ganz.
+        // A store nobody ever touched: ONLY the old content type
+        // is there, the pair keys are missing entirely.
         let suite = UserDefaults(suiteName: "source-libraries-\(UUID().uuidString)")!
         defer { suite.removeSuite(named: suite.description) }
         suite.set("audiobooks", forKey: AppStorageKeys.subsonicContentType)
 
-        // Genau die Praesenz-Pruefung, die die Ablage fuehrt: ein nie
-        // geschriebener Schluessel antwortet false, und zweimal false hiesse
-        // speist nichts. Das stille Gegenteil des gespeicherten Wunsches.
+        // Exactly the presence check the storage performs: a key never
+        // written answers false, and false twice would mean
+        // feeds nothing. The silent opposite of the stored wish.
         let pairWasWritten = suite.object(forKey: AppStorageKeys.subsonicServesMusicKey) != nil
             || suite.object(forKey: AppStorageKeys.subsonicServesAudiobooksKey) != nil
         #expect(!pairWasWritten)
@@ -184,18 +184,18 @@ struct SourceLibrariesTests {
             : SourceModes.fromLegacyContentType(suite.string(forKey: AppStorageKeys.subsonicContentType))
         #expect(effective == booksOnly)
 
-        // Und das Lesen hat nichts geschrieben. Der zweite Lauf ist derselbe.
+        // And the reading wrote nothing. The second run is the same.
         #expect(suite.object(forKey: AppStorageKeys.subsonicServesMusicKey) == nil)
         #expect(suite.object(forKey: AppStorageKeys.subsonicServesAudiobooksKey) == nil)
     }
 
-    @Test("ein geschriebenes Paar schlaegt den Alt-Wert — auch der Leer-Zustand")
+    @Test("a written pair beats the old value, also the empty state")
     func writtenPairWinsOverLegacy() {
         let suite = UserDefaults(suiteName: "source-libraries-\(UUID().uuidString)")!
         defer { suite.removeSuite(named: suite.description) }
-        // Der Alt-Wert nennt einen Modus, das Paar nennt keinen. Und das
-        // Paar gewinnt,
-        // sonst speist der Server weiter den Musik-Tab.
+        // The old value names a mode, the pair names none. And the
+        // pair wins,
+        // otherwise the server keeps feeding the music tab.
         suite.set("music", forKey: AppStorageKeys.subsonicContentType)
         suite.set(false, forKey: AppStorageKeys.subsonicServesMusicKey)
         suite.set(false, forKey: AppStorageKeys.subsonicServesAudiobooksKey)
@@ -208,17 +208,17 @@ struct SourceLibrariesTests {
         #expect(effective.isEmpty)
     }
 
-    @Test("Import-Fall: viele Bibliotheken auf einmal, leeres Delta")
+    @Test("Import case: many libraries at once, empty delta")
     func importedStockOfLibraries() {
-        // Ein frisch verbundener Server liefert seine Ordner in EINEM Zug.
-        // Kein Delta, keine frische Handlung. Die Zuordnung muss danach
-        // trotzdem eine Aussage haben: unzugeordnet ist unzugeordnet.
+        // A freshly connected server delivers its folders in ONE go.
+        // No delta, no fresh action. The assignment must afterwards
+        // still have a statement: unassigned is unassigned.
         let many = (1...50).map { SourceLibrary(id: "\($0)", name: "Ordner \($0)") }
         let empty = SourceLibraryAssignment()
         #expect(SourceLibraries.separability(modes: both, known: many) == .possible)
         #expect(SourceLibraries.incompleteModes(modes: both, known: many, assignment: empty)
                 == [.music, .audiobooks])
-        // Zweiter Lauf ist ein No-op.
+        // The second run is a no-op.
         #expect(empty.pruned(toKnown: many).byLibrary.isEmpty)
     }
 }

@@ -58,7 +58,7 @@ struct ShortcutBooksTests {
                                             "c": OutwardItemRefTests.serverA]),
         salt: OutwardItemRefTests.saltA)
 
-    @Test("die Zeilen tragen, der Kurzbefehl findet die Buecher")
+    @Test("the rows hold, the shortcut finds the books")
     func theRowsCarry() async throws {
         let store = try await LibraryRowStore(connection: try SQLiteConnection(path: ":memory:"))
         _ = try await store.replaceAll(LibraryDiskCache(items: [item("a", title: "Alpha"), item("b", title: "Beta"),
@@ -72,20 +72,20 @@ struct ShortcutBooksTests {
                 "the entity's id is the outward id")
     }
 
-    @Test("leere Zeilen oder keine: keine Buecher, kein Fehler")
+    @Test("empty rows or none: no books, no error")
     func nothingIsNothing() async throws {
         let store = try await LibraryRowStore(connection: try SQLiteConnection(path: ":memory:"))
         #expect(await BookQuery.books(rows: store, tagOf: tagOf).isEmpty)
         #expect(await BookQuery.books(rows: nil, tagOf: tagOf).isEmpty)
     }
 
-    @Test("ein Buch ohne Besitzer wird nicht angeboten")
+    @Test("a book without an owner is not offered")
     func noOwnerNoBook() {
         let books = BookQuery.books(from: [item("a", title: "Alpha"), item("unowned", title: "Ohne")], tagOf: tagOf)
         #expect(books.map(\.itemId) == ["a"])
     }
 
-    @Test("die Kennung nach aussen, eine fremde und eine alte Kennung finden ihr Buch")
+    @Test("the outward id, a foreign id and an old id find their book")
     func theIdentifiersFindTheirBooks() throws {
         let items = [item("a", title: "Alpha"), item("b", title: "Beta")]
         let own = try #require(BookQuery.books(from: items, tagOf: tagOf).first?.id)
@@ -99,7 +99,7 @@ struct ShortcutBooksTests {
 
     /// Without a register or without a salt no item has a tag: an older
     /// shortcut still finds its book in the rows, an outward id does not.
-    @Test("eine alte Kennung findet ihr Buch ohne Register und ohne Salz")
+    @Test("an old id finds its book without a register and without a salt")
     func anOlderIdNeedsNoRegisterAndNoSalt() throws {
         let items = [item("a", title: "Alpha"), item("c", title: nil)]
         let noTag: (String) -> String? = { _ in nil }
@@ -110,7 +110,7 @@ struct ShortcutBooksTests {
         #expect(BookQuery.books(from: items, tagOf: noTag).isEmpty, "nothing new is offered without a tag")
     }
 
-    @Test("das Hoerbuch der Audio-Domaene traegt, was die Zeile weiss, und dieselbe Kennung")
+    @Test("the audiobook of the audio domain carries what the row knows, and the same id")
     @available(iOS 27, *)
     func theAudiobookCarriesTheRow() throws {
         let row = LibraryItem(
@@ -136,7 +136,7 @@ struct ShortcutBooksTests {
 
     /// The build exports the entity under the audio schema: without it the
     /// metadata of the whole target are missing and no intent works.
-    @Test("der Bau exportiert das Hoerbuch unter dem Schema der Audio-Domaene")
+    @Test("the build exports the audiobook under the audio domain schema")
     func theBuildExportsTheAudiobook() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
                                                subdirectory: "Metadata.appintents"),
@@ -150,7 +150,7 @@ struct ShortcutBooksTests {
         #expect(text.contains("MediaBookEntity") && text.contains("audio"), "not under the audio schema: \(text.prefix(300))")
     }
 
-    @Test("Siris Frage: nichts genannt ist Weiterhoeren, eine Suche findet Titel und Autor")
+    @Test("Siri's question: nothing named is continue listening, a search finds title and author")
     func whatSiriAsksFinds() {
         let books = BookQuery.books(from: [item("a", title: "Der Zauberberg", author: "Thomas Mann"),
                                            item("b", title: "Die unendliche Geschichte", author: "Michael Ende"),
@@ -172,7 +172,7 @@ struct ShortcutBooksTests {
                                                             pubDate: $0.2, duration: 0) })
     }
 
-    @Test("Folgen der abonnierten Feeds, die neueste zuerst; Audiobookshelf noch nicht")
+    @Test("episodes of the subscribed feeds, newest first; Audiobookshelf not yet")
     func theEpisodesOnOffer() {
         let shows = [show("k1", title: "Zeitfragen", episodes: [("rss:k1:a", "Alt", 1_000_000), ("rss:k1:b", "Neu", 2_000_000)]),
                      show("abs", title: "Server", episodes: [("abspod:s:e", "Vom Server", 3_000_000)])]
@@ -183,7 +183,7 @@ struct ShortcutBooksTests {
         #expect(offers.first?.duration == nil, "an unknown length stays empty")
     }
 
-    @Test("Siris Frage findet Folgen nach Titel und Sendung, nichts genannt die zuletzt gehoerte")
+    @Test("Siri's question finds episodes by title and show, nothing named the one heard last")
     func whatSiriAsksFindsEpisodes() {
         let offers = EpisodeOffer.episodes(from: [
             show("k1", title: "Forschung aktuell", episodes: [("rss:k1:a", "Café im Weltall", 1_000)]),
@@ -198,7 +198,7 @@ struct ShortcutBooksTests {
 
     /// Every episode is asked, the answer to Siri is a handful: at most
     /// the limit, the newest across all shows first.
-    @Test("Siris Antwort ueber Folgen ist begrenzt, die neuesten zuerst")
+    @Test("Siri's answer about episodes is limited, the newest first")
     func theEpisodeAnswerIsBounded() {
         let shows = (0..<3).map { s in
             show("k\(s)", title: "Sendung \(s)",
@@ -214,7 +214,7 @@ struct ShortcutBooksTests {
 
     /// The episodes are worked out off the main actor; only the shows are
     /// read there.
-    @Test("die Folgen werden neben dem Haupt-Akteur gerechnet", .needsTheSources)
+    @Test("the episodes are worked out off the main actor", .needsTheSources)
     func theEpisodesAreWorkedOutOffMain() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("let shows = await shows() return await Task.detached(priority: .userInitiated) { work(shows) }.value"))
@@ -224,7 +224,7 @@ struct ShortcutBooksTests {
 
     /// The prints of a pass are worked out off the main actor, for both
     /// kinds through the one way, and the pass waits for them in line.
-    @Test("die Abdruecke eines Durchgangs werden neben dem Haupt-Akteur gebildet", .needsTheSources)
+    @Test("the prints of a pass are formed off the main actor", .needsTheSources)
     func thePrintsAreWorkedOutOffMain() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("nonisolated static func prints<Entity: Sendable>(of offer: [Entity]) async -> Set<String> { await Task.detached(priority: .userInitiated) { Set(offer.map(fingerprint)) }.value }"),
@@ -236,7 +236,7 @@ struct ShortcutBooksTests {
 
     /// Siri's search asks the stations the door resolves, the one list the
     /// lookup by id reads.
-    @Test("Siris Suche fragt die Sender, die die Tuer aufloest", .needsTheSources)
+    @Test("Siri's search asks the stations the door resolves", .needsTheSources)
     func theSearchAsksTheStations() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("static func stations() -> [RadioStation] { RadioStore.onHand() }"), "the offer is another list")
@@ -250,7 +250,7 @@ struct ShortcutBooksTests {
                 "the lookup by id reads another list than the offer")
     }
 
-    @Test("der Bau exportiert Sendung und Folge unter dem Schema der Audio-Domaene")
+    @Test("the build exports show and episode under the audio domain schema")
     func theBuildExportsShowAndEpisode() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
                                                subdirectory: "Metadata.appintents"))
@@ -266,7 +266,7 @@ struct ShortcutBooksTests {
 
     /// The stations on offer are the ones that resolve by id beyond this
     /// session: a catalog station held only for the session is not offered.
-    @Test("die Sender auf Angebot: Favorit, eigene Adresse, zuletzt gehoert, jeder einmal, keiner nur der Sitzung")
+    @Test("the stations on offer: favorite, own address, heard last, each once, none only of the session")
     @MainActor
     func theStationsOnOffer() {
         let suiteName = "siri-stations-\(UUID().uuidString)"
@@ -290,7 +290,7 @@ struct ShortcutBooksTests {
 
     /// Siri's ask finds a station by its name, and nothing named continues
     /// a station that played last.
-    @Test("Siris Frage findet Sender nach Name, nichts genannt setzt einen Sender fort")
+    @Test("Siri's question finds stations by name, nothing named continues a station")
     func theAskFindsStations() {
         let cafe = RadioStation(id: "radio:rb:cafe", name: "Radio Café", streamURL: "https://a.example/s")
         let swr = RadioStation(id: "radio:manual:swr", name: "SWR3", streamURL: "https://b.example/s")
@@ -302,7 +302,7 @@ struct ShortcutBooksTests {
 
     /// Siri's ask finds a list by its name; nothing named continues a
     /// title, never a list.
-    @Test("Siris Frage findet eigene Listen nach Name, nichts genannt keine Liste")
+    @Test("Siri's question finds own lists by name, nothing named no list")
     func theAskFindsLists() {
         let morning = MaerPlaylists.Playlist(id: "l1", name: "Morgenrunde", updatedAt: 0, itemIds: [])
         let road = MaerPlaylists.Playlist(id: "l2", name: "Autofahrt", updatedAt: 0, itemIds: [])
@@ -313,7 +313,7 @@ struct ShortcutBooksTests {
 
     /// What the app says for a list request: nothing when the list starts,
     /// that it starts nothing, or that it is not here.
-    @Test("was die App zu einer Liste sagt: nichts, wenn sie startet, sonst warum")
+    @Test("what the app says about a list: nothing if it starts, otherwise why")
     @available(iOS 27, *)
     func whatTheAppSaysForAList() {
         let list = MaerPlaylists.Playlist(id: "l1", name: "Morgenrunde", updatedAt: 0, itemIds: [])
@@ -326,7 +326,7 @@ struct ShortcutBooksTests {
 
     /// A list goes through the one start of lists in the background; the app
     /// comes to the front only to say why nothing started.
-    @Test("Siris Liste startet durch den Start der Listen, nach vorn nur mit einem Satz")
+    @Test("Siri's list starts through the start of lists, to the front only with a sentence")
     @available(iOS 27, *)
     @MainActor
     func aListStartsThroughTheStartOfLists() async throws {
@@ -367,7 +367,7 @@ struct ShortcutBooksTests {
         #expect(fronts == 2 && said.last == PlaylistStart.sentence(for: .missing, started: false), "\(said)")
     }
 
-    @Test("der Bau exportiert die eigene Liste unter dem Schema der Audio-Domaene")
+    @Test("the build exports the own list under the audio domain schema")
     func theBuildExportsTheList() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
                                                subdirectory: "Metadata.appintents"))
@@ -379,7 +379,7 @@ struct ShortcutBooksTests {
         #expect(list.contains("PlaylistEntity") && list.contains("audio"), "\(list.prefix(300))")
     }
 
-    @Test("der Bau exportiert den Sender unter dem Schema der Audio-Domaene")
+    @Test("the build exports the station under the audio domain schema")
     func theBuildExportsTheStation() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
                                                subdirectory: "Metadata.appintents"))
@@ -393,7 +393,7 @@ struct ShortcutBooksTests {
 
     /// A shortcut's search and Siri's search are one search: title and
     /// author, without case or accents, and one limit for suggestions.
-    @Test("die Suche der Kurzbefehle ist die Suche von Siri, mit einer Grenze")
+    @Test("the shortcuts' search is Siri's search, with one limit")
     func theShortcutSearchIsSirisSearch() {
         let books = BookQuery.books(from: [item("a", title: "Der Zauberberg", author: "Thomas Mann"),
                                            item("c", title: "Effi Briest", author: "Theodor Fontane")], tagOf: tagOf)
@@ -407,7 +407,7 @@ struct ShortcutBooksTests {
         #expect(BookQuery.suggested(in: many).count == BookQuery.suggestionLimit)
     }
 
-    @Test("beide Abfragen der Buecher fragen die eine Suche und die eine Grenze", .needsTheSources)
+    @Test("both book queries ask the one search and the one limit", .needsTheSources)
     func bothQueriesAskTheOneSearch() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(!shortcuts.contains("title.localizedCaseInsensitiveContains"), "a book query searches on its own")
@@ -417,7 +417,7 @@ struct ShortcutBooksTests {
     }
 
     /// The build exports Siri's play under the audio schema, and its search.
-    @Test("der Bau exportiert Siris Wiedergabe unter dem Schema der Audio-Domaene")
+    @Test("the build exports Siri's play under the audio domain schema")
     func theBuildExportsThePlay() throws {
         let url = try #require(Bundle.main.url(forResource: "extract", withExtension: "actionsdata",
                                                subdirectory: "Metadata.appintents"))
@@ -432,7 +432,7 @@ struct ShortcutBooksTests {
 
     /// Siri's play starts a title through the one door of continue
     /// listening, never a way of its own.
-    @Test("Siris Wiedergabe geht durch die eine Tuer des Weiterhoerens", .needsTheSources)
+    @Test("Siri's play goes through the one door of continue listening", .needsTheSources)
     func thePlayGoesThroughTheDoor() throws {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("switch audioEntity.start { case .item(let itemId): try await ResumeListeningIntent.run(itemId: itemId)"),
@@ -449,7 +449,7 @@ struct ShortcutBooksTests {
                 "the widget's command left the shared run")
     }
 
-    @Test("der laufende Titel nennt Siri sein Buch, nur mit Kennung nach aussen")
+    @Test("the playing title tells Siri its book, only with the outward id")
     @available(iOS 27, *)
     func thePlayingTitleNamesItsBook() {
         #expect(NowPlayingEntities.ref(forItem: "a", tagOf: tagOf) == OutwardItemRef.ref(itemId: "a", serverTag: tagOf("a")))
@@ -461,7 +461,7 @@ struct ShortcutBooksTests {
 
     /// The info is written on every event of the playback: the device's
     /// tags are read once per title, never for a title with a namespace.
-    @Test("die Kennung des laufenden Titels wird je Titel einmal gerechnet")
+    @Test("the id of the playing title is worked out once per title")
     @available(iOS 27, *)
     @MainActor
     func theIdentifiersAreWorkedOutOncePerTitle() {
@@ -487,7 +487,7 @@ struct ShortcutBooksTests {
     /// A book often plays for days: an empty answer gives way when the
     /// register gets a new stand, and an unreadable salt is asked again
     /// after a minute, without a read on every write in between.
-    @Test("ein leeres Ergebnis weicht einem neuen Stand des Registers und nach einer Minute")
+    @Test("an empty result gives way to a new stand of the register and after a minute")
     @available(iOS 27, *)
     @MainActor
     func anEmptyAnswerGivesWay() {
@@ -527,7 +527,7 @@ struct ShortcutBooksTests {
                 "after the minute the salt is asked again")
     }
 
-    @Test("ein gemerktes Ergebnis gilt fuer seinen Titel, leer nur bei gleichem Stand und binnen der Frist")
+    @Test("a remembered result holds for its title, empty only with the same stand and within the period")
     @available(iOS 27, *)
     func whenAKeptAnswerHolds() {
         let at = Date()
@@ -542,7 +542,7 @@ struct ShortcutBooksTests {
         #expect(!holds(0, 1, 1, NowPlayingEntities.emptyHolds, "a"), "empty gives way after the minute")
     }
 
-    @Test("ein geschriebenes Register zaehlt seinen Stand")
+    @Test("a written register counts its stand")
     func aWrittenRegisterCountsItsStand() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("owners-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -555,7 +555,7 @@ struct ShortcutBooksTests {
         #expect(OutwardServerTag.registerGeneration == after, "a write that does not happen is no new stand")
     }
 
-    @Test("Spotlight bleibt bei gleicher Menge, ersetzt bei jeder anderen")
+    @Test("Spotlight stays with the same set, replaces with any other")
     @available(iOS 27, *)
     func whenSpotlightChanges() {
         #expect(SpotlightIndex.pass(offer: ["a", "b"], indexed: ["b", "a"]) == .keep)
@@ -567,7 +567,7 @@ struct ShortcutBooksTests {
 
     /// The index is set to what is on offer, through the one place, and a
     /// sign out takes every book out; the system index stands in as a list.
-    @Test("Spotlight traegt genau die angebotenen Buecher, die Abmeldung nimmt alle heraus")
+    @Test("Spotlight holds exactly the offered books, the sign out takes all out")
     @available(iOS 27, *)
     @MainActor
     func spotlightCarriesTheOffer() async {
@@ -606,7 +606,7 @@ struct ShortcutBooksTests {
     /// A pass that suspends at the index and a sign out asked meanwhile:
     /// the sign out comes last, and nothing of the account stays in the
     /// search.
-    @Test("die Abmeldung waehrend eines Durchgangs laesst kein Buch in der Suche")
+    @Test("a sign out during a pass leaves no book in the search")
     @available(iOS 27, *)
     @MainActor
     func aSignOutDuringAPassLeavesNothing() async {
@@ -635,7 +635,7 @@ struct ShortcutBooksTests {
 
     /// A load still under way when the person signs out finishes later and
     /// asks a pass: no one is signed in, so it adds nothing.
-    @Test("ein Durchgang nach der Abmeldung traegt nichts ein")
+    @Test("a pass after the sign out adds nothing")
     @available(iOS 27, *)
     @MainActor
     func aPassAfterTheSignOutAddsNothing() async {
@@ -654,7 +654,7 @@ struct ShortcutBooksTests {
     /// The shows on offer are those with an episode on offer; a pass
     /// compares every field of each entity, so a renamed show is a change
     /// and the same fields are none.
-    @Test("die Sendungen auf Angebot fuer Spotlight, nur mit einer Folge auf Angebot")
+    @Test("the shows on offer for Spotlight, only with an episode on offer")
     @available(iOS 27, *)
     @MainActor
     func theShowsForSpotlight() {
@@ -672,7 +672,7 @@ struct ShortcutBooksTests {
     /// Every field that goes into a book's entity is in its print: a book
     /// renamed, by another author, read by another narrator, in another
     /// series or genre asks a pass; the same book asks none.
-    @Test("der Abdruck eines Buchs traegt jedes Feld, das in die Suche geht")
+    @Test("a book's print carries every field that goes into the search")
     @available(iOS 27, *)
     @MainActor
     func aBooksPrintCarriesEveryField() {
@@ -692,7 +692,7 @@ struct ShortcutBooksTests {
 
     /// A renamed book and a renamed show set the index again; the same
     /// fields leave it.
-    @Test("ein umbenanntes Buch und eine umbenannte Sendung loesen einen Durchgang aus, dieselben Felder keinen")
+    @Test("a renamed book and a renamed show trigger a pass, the same fields none")
     @available(iOS 27, *)
     @MainActor
     func aRenameAsksAPass() async {
@@ -731,7 +731,7 @@ struct ShortcutBooksTests {
     /// shows are read, then the server's copy wins and has no episode on
     /// offer; the switch of the server's podcasts brings the feed's copy
     /// back. Each change asks a pass, and the pass follows.
-    @Test("die Suche folgt den Sendungen der Flaeche: erste Lesung des Servers und Schalter")
+    @Test("the search follows the shows of the surface: first read of the server and switch")
     @available(iOS 27, *)
     @MainActor
     func theShowsFollowTheSurface() async {
@@ -760,7 +760,7 @@ struct ShortcutBooksTests {
 
     /// The shows go into the same index through the same line, without the
     /// sign in to Audiobookshelf, and a sign out leaves them.
-    @Test("Spotlight traegt die Sendungen auf Angebot, die Abmeldung laesst sie stehen")
+    @Test("Spotlight holds the shows on offer, the sign out leaves them")
     @available(iOS 27, *)
     @MainActor
     func spotlightCarriesTheShows() async {
@@ -802,7 +802,7 @@ struct ShortcutBooksTests {
     /// out; the books follow a full list and the sign out, the shows every
     /// writer of what the podcast surface shows: the subscriptions, the
     /// server's shows and their archive, and the switch of the sources.
-    @Test("nur eine Stelle schreibt Spotlight, nach der vollen Liste, bei der Abmeldung und mit den Sendungen der Flaeche", .needsTheSources)
+    @Test("only one place writes Spotlight, after the full list, at the sign out and with the shows of the surface", .needsTheSources)
     func spotlightHasOnePlace() throws {
         var writing: [String] = []
         var reconciling: [String] = []
@@ -839,7 +839,7 @@ struct ShortcutBooksTests {
                 "the shows' pass does not follow the stock")
     }
 
-    @Test("die Angaben zum laufenden Titel tragen sein Buch", .needsTheSources)
+    @Test("the info on the playing title carries its book", .needsTheSources)
     func theNowPlayingInfoCarriesTheBook() throws {
         let nowPlaying = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
         #expect(nowPlaying.contains("let identifiers = NowPlayingEntities.identifiers(forItem: item?.id) if !identifiers.isEmpty { info[MPNowPlayingInfoPropertyAppEntityIdentifiers] = identifiers }"),

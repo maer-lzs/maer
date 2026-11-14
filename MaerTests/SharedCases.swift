@@ -101,7 +101,7 @@ struct SharedCasesFenceTests {
         return named
     }
 
-    @Test("Zaun: jede gemeinsame Falldatei traegt Kopf (regel, pin, form) und Faelle mit slug und expect, slugs einmalig, Zahlen ganz", .needsTheTests)
+    @Test("Fence: every shared case file carries a head (regel, pin, form) and cases with slug and expect, slugs unique, numbers whole", .needsTheTests)
     func everySharedFileKeepsTheForm() throws {
         let files = try Self.files()
         // The precondition names what the fence must see: exactly the files
@@ -130,7 +130,7 @@ struct SharedCasesFenceTests {
         }
     }
 
-    @Test("Zaun: der Leser weist Dezimalzahlen ab und liest ganze Zahlen, null, Listen und Objekte")
+    @Test("Fence: the reader refuses decimals and reads whole numbers, null, lists and objects")
     func theReaderRefusesDecimals() throws {
         let whole = try JSONDecoder().decode(JSONValue.self, from: Data("{\"a\": [1, null, \"s\", true], \"b\": {\"c\": 2}}".utf8))
         #expect(whole["a"]?.array?.count == 4 && whole["b"]?["c"]?.int == 2)

@@ -12,7 +12,7 @@ import Foundation
 /// and its requests follow no redirect.
 struct SignInFlowSessionTests {
 
-    @Test("Ein Cookie aus dem Anmeldeablauf erreicht den geteilten Speicher nicht")
+    @Test("A cookie from the sign-in flow does not reach the shared store")
     func flowCookiesStayApart() throws {
         let flow = HTTP.SignInFlow()
         defer { flow.close() }
@@ -29,7 +29,7 @@ struct SignInFlowSessionTests {
         #expect((HTTPCookieStorage.shared.cookies(for: url) ?? []).isEmpty)
     }
 
-    @Test("Eine Anfrage des Ablaufs folgt keiner Weiterleitung")
+    @Test("A request of the flow follows no redirect")
     func flowFollowsNoRedirect() async throws {
         let from = try #require(URL(string: "https://abs.example/auth/openid"))
         let to = try #require(URL(string: "https://id.example/authorize"))

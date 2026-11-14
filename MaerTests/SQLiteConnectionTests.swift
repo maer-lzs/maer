@@ -12,7 +12,7 @@ import Foundation
 /// type back, a failed transaction leaves nothing behind, errors throw
 /// with the statement named, and the schema version is a pragma.
 struct SQLiteConnectionTests {
-    @Test("Anlegen, schreiben, lesen: jeder Werttyp kommt zurueck, wie er hineinging")
+    @Test("Create, write, read: every value type comes back as it went in")
     func roundTrip() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         try await db.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT, score REAL, payload BLOB, note TEXT)")
@@ -33,7 +33,7 @@ struct SQLiteConnectionTests {
     /// The ONE form of a transaction: a batch of statements, run on the
     /// actor without a suspension inside. A statement that fails rolls the
     /// batch back.
-    @Test("Eine Transaktion, die scheitert, laesst nichts zurueck; eine gute alles")
+    @Test("A transaction that fails leaves nothing behind; a good one everything")
     func transactionRollsBack() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         try await db.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
@@ -56,7 +56,7 @@ struct SQLiteConnectionTests {
     /// After the checkpoint the journal is empty and the rows are in the
     /// file, readable through a reader of their own; the reader itself
     /// refuses a write.
-    @Test("Der Checkpoint leert das Journal, die Zeilen bleiben lesbar; der Leser schreibt nie")
+    @Test("The checkpoint empties the journal, the rows stay readable; the reader never writes")
     func checkpointEmptiesTheJournal() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("checkpoint-\(UUID().uuidString).sqlite").path
         defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
@@ -80,7 +80,7 @@ struct SQLiteConnectionTests {
     /// The page count the checkpoint line carries: a deletion leaves the
     /// file its pages and makes them free pages, which is what the line
     /// is there to show.
-    @Test("Die Seitenzahl nennt die freien Seiten, die ein Loeschen in der Datei laesst")
+    @Test("The page count names the free pages that a deletion leaves in the file")
     func pagesNameTheFreeOnes() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("pages-\(UUID().uuidString).sqlite").path
         defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
@@ -99,7 +99,7 @@ struct SQLiteConnectionTests {
         #expect(after.free >= 90, "the deleted rows' pages are free pages: \(after)")
     }
 
-    @Test("jede Verbindung begrenzt das Journal, das nach dem Zurueckschreiben auf der Platte bleibt")
+    @Test("every connection limits the journal that stays on the disk after writing back")
     func theJournalIsLimited() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("journal-\(UUID().uuidString).sqlite").path
         defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
@@ -115,7 +115,7 @@ struct SQLiteConnectionTests {
     /// the pages per table where SQLite can count them (`dbstat`), and after
     /// one VACUUM. Printed as `NOTESMOVE`; the case holds only that the
     /// move ran.
-    @Test("Messung: Seiten und freie Seiten vor und nach dem Umzug der Shownotes bei 1.000 Folgen")
+    @Test("Measurement: pages and free pages before and after the move of the shownotes at 1,000 episodes")
     func whatTheNotesMoveLeaves() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("notesmove-\(UUID().uuidString).sqlite").path
         defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
@@ -161,7 +161,7 @@ struct SQLiteConnectionTests {
 
     /// The page count is its own measurement: when it cannot be read, the
     /// checkpoint line says that, never "checkpoint failed".
-    @Test("Eine Seitenzahl, die nicht gelesen wird, sagt das selbst und nicht der Checkpoint")
+    @Test("A page count that is not read says so itself and not the checkpoint")
     func anUnreadPageCountSaysSo() async throws {
         let path = FileManager.default.temporaryDirectory.appendingPathComponent("field-\(UUID().uuidString).sqlite").path
         defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
@@ -177,7 +177,7 @@ struct SQLiteConnectionTests {
     /// never nest. Measured in the simulator before the batch form: two
     /// writes at once ended in "cannot start a transaction within a
     /// transaction".
-    @Test("Zwei Speicher auf einer Verbindung schreiben gleichzeitig, ohne sich zu verschachteln")
+    @Test("Two stores on one connection write at the same time without nesting")
     func concurrentStoresDoNotNest() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         let days = try await KeyedRowStore<Int>(connection: db, table: .statsDay)
@@ -194,7 +194,7 @@ struct SQLiteConnectionTests {
         #expect(dayCount == 400 && itemCount == 400)
     }
 
-    @Test("Fehler nennen die Anweisung; was geschrieben ist, bleibt in der Datei")
+    @Test("Errors name the statement; what is written stays in the file")
     func errorsNameTheStatementAndVersionPersists() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         do {

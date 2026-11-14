@@ -62,7 +62,7 @@ struct SharedLinkPageAccessTests {
         try draw([("k", "r"), ("i", uuid), ("t", "Radio"), ("a", audio), ("c", cover)])
     }
 
-    @Test("eine Adresse mit Zugang zeigt kein Bild, spielt keinen Ton und sagt den einen Satz", .needsTheSite)
+    @Test("an address with access shows no picture, plays no sound and says the one sentence", .needsTheSite)
     func anAddressWithAccessShowsNothing() throws {
         let clean = try Self.station(cover: "https://img.example/a.png", audio: "https://s.example/a.mp3")
         #expect(clean.cover == "https://img.example/a.png" && clean.audio == "https://s.example/a.mp3",
@@ -84,7 +84,7 @@ struct SharedLinkPageAccessTests {
         #expect(feed.cover.isEmpty && feed.title == "This link can't be opened.", "a feed with access shows its page")
     }
 
-    @Test("die Seite gibt dieselbe Antwort wie die App, je Adresse", .needsTheSite)
+    @Test("the page gives the same answer as the app, per address", .needsTheSite)
     func thePageAnswersAsTheApp() throws {
         let names = ["token", "auth", "key", "secret", "freebie", "api_key", "access_token", "authToken", "sessionid",
                      "accesskey", "password", "pwd", "hmac", "sig", "author", "keyword", "design", "passage",
@@ -99,7 +99,7 @@ struct SharedLinkPageAccessTests {
         }
     }
 
-    @Test("Zaun: die drei Listen der Seite sind die der App, Wort fuer Wort", .needsTheSite)
+    @Test("Fence: the page's three lists are the app's, word for word", .needsTheSite)
     func theListsAreTheApps() throws {
         let script = try String(contentsOf: SourceTree.root.appendingPathComponent("site/l/l.js"), encoding: .utf8)
         func list(_ name: String) throws -> [String] {

@@ -24,7 +24,7 @@ struct ServerHeaderRuleTests {
         ServerHeaderRule.entry(for: URL(string: url)!, in: Self.entries)?.headers.first?.name
     }
 
-    @Test("Herkunft: zwei Server auf einem Host, der laengere Pfad gewinnt; ein anderer Port bekommt nichts")
+    @Test("Origin: two servers on one host, the longer path wins; another port gets nothing")
     func twoServersOnOneHost() {
         #expect(header("https://h.example/abs/api/items") == "X-Abs")
         #expect(header("https://h.example/abs") == "X-Abs")
@@ -36,7 +36,7 @@ struct ServerHeaderRuleTests {
         #expect(header("https://h.example:443/abs/api") == "X-Abs", "the default port written out is the same server")
     }
 
-    @Test("Namen: was die App selbst setzt und was kein HTTP-Token ist, wird abgewiesen")
+    @Test("Names: what the app sets itself and what is no HTTP token is refused")
     func namesTheAppSetsAreRefused() {
         for name in ["Authorization", "user-agent", "Content-Type", "Content-Length", "Cookie", "Host", "", "Bad Name", "X-ä"] {
             #expect(!ServerHeaderRule.isAllowed(name: name), "\(name)")
@@ -46,7 +46,7 @@ struct ServerHeaderRuleTests {
         }
     }
 
-    @Test("genau einmal: ein Header, den die Anfrage schon traegt, wird ersetzt, nicht verdoppelt")
+    @Test("exactly once: a header the request already carries is replaced, not doubled")
     func exactlyOnce() throws {
         var request = URLRequest(url: try #require(URL(string: "https://h.example/abs/api")))
         request.setValue("old", forHTTPHeaderField: "x-abs")
@@ -56,7 +56,7 @@ struct ServerHeaderRuleTests {
         #expect(out.value(forHTTPHeaderField: "X-Abs") == "v-X-Abs")
     }
 
-    @Test("Umleitung: wer den Server verlaesst, laesst seine Header dort; wer einen anderen erreicht, bekommt dessen")
+    @Test("Redirect: whoever leaves the server leaves its headers there; whoever reaches another gets its headers")
     func aRedirectLeavesTheHeadersBehind() throws {
         let start = try #require(URL(string: "https://h.example/abs/a"))
         let sent = ServerHeaderRule.applied(URLRequest(url: start), entries: Self.entries)
@@ -206,7 +206,7 @@ struct ServerHeadersWayTests {
         }
     }
 
-    @Test("jeder Ausgang traegt die Header genau einmal zu seinem Server und zu keinem fremden Host, je Umleitung",
+    @Test("every way out carries the headers exactly once to its server and to no foreign host, per redirect",
           arguments: Way.allCases, [301, 302, 307, 308])
     func eachWayCarriesThemToItsServerOnly(way: Way, status: Int) async throws {
         let (origin, other) = try await started()
@@ -233,7 +233,7 @@ struct ServerHeadersWayTests {
         }
     }
 
-    @Test("ein Host ohne Header bekommt keine, und der Stream bleibt der alte Weg ohne Vorab-Anfrage")
+    @Test("a host without headers gets none, and the stream stays the old way without a preliminary request")
     func aServerWithoutHeadersStaysAsItWas() async throws {
         let (origin, other) = try await started()
         defer { origin.stop(); other.stop() }
@@ -250,7 +250,7 @@ struct ServerHeadersWayTests {
         #expect(!anyServer, "with no server with headers the player does not wait for a plan")
     }
 
-    @Test("unlesbar ist unbekannt: an einen Server mit Headern geht nichts ohne sie, an andere schon, lesbar wieder mit")
+    @Test("unreadable is unknown: nothing goes to a server with headers without them, to others it does, readable again with them")
     func unreadableHoldsTheRequest() async throws {
         let (origin, other) = try await started()
         defer { origin.stop(); other.stop() }
@@ -279,7 +279,7 @@ struct ServerHeadersWayTests {
         #expect(origin.recorded.map(Self.carried) == [1], "read again, the request goes with its headers")
     }
 
-    @Test("ein zweites Geraet erreicht den Server mit den Headern, die das erste abgelegt hat, ohne Eingabe")
+    @Test("a second device reaches the server with the headers the first stored, without input")
     func aSecondDeviceReachesTheServer() async throws {
         let (origin, other) = try await started()
         defer { origin.stop(); other.stop() }
@@ -290,7 +290,7 @@ struct ServerHeadersWayTests {
         #expect(origin.recorded.map(Self.carried) == [1])
     }
 
-    @Test("einen Server von Hand entfernen nimmt seine Header ueberall mit, abmelden laesst sie stehen")
+    @Test("removing a server by hand takes its headers everywhere, signing out leaves them")
     func removingTheServerRemovesTheHeaders() async throws {
         let keys = MemoryKeys()
         let base = try #require(URL(string: "https://forget-\(UUID().uuidString.prefix(6)).example/abs"))
@@ -317,7 +317,7 @@ struct ServerHeadersWayTests {
         #expect(keys.state.withLock { $0.items }.isEmpty, "an item under an old spelling stayed after the server was removed")
     }
 
-    @Test("ein fortgesetzter Download eines Servers mit Headern beginnt neu, mit den Headern von heute")
+    @Test("a resumed download from a server with headers starts anew, with today's headers")
     func aResumedDownloadStartsAnew() async throws {
         let (origin, other) = try await started()
         defer { origin.stop(); other.stop() }
@@ -337,7 +337,7 @@ struct ServerHeadersWayTests {
         #expect(downloads.map(Self.carried) == [1], "the download was not started anew with its headers")
     }
 
-    @Test("benannte Grenze: leitet der eigene Server seine Endadresse spaeter um, traegt der Stream die Header mit (gemessen)")
+    @Test("named limit: if the own server redirects its final address later, the stream carries the headers along (measured)")
     func aLaterRedirectOfTheServerCarriesTheHeaders() async throws {
         let (origin, other) = try await started()
         defer { origin.stop(); other.stop() }
@@ -415,7 +415,7 @@ struct ServerHeadersWayTests {
         func stop() { listener.cancel() }
     }
 
-    @Test("die Vorab-Anfrage liest nur den Kopf: ein Server, der Range nicht beachtet und ohne Ende sendet, haelt sie nicht auf")
+    @Test("the preliminary request reads only the head: a server that ignores Range and sends without end does not hold it up")
     func theAskAheadReadsTheHeadOnly() async throws {
         let host = try EndlessHost()
         try await host.start()
@@ -444,7 +444,7 @@ struct ServerHeadersWayTests {
         #expect(host.closed.withLock { $0 }, "the ask did not close its connection")
     }
 
-    @Test("kann das Ende der Umleitungen eines Servers mit Headern nicht gefragt werden, gibt es keinen Strom und keine Anfrage mit den Headern")
+    @Test("if the end of the redirects of a server with headers cannot be asked, there is no stream and no request with the headers")
     func anEndThatCannotBeAskedBuildsNoStream() async throws {
         // Nothing listens at the server's address, and nothing can start to
         // while the port is held.
@@ -491,7 +491,7 @@ struct ServerHeadersWayTests {
         }.sorted()
     }
 
-    @Test("ein Titel mit 50 Spuren fragt beim Start nur die Spur, mit der er beginnt, und die naechsten zwei; die Warteschlange haelt sie")
+    @Test("a title with 50 tracks asks at the start only the track it begins with and the next two; the queue holds them")
     func aStartAsksOnlyTheTracksItNeedsSoon() async throws {
         let (origin, other, keys, book) = try await fiftyTracks()
         defer { origin.stop(); other.stop() }
@@ -507,7 +507,7 @@ struct ServerHeadersWayTests {
         model.stop()
     }
 
-    @Test("nach dem Wechsel auf die naechste Spur wird genau eine Spur mehr gefragt", .needsAudio)
+    @Test("after the switch to the next track exactly one more track is asked", .needsAudio)
     func theNextTrackAsksExactlyOneMore() async throws {
         // A source with a sign-in, not server headers: the tick that notes
         // the switch runs in a task of its own, outside the test's keychain
@@ -532,7 +532,7 @@ struct ServerHeadersWayTests {
         }
     }
 
-    @Test("ein Sprung auf Spur 40 fragt Spur 40 und ihre zwei Nachbarn, nicht die Spuren davor")
+    @Test("a jump to track 40 asks track 40 and its two neighbours, not the tracks before it")
     func aJumpAsksItsTrackAndItsNeighbours() async throws {
         let (origin, other, keys, book) = try await fiftyTracks()
         defer { origin.stop(); other.stop() }
@@ -579,7 +579,7 @@ struct ServerHeadersWayTests {
         (model.player?.currentItem?.asset as? AVURLAsset)?.url.lastPathComponent
     }
 
-    @Test("ein Sprung, der auf den Plan seiner Spur wartet, baut nicht in einen inzwischen geoeffneten Titel")
+    @Test("a jump that waits for the plan of its track does not build into a title opened in the meantime")
     func aWaitingJumpYieldsToANewTitle() async throws {
         let (quick, slow, keys, book) = try await splitTitle()
         defer { quick.stop(); slow.stop() }
@@ -604,7 +604,7 @@ struct ServerHeadersWayTests {
         #expect(model.currentTime < 1, "the old jump set its time on the new title: \(model.currentTime)")
     }
 
-    @Test("ein aelterer Sprung, der auf den Plan seiner Spur wartet, baut nicht ueber einen juengeren")
+    @Test("an older jump that waits for the plan of its track does not build over a younger one")
     func aWaitingJumpYieldsToALaterOne() async throws {
         let (quick, slow, keys, book) = try await splitTitle()
         defer { quick.stop(); slow.stop() }
@@ -624,7 +624,7 @@ struct ServerHeadersWayTests {
         #expect((1.5..<2.0).contains(model.currentTime), "the later jump did not set its time: \(model.currentTime)")
     }
 
-    @Test("ein Sprung, der auf den Plan seiner Spur wartet, bewegt ein inzwischen gestopptes Modell nicht")
+    @Test("a jump that waits for the plan of its track does not move a model stopped in the meantime")
     func aWaitingJumpLeavesAStoppedModel() async throws {
         let (quick, slow, keys, book) = try await splitTitle()
         defer { quick.stop(); slow.stop() }
@@ -673,7 +673,7 @@ struct ServerHeadersWayTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("der Plan einer Spur fragt die Anmeldung der Quelle fuer die Adresse der Spur: am Host der Quelle mit ihr, an einem anderen Namen ohne")
+    @Test("the plan of a track asks the source's sign-in for the track's address: at the source's host with it, at another name without")
     func thePlanAsksTheSignInForTheTracksAddress() async throws {
         let (origin, other) = try await started()
         defer { origin.stop(); other.stop() }
@@ -725,7 +725,7 @@ struct StreamPlannerTests {
     /// How many plans landed, counted on the main actor.
     final class Tally { var count = 0 }
 
-    @Test("Planer: das Fenster ist die Spur und die naechsten zwei, nie hinter der letzten")
+    @Test("Planner: the window is the track and the next two, never past the last")
     func theWindow() {
         #expect(StreamPlanner.tracksAhead == 2)
         #expect(StreamPlanner.window(from: 0, count: 212) == [0, 1, 2])
@@ -736,7 +736,7 @@ struct StreamPlannerTests {
         #expect(StreamPlanner.window(from: -1, count: 50) == [])
     }
 
-    @Test("Planer: zwei Fenster, die sich ueberlappen, fragen jede Adresse einmal")
+    @Test("Planner: two windows that overlap ask each address once")
     func overlappingWindowsAskEachOnce() async throws {
         let counter = Counter()
         let planner = StreamPlanner(limit: 4) { url in
@@ -758,7 +758,7 @@ struct StreamPlannerTests {
         #expect(Set(order) == Set(urls[0...3]))
     }
 
-    @Test("Planer: ein Plan, der gewollt wird, waehrend seine Adresse im Voraus gefragt wird, wartet auf diese Frage")
+    @Test("Planner: a plan that is wanted while its address is being asked ahead waits for that ask")
     func aPlanWantedWhileAskedAheadWaitsForThatAsk() async throws {
         let counter = Counter()
         let planner = StreamPlanner(limit: 4) { url in
@@ -776,7 +776,7 @@ struct StreamPlannerTests {
         #expect(order.count == 1, "the address was asked again: \(order.count)")
     }
 
-    @Test("Planer: stop() beendet die Fragen im Voraus, kein Plan landet danach und keine Frage beginnt")
+    @Test("Planner: stop() ends the asks ahead, no plan lands after it and no ask begins")
     func stopEndsTheAsksAhead() async throws {
         let counter = Counter()
         let planner = StreamPlanner(limit: 2) { url in
@@ -797,7 +797,7 @@ struct StreamPlannerTests {
         #expect(planner.plans.isEmpty)
     }
 
-    @Test("Planer: im Voraus hoechstens vier zugleich, in der gegebenen Reihenfolge")
+    @Test("Planner: at most four ahead at once, in the given order")
     func oneAheadTheRestBounded() async throws {
         let counter = Counter()
         let planner = StreamPlanner(limit: 4) { url in
@@ -835,7 +835,7 @@ struct ServerHeadersFenceTests {
         return SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("Header: genau die drei Wege setzen sie, jeder vor dem Fragen, und lassen sie bei einer Umleitung zurueck",
+    @Test("Headers: exactly the three ways set them, each before asking, and leave them behind at a redirect",
           .needsTheSources)
     func theThreeWaysSetThemAndLeaveThemBehind() throws {
         var setters: Set<String> = []
@@ -887,7 +887,7 @@ struct ServerHeadersFenceTests {
         #expect(!table.contains("await endAddress(of: request) ?? url"), "an unknown end is taken as the address again")
     }
 
-    @Test("Neubau nach einem Ladefehler: eine Stelle laesst den Plan der Spur gehen, und jeder Weg baut durch sie", .needsTheSources)
+    @Test("Rebuild after a load failure: one place lets the track's plan go, and every way builds through it", .needsTheSources)
     func everyRebuildAfterALoadFailureAsksThePlanAnew() throws {
         let player = try Self.code("Sources/ViewModels/PlayerViewModel.swift")
         #expect(player.components(separatedBy: ".forget(").count - 1 == 1, "a plan is let go in another place")
@@ -903,7 +903,7 @@ struct ServerHeadersFenceTests {
                 "the queue is built in another place")
     }
 
-    @Test("Header: der Stream einer Spur fragt den Plan, kein Asset mit Kopfzeilen entsteht am Planer vorbei", .needsTheSources)
+    @Test("Headers: a track's stream asks the plan, no asset with header lines is made past the planner", .needsTheSources)
     func theStreamAsksThePlan() throws {
         let player = try Self.code("Sources/ViewModels/PlayerViewModel.swift")
         // A stream that needs a plan is built from its plan and not at all
@@ -969,7 +969,7 @@ struct ServerHeadersFenceTests {
                 "a queue stops at the first track without its plan")
     }
 
-    @Test("Anmeldung der Quellen im Stream: jede Quelle setzt nur Authorization",
+    @Test("Sign-in of the sources in the stream: each source sets only Authorization",
           .needsTheSources)
     func theSourcesSignInIsAuthorizationOnly() throws {
         var bodies = 0

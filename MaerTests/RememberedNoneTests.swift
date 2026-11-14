@@ -8,12 +8,12 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Was es bei einem fremden Dienst nicht gibt, wird gemerkt wie ein
-/// Treffer: „keine Dauer“ und „kein Cover“ fragen hoechstens einmal, auch
-/// ueber einen Neustart. Ein Fehlschlag ist keine Antwort, zaehlt aber fuer
-/// den Rest der Sitzung als gefragt.
+/// What a foreign service does not have is remembered like a
+/// hit: „keine Dauer“ and „kein Cover“ ask at most once, also
+/// across a restart. A failure is no answer, but counts as asked for
+/// the rest of the session.
 struct RememberedNoneTests {
-    /// Zaehlt jede Frage an archive.org; antwortet je Kennung aus der Tabelle.
+    /// Counts every question to archive.org; answers per id from the table.
     /// Unchecked because one lock guards the asks; the replies are set once.
     nonisolated final class Wire: @unchecked Sendable {
         /// `heldFirst`: the first question meets a holdback, later ones the files.
@@ -51,7 +51,7 @@ struct RememberedNoneTests {
 
     private static func suite() -> String { "remembered-none-\(UUID().uuidString)" }
 
-    @Test("Dauer: zehn Erscheinungen einer Kachel ohne Dauer fragen einmal, und nach dem Neustart gar nicht")
+    @Test("Duration: ten appearances of a tile without a duration ask once, and after the restart not at all")
     func aMissingRuntimeIsAskedOnce() async {
         let suite = Self.suite()
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -64,14 +64,14 @@ struct RememberedNoneTests {
         }
         #expect(wire.asks("none") == 1, "ein Nein wird nicht wieder gefragt")
         #expect(wire.asks("found") == 1)
-        // Neustart: ein neuer Dienst auf denselben Defaults.
+        // Restart: a new service on the same defaults.
         let second = ArchiveRuntimeService(wire: wire.wire, suiteName: suite)
         #expect(await second.runtimeSeconds(identifier: "none") == nil)
         #expect(await second.runtimeSeconds(identifier: "found") == 600)
         #expect(wire.asks("none") == 1 && wire.asks("found") == 1, "das Gemerkte ueberlebt die Sitzung")
     }
 
-    @Test("Dauer: ein Fehlschlag gilt fuer die Sitzung als gefragt, wird aber nicht gemerkt")
+    @Test("Duration: a failure counts as asked for the session, but is not remembered")
     func aFailureCountsForTheSessionOnly() async {
         let suite = Self.suite()
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -84,7 +84,7 @@ struct RememberedNoneTests {
         #expect(wire.asks("down") == 2, "ein Fehlschlag ist keine Antwort: die naechste Sitzung fragt wieder")
     }
 
-    @Test("Dauer: eine Sperre bucht keine Frage, die Kachel fragt danach einmal")
+    @Test("Duration: a block books no question, the tile asks once afterwards")
     func aHoldbackIsNotAQuestion() async {
         let suite = Self.suite()
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -95,7 +95,7 @@ struct RememberedNoneTests {
         #expect(wire.asks("held") == 2)
     }
 
-    @Test("Dauer: ein ruhender Host bucht keine Frage, nach der Ruhe fragt die Kachel einmal")
+    @Test("Duration: a resting host books no question, after the rest the tile asks once")
     func aRestingHostIsNotAQuestion() async {
         let suite = Self.suite()
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -109,12 +109,12 @@ struct RememberedNoneTests {
         #expect(wire.asks("rest") == 11, "ten ends without a question, then one real one")
     }
 
-    @Test("Dauer: gemerkt wird fuer zehn Jahre, ein Nein so lange wie ein Treffer")
+    @Test("Duration: remembered for ten years, a no as long as a hit")
     func keptForGood() {
         #expect(ArchiveRuntimeService.keptFor >= 10 * 365 * 24 * 3600)
     }
 
-    @Test("Cover: ein Platzhalter ueberlebt die Sitzung, schreibt nicht sofort und faellt mit dem Leeren des Caches")
+    @Test("Cover: a placeholder survives the session, does not write at once and drops with the emptying of the cache")
     @MainActor
     func aPlaceholderIsRememberedForGood() throws {
         let suite = Self.suite()
@@ -137,7 +137,7 @@ struct RememberedNoneTests {
         #expect(!ServicePlaceholderCovers.contains(url, defaults: defaults), "das Leeren des Caches fragt neu")
     }
 
-    @Test("Cover: eine Liste unter fremdem Stempel wird nicht gelesen und faellt beim naechsten Schreiben")
+    @Test("Cover: a list under a foreign stamp is not read and drops at the next write")
     @MainActor
     func aListUnderAnotherRuleFalls() throws {
         let suite = Self.suite()
@@ -161,7 +161,7 @@ struct RememberedNoneTests {
         #expect(stored["urls"] as? [String] == [fresh.absoluteString], "die alte Liste ist mit dem Schreiben gefallen")
     }
 
-    @Test("Cover: am Deckel faellt der aelteste, die Zahl bleibt beim Deckel, und ein Eintrag kostet keinen Schrieb")
+    @Test("Cover: at the cap the oldest drops, the count stays at the cap, and an entry costs no write")
     @MainActor
     func theListHasACap() throws {
         let suite = Self.suite()
@@ -190,21 +190,21 @@ struct RememberedNoneTests {
         #expect(!ServicePlaceholderCovers.contains(try address(extra - 1), defaults: defaults))
         #expect(ServicePlaceholderCovers.contains(try address(extra), defaults: defaults), "der aelteste lebende")
         #expect(ServicePlaceholderCovers.contains(try address(cap + extra - 1), defaults: defaults))
-        // Und nach dem Neustart dieselbe Liste.
+        // And after the restart the same list.
         ServicePlaceholderCovers.flush(defaults: defaults)
         ServicePlaceholderCovers.dropSessionCopy()
         #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap)
         #expect(ServicePlaceholderCovers.contains(try address(extra), defaults: defaults))
     }
 
-    @Test("Cover: der Stempel entsteht aus den Konstanten der Erkennung")
+    @Test("Cover: the stamp arises from the constants of the detection")
     func theStampIsBuiltFromTheJudgement() {
         #expect(ArchiveServicePlaceholder.rule.contains("2212"))
         #expect(ArchiveServicePlaceholder.rule.contains("b5ef1d4b"))
         #expect(ArchiveServicePlaceholder.rule.hasSuffix("strip-3"))
     }
 
-    @Test("Cover: die Tuer fragt das Gemerkte vor jedem Netzweg und merkt jeden erkannten Platzhalter", .needsTheSources)
+    @Test("Cover: the door asks the remembered before every network path and remembers every detected placeholder", .needsTheSources)
     func theDoorAsksTheMemoryFirst() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/Artwork.swift"), encoding: .utf8)
