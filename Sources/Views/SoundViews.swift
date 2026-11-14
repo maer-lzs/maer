@@ -148,12 +148,23 @@ struct SoundSummaryText: View {
 struct EffectsButton: View {
     @ObservedObject var viewModel: PlayerViewModel
     @State private var showsSheet = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Button { showsSheet = true } label: {
-            Label("Effects", systemImage: "slider.vertical.3")
-                .foregroundStyle(SoundSurface.isActive(viewModel.soundSetting) ? AnyShapeStyle(AppTheme.accent)
-                                                                              : AnyShapeStyle(.white))
+            // At the accessibility sizes the word beside the speed breaks
+            // into single letters in the player's narrow cell: the symbol
+            // stands alone there and the word stays for VoiceOver.
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "slider.vertical.3")
+                        .accessibilityLabel(Text("Effects"))
+                } else {
+                    Label("Effects", systemImage: "slider.vertical.3")
+                }
+            }
+            .foregroundStyle(SoundSurface.isActive(viewModel.soundSetting) ? AnyShapeStyle(AppTheme.accent)
+                                                                          : AnyShapeStyle(.white))
         }
         .accessibilityIdentifier("player-effects")
         .sheet(isPresented: $showsSheet) {
