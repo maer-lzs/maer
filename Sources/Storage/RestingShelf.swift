@@ -6,7 +6,7 @@
 import Foundation
 
 /// Where a family's stock rests while another account owns the device
-/// (decision of 03.10.2026, a new beginning per account): the device shows
+/// (a new beginning per account): the device shows
 /// one account's stock, and the stock of every other account it held rests
 /// here, one file per family and account, until that account comes back.
 ///

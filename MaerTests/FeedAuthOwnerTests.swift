@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The feed credentials follow the account (decision of 03.10.2026, a new
+/// The feed credentials follow the account (a new
 /// beginning): at a switch the holder's credentials rest in the keychain
 /// under its name with the live item's attributes, read back before
 /// anything is replaced; the shelf holds only hashes and moments; the new

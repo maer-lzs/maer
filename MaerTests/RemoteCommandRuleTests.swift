@@ -10,7 +10,7 @@ import Foundation
 
 /// AirPods double press on songs = next song: for songs only the
 /// track commands are on, no jumps by seconds. A song from a free
-/// catalog is a song, a catalog audiobook is not (decision 28.09.2026).
+/// catalog is a song, a catalog audiobook is not.
 /// „Zurueck“ in the first seconds goes to the song before, also across the
 /// boundary of an entry; books, podcasts and audiobooks as before; radio
 /// nothing.

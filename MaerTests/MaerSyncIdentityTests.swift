@@ -165,7 +165,7 @@ struct MaerSyncIdentityTests {
                 "A holds what it held, and what waited for A arrived")
     }
 
-    /// The witness of the decision of 03.10.: what waited for A arrives at
+    /// The witness that data follows the account: what waited for A arrives at
     /// A on the way back, for the playlists and the choices too, whose
     /// body the mirror held before the service took it.
     @Test("way back: an unsent playlist and choices body of A goes to A, never to B")

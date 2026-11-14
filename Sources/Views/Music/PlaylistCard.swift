@@ -378,7 +378,7 @@ extension PlaylistCardSource {
             // The capsule names the world, not a place: these lists travel
             // between the devices, so "on your devices" said the wrong
             // thing. Only Mär's own lists carry it; a server list wears
-            // nothing (decided 06.09.2026).
+            // nothing.
             placeCapsule: String(localized: "Mär"),
             isDeviceList: true,
             mosaicKey: "\(list.snapshots.count)",

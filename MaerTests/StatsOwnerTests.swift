@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The listening totals follow the account (decision of 03.10.2026, a new
+/// The listening totals follow the account (a new
 /// beginning): what the device heard under A stays A's, B starts at zero,
 /// each account publishes only its own, and the device's rows lose nothing.
 @MainActor

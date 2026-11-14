@@ -9,7 +9,7 @@ import Foundation
 import Synchronization
 @testable import Maer
 
-/// The stands follow the account (decision of 03.10.2026, a new beginning):
+/// The stands follow the account (a new beginning):
 /// the part of the stock that travels with the account rests on the shelf
 /// at a switch, the new account sees none of it and gets none of it, a
 /// playback that began under the account before writes, sends and claims

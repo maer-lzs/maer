@@ -78,7 +78,7 @@ struct PodcastShowMergeTests {
         #expect(!PodcastShowMerge.contains(feedURL: "https://other.org/feed.xml", in: shows))
     }
 
-    // MARK: - The seed of the recommendations (product decision 08.09.2026)
+    // MARK: - The seed of the recommendations
 
     @Test("A show from both pots appears once in the seed")
     func seedFoldsTheTwins() {

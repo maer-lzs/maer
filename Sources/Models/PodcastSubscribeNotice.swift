@@ -14,7 +14,7 @@ import Foundation
 /// section only takes a show whose newest episode has a date. Whoever
 /// subscribed had no way to find out why nothing appeared.
 ///
-/// Product decision of 09.09.2026: SAY it at the moment of subscribing. The
+/// SAY it at the moment of subscribing. The
 /// subscription still happens, because the person asked for this address and
 /// the feed may carry episodes tomorrow. What is taken away is the riddle,
 /// not the choice.

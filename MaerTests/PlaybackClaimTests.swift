@@ -197,7 +197,7 @@ struct PlaybackClaimRulesTests {
         #expect(PlaybackClaim.from(plist: ["device": "dev-b", "item": "i", "t": 1.0])?.playTime == 1)
     }
 
-    /// The decided form (04.09.2026, after a device test of build 25): the paused
+    /// The form: the paused
     /// device shows the foreign title too when it is ANOTHER one than its
     /// own standby, because there the hint is the only explanation.
     @Test("notice: every foreign fresh playback, also with a different title")

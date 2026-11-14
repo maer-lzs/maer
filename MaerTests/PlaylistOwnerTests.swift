@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The lists follow the account (decision of 03.10.2026, a new beginning):
+/// The lists follow the account (a new beginning):
 /// at a switch the holder's lists rest on the shelf, the new account sees
 /// none of them, and the way back brings every list back as it was.
 @MainActor

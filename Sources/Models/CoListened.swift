@@ -17,7 +17,7 @@ nonisolated enum CoListened {
     /// A show stays co-listened for sixty days after its last observed
     /// play-through, then leaves by itself. The window is the only limit:
     /// whoever listens without subscribing sees every show heard through
-    /// in it (decided 06.09.2026, no cap).
+    /// in it, with no cap.
     static let windowDays: Double = 60
 
     /// What the rule saw and why rows fell out, for the one log line a
@@ -60,12 +60,12 @@ nonisolated enum CoListened {
     }
 
     /// A co-listened show weighs half of a subscription in the taste
-    /// signal (decided 07.09.2026). Hearing a show through says something
+    /// signal. Hearing a show through says something
     /// about taste; following it says it twice.
     static let tasteShare: Double = 0.5
 
     /// …and it says it only from the SECOND episode on. One episode is a
-    /// look, not a taste (decided 07.09.2026). The co-listened ROW keeps
+    /// look, not a taste. The co-listened ROW keeps
     /// its threshold of one; the two questions are not the same question.
     static let tasteMinimumEpisodes = 2
 

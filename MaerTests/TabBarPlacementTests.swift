@@ -109,8 +109,8 @@ struct TabBarPlacementTests {
             if count > 0 { builds.append("\(file.lastPathComponent): \(count)") }
         }
         // The settings' sections take the library's bar upright in the side
-        // column (decided 23.10.2026), and so do the search's scopes there
-        // (`searchScopeColumn`, decided 24.10.2026); no other place builds a
+        // column, and so do the search's scopes there
+        // (`searchScopeColumn`); no other place builds a
         // tab bar.
         #expect(builds.sorted() == ["LibraryView.swift: 2", "SettingsView.swift: 1"],
                 "the tab bar is built somewhere else too: \(builds)")

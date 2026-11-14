@@ -147,7 +147,7 @@ nonisolated enum UserChoiceCatalog {
         "podcastICloudSync": .device,
         // The SWITCH is the person's intent and travels; the iOS
         // permission behind it belongs to the device and is asked for
-        // there (decided 07.09.2026). A device that cannot notify says so
+        // there. A device that cannot notify says so
         // at the switch instead of sending nothing.
         "podcastNewEpisodeNotifications": .travels,
         // The value for all shows travels like the per-show value it
@@ -161,7 +161,7 @@ nonisolated enum UserChoiceCatalog {
         // Automatic downloads stay on the device that downloads (decided
         // 06.09.2026), for all shows as for each show: whether they run and
         // how many they keep. The direction is how the person listens and
-        // travels (decided 27.09.2026). The one value of the builds before
+        // travels. The one value of the builds before
         // is only read. Named here so it is read, not assumed.
         "podcastAutoDownloadModeAll": .device,
         "podcastAutoDownloadSinceAll": .device,
@@ -249,7 +249,7 @@ nonisolated enum UserChoiceCatalog {
         "radioNationalCountryName": .machine,
         "catalogMixLastShown": .machine,
         // Travels, element-wise: one statement per station heard, the play
-        // moment as its time, a removal as its tombstone (decided 05.09.).
+        // moment as its time, a removal as its tombstone.
         "radioRecents": .travels,
         "radioRecentTimes": .travels,
         "radioPlayCounts": .machine,

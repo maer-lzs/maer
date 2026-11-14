@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Product decision 09.09.2026: a feed that parses as a valid show without
+/// A feed that parses as a valid show without
 /// episodes SAYS so when subscribing. The subscription happens anyway.
 ///
 /// The rule is pure because it weighs three facts, none of which belongs to a

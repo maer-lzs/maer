@@ -690,7 +690,7 @@ nonisolated enum RadioStore {
     /// Persist a variant choice; passing the station's default (best) stream
     /// clears the override so the station tracks the catalog's best again.
     /// The choice travels as its own statement (`radioVariant.<key>`), a
-    /// clear as its tombstone (decided 07.09.2026).
+    /// clear as its tombstone.
     @MainActor
     static func setSelectedVariant(_ streamURL: String, for station: RadioStation,
                                    defaults: UserDefaults = .standard) {

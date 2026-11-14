@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The choices follow the account (decision of 03.10.2026, a new
+/// The choices follow the account (a new
 /// beginning): at a switch the holder's choices rest on the shelf with
 /// their stamps, the new account sees none of them and gets no removal of
 /// theirs, and the way back brings every value back.

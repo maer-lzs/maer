@@ -459,8 +459,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// the public sense. Filtering here covers authors, categories AND
     /// listening time at once. One place, not three.
     ///
-    /// FOLDED per feed (product decision of 08.09.2026: do not count a
-    /// show twice). The reason is not that a double entry is untidy, it is that
+    /// FOLDED per feed: a show does not count twice. The reason is not that a double entry is untidy, it is that
     /// the doubling is NOT evenly spread: a show subscribed in Mär while the
     /// server is active lands on ABS only and counts once, while a show that
     /// came from an import or gpodder gets mirrored to the server by
@@ -516,7 +515,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// (heard through, never followed) counts HALF, and only from its
     /// second episode on: hearing a show through says something about
     /// taste, following it says it twice, and one episode is a look
-    /// (decided 07.09.2026). Nothing here subscribes to anything.
+    /// Nothing here subscribes to anything.
     private var tasteShows: [TasteShow] {
         var out = mineShows.map {
             TasteShow(id: $0.id, author: $0.author, categories: $0.categories ?? [], share: 1)

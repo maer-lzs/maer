@@ -151,7 +151,7 @@ nonisolated enum PlaybackClaimRules {
     /// The TWO lines of the mini player while another device plays and this
     /// one stands by: the hint replaces the standby title instead of sitting
     /// under it (the bar showed "97. Top Ten Mistresses" over "Playing on
-    /// iPad: Eurotrash", two things at once; decided 14.09.2026). The title
+    /// iPad: Eurotrash", two things at once). The title
     /// line carries what plays there, the second line names the device;
     /// when the other device plays the very item this bar holds, or names
     /// none, the bar's own title stays and only the device line changes.

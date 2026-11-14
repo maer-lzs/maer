@@ -1003,16 +1003,15 @@ struct UserChoiceGateTests {
             // direction of the automatic download is how the person listens
             // and travels.
             "podcastInboxModeAll", "podcastAutoDownloadDirectionAll",
-            // How close to the end counts as played, for all shows and books
-            // (decided 28.09.2026).
+            // How close to the end counts as played, for all shows and books.
             "playedTailSeconds",
             // Where new episodes go in Up Next, for all shows, travels like
-            // "Show in New Episodes" (decided 08.11.2026).
+            // "Show in New Episodes".
             "podcastUpNextAddAll",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
-            // The last-heard stations and their play moments (decided 05.09.).
+            // The last-heard stations and their play moments.
             "radioRecents", "radioRecentTimes",
             "premiumMarkedFeeds", "blockedFeedKeys",
             // Server addresses that once worked (decided); credentials never.
@@ -1033,12 +1032,12 @@ struct UserChoiceGateTests {
             "podcastSort.", "podcastFilter.",
             // The direction of the automatic download per show (27.09.2026).
             "podcastAutoDownloadDirection.",
-            // "Counts as played" per show and per book (decided 28.09.2026).
+            // "Counts as played" per show and per book.
             "playedTail.",
             // The free feed of a paid show travels like a subscription
-            // attribute (decided 28.09.2026).
+            // attribute.
             "podcastFreeTwin.",
-            // Where a show's new episodes go in Up Next (decided 08.11.2026).
+            // Where a show's new episodes go in Up Next.
             "podcastUpNextAdd.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
@@ -1065,13 +1064,13 @@ struct UserChoiceGateTests {
             "nextStepsDismissed", "foreignImportsDone",
             "sleepTimerLastMinutes",
             // Automatic downloads stay on the device that downloads
-            // (decided 06.09.2026), for all shows as for each show: whether
-            // they run and how many they keep (27.09.2026). The one value of
+            // for all shows as for each show: whether
+            // they run and how many they keep. The one value of
             // the builds before is only read.
             "podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll",
             "podcastAutoDownloadOnAll", "podcastAutoDownloadKeepAll",
             // Up Next stays on each device, so the moment its new episodes
-            // count from is the device's own (decided 08.11.2026).
+            // count from is the device's own.
             "podcastUpNextAddAllSince",
         ])
         // The switch that decides whether anything travels can never

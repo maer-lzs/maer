@@ -86,8 +86,8 @@ final class DriveModeController: ObservableObject {
 
     /// Route change hook (wired to AVAudioSession.routeChangeNotification):
     /// auto-enter ONLY with the opt-in toggle on AND the remembered car route
-    /// connecting; on disconnect an active mode EXITS (decision: leaving the
-    /// car ends the drive. Reported). The decision itself is pure (tested):
+    /// connecting; on disconnect an active mode EXITS, because leaving the
+    /// car ends the drive. The decision itself is pure (tested):
     /// matching is STRICTLY the chosen device UID, never "any A2DP".
     func handleRouteChange() {
         let outputs = AVAudioSession.sharedInstance().currentRoute.outputs

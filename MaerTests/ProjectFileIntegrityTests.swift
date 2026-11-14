@@ -1923,9 +1923,22 @@ extension ProjectFileIntegrityTests {
     /// does, in any case and form, also before a bracket or a full stop.
     nonisolated static let decisionStems = ["entscheid", "ausnahme", "auflage"]
 
+    /// The English forms of the same note. A bare "decided" or "decision"
+    /// mostly says what the code settles ("decided by its own rule"), so
+    /// only the shapes of a settlement count: with its date, in brackets,
+    /// the phrase of an agreement, an exception with a shorthand, a person
+    /// behind "per".
+    nonisolated static let decisionPatterns = [
+        #"(?i)\b(decided|decision)\b[^.]{0,20}[0-9]{1,2}\.[0-9]{1,2}\."#,
+        #"(?i)\(\s*decision"#,
+        #"(?i)\bas (agreed|decided)\b"#,
+        #"\b[Ee]xceptions?\s+\(?[A-Z]{1,3}[0-9]+"#,
+        #"(?i)\bper\s+(laurenz|momo|pie|takt|wache|fable)\b"#,
+    ]
+
     static func decisionWords(in line: String) -> [String] {
         let lowered = line.lowercased()
-        return decisionStems.filter { lowered.contains($0) }
+        return decisionStems.filter { lowered.contains($0) } + decisionPatterns.flatMap { matches(of: $0, in: line) }
     }
 
     /// The comment lines of the test targets that carry such a word, per
@@ -2124,6 +2137,14 @@ extension ProjectFileIntegrityTests {
         #expect(Self.orderShorthands(in: "/// what the Entscheids say") == ["entscheid"])
         #expect(Self.orderShorthands(in: "/// precision first (X2 Auflage).") == ["auflage"])
         #expect(Self.orderShorthands(in: "/// a named Ausnahme for the header") == ["ausnahme"])
+        #expect(Self.orderShorthands(in: "/// the column (decided 23.10.2026), and the scopes") == ["decided 23.10."])
+        #expect(Self.orderShorthands(in: "/// follow the account (decision of 03.10.2026, a new start)") == ["decision of 03.10.", "(decision"])
+        #expect(Self.orderShorthands(in: "/// Mix form as decided for the rows") == ["as decided"])
+        #expect(Self.orderShorthands(in: "/// kept as an exception X12 for now") == ["exception X12"])
+        #expect(Self.orderShorthands(in: "/// stays, per Momo") == ["per Momo"])
+        #expect(Self.orderShorthands(in: "/// the heartbeat of the claim, decided by its own rule").isEmpty,
+                "a decision the code makes is not a note of who settled something")
+        #expect(Self.orderShorthands(in: "/// the decision follows the number, 3 per second").isEmpty)
         #expect(Self.orderShorthands(in: "/// Wikidata P154 first").isEmpty)
         #expect(Self.orderShorthands(in: "/// the row shows twelve tiles").isEmpty)
         #expect(Self.orderShorthands(in: "/// the refused feed (47-6: typed by hand)") == ["47-6"])
@@ -2256,7 +2277,7 @@ extension ProjectFileIntegrityTests {
     /// The files that the source check translates on Linux are in
     /// ONE list, `tools/source-check/quellen.json`; the check reads
     /// the same file at the pinned state. Only these files must get by with
-    /// what Linux has (decision of 09.10.2026): before, the rule applied to all of
+    /// what Linux has: before, the rule applied to all of
     /// `Sources/Models`, and the list lay in another repo and ran away
     /// from the app. Positive list instead of memory, the count by name
     /// by RELATIVE path. The checker as a pure function over ONE line,

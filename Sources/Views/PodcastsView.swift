@@ -294,7 +294,7 @@ struct PodcastsView: View {
             await PodcastAutoDownload.run(shows: allShows)
             // The notification switch travels; the permission does not. A
             // device that adopted the switch asks for itself, once, where
-            // the setting belongs (decided 07.09.2026).
+            // the setting belongs.
             await PodcastRefreshService.askForPermissionIfNeeded()
         }
     }

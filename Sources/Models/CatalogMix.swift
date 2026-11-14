@@ -9,7 +9,7 @@ import Foundation
 /// Hörbücher & Hörspiele" row (radio-play feeds + catalog titles) and Start's
 /// "Entdecken" rows share ONE mixer. Never two.
 ///
-/// Mix form as decided for the archive rows: INTERLEAVED, not two blocks.
+/// Mix form of the archive rows: INTERLEAVED, not two blocks.
 /// Each source keeps its own order and the sources alternate (fair merge via
 /// `HomeSections.interleave`, the one merge implementation). Pure and tested:
 /// a silent mixing mistake would starve a whole source from the row.

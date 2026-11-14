@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The subscriptions follow the account (decision of 03.10.2026, a new
+/// The subscriptions follow the account (a new
 /// beginning): at a switch the holder's shows rest on the shelf with their
 /// episodes and the feeds waiting for a sign-in, nothing is unsubscribed,
 /// and the way back brings every show back as it was. gpodder, whose
