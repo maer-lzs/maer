@@ -176,7 +176,8 @@ extension PlayerViewModel {
             // A queued stand newer than the one written stays for its own
             // flush. The flush of a restored stand writes at that stand's
             // moment, every other write at the moment now.
-            if plan.retiresQueued(queuedBefore, writtenTime: currentTime,
+            if plan.retiresQueued(queuedAtMs: queuedBefore?.queuedAt, queuedTime: queuedBefore?.currentTime,
+                                  writtenTime: currentTime,
                                   writtenAtMs: restoredStandMs ?? Date().timeIntervalSince1970 * 1000) {
                 await queue.remove(itemId: item.id, ifStill: queuedBefore)
             } else {

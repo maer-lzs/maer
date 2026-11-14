@@ -70,10 +70,10 @@ nonisolated struct SyncPlan: Equatable, Sendable {
     var potDeliberate: Bool
     /// Whether the landed write retires the stand queued before it
     /// (`SyncRules.writeRetiresQueued`), with the moment of the stand it
-    /// wrote. Nothing queued has nothing to retire.
-    func retiresQueued(_ queued: SyncQueue.PendingUpdate?, writtenTime: Double, writtenAtMs: Double) -> Bool {
-        guard let queued else { return true }
-        return SyncRules.writeRetiresQueued(queuedAtMs: queued.queuedAt, queuedTime: queued.currentTime,
+    /// wrote. Nothing queued (no queued time) has nothing to retire.
+    func retiresQueued(queuedAtMs: Double?, queuedTime: Double?, writtenTime: Double, writtenAtMs: Double) -> Bool {
+        guard let queuedTime else { return true }
+        return SyncRules.writeRetiresQueued(queuedAtMs: queuedAtMs, queuedTime: queuedTime,
                                             writtenAtMs: writtenAtMs, writtenTime: writtenTime)
     }
 
