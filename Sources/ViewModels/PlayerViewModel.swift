@@ -117,8 +117,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     var ownStandMs: Double?
     /// The moment of the local stand a start restored, set for the flush of
     /// that stand only: a queued stand newer than it is not retired by that
-    /// write.
-    var restoredStandMs: Double?
+    /// write. Each load owns it while it runs (`SyncRules.RestoredMoment`).
+    var restoredMoment = SyncRules.RestoredMoment()
+    var restoredStandMs: Double? { restoredMoment.ms }
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
@@ -582,10 +583,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
         var startTime = serverProgress
         var restoredFromLocal = false
-        // Only the flush of the restored stand writes at its moment; every
-        // way out of the load clears it, the early ones too.
-        restoredStandMs = nil
-        defer { restoredStandMs = nil }
+        // Only the flush of the restored stand writes at its moment. This
+        // load owns the moment from here; every way out of it clears its
+        // own moment, the early ones too, and never the moment of a load
+        // that started after it.
+        let thisLoad = UUID()
+        restoredMoment = SyncRules.RestoredMoment(owner: thisLoad)
+        defer { restoredMoment.clear(by: thisLoad) }
         // Crash safety: if the per-second local backup is NEWER than the server
         // state and differs noticeably (the app died before the next sync),
         // continue there and flush it right away.
@@ -597,7 +601,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
            ) {
             startTime = saved[0]
             restoredFromLocal = true
-            restoredStandMs = saved[1]
+            restoredMoment.set(saved[1], by: thisLoad)
         }
         // The flushed witness. What THIS device last pushed. For a
         // downloaded book it is usually the ONLY local source: the crash
@@ -723,7 +727,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         // The restored moment ends with its flush: the restart's write below
         // writes at the moment now.
-        restoredStandMs = nil
+        restoredMoment.clear(by: thisLoad)
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward

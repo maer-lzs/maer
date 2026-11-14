@@ -150,18 +150,42 @@ struct HaltStandTests {
         #expect(server.position == 34, "the next start wrote the stand of the interruption, not the last tick: \(server.position)")
     }
 
-    @Test("every way out of a load clears the restored stand's moment", .needsTheSources)
-    func theRestoredMomentIsClearedOnEveryExit() throws {
-        let text = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel.swift")
-        #expect(text.contains("defer { restoredStandMs = nil }"), "an early exit of the load leaves the moment standing")
-        #expect(text.components(separatedBy: "restoredStandMs = nil").count - 1 == 3,
-                "the moment is cleared at the start, after its flush and on the way out, nowhere else")
-        // The flush of the restored stand is the only write at its moment:
-        // the moment is gone before the restart writes.
-        let flush = try #require(text.range(of: "await syncProgress(.restoreFlush)"))
-        let cleared = try #require(text.range(of: "restoredStandMs = nil", range: flush.upperBound..<text.endIndex))
-        let restart = try #require(text.range(of: "await syncProgress(.restart)", range: flush.upperBound..<text.endIndex))
-        #expect(cleared.lowerBound < restart.lowerBound, "the restart writes at the restored stand's moment")
+    @Test("the restored moment belongs to its load: a load that ends late leaves the moment of the load after it")
+    func anOvertakenLoadLeavesTheSuccessorsMoment() {
+        let first = UUID(), second = UUID()
+        var moment = SyncRules.RestoredMoment(owner: first)
+        moment.set(100, by: first)
+        #expect(moment.ms == 100)
+        // The second load starts while the first still runs.
+        moment = SyncRules.RestoredMoment(owner: second)
+        moment.set(200, by: second)
+        // The first load ends late, through its own clearing.
+        moment.clear(by: first)
+        #expect(moment.ms == 200, "the overtaken load cleared the moment of the load after it")
+        moment.set(300, by: first)
+        #expect(moment.ms == 200, "an overtaken load sets nothing either")
+        moment.clear(by: second)
+        #expect(moment.ms == nil)
+    }
+
+    @Test("a restart over a restored local stand writes at the moment now and retires a newer queued stand", .needsAudio)
+    func restartRetiresTheQueuedStand() async throws {
+        let file = try TickWorkTests().tone(seconds: 60)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "halt-restart-\(UUID().uuidString)"
+        defer { Task { await Self.clean(id) } }
+        let server = Server(file: file.path, position: 5)
+        // The local stand from three seconds ago, newer than the server's,
+        // and a stand queued after it.
+        ListeningStore.record(id, position: 31, duration: 60, atMs: Date().timeIntervalSince1970 * 1000 - 3000)
+        await SyncQueue.shared.enqueue(itemId: id, currentTime: 34, duration: 60, isFinished: false)
+        #expect(SyncQueue.shared.pendingUpdate(itemId: id) != nil, "the precondition: a stand is queued")
+        let model = PlayerViewModel(provider: server, localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: try await server.fetchItemDetail(itemId: id), restart: true)
+        #expect(server.position == 0, "the precondition: the restart wrote the beginning: \(server.position)")
+        #expect(SyncQueue.shared.pendingUpdate(itemId: id) == nil,
+                "the restart wrote at the restored stand's older moment and left the queued stand behind")
+        #expect(model.restoredStandMs == nil, "the load left its moment standing")
     }
 
     @Test("a rewind before the stop: the server gets the smaller, newer stand", .needsAudio)
