@@ -41,7 +41,7 @@ extension PlayerViewModel {
         guard SoundReach.shouldTry(isRadio: isRadio, setting: state.setting), item.audioMix == nil else { return }
         Task { @MainActor in
             let outcome = await SoundTap.attach(state, to: item)
-            Logger.player.notice("SOUND filter \(outcome.rawValue, privacy: .public)")
+            Logger.player.notice("SOUND filter \(outcome.line, privacy: .public)")
         }
     }
 }

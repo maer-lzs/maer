@@ -148,27 +148,33 @@ nonisolated final class SoundTapState: Sendable {
     }
 
     /// A tap that knows its format joins: its chain for the setting now.
+    /// Chains old enough and run by nobody are freed on the way, like in `set`.
     func register(_ slot: SoundSlot, now: UInt64 = DispatchTime.now().uptimeNanoseconds) {
-        book.withLock { book in
+        let freed: [UnsafeMutableRawPointer] = book.withLock { book in
             let fresh = Unmanaged.passRetained(SoundChain(setting: book.setting, sampleRate: slot.sampleRate, channels: slot.channels))
             book.builds += 1
             if let old = slot.exchange(fresh.toOpaque()) {
                 book.retired.append(Retired(chain: old, slot: slot, at: now))
             }
             book.slots[ObjectIdentifier(slot)] = slot
+            return Self.takeFree(&book, now: now)
         }
+        for chain in freed { Unmanaged<SoundChain>.fromOpaque(chain).release() }
     }
 
     /// A tap that stops leaves: its audio thread runs no chain any more, and
-    /// its chain retires like a replaced one.
+    /// its chain retires like a replaced one. Chains old enough and run by
+    /// nobody are freed on the way.
     func unregister(_ slot: SoundSlot, now: UInt64 = DispatchTime.now().uptimeNanoseconds) {
-        book.withLock { book in
+        let freed: [UnsafeMutableRawPointer] = book.withLock { book in
             book.slots.removeValue(forKey: ObjectIdentifier(slot))
             slot.noteUsing(nil)
             if let old = slot.exchange(nil) {
                 book.retired.append(Retired(chain: old, slot: slot, at: now))
             }
+            return Self.takeFree(&book, now: now)
         }
+        for chain in freed { Unmanaged<SoundChain>.fromOpaque(chain).release() }
     }
 
     private static func takeFree(_ book: inout Book, now: UInt64) -> [UnsafeMutableRawPointer] {
@@ -196,11 +202,23 @@ nonisolated private final class SoundTapContext {
 /// The filter as an `MTAudioProcessingTap` on a player item.
 nonisolated enum SoundTap {
     /// Why a filter hangs on an item or does not.
-    enum Attached: String {
-        case hung = "hung"
-        case alreadyHung = "not hung, the item carries a mix already"
-        case noAudioTrack = "not reachable, the item reports no audio track"
-        case tapNotMade = "not hung, the tap could not be made"
+    enum Attached: Equatable {
+        case hung
+        case alreadyHung
+        case noAudioTrack
+        case tracksNotRead(reason: String)
+        case tapNotMade
+
+        /// The outcome as the log line says it.
+        var line: String {
+            switch self {
+            case .hung: "hung"
+            case .alreadyHung: "not hung, the item carries a mix already"
+            case .noAudioTrack: "not reachable, the item reports no audio track"
+            case .tracksNotRead(let reason): "not reachable, the item's tracks could not be read reason=\(reason)"
+            case .tapNotMade: "not hung, the tap could not be made"
+            }
+        }
     }
 
     static func make(_ state: SoundTapState) -> MTAudioProcessingTap? {
@@ -218,6 +236,8 @@ nonisolated enum SoundTap {
                 let description = format.pointee
                 context.isFloat = description.mFormatFlags & kAudioFormatFlagIsFloat != 0
                 context.interleaved = description.mFormatFlags & kAudioFormatFlagIsNonInterleaved == 0
+                // A second prepare without an unprepare between leaves the slot of the first.
+                if let before = context.slot { context.state.unregister(before) }
                 let slot = SoundSlot(sampleRate: description.mSampleRate, channels: Int(description.mChannelsPerFrame))
                 context.slot = slot
                 context.current = nil
@@ -277,9 +297,13 @@ nonisolated enum SoundTap {
     @MainActor
     static func attach(_ state: SoundTapState, to item: AVPlayerItem) async -> Attached {
         guard item.audioMix == nil else { return .alreadyHung }
-        // bearable, because an asset that cannot name its tracks plays
-        // without the filter, which is what it would do anyway.
-        guard let track = try? await item.asset.loadTracks(withMediaType: .audio).first else { return .noAudioTrack }
+        let tracks: [AVAssetTrack]
+        do {
+            tracks = try await item.asset.loadTracks(withMediaType: .audio)
+        } catch {
+            return .tracksNotRead(reason: FailureReason.of(error))
+        }
+        guard let track = tracks.first else { return .noAudioTrack }
         guard item.audioMix == nil else { return .alreadyHung }
         guard let tap = make(state) else { return .tapNotMade }
         let parameters = AVMutableAudioMixInputParameters(track: track)

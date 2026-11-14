@@ -98,9 +98,45 @@ struct SoundCoreTests {
     func noTrackNoFilter() async throws {
         let state = SoundTapState()
         state.set(SoundSetting(presetID: "speech", gain: 1))
-        let empty = AVPlayerItem(asset: AVMutableComposition())
-        #expect(await SoundTap.attach(state, to: empty) == .noAudioTrack)
-        #expect(empty.audioMix == nil)
+        // An asset with a track, but none of them audio.
+        let composition = AVMutableComposition()
+        try #require(composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) != nil,
+                     "the precondition: the asset carries a track")
+        let silent = AVPlayerItem(asset: composition)
+        #expect(await SoundTap.attach(state, to: silent) == .noAudioTrack)
+        #expect(silent.audioMix == nil)
+    }
+
+    @MainActor
+    @Test("an item whose tracks cannot be read says so with the reason, apart from one without an audio track", .needsAudio)
+    func unreadableTracksSayWhy() async throws {
+        let state = SoundTapState()
+        state.set(SoundSetting(presetID: "speech", gain: 1))
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("not-audio-\(UUID().uuidString).m4a")
+        try Data("not a media file".utf8).write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let item = AVPlayerItem(url: file)
+        let outcome = await SoundTap.attach(state, to: item)
+        guard case .tracksNotRead(let reason) = outcome else {
+            Issue.record("an unreadable asset reads as \(outcome.line)")
+            return
+        }
+        #expect(!reason.isEmpty)
+        #expect(outcome.line.contains("could not be read"))
+    }
+
+    @Test("old chains are freed when taps come and go under the same setting, not only when the setting changes")
+    func registerAndUnregisterFree() {
+        let state = SoundTapState()
+        state.set(SoundSetting(presetID: "speech", gain: 1), now: 0)
+        // One title after the other, each with its own tap, the setting unchanged.
+        for title in 0..<5 {
+            let slot = SoundSlot(sampleRate: 44100, channels: 2)
+            let start = UInt64(title) * 10_000_000_000
+            state.register(slot, now: start)
+            state.unregister(slot, now: start + 1)
+        }
+        #expect(state.retiredCount <= 1, "chains of finished titles pile up: \(state.retiredCount)")
     }
 
     @MainActor
