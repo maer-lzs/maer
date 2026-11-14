@@ -15,9 +15,10 @@ Audiobookshelf server that is set to add new episodes to Up Next now does
 so, like your feeds. The app remembers which episodes it has seen of each
 show, so an episode that came out while the app was closed still counts
 as new; the first refresh after a show appears adds nothing. Subscribing
-again to a show you already follow adds its new episodes too. A title you
-finish on your Audiobookshelf, Jellyfin or Subsonic server leaves Up Next
-while Mär is open.
+again to a show you already follow adds its new episodes too. A book or
+an Audiobookshelf episode you finish elsewhere leaves Up Next also when
+Mär was closed meanwhile: the app remembers which titles the server held
+as unfinished.
 
 ## v3.7 (Build 65)
 

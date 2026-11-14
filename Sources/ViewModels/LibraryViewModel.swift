@@ -232,11 +232,13 @@ final class LibraryViewModel: ObservableObject {
     init(
         provider: any AudioProvider,
         database: MaerDatabase = .shared,
-        upNext: PlayQueue? = nil
+        upNext: PlayQueue? = nil,
+        heldUnfinished: HeldUnfinished? = nil
     ) {
         self.provider = provider
         self.database = database
         self.upNext = upNext
+        self.heldUnfinished = heldUnfinished
 
         // Important: keep `resolvedSortOption` as a local variable, don't read it
         // back via `self.sortOption`. Swift forbids any access via self on
@@ -1202,6 +1204,9 @@ final class LibraryViewModel: ObservableObject {
     /// The Up Next a book finished on the server leaves; none for a model
     /// built without one.
     private let upNext: PlayQueue?
+    /// The books the last answer named as not finished, across starts; a
+    /// model built without it compares only within its run.
+    private let heldUnfinished: HeldUnfinished?
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.
     /// Started titles outside the server library. Resolved
@@ -1362,8 +1367,10 @@ final class LibraryViewModel: ObservableObject {
         Logger.library.notice("LIBRARY rebuild items=\(items.count) progress=\(progress.count) local=\(self.localCache.count) before=\(self.entries.count)")
         cachedItems = items
         // A book the server's answer finished that the answer before held
-        // as unfinished leaves Up Next, as with a mark set here.
-        let finished = HeardElsewhere.newlyFinished(before: lastProgress, after: progress)
+        // as unfinished, in this run or the last answer of an earlier one,
+        // leaves Up Next, as with a mark set here.
+        let finished = heldUnfinished?.adopt(before: lastProgress, after: progress)
+            ?? HeardElsewhere.newlyFinished(before: lastProgress, after: progress)
         lastProgress = progress
         if !finished.isEmpty { upNext?.markedPlayed(finished) }
         let input = rebuildInput(items: items, progress: progress)

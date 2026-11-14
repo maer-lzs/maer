@@ -37,6 +37,8 @@ struct CounterTablesFenceTests {
         "item_jump_ring": (.wholeValue, "the last five backward jumps of one title"),
         "item_bookmark": (.wholeValue, "the offline copy of one title's bookmarks"),
         "abs_known_episodes": (.wholeValue, "the episode ids this device knew of one Audiobookshelf show"),
+        "held_unfinished_books": (.wholeValue, "the books the last answer named as not finished"),
+        "held_unfinished_episodes": (.wholeValue, "the Audiobookshelf episodes the last answer named as not finished"),
     ]
 
     @Test("every table is sorted, no sort without a table")

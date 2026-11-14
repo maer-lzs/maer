@@ -24,14 +24,25 @@ nonisolated enum HeardElsewhere {
     }
 
     /// The titles a server's progress now counts as finished that it held
-    /// as not finished before. A title the answer before did not name stays
-    /// out: after a start the first answer is all there is, and a finished
-    /// title in it is no change anyone made. Sorted, so a log line and a
-    /// witness read the same order.
-    static func newlyFinished(before: [String: BookProgress], after: [String: BookProgress]) -> [String] {
+    /// as not finished before. The answer before decides for a title it
+    /// names; for one it does not name, `held` decides: the titles the last
+    /// answer of an earlier run held as not finished (`HeldUnfinished`), so
+    /// a title finished elsewhere while the app was closed counts too. A
+    /// title neither names stays out: a finished title in the first answer
+    /// is no change anyone made. Sorted, so a log line and a witness read
+    /// the same order.
+    static func newlyFinished(before: [String: BookProgress], after: [String: BookProgress],
+                              held: Set<String> = []) -> [String] {
         after.compactMap { id, progress in
-            guard progress.countsAsFinished, let old = before[id], !old.countsAsFinished else { return nil }
-            return id
+            guard progress.countsAsFinished else { return nil }
+            if let old = before[id] { return old.countsAsFinished ? nil : id }
+            return held.contains(id) ? id : nil
         }.sorted()
+    }
+
+    /// The titles an answer names as not finished: what the next run
+    /// compares its first answer with.
+    static func unfinished(_ progress: [String: BookProgress]) -> Set<String> {
+        Set(progress.compactMap { id, entry in entry.countsAsFinished ? nil : id })
     }
 }

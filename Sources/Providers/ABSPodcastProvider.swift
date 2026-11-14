@@ -27,10 +27,11 @@ struct FeedEpisode: Identifiable {
 /// across all devices.
 @MainActor
 final class ABSPodcastProvider: ObservableObject, AudioProvider {
-    static let shared: ABSPodcastProvider = ABSPodcastProvider(upNext: PlayQueue.shared, known: ABSKnownEpisodes(database: .shared))
-    private init(upNext: PlayQueue?, known: ABSKnownEpisodes) {
+    static let shared: ABSPodcastProvider = ABSPodcastProvider(upNext: PlayQueue.shared, known: ABSKnownEpisodes(database: .shared), heldUnfinished: HeldUnfinished(database: .shared, kind: .absEpisodes))
+    private init(upNext: PlayQueue?, known: ABSKnownEpisodes, heldUnfinished: HeldUnfinished) {
         self.upNext = upNext
         self.known = known
+        self.heldUnfinished = heldUnfinished
         archivedShowIds = Set(AppStorageKeys.stringArray(Self.archiveKey) ?? [])
     }
 
@@ -39,12 +40,15 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     private let upNext: PlayQueue?
     /// The episode ids this device knew of each show, across starts.
     private let known: ABSKnownEpisodes
+    /// The episodes the last answer named as not finished, across starts.
+    private let heldUnfinished: HeldUnfinished
 
     /// The server's progress replaces the held one; an episode it finished
-    /// that it held as unfinished before leaves Up Next, its RSS twin with it
+    /// that it held as unfinished before, in this run or the last answer of
+    /// an earlier one, leaves Up Next, its RSS twin with it
     /// (`HeardElsewhere`, `equivalentIds`).
     private func adoptEpisodeProgress(_ fresh: [String: BookProgress]) {
-        let finished = HeardElsewhere.newlyFinished(before: episodeProgress, after: fresh)
+        let finished = heldUnfinished.adopt(before: episodeProgress, after: fresh)
         episodeProgress = fresh
         if !finished.isEmpty { upNext?.markedPlayed(finished) }
     }

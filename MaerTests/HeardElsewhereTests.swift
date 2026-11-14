@@ -35,6 +35,40 @@ struct HeardElsewhereTests {
                 "b was finished before, c is not, d has no answer before")
     }
 
+    @Test("a title the answer before does not name asks the set kept from an earlier run")
+    func theKeptSetFillsTheGap() {
+        let before = ["b": Self.progress(0.5), "c": Self.progress(1, finished: true)]
+        let after = ["a": Self.progress(1, finished: true), "b": Self.progress(1, finished: true),
+                     "c": Self.progress(1, finished: true), "d": Self.progress(1, finished: true),
+                     "e": Self.progress(0.4)]
+        #expect(HeardElsewhere.newlyFinished(before: before, after: after, held: ["a", "c"]) == ["a", "b"],
+                "a was held unfinished, b changed in this run, c was finished in this run, d was held by nobody")
+        #expect(HeardElsewhere.newlyFinished(before: [:], after: after) == [], "without a kept set the first answer is no change")
+        #expect(HeardElsewhere.unfinished(after) == ["e"])
+    }
+
+    @Test("after a cold start a book and an episode finished elsewhere meanwhile leave Up Next; the first answer ever brings nothing")
+    func aColdStartComparesWithTheKeptSet() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("held-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let path = folder.appendingPathComponent("maer.sqlite").path
+        for kind in [HeldUnfinished.Kind.books, .absEpisodes] {
+            let first = HeldUnfinished(database: MaerDatabase(path: path), kind: kind)
+            #expect(first.adopt(before: [:], after: ["a": Self.progress(0.5), "b": Self.progress(1, finished: true)]) == [],
+                    "the first answer ever took something out")
+            await first.awaitPendingWrites()
+            // A new start: the progress of the run is gone, the kept set is not.
+            let next = HeldUnfinished(database: MaerDatabase(path: path), kind: kind)
+            #expect(next.held == ["a"], "the set did not survive the start: \(next.held)")
+            #expect(next.adopt(before: [:], after: ["a": Self.progress(1, finished: true), "b": Self.progress(1, finished: true)]) == ["a"],
+                    "a title finished while the app was closed stayed")
+            await next.awaitPendingWrites()
+            #expect(HeldUnfinished(database: MaerDatabase(path: path), kind: kind).held.isEmpty,
+                    "an answer with nothing unfinished left the old set behind")
+        }
+    }
+
     private static func log(in folder: URL, queue: PlayQueue) -> PodcastListenLog {
         PodcastListenLog(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path), upNext: queue)
     }
@@ -124,8 +158,14 @@ struct HeardElsewhereTests {
             if hits > 0 { found[file] = hits; texts[file] = stripped }
         }
         #expect(found == Self.callers.mapValues(\.count), "\(found)")
-        for file in ["PodcastListenLog.swift", "PodcastSubscriptions.swift", "LibraryViewModel.swift", "ABSPodcastProvider.swift"] {
+        for file in ["PodcastListenLog.swift", "PodcastSubscriptions.swift"] {
             #expect(texts[file]?.contains("HeardElsewhere.") == true, "\(file) takes out without asking for the change")
+        }
+        // The two server answers ask through the kept set, so the first
+        // answer after a start has a before too.
+        for (file, call) in ["LibraryViewModel.swift": "heldUnfinished?.adopt(before: lastProgress, after: progress)",
+                             "ABSPodcastProvider.swift": "heldUnfinished.adopt(before: episodeProgress, after: fresh)"] {
+            #expect(texts[file]?.contains(call) == true, "\(file) asks for the change without the set kept across starts")
         }
         #expect(texts["PodcastCloudSync.swift"] == nil, "the change of account calls nothing")
         let gpodder = try #require(ProjectFileIntegrityTests.sourceTexts().first { $0.0 == "GPodderSync.swift" }?.1)
