@@ -172,7 +172,7 @@ struct SyncPlanTests {
     func theExecutionDecidesNothing() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8)
-        let body = try #require(functionBody(of: "private func performSync(_ origin: SyncOrigin) async -> Bool {", in: text))
+        let body = try #require(functionBody(of: "private func performSync(_ origin: SyncOrigin, restoredAt: Double?) async -> Bool {", in: text))
         #expect(body.contains("SyncRules.plan(origin: origin"), "die Ausfuehrung fragt den Plan nicht mehr")
         #expect(Self.ownDecisions(in: body).isEmpty, "eigene Entscheidungen: \(Self.ownDecisions(in: body))")
         #expect(Self.ownDecisions(in: "        if provider.capabilities.contains(.progressSync) {").count == 1,

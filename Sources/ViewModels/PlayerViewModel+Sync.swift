@@ -56,18 +56,26 @@ extension PlayerViewModel {
     /// - Parameter origin: why the position is written. Every occasion but
     ///   the timer tick forces a sync even without the 5-second threshold
     ///   (e.g. on pause or when the app goes to the background).
-    func syncProgress(_ origin: SyncOrigin) async {
+    /// - Parameter restoredAt: the moment of the restored stand this write
+    ///   flushes, given only by the flush of a start; every other write
+    ///   writes at the moment now.
+    func syncProgress(_ origin: SyncOrigin, restoredAt: Double? = nil) async {
         if syncInFlight {
             // Drop timer ticks (the next one comes anyway); deliberate syncs
             // (pause/seek) are re-run once with a fresh state after completion.
-            // The round carries the LAST deliberate occasion that asked.
-            if origin.isDeliberate { syncFollowUpOrigin = origin }
+            // The round carries the LAST deliberate occasion that asked, with
+            // its moment.
+            if origin.isDeliberate {
+                syncFollowUpOrigin = origin
+                syncFollowUpRestoredAt = restoredAt
+            }
             return
         }
         syncInFlight = true
         defer { syncInFlight = false }
 
         var runOrigin = origin
+        var runRestoredAt = restoredAt
         // Whether a round that began after a pause of a running piece also
         // wrote: only such a round took the stand of that pause. A round
         // already on its way when the pause came wrote the state from before
@@ -76,11 +84,14 @@ extension PlayerViewModel {
         repeat {
             syncFollowUpOrigin = nil
             let beganPending = pauseRecordPending
-            let wrote = await performSync(runOrigin)
+            let wrote = await performSync(runOrigin, restoredAt: runRestoredAt)
             if AccountSwitchHold.clearsPauseMark(roundBeganPending: beganPending, roundWrote: wrote) {
                 coversPause = true
             }
-            if let next = syncFollowUpOrigin { runOrigin = next }
+            if let next = syncFollowUpOrigin {
+                runOrigin = next
+                runRestoredAt = syncFollowUpRestoredAt
+            }
         } while syncFollowUpOrigin != nil
         if coversPause { pauseRecordPending = false }
     }
@@ -104,7 +115,7 @@ extension PlayerViewModel {
     /// Says whether the round wrote (to the server or into the queue); the
     /// exits before the write take nothing.
     @discardableResult
-    private func performSync(_ origin: SyncOrigin) async -> Bool {
+    private func performSync(_ origin: SyncOrigin, restoredAt: Double?) async -> Bool {
         guard let item else { return false }
         let plan = SyncRules.plan(origin: origin, state: syncState(for: item))
         switch plan.gate {
@@ -178,7 +189,7 @@ extension PlayerViewModel {
             // moment, every other write at the moment now.
             if plan.retiresQueued(queuedAtMs: queuedBefore?.queuedAt, queuedTime: queuedBefore?.currentTime,
                                   writtenTime: currentTime,
-                                  writtenAtMs: restoredStandMs ?? Date().timeIntervalSince1970 * 1000) {
+                                  writtenAtMs: restoredAt ?? Date().timeIntervalSince1970 * 1000) {
                 await queue.remove(itemId: item.id, ifStill: queuedBefore)
             } else {
                 Logger.player.notice("SYNC kept a newer queued stand origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
@@ -372,9 +383,11 @@ extension PlayerViewModel {
         let outcome = await mark()
         syncInFlight = false
         let asked = syncFollowUpOrigin
+        let askedAt = syncFollowUpRestoredAt
         syncFollowUpOrigin = nil
+        syncFollowUpRestoredAt = nil
         if let origin = MarkFollowUp.origin(asked: asked, markedFinished: outcome.markedFinished) {
-            await syncProgress(origin)
+            await syncProgress(origin, restoredAt: origin == asked ? askedAt : nil)
         } else if asked != nil {
             Logger.player.notice("SYNC follow-up dropped: the finished mark is the newer stand item=\(self.item?.id ?? "-", privacy: .private(mask: .hash))")
         }

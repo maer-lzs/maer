@@ -165,27 +165,6 @@ nonisolated enum SyncRules {
         return serverTime > queuedTime + tolerance ? .drop : .send
     }
 
-    /// The moment of a stand a load restored, owned by that load. A load
-    /// takes the moment over when it starts, and only the owner clears it:
-    /// a load that was overtaken and ends late leaves the moment of the load
-    /// after it standing.
-    nonisolated struct RestoredMoment: Equatable, Sendable {
-        private(set) var owner: UUID?
-        private(set) var ms: Double?
-
-        init(owner: UUID? = nil) { self.owner = owner }
-
-        mutating func set(_ ms: Double, by load: UUID) {
-            guard owner == load else { return }
-            self.ms = ms
-        }
-
-        mutating func clear(by load: UUID) {
-            guard owner == load else { return }
-            ms = nil
-        }
-    }
-
     /// A landed write retires the queued stand of the same title only when
     /// that stand is not newer than the one written: queued at or before the
     /// written stand's moment, or at the same position. A newer queued stand

@@ -330,7 +330,7 @@ struct StandOwnerTests {
         let pausing = try #require(ABSPodcastRefreshTests.body(of: "func pause(caller: String = #function) {", in: player))
         #expect(pausing.contains("if wasPlaying { pauseRecordPending = true }"), "a pause marks no record on its way")
         let sync = try code("Sources/ViewModels/PlayerViewModel+Sync.swift")
-        let run = try #require(ABSPodcastRefreshTests.body(of: "func syncProgress(_ origin: SyncOrigin) async {", in: sync))
+        let run = try #require(ABSPodcastRefreshTests.body(of: "func syncProgress(_ origin: SyncOrigin, restoredAt: Double? = nil) async {", in: sync))
         #expect(run.contains("AccountSwitchHold.clearsPauseMark(roundBeganPending: beganPending, roundWrote: wrote)")
                 && run.contains("if coversPause { pauseRecordPending = false }"),
                 "the mark is cleared by a round that did not write the paused stand")

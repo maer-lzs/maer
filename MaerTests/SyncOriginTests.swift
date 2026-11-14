@@ -37,7 +37,10 @@ struct SyncOriginTests {
         // (a dot between letters does not break it), so the calls with a
         // receiver would slip through.
         for match in code.matches(of: #/(?:^|[^A-Za-z0-9_])syncProgress\(\s*([^)]*)\)/#) {
-            let argument = String(match.output.1).trimmingCharacters(in: .whitespacesAndNewlines)
+            // The occasion is the first argument; a labelled one after it
+            // (`restoredAt:`) is the moment of the write, not an occasion.
+            let first = match.output.1.split(separator: ",", maxSplits: 1).first.map(String.init) ?? ""
+            let argument = first.trimmingCharacters(in: .whitespacesAndNewlines)
             if forwarders[argument] != nil {
                 found["forwarded", default: 0] += 1
                 continue
@@ -69,8 +72,14 @@ struct SyncOriginTests {
                 "die fruehere Form zaehlt als ungenannt")
         #expect(Self.origins(in: "await self.syncProgress(\n    .pause)") == ["pause": 1],
                 "der Zaehler liest den Anlass auch ueber einen Umbruch")
-        #expect(Self.origins(in: "func syncProgress(_ origin: SyncOrigin) async {").isEmpty,
+        #expect(Self.origins(in: "func syncProgress(_ origin: SyncOrigin, restoredAt: Double? = nil) async {").isEmpty,
                 "die Erklaerung ist kein Rufer")
+        #expect(Self.origins(in: "await syncProgress(.restoreFlush, restoredAt: restoredAtMs)") == ["restoreFlush": 1],
+                "the moment after the occasion does not hide the occasion")
+        #expect(Self.origins(in: "await syncProgress(origin, restoredAt: origin == asked ? askedAt : nil)") == ["forwarded": 1],
+                "a forwarder with its moment still counts as the forwarder")
+        #expect(Self.origins(in: "Task { await syncProgress(force: true, restoredAt: 1) }") == ["?": 1],
+                "the former form stays unnamed with a moment after it")
         #expect(Self.origins(in: "// syncProgress(.pause)").isEmpty, "ein Kommentar ruft nicht")
     }
 }

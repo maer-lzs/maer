@@ -115,11 +115,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// the load. A stand in the store stamped at or before it never moves
     /// the player (`SyncRules.storedStand`).
     var ownStandMs: Double?
-    /// The moment of the local stand a start restored, set for the flush of
-    /// that stand only: a queued stand newer than it is not retired by that
-    /// write. Each load owns it while it runs (`SyncRules.RestoredMoment`).
-    var restoredMoment = SyncRules.RestoredMoment()
-    var restoredStandMs: Double? { restoredMoment.ms }
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
@@ -294,6 +289,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A deliberate sync arrived while one was running. Re-run once
     /// afterwards, under the last occasion that asked.
     var syncFollowUpOrigin: SyncOrigin?
+    /// The restored moment that occasion carried, set and cleared with it.
+    var syncFollowUpRestoredAt: Double?
     /// A pause, stop or interruption of a running piece asked for its sync,
     /// and the run that records its stand has not ended yet (the record
     /// follows the server's answer). A change of account in that window
@@ -583,13 +580,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
         var startTime = serverProgress
         var restoredFromLocal = false
-        // Only the flush of the restored stand writes at its moment. This
-        // load owns the moment from here; every way out of it clears its
-        // own moment, the early ones too, and never the moment of a load
-        // that started after it.
-        let thisLoad = UUID()
-        restoredMoment = SyncRules.RestoredMoment(owner: thisLoad)
-        defer { restoredMoment.clear(by: thisLoad) }
+        // Only the flush of the restored stand writes at its moment, which
+        // it carries as its argument; no other write can read it.
+        var restoredAtMs: Double?
         // Crash safety: if the per-second local backup is NEWER than the server
         // state and differs noticeably (the app died before the next sync),
         // continue there and flush it right away.
@@ -601,7 +594,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
            ) {
             startTime = saved[0]
             restoredFromLocal = true
-            restoredMoment.set(saved[1], by: thisLoad)
+            restoredAtMs = saved[1]
         }
         // The flushed witness. What THIS device last pushed. For a
         // downloaded book it is usually the ONLY local source: the crash
@@ -723,11 +716,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Flush the restored state immediately (offline → queue). No conflict
             // dialog: the state was intended before the crash.
             suppressConflictForNextSync = true
-            await syncProgress(.restoreFlush)
+            await syncProgress(.restoreFlush, restoredAt: restoredAtMs)
         }
-        // The restored moment ends with its flush: the restart's write below
-        // writes at the moment now.
-        restoredMoment.clear(by: thisLoad)
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward

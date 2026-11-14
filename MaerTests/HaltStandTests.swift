@@ -150,22 +150,24 @@ struct HaltStandTests {
         #expect(server.position == 34, "the next start wrote the stand of the interruption, not the last tick: \(server.position)")
     }
 
-    @Test("the restored moment belongs to its load: a load that ends late leaves the moment of the load after it")
-    func anOvertakenLoadLeavesTheSuccessorsMoment() {
-        let first = UUID(), second = UUID()
-        var moment = SyncRules.RestoredMoment(owner: first)
-        moment.set(100, by: first)
-        #expect(moment.ms == 100)
-        // The second load starts while the first still runs.
-        moment = SyncRules.RestoredMoment(owner: second)
-        moment.set(200, by: second)
-        // The first load ends late, through its own clearing.
-        moment.clear(by: first)
-        #expect(moment.ms == 200, "the overtaken load cleared the moment of the load after it")
-        moment.set(300, by: first)
-        #expect(moment.ms == 200, "an overtaken load sets nothing either")
-        moment.clear(by: second)
-        #expect(moment.ms == nil)
+    @Test("the restored moment travels with its one flush: no write reads it from the player, a follow-up carries it", .needsTheSources)
+    func theRestoredMomentIsAnArgument() throws {
+        let folder = SourceTree.root.appendingPathComponent("Sources/ViewModels")
+        let sync = SyncContractFenceTests.stripped(
+            try String(contentsOf: folder.appendingPathComponent("PlayerViewModel+Sync.swift"), encoding: .utf8))
+        let player = SyncContractFenceTests.stripped(
+            try String(contentsOf: folder.appendingPathComponent("PlayerViewModel.swift"), encoding: .utf8))
+        // The write reads the moment from its own parameter only.
+        let perform = try #require(functionBody(of: "private func performSync(_ origin: SyncOrigin, restoredAt: Double?) async -> Bool {", in: sync))
+        #expect(perform.contains("writtenAtMs: restoredAt ?? Date()"), "the write takes its moment from somewhere else")
+        // One giver: the flush of a start.
+        let givers = (sync + player).components(separatedBy: "restoredAt: restoredAtMs").count - 1
+        #expect(givers == 1, "the restored moment is given at \(givers) places")
+        #expect(player.contains("await syncProgress(.restoreFlush, restoredAt: restoredAtMs)"))
+        // A flush that waits behind a running round runs with its moment.
+        let entry = try #require(functionBody(of: "func syncProgress(_ origin: SyncOrigin, restoredAt: Double? = nil) async {", in: sync))
+        #expect(entry.contains("syncFollowUpRestoredAt = restoredAt") && entry.contains("runRestoredAt = syncFollowUpRestoredAt"),
+                "a follow-up round loses the moment of the flush it runs")
     }
 
     @Test("a restart over a restored local stand writes at the moment now and retires a newer queued stand", .needsAudio)
@@ -184,9 +186,7 @@ struct HaltStandTests {
         await model.load(item: try await server.fetchItemDetail(itemId: id), restart: true)
         #expect(server.position == 0, "the precondition: the restart wrote the beginning: \(server.position)")
         #expect(SyncQueue.shared.pendingUpdate(itemId: id) == nil,
-                "the restart wrote at the restored stand's older moment and left the queued stand behind")
-        #expect(model.restoredStandMs == nil, "the load left its moment standing")
-    }
+                "the restart wrote at the restored stand's older moment and left the queued stand behind")    }
 
     @Test("a rewind before the stop: the server gets the smaller, newer stand", .needsAudio)
     func rewindBeforeTheStop() async throws {
