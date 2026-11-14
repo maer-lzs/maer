@@ -24,6 +24,17 @@ as unfinished.
 longer says Subsonic has to be off: your Jellyfin albums, artists and
 playlists appear in the Music tab beside those of a Subsonic server.
 
+**Sound effects for each device.** Next to the speed in the player,
+Effects opens a sheet for the device the sound goes out on now: Off,
+Clearer Speech, Old Recordings or Louder, and a volume boost up to twice
+the volume with a limiter that keeps loud passages clean. The choice
+stays with that device, so headphones, a hearing aid and the car each
+keep their own. Settings, Playback, Sound holds the default for other
+devices and every device Mär has played on; a car is listed as CarPlay
+with its name. Sound effects do not work on stations, nor on a title the
+server converts while it streams; the sheet says so, and a downloaded
+title works.
+
 ## v3.7 (Build 65)
 
 **A station link that does not load opens the station's page with

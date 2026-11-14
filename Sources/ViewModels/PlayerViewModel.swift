@@ -158,6 +158,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The sound filter's setting for the route the sound goes out on;
     /// every filter of this player reads it.
     let soundState = SoundTapState()
+    /// The route the sound goes out on, and the setting that applies on it,
+    /// for the player's sheet; set where the setting follows the route.
+    @Published var soundRoute: SoundRoute?
+    @Published var soundSetting: SoundSetting = .off
+    /// What the last try to hang the filter found, with the item it tried:
+    /// the sheet says the filter cannot work when it is the item playing now.
+    @Published var soundAttach: (item: ObjectIdentifier, outcome: SoundTap.Attached)?
     private var timeObserverToken: Any?
     // These opaque NotificationCenter tokens are assigned only in methods of
     // this main-actor class (setup) and read again there (stop) or in the

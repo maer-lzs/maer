@@ -1319,6 +1319,16 @@
         }
       }
     },
+    "Afterwards the device follows the default again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danach folgt das Gerät wieder der Vorgabe."
+          }
+        }
+      }
+    },
     "Again: %@" : {
       "localizations" : {
         "de" : {
@@ -1668,6 +1678,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird beim nächsten Abspielen dieses Senders angewendet."
+          }
+        }
+      }
+    },
+    "Applies to every device without a setting of its own." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für jedes Gerät ohne eigene Einstellung."
           }
         }
       }
@@ -2454,6 +2474,16 @@
         }
       }
     },
+    "CarPlay: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CarPlay: %@"
+          }
+        }
+      }
+    },
     "Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language, which follows your iOS system setting." : {
       "localizations" : {
         "de" : {
@@ -2676,6 +2706,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cover-Cache leeren"
+          }
+        }
+      }
+    },
+    "Clearer Speech" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprache klarer"
           }
         }
       }
@@ -3293,6 +3333,16 @@
         }
       }
     },
+    "Default setting" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorgabe"
+          }
+        }
+      }
+    },
     "Default Speed" : {
       "localizations" : {
         "de" : {
@@ -3501,6 +3551,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gerät"
+          }
+        }
+      }
+    },
+    "Devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräte"
           }
         }
       }
@@ -3926,6 +3986,16 @@
         }
       }
     },
+    "Effects" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effekte"
+          }
+        }
+      }
+    },
     "Electronic" : {
       "localizations" : {
         "de" : {
@@ -4114,6 +4184,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geschätzt aus deinen gespeicherten Positionen: erneutes Hören zählt nicht doppelt, und Folgen, die den Feed verlassen haben, fehlen."
+          }
+        }
+      }
+    },
+    "Every device Mär has played on. Swipe left to remove one; it then follows the default." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jedes Gerät, über das Mär schon wiedergegeben hat. Nach links wischen entfernt eines; es folgt dann der Vorgabe."
           }
         }
       }
@@ -5709,6 +5789,16 @@
         }
       }
     },
+    "Like other devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie andere Geräte"
+          }
+        }
+      }
+    },
     "Listen Again" : {
       "localizations" : {
         "de" : {
@@ -5981,6 +6071,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Songtexte online nachschlagen"
+          }
+        }
+      }
+    },
+    "Louder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lauter"
           }
         }
       }
@@ -8046,6 +8146,16 @@
         }
       }
     },
+    "Old Recordings" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alte Aufnahmen"
+          }
+        }
+      }
+    },
     "Old Records" : {
       "localizations" : {
         "de" : {
@@ -8223,6 +8333,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reihenfolge"
+          }
+        }
+      }
+    },
+    "Other devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Geräte"
           }
         }
       }
@@ -9346,6 +9466,16 @@
         }
       }
     },
+    "Raises quiet recordings up to twice the volume. A limiter keeps loud passages from distorting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hebt leise Aufnahmen bis auf die doppelte Lautstärke an. Ein Begrenzer hält laute Stellen unverzerrt."
+          }
+        }
+      }
+    },
     "Reactivate" : {
       "localizations" : {
         "de" : {
@@ -9582,6 +9712,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ entfernen?"
+          }
+        }
+      }
+    },
+    "Remove device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerät entfernen"
           }
         }
       }
@@ -10257,6 +10397,16 @@
         }
       }
     },
+    "Set for" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingestellt für"
+          }
+        }
+      }
+    },
     "Set new password" : {
       "localizations" : {
         "de" : {
@@ -10899,6 +11049,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Soul & Funk"
+          }
+        }
+      }
+    },
+    "Sound" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klang"
+          }
+        }
+      }
+    },
+    "Sound effects do not work on stations. They apply again as soon as an audiobook, an episode or a song plays." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei Sendern wirkt der Klang nicht. Er gilt wieder, sobald ein Hörbuch, eine Folge oder ein Lied läuft."
+          }
+        }
+      }
+    },
+    "Sound effects do not work on this title: the server sends it converted as a continuous stream. Downloaded, they work." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei diesem Titel wirkt der Klang nicht: der Server schickt ihn umgewandelt als fortlaufenden Strom. Geladen wirkt er."
           }
         }
       }
@@ -11742,6 +11922,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Kataloge brauchen eine Verbindung."
+          }
+        }
+      }
+    },
+    "The change applies to this device. Every device is under Settings, Playback, Sound." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Änderung gilt für dieses Gerät. Alle Geräte stehen unter Einstellungen, Wiedergabe, Klang."
           }
         }
       }
@@ -13776,6 +13966,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Band %lld deiner Serie"
+          }
+        }
+      }
+    },
+    "Volume boost" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verstärkung"
           }
         }
       }

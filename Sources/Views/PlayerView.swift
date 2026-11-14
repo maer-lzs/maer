@@ -922,8 +922,12 @@ struct PlayerView: View {
         .padding(.top, 4)
     }
 
+    /// The speed, and the sound effects directly beside it.
     private var speedControl: some View {
-        SpeedMenu(viewModel: viewModel)
+        HStack(spacing: 16) {
+            SpeedMenu(viewModel: viewModel)
+            EffectsButton(viewModel: viewModel)
+        }
     }
 
     private var chaptersControl: some View {

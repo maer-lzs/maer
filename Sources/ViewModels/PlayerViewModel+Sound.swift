@@ -28,6 +28,8 @@ extension PlayerViewModel {
         }
         let setting = book.setting(for: route)
         soundState.set(setting)
+        if soundRoute != route { soundRoute = route }
+        if soundSetting != setting { soundSetting = setting }
         guard hangsQueued, !setting.isOff, let player else { return }
         let isRadio = ItemNamespace.isRadio(item?.id ?? "")
         for queued in player.items() { hangSound(on: queued, isRadio: isRadio) }
@@ -42,6 +44,24 @@ extension PlayerViewModel {
         Task { @MainActor in
             let outcome = await SoundTap.attach(state, to: item)
             Logger.player.notice("SOUND filter \(outcome.line, privacy: .public)")
+            soundAttach = (ObjectIdentifier(item), outcome)
         }
+    }
+
+    /// Why the filter cannot work on what plays now, if it cannot
+    /// (`SoundSurface.block`).
+    var soundBlock: SoundSurface.Block? {
+        let current = player?.currentItem.map(ObjectIdentifier.init)
+        let attach = soundAttach.flatMap { $0.item == current ? $0.outcome : nil }
+        return SoundSurface.block(isRadio: ItemNamespace.isRadio(item?.id ?? ""), lastAttach: attach)
+    }
+
+    /// The sheet's choice for the device the sound goes out on now: the
+    /// book keeps it for that device (no route: the default for other
+    /// devices), and the sound follows it at once.
+    func setSoundSetting(_ setting: SoundSetting) {
+        let book = AppStorageKeys.soundBookValue
+        AppStorageKeys.soundBookValue = SoundBookEdit.choosing(setting, for: soundRoute, in: book)
+        followSoundRoute(notingRoute: false)
     }
 }

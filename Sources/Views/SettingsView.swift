@@ -784,6 +784,13 @@ struct SettingsView: View {
             .onChange(of: smartRewind) { _, newValue in
                 AppStorageKeys.set(newValue, for: AppStorageKeys.smartRewind)
             }
+
+            NavigationLink {
+                SoundSettingsView(coordinator: coordinator)
+            } label: {
+                Label("Sound", systemImage: "slider.vertical.3")
+            }
+            .accessibilityIdentifier("settings-sound")
         } header: {
             Text("Playback")
         } footer: {
