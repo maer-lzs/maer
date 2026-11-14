@@ -22,7 +22,8 @@ struct RowEmptyingFenceTests {
         "PodcastListenLog.swift": (1, "another account owns the device and the entries before rest on the shelf, read back"),
         "ListenHistory.swift": (1, "another account owns the device and the entries before rest on the shelf, read back"),
         "CarrierRows.swift": (1, "a carrier's last entry of an owner went: the queue was sent, the other side holds nothing"),
-        "HeldUnfinished.swift": (1, "an answer that names nothing unfinished holds nothing to compare with; a set kept from before would take out a title put back on purpose at the next start"),
+        "HeldUnfinished.swift": (2, "an answer that names nothing unfinished holds nothing to compare with; a set kept from before would take out a title put back on purpose at the next start; the server left the device, and its set is no baseline for the next account"),
+        "ABSKnownEpisodes.swift": (1, "the server left the device, and the episodes it named are no baseline for the next account"),
     ]
 
     /// The writes in `code` that may empty, as written.

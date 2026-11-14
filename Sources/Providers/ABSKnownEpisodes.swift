@@ -47,6 +47,14 @@ final class ABSKnownEpisodes {
         return found
     }
 
+    /// The server left the device: what it named is no baseline for the
+    /// next server or account, whose first refresh is its own baseline.
+    func forget() {
+        guard !known.isEmpty else { return }
+        known = [:]
+        keeper?.write(emptying: .allowed) { [weak self] in self?.known.mapValues { $0.sorted() } }
+    }
+
     /// Waits for every queued write of the rows (tests).
     func awaitPendingWrites() async {
         await keeper?.awaitPendingWrites()

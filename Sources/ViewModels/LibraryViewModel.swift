@@ -1208,6 +1208,12 @@ final class LibraryViewModel: ObservableObject {
     /// model built without it compares only within its run.
     private let heldUnfinished: HeldUnfinished?
 
+    /// The server left the device (`AuthViewModel.forgetFormerServer`): the
+    /// books it held unfinished are no baseline for the next server or account.
+    func forgetHeldUnfinished() {
+        heldUnfinished?.forget()
+    }
+
     /// Everything the off-main rebuild computation needs, as a value snapshot.
     /// Started titles outside the server library. Resolved
     /// HERE because the item lookup is main-actor bound, then handed to the

@@ -69,6 +69,24 @@ struct HeardElsewhereTests {
         }
     }
 
+    @Test("a server that leaves the device takes its kept set along: the next account's first answer takes nothing out")
+    func aLeavingServerForgetsItsKeptSet() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("held-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let path = folder.appendingPathComponent("maer.sqlite").path
+        let held = HeldUnfinished(database: MaerDatabase(path: path), kind: .books)
+        _ = held.adopt(before: [:], after: ["a": Self.progress(0.5)])
+        await held.awaitPendingWrites()
+        try #require(HeldUnfinished(database: MaerDatabase(path: path), kind: .books).held == ["a"], "the precondition: the set is kept")
+        held.forget()
+        await held.awaitPendingWrites()
+        let next = HeldUnfinished(database: MaerDatabase(path: path), kind: .books)
+        #expect(next.held.isEmpty, "the set of the server that left survived: \(next.held)")
+        #expect(next.adopt(before: [:], after: ["a": Self.progress(1, finished: true)]) == [],
+                "the next account's first answer compared with the former server's set")
+    }
+
     private static func log(in folder: URL, queue: PlayQueue) -> PodcastListenLog {
         PodcastListenLog(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path), upNext: queue)
     }

@@ -259,6 +259,24 @@ struct UpNextAutoTests {
         #expect(Set(again.known.keys) == ["abspod:keep"], "rows: \(again.known.keys.sorted())")
     }
 
+    @Test("Audiobookshelf: a server that leaves the device takes the known episodes along, the next account meets its shows anew")
+    func aLeavingServerForgetsTheKnownEpisodes() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("absknown-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let path = folder.appendingPathComponent("maer.sqlite").path
+        let known = ABSKnownEpisodes(database: MaerDatabase(path: path))
+        _ = known.adopt([Self.absShow("s1", [("e1", 1_000)])])
+        await known.awaitPendingWrites()
+        try #require(!ABSKnownEpisodes(database: MaerDatabase(path: path)).known.isEmpty, "the precondition: the rows are kept")
+        known.forget()
+        await known.awaitPendingWrites()
+        let next = ABSKnownEpisodes(database: MaerDatabase(path: path))
+        #expect(next.known.isEmpty, "the rows of the server that left survived: \(next.known.keys.sorted())")
+        #expect(next.adopt([Self.absShow("s1", [("e1", 1_000), ("e2", 2_000)])]).isEmpty,
+                "the next account's first refresh brought arrivals against the former server's episodes")
+    }
+
     @Test("Audiobookshelf: an episode whose RSS twin is queued already does not come twice")
     func anAudiobookshelfTwinIsNotQueuedTwice() throws {
         let suite = "upnext-abs-\(UUID().uuidString)"

@@ -43,6 +43,14 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// The episodes the last answer named as not finished, across starts.
     private let heldUnfinished: HeldUnfinished
 
+    /// The server left the device (`AuthViewModel.forgetFormerServer`): the
+    /// episodes it named and held unfinished are no baseline for the next
+    /// server or account.
+    func forgetServerSets() {
+        known.forget()
+        heldUnfinished.forget()
+    }
+
     /// The server's progress replaces the held one; an episode it finished
     /// that it held as unfinished before, in this run or the last answer of
     /// an earlier one, leaves Up Next, its RSS twin with it

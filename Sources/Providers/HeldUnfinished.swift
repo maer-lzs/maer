@@ -51,6 +51,16 @@ final class HeldUnfinished {
         return finished
     }
 
+    /// The server left the device: the first answer of the next server or
+    /// account compares with nothing it held.
+    func forget() {
+        guard !held.isEmpty else { return }
+        held = []
+        keeper?.write(emptying: .allowed) { [weak self] in
+            self.map { $0.held.isEmpty ? [:] : [Self.row: $0.held.sorted()] }
+        }
+    }
+
     /// Waits for every queued write of the row (tests).
     func awaitPendingWrites() async {
         await keeper?.awaitPendingWrites()

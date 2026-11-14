@@ -138,7 +138,10 @@ struct SharedGrowthFenceTests {
     /// a feed nobody follows into the browsed episodes and resolves a
     /// catalog book through the session (three, in `SharedLinkOpener`, none
     /// in a view).
-    nonisolated static let sourcesStock = 755
+    /// 757: the one place a server leaves the device forgets the sets the
+    /// next first answer compares with, at the episode provider and the
+    /// library (two, in `AuthViewModel.forgetFormerServer`, none in a view).
+    nonisolated static let sourcesStock = 757
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

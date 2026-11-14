@@ -450,11 +450,15 @@ final class AuthViewModel: ObservableObject {
 
     /// What a server leaves on the device beside its token: a player on one
     /// of its titles and the widget's rows (`ServerLeaving`, every row, as
-    /// the welcome page follows), and the books in the device's search. A
-    /// sign out and a sign-in to another server both forget it here.
+    /// the welcome page follows), the books in the device's search, and the
+    /// sets the next first answer would compare with (the episodes of each
+    /// show, the books and episodes held unfinished). A sign out and a
+    /// sign-in to another server both forget it here.
     static func forgetFormerServer(player: PlayerCoordinator? = nil) async {
         await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, covers: .audiobookshelf, allRows: true, player: player)
         if #available(iOS 27, *) { await SpotlightIndex.forget() }
+        ABSPodcastProvider.shared.forgetServerSets()
+        AppSession.shared.libraryViewModel.forgetHeldUnfinished()
     }
 
     private static func normalizedURL(from raw: String) -> URL? {
