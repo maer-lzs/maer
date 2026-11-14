@@ -1674,6 +1674,9 @@ extension ProjectFileIntegrityTests {
                     offenders.append("\(name):\(number + 1) \(hit)")
                 }
             }
+            for (number, hit) in Self.decisionNotesAcrossLines(in: text) {
+                offenders.append("\(name):\(number + 1) across lines: \(hit)")
+            }
         }
         #expect(offenders.isEmpty, "an order shorthand says nothing to a stranger: \(offenders)")
     }
@@ -1941,6 +1944,35 @@ extension ProjectFileIntegrityTests {
         return decisionStems.filter { lowered.contains($0) } + decisionPatterns.flatMap { matches(of: $0, in: line) }
     }
 
+    /// Comments on neighbouring lines as one block of prose: the slashes
+    /// gone, the lines joined with a space, keyed by the block's first line.
+    static func commentBlocks(in text: String) -> [(index: Int, lines: [String], prose: String)] {
+        var blocks: [(index: Int, lines: [String], prose: String)] = []
+        var last = -2
+        for (index, comment) in comments(in: text) {
+            let prose = comment.replacingOccurrences(of: #"^/[/*]+!?\s*"#, with: "", options: .regularExpression)
+            if index == last + 1, !blocks.isEmpty {
+                blocks[blocks.count - 1].lines.append(comment)
+                blocks[blocks.count - 1].prose += " " + prose
+            } else {
+                blocks.append((index, [comment], prose))
+            }
+            last = index
+        }
+        return blocks
+    }
+
+    /// The settlement notes a block carries across a line break: the hits
+    /// of the English forms in the joined prose that no single line of the
+    /// block holds. A note on one line is the line fence's.
+    static func decisionNotesAcrossLines(in text: String) -> [(index: Int, hit: String)] {
+        commentBlocks(in: text).flatMap { block in
+            decisionPatterns.flatMap { matches(of: $0, in: block.prose) }
+                .filter { hit in !block.lines.contains { $0.contains(hit) } }
+                .map { (block.index, $0) }
+        }
+    }
+
     /// The comment lines of the test targets that carry such a word, per
     /// file, measured when the fence widened to them. A file may only fall,
     /// and a fall lowers its number here.
@@ -1960,6 +1992,7 @@ extension ProjectFileIntegrityTests {
         var measured: [String: Int] = [:]
         for (name, text) in files {
             let count = Self.comments(in: text).filter { !Self.decisionWords(in: $0.comment).isEmpty }.count
+                + Self.decisionNotesAcrossLines(in: text).count
             if count > 0 { measured[name, default: 0] += count }
         }
         let drift = StockDrift.findings(counts: measured, stock: Self.testDecisionStock)
@@ -2142,6 +2175,13 @@ extension ProjectFileIntegrityTests {
         #expect(Self.orderShorthands(in: "/// Mix form as decided for the rows") == ["as decided"])
         #expect(Self.orderShorthands(in: "/// kept as an exception X12 for now") == ["exception X12"])
         #expect(Self.orderShorthands(in: "/// stays, per Momo") == ["per Momo"])
+        #expect(Self.decisionNotesAcrossLines(in: "// the column\n// (decided\n// 23.10.2026) and the scopes").map(\.hit)
+                == ["decided 23.10."], "a note split by a line break is one note")
+        #expect(Self.decisionNotesAcrossLines(in: "// the column\n// (decided\n// 23.10.2026) and the scopes").map(\.index) == [0])
+        #expect(Self.decisionNotesAcrossLines(in: "/// the column (decided 23.10.2026)\n/// and the scopes").isEmpty,
+                "a note on one line is the line fence's, not counted twice")
+        #expect(Self.decisionNotesAcrossLines(in: "// the column, decided\nlet x = 1\n// 23.10.2026 is a date").isEmpty,
+                "code between two comments ends the block")
         #expect(Self.orderShorthands(in: "/// the heartbeat of the claim, decided by its own rule").isEmpty,
                 "a decision the code makes is not a note of who settled something")
         #expect(Self.orderShorthands(in: "/// the decision follows the number, 3 per second").isEmpty)

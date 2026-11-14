@@ -149,8 +149,8 @@ enum PodcastRefreshService {
     }
 
     /// What this DEVICE allows. The switch is the person's intent and
-    /// travels; the permission is device technique and does not (decided
-    /// 07.09.2026). A device that adopted the switch has to ask for
+    /// travels; the permission is device technique and does not. A device
+    /// that adopted the switch has to ask for
     /// itself, and a refusal is said at the switch instead of silently
     /// sending nothing.
     static func notificationStatus() async -> UNAuthorizationStatus {

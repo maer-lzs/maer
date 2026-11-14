@@ -161,8 +161,8 @@ nonisolated enum UserChoiceCatalog {
         // on the device that fills its own queue.
         "podcastUpNextAddAll": .travels,
         "podcastUpNextAddAllSince": .device,
-        // Automatic downloads stay on the device that downloads (decided
-        // 06.09.2026), for all shows as for each show: whether they run and
+        // Automatic downloads stay on the device that downloads, for all
+        // shows as for each show: whether they run and
         // how many they keep. The direction is how the person listens and
         // travels. The one value of the builds before
         // is only read. Named here so it is read, not assumed.
