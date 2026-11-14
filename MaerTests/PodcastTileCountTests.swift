@@ -15,20 +15,20 @@ struct PodcastTileCountTests {
     private let unplayed = 4
     private let newSince = 2
 
-    @Test("Standard: alle ungehoerten, wie Apple und Pocket Casts")
+    @Test("Default: all unheard, like Apple and Pocket Casts")
     func allUnplayedIsTheStandard() {
         #expect(PodcastTileCount.mode(raw: nil) == .allUnplayed)
         #expect(PodcastTileCount.mode(raw: "garbage") == .allUnplayed)
         #expect(PodcastTileCount.allUnplayed.badge(unplayed: unplayed, newSinceLastPlayed: newSince) == 4)
     }
 
-    @Test("zweite Wahl: neu seit der zuletzt gehoerten")
+    @Test("second choice: new since the last one heard")
     func newSinceLastPlayed() {
         #expect(PodcastTileCount.mode(raw: "newSinceLastPlayed") == .newSinceLastPlayed)
         #expect(PodcastTileCount.newSinceLastPlayed.badge(unplayed: unplayed, newSinceLastPlayed: newSince) == 2)
     }
 
-    @Test("aus zeigt nichts, und null zeigt in keinem Modus etwas")
+    @Test("off shows nothing, and zero shows nothing in any mode")
     func offAndZero() {
         #expect(PodcastTileCount.off.badge(unplayed: unplayed, newSinceLastPlayed: newSince) == nil)
         for mode in PodcastTileCount.allCases {
@@ -36,9 +36,9 @@ struct PodcastTileCountTests {
         }
     }
 
-    /// Rot-Probe on the counts the sections hand over: an episode in
+    /// Red probe on the counts the sections hand over: an episode in
     /// progress is neither unplayed nor new, so it reaches no mode.
-    @Test("angefangen zaehlt in keinem Modus als ungehoert")
+    @Test("started counts as unheard in no mode")
     func inProgressCountsNowhere() {
         let states: [String: EpisodePlayState] = ["a": .played, "b": .inProgress(fraction: 0.5, remaining: 100), "c": .unplayed]
         let unplayedIDs = states.filter { $0.value == .unplayed }.map(\.key)

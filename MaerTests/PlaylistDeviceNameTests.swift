@@ -51,7 +51,7 @@ struct PlaylistDeviceNameTests {
         return directory
     }
 
-    @Test("der Vergleich sieht den Geraetenamen nicht, jede andere Abweichung schon")
+    @Test("the comparison does not see the device name, but sees every other difference")
     func theComparisonIgnoresOnlyTheDeviceName() {
         let base = MaerPlaylistMerge.Entry(name: "Morgens", updatedAt: 100, itemIds: ["rss:a"],
                                            device: "iPhone")
@@ -74,7 +74,7 @@ struct PlaylistDeviceNameTests {
         #expect(MaerPlaylistMerge.differs(["l": base], [:]))
     }
 
-    @Test("zwei Geraete auf einem Traeger: nach dem Einschwingen kein Schrieb ueber fuenf Runden, eine echte Aenderung schreibt einmal mit eigenem Namen")
+    @Test("two devices on one carrier: after settling, no write over five rounds, a real change writes once with its own name")
     func twoDevicesSettleAndStayQuiet() throws {
         let restore = SyncSwitchProbe.armOn()
         defer { restore() }
@@ -117,7 +117,7 @@ struct PlaylistDeviceNameTests {
         withExtendedLifetime((a.runner, b.runner)) {}
     }
 
-    @Test("ein Schreiber wie 3.3 stempelt in jeder Runde seinen Namen, der neue Laeufer schreibt danach null Mal")
+    @Test("a writer like 3.3 stamps its name in every round, the new runner then writes zero times")
     func anOldBuildStampingEveryRoundGetsNoAnswer() throws {
         let restore = SyncSwitchProbe.armOn()
         defer { restore() }
@@ -154,7 +154,7 @@ struct PlaylistDeviceNameTests {
     /// through its change signal) besides the carrier's. Today the local
     /// side wins a tie of clocks, so only the name of the device itself
     /// comes back; the witness must also hold if the tie went the other way.
-    @Test("zwei Geraete eingeschwungen: ueber fuenf Runden kein Schrieb am Traeger und keiner in einem der Speicher")
+    @Test("two devices settled: over five rounds no write to the carrier and none in either of the stores")
     func settledDevicesWriteNothingLocally() throws {
         let restore = SyncSwitchProbe.armOn()
         defer { restore() }
@@ -194,7 +194,7 @@ struct PlaylistDeviceNameTests {
     /// sync code as an input: the default of a seam, so a witness can run
     /// two devices. The one named exception is the key-value carrier's
     /// fallback for a blob entry written without a name.
-    @Test("DeviceIdentity.name steht nur als Vorgabe einer Naht oder an der benannten Stelle", .needsTheSources)
+    @Test("DeviceIdentity.name appears only as the default of a seam or at the named place", .needsTheSources)
     func theDeviceNameIsReadOnlyAtASeam() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let files = SourceTree.files(under: sources)

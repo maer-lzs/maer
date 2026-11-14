@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Ein Pluszeichen in einem Abfragewert reist als `%2B`: an der einen Stelle,
-/// durch die jeder Abfrage-Bau geht, und kein Rufer kodiert selbst.
+/// A plus sign in a query value travels as `%2B`: at the one place
+/// that every query construction goes through, and no caller encodes itself.
 struct QueryValuesTests {
-    @Test("die eine Stelle: ein Plus im Wert wird %2B, alles andere bleibt Apples Kodierung, nil leert die Abfrage")
+    @Test("the one place: a plus in the value becomes %2B, everything else stays Apple's encoding, nil empties the query")
     func thePlusTravelsEncoded() throws {
         var comps = try #require(URLComponents(string: "https://music.example/rest/search3.view"))
         comps.setQuery([URLQueryItem(name: "u", value: "hoerer+plus@example.org"),
@@ -29,7 +29,7 @@ struct QueryValuesTests {
         #expect(comps.url?.query == nil)
     }
 
-    @Test("Subsonic: Benutzername und Suche mit Plus gehen als %2B hinaus, und ein Wikidata-Suchwort ebenso")
+    @Test("Subsonic: username and search with a plus go out as %2B, and a Wikidata search term likewise")
     func subsonicAndWikidataCarryThePlusEncoded() throws {
         let server = "plus-\(UUID().uuidString.lowercased()).test"
         defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)/sub") }
@@ -45,7 +45,7 @@ struct QueryValuesTests {
     /// The tokens that set a query, and the one file that may hold them.
     nonisolated static let setters = ["queryItems =", "queryItems?.append", "queryItems.append", "percentEncodedQuery ="]
 
-    @Test("Zaun: die Abfrage wird nur in QueryValues gesetzt, kein Rufer setzt queryItems oder percentEncodedQuery selbst", .needsTheSources)
+    @Test("Fence: the query is set only in QueryValues, no caller sets queryItems or percentEncodedQuery itself", .needsTheSources)
     func onlyTheOnePlaceSetsTheQuery() throws {
         var offenders: [String] = []
         var seen = 0

@@ -8,41 +8,41 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Produkt-Entscheid 09.09.2026: ein Feed, der als gueltige Sendung ohne
-/// Folgen parst, SAGT es beim Abonnieren. Das Abo entsteht trotzdem.
+/// Product decision 09.09.2026: a feed that parses as a valid show without
+/// episodes SAYS so when subscribing. The subscription happens anyway.
 ///
-/// Die Regel ist pur, weil sie drei Tatsachen abwaegt, von denen keine einer
-/// Ansicht gehoert — und weil es DREI Abo-Wege gibt (Einstellungsseite,
-/// Karten/Sendungsseite, Katalogseite), die heute schon nicht dasselbe tun.
-/// Die Meldung entsteht deshalb in der Ablage und wird an EINER Stelle
-/// gezeigt.
+/// The rule is pure because it weighs three facts, none of which belongs to a
+/// view, and because there are THREE subscription paths (settings page,
+/// cards/show page, catalog page) that already do not do the same today.
+/// The notice is therefore created in the store and shown in ONE
+/// place.
 struct PodcastSubscribeNoticeTests {
-    @Test("Nur das erste eigene Abonnieren eines folgenlosen Feeds sagt etwas")
+    @Test("Only the first own subscribing to an episode-less feed says anything")
     func onlyAFirstOwnSubscribeOfAnEmptyFeedSpeaks() {
         #expect(PodcastSubscribeNotice.shouldTell(episodeCount: 0, isSingleUserAct: true,
                                                   isFirstSubscribe: true))
-        // Mit Folgen gibt es nichts zu sagen.
+        // With episodes there is nothing to say.
         #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 1, isSingleUserAct: true,
                                                    isFirstSubscribe: true))
-        // Aus dem Konto oder von gpodder: niemandes Tipp, also keine Meldung
-        // aus dem Nichts. UND der Import: die Person handelt, aber nicht an
-        // DIESEM Feed. Er laeuft ueber hunderte und meldet seine eigene
-        // Zusammenfassung; ein Alert je Feed haette den letzten leeren
-        // benannt und die anderen verschwiegen. Die erste Fassung lieh sich
-        // dafuer `notesCloud` und warnte, die zwei koennten auseinandergehen
-        // — sie waren es bereits, genau am Import.
+        // From the account or from gpodder: nobody's tap, so no notice
+        // out of nothing. AND the import: the person acts, but not on
+        // THIS feed. It runs over hundreds and reports its own
+        // summary; an alert per feed would have named the last empty one
+        // and kept quiet about the others. The first version borrowed
+        // `notesCloud` for that and warned that the two could diverge;
+        // they already had, exactly at the import.
         #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 0, isSingleUserAct: false,
                                                    isFirstSubscribe: true))
-        // Wieder-Abonnieren VEREINIGT mit dem Zwischenspeicher, ein duenner
-        // zweiter Parse verliert also nichts und ist keine Meldung wert.
+        // Re-subscribing MERGES with the cache, so a thin
+        // second parse loses nothing and is worth no notice.
         #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 0, isSingleUserAct: true,
                                                    isFirstSubscribe: false))
     }
 
-    /// Die Meldung existiert EINMAL. Wer eine zweite Darstellung baut, muss
-    /// diesen Bestand anfassen — genau das war die Auflage („bau die Meldung
-    /// einmal statt dreimal"), und ein Bestand haelt sie, eine Absicht nicht.
-    @Test("Es gibt genau einen Wirt fuer die Meldung", .needsTheSources)
+    /// The notice exists ONCE. Whoever builds a second presentation must
+    /// touch this count; that was exactly the requirement („bau die Meldung
+    /// einmal statt dreimal"), and a count holds it, an intent does not.
+    @Test("There is exactly one host for the notice", .needsTheSources)
     func exactlyOneHostShowsIt() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources")
@@ -53,14 +53,14 @@ struct PodcastSubscribeNoticeTests {
             let lines = try String(contentsOf: url, encoding: .utf8)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
-            // Die DEKLARATION ist weder Lesen noch Setzen. Mein erster
-            // Detektor zaehlte sie als Lesen und machte den Fall rot: eine
-            // Zeile, die es gibt, weil es die Sache gibt, ist kein Zugriff.
+            // The DECLARATION is neither reading nor setting. My first
+            // detector counted it as a read and turned the case red: a
+            // line that exists because the thing exists is no access.
             let hits = lines.filter {
                 $0.contains("emptyFeedNotice") && !$0.contains("var emptyFeedNotice")
             }
             guard !hits.isEmpty else { continue }
-            // Die Zuweisung `= …` ist das Setzen, alles andere liest.
+            // The assignment `= …` is the setting, everything else reads.
             let written = hits.filter { $0.contains("emptyFeedNotice = ") && !$0.contains("== nil") }
             if !written.isEmpty { setters[path] = written.count }
             let read = hits.count - written.count
@@ -68,19 +68,19 @@ struct PodcastSubscribeNoticeTests {
         }
         #expect(Set(readers.keys) == ["Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift"],
                 "die Meldung wird an mehr als einer Stelle gezeigt: \(readers.keys.sorted())")
-        // Gesetzt wird sie in der Ablage (dort entsteht sie) und im Wirt
-        // zurueckgesetzt, wenn der Mensch sie weggeklickt hat.
+        // It is set in the store (where it arises) and reset in the host
+        // when the person has clicked it away.
         #expect(Set(setters.keys) == ["Sources/Providers/PodcastSubscriptions.swift",
                                       "Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift"],
                 "die Meldung entsteht woanders als in der Ablage: \(setters.keys.sorted())")
     }
 
-    /// Wer abonniert, sagt ob es ein EINZEL-Akt war. Der Bestand nennt je
-    /// Rufer den Grund, weil genau hier die erste Fassung falsch lag: sie
-    /// lieh sich `notesCloud` als Stellvertreter, und der Import ruft mit dem
-    /// Vorgabewert. Ein geliehenes Merkmal ist eine Behauptung ueber alle
-    /// heutigen UND kuenftigen Rufer.
-    @Test("Jeder Abo-Rufer sagt, ob er ein Einzel-Akt ist", .needsTheSources)
+    /// Whoever subscribes says whether it was a SINGLE act. The count names per
+    /// caller the reason, because exactly here the first version was wrong: it
+    /// borrowed `notesCloud` as a stand-in, and the import calls with the
+    /// default value. A borrowed trait is a claim about all
+    /// present AND future callers.
+    @Test("Every subscription caller says whether it is a single act", .needsTheSources)
     func everySubscribeCallerSaysWhetherItIsASingleAct() throws {
         let bulk: [String: String] = [
             "Sources/Networking/GPodderSync.swift":
@@ -109,11 +109,11 @@ struct PodcastSubscribeNoticeTests {
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("///") }
                 .joined(separator: " ")
                 .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            // Ohne die DEKLARATION: `func subscribe(urlString:` sieht wie ein
-            // Aufruf aus und landete beim ersten Lauf in „Einzel-Akt". Zweite
-            // Detektor-Falle derselben Sorte an einem Tag (die erste zaehlte
-            // eine `var`-Deklaration als Lesen): ein Quelltext-Sucher muss
-            // sagen, ob er die Sache oder ihre Benutzung zaehlt.
+            // Without the DECLARATION: `func subscribe(urlString:` looks like a
+            // call and ended up in „Einzel-Akt" on the first run. Second
+            // detector trap of the same kind in one day (the first counted
+            // a `var` declaration as a read): a source-text searcher must
+            // say whether it counts the thing or its use.
             // The door before `subscribe` (`subscribeUnlessOnServer`) is the
             // same call with the same parameters and counts as it.
             let calls = flat.replacingOccurrences(of: "func subscribe(urlString:", with: "func subscribe(DECL:")
@@ -122,8 +122,8 @@ struct PodcastSubscribeNoticeTests {
             for range in calls.ranges(of: "subscribe(urlString:") {
                 let to = calls.index(range.upperBound, offsetBy: 200, limitedBy: calls.endIndex) ?? calls.endIndex
                 let call = String(calls[range.upperBound..<to])
-                // Bis zur schliessenden Klammer des Aufrufs reicht das Fenster;
-                // die Frage wird LOKAL gestellt, nicht in der Nachbarschaft.
+                // The window reaches to the closing parenthesis of the call;
+                // the question is asked LOCALLY, not in the neighborhood.
                 if call.contains("isSingleUserAct: false") { foundBulk.insert(path) }
                 else { foundSingle.insert(path) }
             }
@@ -134,10 +134,10 @@ struct PodcastSubscribeNoticeTests {
                 "ein Einzel-Rufer ist dazugekommen oder verschwunden: \(foundSingle.symmetricDifference(Set(single.keys)).sorted())")
     }
 
-    /// Der Satz steht im Katalog, mit deutscher Uebersetzung. Ohne diesen Fall
-    /// faellt eine fehlende Uebersetzung erst am Geraet auf, und dort steht
-    /// dann Englisch in einer deutschen App.
-    @Test("Der Satz ist uebersetzt", .needsTheSources)
+    /// The sentence is in the catalog, with a German translation. Without this case
+    /// a missing translation shows up only on the device, and there
+    /// English then appears in a German app.
+    @Test("The sentence is translated", .needsTheSources)
     func theSentenceIsTranslated() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"))
@@ -148,7 +148,7 @@ struct PodcastSubscribeNoticeTests {
             as? [String: Any]
         #expect(de?["state"] as? String == "translated")
         #expect((de?["value"] as? String)?.isEmpty == false)
-        // Keine Gedankenstriche im Nutzertext, wie ueberall.
+        // No dashes in user text, as everywhere.
         #expect((de?["value"] as? String)?.contains("—") == false)
     }
 }

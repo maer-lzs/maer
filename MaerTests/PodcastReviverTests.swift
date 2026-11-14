@@ -56,12 +56,12 @@ import Foundation
 }
 #endif
 
-/// Die oPodSync-Datenbank kennungt Aktionen per URL SAMT
-/// `?updated=`. 12 Folgen dort zerfallen in getrennte Historien-Straenge.
-/// GEMESSEN an unserem Code: Maer erbt das nicht. `normalizeEnclosure`
-/// schneidet Query, Schema und Slashes an BEIDEN Matching-Enden (byEnclosure-
-/// Aufbau und Aktions-Match). Dieser Zaun haelt die Invarianz fest, damit kein
-/// kuenftiger Umbau die Normalisierung an einem Ende verliert.
+/// The oPodSync database identifies actions by URL INCLUDING
+/// `?updated=`. 12 episodes there fall apart into separate history strands.
+/// MEASURED against our code: Maer does not inherit this. `normalizeEnclosure`
+/// strips query, scheme and slashes at BOTH matching ends (byEnclosure
+/// construction and action match). This fence pins the invariance, so that no
+/// future rebuild loses the normalization at one end.
 @Suite struct EnclosureVariantTests {
 
     @Test func updatedParameterVariantsCollapseToOneKey() {

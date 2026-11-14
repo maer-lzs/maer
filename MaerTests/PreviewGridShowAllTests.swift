@@ -14,7 +14,7 @@ import Foundation
 /// subscriptions; the downloaded sections unfold in place, every other grid
 /// is a page of its own.
 struct PreviewGridShowAllTests {
-    @Test("jedes senkrechte Vorschau-Raster der Reiter endet mit der Zeile zur Vollseite", .needsTheSources)
+    @Test("every vertical preview grid of the tabs ends with the row to the full page", .needsTheSources)
     func everyPreviewGridEndsWithItsLine() throws {
         let grids: [(file: String, section: String, destination: String)] = [
             ("Sources/Views/LibraryView.swift", "private var allBooksSection", "LibraryListRoute.allBooks"),

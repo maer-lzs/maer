@@ -74,7 +74,7 @@ struct PodcastTranscriptTests {
         #expect(PodcastTranscript.parse(Data("<html><body>portal</body></html>".utf8)) == nil)
     }
 
-    @Test("ein Ausfall ist kein Befund: gemerkt wird nur ein Dokument oder ein klares Nein")
+    @Test("an outage is no finding: only a document or a clear no is remembered")
     func onlyAnAnswerIsRemembered() {
         #expect(PodcastTranscript.remembers(status: 200))
         #expect(PodcastTranscript.remembers(status: 404) && PodcastTranscript.remembers(status: 410))
@@ -86,7 +86,7 @@ struct PodcastTranscriptTests {
     /// The session cache of the service: a failed fetch is asked again at
     /// the next look and the transcript arrives; a document that does not
     /// parse and a 404 stand for the session.
-    @Test("der Dienst fragt nach einem Ausfall neu und merkt nur Antworten")
+    @Test("the service asks again after an outage and remembers only answers")
     @MainActor
     func theServiceAsksAgainAfterAFailure() async throws {
         let url = "https://feeds.example/transcript-\(UUID().uuidString).vtt"

@@ -276,7 +276,7 @@ struct PodcastFeedBlockTests {
 
 /// The reduced provider-token scope. The probe DISPROVED the
 /// "one token for the whole provider" assumption (ZEIT hands out a token per
-/// SHOW), so nothing anbieterweit was built. What has to hold instead: a
+/// SHOW), so nothing provider-wide was built. What has to hold instead: a
 /// per-show podcatcher URL added by hand runs through the EXISTING chain.
 /// Verified on the ZEIT URL *structure*; the real token values never appear
 /// here (nor anywhere outside the device).
@@ -336,7 +336,7 @@ struct ProviderTokenChainTests {
         #expect(offers.isEmpty)
     }
 
-    @Test("gespiegelter Feed traegt NIE Premium — auch mit Host-Credentials")
+    @Test("mirrored feed NEVER carries premium, also with host credentials")
     func mirroredFeedIsNeverPremium() {
         let feedURL = "https://tube.example/sources/abc/feed.xml"
         let key = PodcastIdentity.feedKey(feedURL)
@@ -354,7 +354,7 @@ struct ProviderTokenChainTests {
         #expect(!PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
     }
 
-    @Test("78c5298-Zaun: origin ueberlebt den Refresh-Merge — auch wenn fresh die Base wird")
+    @Test("78c5298 fence: origin survives the refresh merge, also when fresh becomes the base")
     func originSurvivesRefreshMerge() {
         func show(_ id: String, episodes: Int, origin: String? = nil) -> PodcastShow {
             var s = PodcastShow(id: id, title: "T", author: nil, artworkURL: nil,
@@ -381,7 +381,7 @@ struct ProviderTokenChainTests {
         #expect(PodcastIdentity.merge(show("b", episodes: 2), show("b", episodes: 5)).origin == nil)
     }
 
-    @Test("Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")
+    @Test("Artwork failure persists NO negative, the next call tries again")
     func artworkFailureIsNotAbsence() async {
         let service = FeedArtworkService()
         // The service persists its POSITIVE results in the real
@@ -415,7 +415,7 @@ struct ProviderTokenChainTests {
         #expect(empty == nil)
     }
 
-    @Test("Schema-lose Pinchflat-Adressen normalisieren auf denselben Host")
+    @Test("Scheme-less Pinchflat addresses normalize to the same host")
     func pinchflatAddressNormalization() {
         let hosts = ["tube.x.y", "https://tube.x.y", "  tube.x.y  ", "http://tube.x.y"]
             .map { PinchflatClient.normalizedServerURL(from: $0)?.host }

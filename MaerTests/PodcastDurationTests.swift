@@ -27,7 +27,7 @@ struct PodcastDurationTests {
         return show.episodes[0]
     }
 
-    @Test("die Regel: endlich, nicht negativ und hoechstens ein Jahr, sonst unbekannt")
+    @Test("the rule: finite, non-negative and at most one year, otherwise unknown")
     func theRule() {
         #expect(PodcastDuration.known(.infinity) == 0)
         #expect(PodcastDuration.known(-.infinity) == 0)
@@ -40,7 +40,7 @@ struct PodcastDurationTests {
         #expect(PodcastDuration.known(3723) == 3723)
     }
 
-    @Test("eine Dauer aus dem Feed, die keine Laenge ist, wird unbekannt, zeichnet sich und laesst sich schreiben",
+    @Test("a duration from the feed that is no length becomes unknown, can be drawn and can be written",
           arguments: ["inf", "nan", "NaN", "NaN:NaN:NaN", "1e999", "-5", "1e300", "inf:00", "-1:00:00"])
     func aLengthNoReaderCanTakeIsUnknown(written: String) throws {
         let episode = try parsed(duration: written)
@@ -50,12 +50,12 @@ struct PodcastDurationTests {
         #expect(!data.isEmpty)
     }
 
-    @Test("eine gewoehnliche Dauer aus dem Feed bleibt", arguments: [("1:02:03", 3723.0), ("45:00", 2700.0), ("600", 600.0)])
+    @Test("an ordinary duration from the feed stays", arguments: [("1:02:03", 3723.0), ("45:00", 2700.0), ("600", 600.0)])
     func anOrdinaryLengthStays(written: String, seconds: Double) throws {
         #expect(try parsed(duration: written).duration == seconds)
     }
 
-    @Test("die Antwort des Verzeichnisses geht durch dieselbe Regel")
+    @Test("the answer of the directory goes through the same rule")
     func theDirectoryAnswerPassesTheSameRule() async throws {
         let show = PodcastShow(id: "feed:length", title: "Length", author: nil, artworkURL: nil, description: nil,
                                feedURL: "https://length.example/feed.xml", episodes: [])
@@ -69,7 +69,7 @@ struct PodcastDurationTests {
         #expect(added.map(\.duration) == [0, 0])
     }
 
-    @Test("ein gespeicherter Bestand mit so einer Dauer wird beim Lesen geheilt")
+    @Test("a stored stock with such a duration is healed on reading")
     func aStoredStockIsHealedOnReading() async throws {
         let store = try await PodcastRowStore(connection: SQLiteConnection(path: ":memory:"))
         var huge = PodcastEpisode(guid: "huge", title: "Huge", audioURL: "https://length.example/h.mp3",

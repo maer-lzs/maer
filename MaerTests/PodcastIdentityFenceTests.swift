@@ -22,7 +22,7 @@ struct PodcastIdentityFenceTests {
         text.range(of: #"static (func|let|var) \#(name)\b"#, options: .regularExpression) != nil
     }
 
-    @Test("die stabilen Kennungen der Abos stehen nur in PodcastIdentity, ohne Weiterleitung", .needsTheSources)
+    @Test("the stable identifiers of the subscriptions appear only in PodcastIdentity, without forwarding", .needsTheSources)
     func theStableIdsLiveInOnePlace() throws {
         let subscriptions = try FetchAnswerTests.squeezedSource("Sources/Providers/PodcastSubscriptions.swift")
         for name in Self.moved {
@@ -44,7 +44,7 @@ struct PodcastIdentityFenceTests {
     }
 
     /// The fence reads every kind of declaration, not only a function.
-    @Test("der Zaun erkennt eine Weiterleitung als func, let und var")
+    @Test("the fence recognizes a forwarding as func, let and var")
     func theFenceSeesEveryKind() {
         #expect(Self.declares("feedKey", in: "nonisolated static func feedKey(_ url: String) -> String"))
         #expect(Self.declares("feedKey", in: "static let feedKey = PodcastIdentity.feedKey"))

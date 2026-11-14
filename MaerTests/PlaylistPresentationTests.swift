@@ -23,7 +23,7 @@ struct PlaylistPresentationTests {
 
     /// One cover fills the square (all Mär and server playlists); two and
     /// three keep the mosaic, none keeps the glyph.
-    @Test("eine Playlist mit genau einem Cover zeigt das Cover im ganzen Quadrat, zwei und drei bleiben Mosaik", .needsTheSources)
+    @Test("a playlist with exactly one cover shows the cover in the whole square, two and three stay a mosaic", .needsTheSources)
     func oneCoverFillsTheSquare() throws {
         #expect(PlaylistPresentation.coverFillsSquare(1))
         for count in [0, 2, 3, 9] {
@@ -68,7 +68,7 @@ struct PlaylistPresentationTests {
 
     /// ONE playlist row: server and device lists share it, the device lists
     /// carry the capsule, the "+" card stands once at the end.
-    @Test("Eine Playlist-Reihe: Kapsel nur an Geraete-Listen, das Plus einmal", .needsTheSources)
+    @Test("A playlist row: capsule only on device lists, the plus once", .needsTheSources)
     @MainActor
     func onePlaylistRow() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -91,7 +91,7 @@ struct PlaylistPresentationTests {
     /// The card of a device list and its page draw the mosaic from the
     /// same question, asked as each is drawn: a card built while the
     /// music server cannot answer yet shows the covers on its next build.
-    @Test("Karte und Seite einer Geraete-Liste nehmen das Mosaik aus derselben Quelle, bei jedem Bau", .needsTheSources)
+    @Test("Card and page of a device list take the mosaic from the same source, in every build", .needsTheSources)
     @MainActor
     func deviceCardAndPageShareTheMosaic() throws {
         let list = MaerPlaylists.Playlist(id: "l1", name: "Test", updatedAt: 1, itemIds: ["sub:song:1", "sub:song:2"])
@@ -122,7 +122,7 @@ struct PlaylistPresentationTests {
 
     /// Each cover once, in list order. The card stops at the mosaic's
     /// slots; the page names no bound and gets every cover, as before.
-    @Test("die Cover einer Geraete-Liste: je eins, in Reihenfolge, die Karte bis zu den Plaetzen, die Seite alle")
+    @Test("the covers of a device list: one each, in order, the card up to the slots, the page all of them")
     @MainActor
     func deviceCoversStopAtTheSlots() {
         let ids = ["sub:song:1", "sub:song:2", "sub:song:3", "sub:song:4", "sub:song:5", "sub:song:6"]
@@ -146,7 +146,7 @@ struct PlaylistPresentationTests {
     /// A device list of music server songs met nowhere else: the source has
     /// not named their covers, so the card asks for them and draws what was
     /// learned; the page asks the same question when it shows.
-    @Test("Geraete-Liste fragt die Cover, die ihre Quelle noch nicht nennt, und zeichnet das Gelernte", .needsTheSources)
+    @Test("A device list asks for the covers its source does not name yet, and draws what it learned", .needsTheSources)
     @MainActor
     func deviceListLearnsItsCovers() async throws {
         let list = MaerPlaylists.Playlist(id: "l-learn", name: "Test", updatedAt: 1,
@@ -195,7 +195,7 @@ struct PlaylistPresentationTests {
         #expect(PlaylistPresentation.realPlaylists(input).map(\.id) == ["pl-1", "pl-2"])
     }
 
-    // MARK: - Mosaic cover selection (Korrektur 01.08. Duplicates hard-forbidden)
+    // MARK: - Mosaic cover selection (correction 01.08. Duplicates hard-forbidden)
 
     @Test("Regression: per-song cover ids of ONE album collapse to one tile")
     func sameAlbumCollapsesToOneTile() {
@@ -235,7 +235,7 @@ struct PlaylistPresentationTests {
 
     /// The glyph of an empty playlist stands in the middle of the visible
     /// square: on the big square it sat on the frame's lower edge.
-    @Test("das Symbol einer leeren Playlist steht in der Mitte des sichtbaren Quadrats, nicht auf dem grossen Feld", .needsTheSources)
+    @Test("the symbol of an empty playlist sits in the middle of the visible square, not on the large field", .needsTheSources)
     func theEmptyGlyphIsCentredInTheFrame() throws {
         let art = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/PlaylistArtwork.swift"), encoding: .utf8))
@@ -247,7 +247,7 @@ struct PlaylistPresentationTests {
 
     /// The empty glyph grows with the square, like the radio placeholder:
     /// a fixed point size stayed small on the larger playlist page.
-    @Test("das Symbol einer leeren Playlist waechst mit dem Quadrat, auf der Karte bleibt es 34 pt", .needsTheSources)
+    @Test("the symbol of an empty playlist grows with the square, on the card it stays 34 pt", .needsTheSources)
     func theEmptyGlyphScalesWithTheSquare() throws {
         let art = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/PlaylistArtwork.swift"), encoding: .utf8))

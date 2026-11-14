@@ -16,7 +16,7 @@ struct PocketCastsAPITests {
         try CorpusFixture.data(name, ext: "json", subdirectory: "ForeignImport")
     }
 
-    @Test("Anmeldung: Token oder der Grund der Ablehnung")
+    @Test("Login: token or the reason for the rejection")
     func login() throws {
         #expect(PocketCastsAPI.token(from: try fixture("pocketcasts-login")) == "eyJhbGciOiJIUzI1NiJ9.fixture.token")
         let rejected = try fixture("pocketcasts-login-rejected")
@@ -24,14 +24,14 @@ struct PocketCastsAPITests {
         #expect(PocketCastsAPI.errorMessage(from: rejected) == "Email not found")
     }
 
-    @Test("Bestand: Sendungen mit uuid, unbekannte Felder uebergangen")
+    @Test("Stock: shows with uuid, unknown fields skipped")
     func podcasts() throws {
         let list = try #require(PocketCastsAPI.podcasts(from: try fixture("pocketcasts-list")))
         #expect(list.map(\.uuid) == ["aaaaaaaa-0000-4000-8000-000000000001", "aaaaaaaa-0000-4000-8000-000000000002"])
         #expect(list.first?.title == "Formula Why")
     }
 
-    @Test("Staende: Status und Position je Folge, Zahlen auch als Text")
+    @Test("States: status and position per episode, numbers also as text")
     func states() throws {
         let states = try #require(PocketCastsAPI.episodeStates(from: try fixture("pocketcasts-episodes")))
         #expect(states.count == 6)
@@ -50,13 +50,13 @@ struct PocketCastsAPITests {
         #expect(cached[1].duration == 2802)
     }
 
-    @Test("Feed-Tuer: uuid auf Feed-Adresse")
+    @Test("Feed door: uuid to feed address")
     func feeds() throws {
         let feeds = try #require(PocketCastsAPI.feedURLs(from: try fixture("pocketcasts-feeds")))
         #expect(feeds == ["aaaaaaaa-0000-4000-8000-000000000001": "https://feeds.example.invalid/formula-why.rss"])
     }
 
-    @Test("die Bibliothek: angefangen und gehoert mit Titel und Enclosure, ohne Zeitpunkt; ohne Feed zaehlt die Sendung als nicht importierbar")
+    @Test("the library: started and heard with title and enclosure, without a time; without a feed the show counts as not importable")
     func library() throws {
         let podcasts = try #require(PocketCastsAPI.podcasts(from: try fixture("pocketcasts-list")))
         let feeds = try #require(PocketCastsAPI.feedURLs(from: try fixture("pocketcasts-feeds")))
@@ -85,7 +85,7 @@ struct PocketCastsAPITests {
         #expect(done.stampedAt == nil)
     }
 
-    @Test("ohne Cache-Zeile bleibt der Stand, nur ohne Namen")
+    @Test("without a cache row the state stays, only without names")
     func withoutCache() throws {
         let podcasts = try #require(PocketCastsAPI.podcasts(from: try fixture("pocketcasts-list")))
         let feeds = try #require(PocketCastsAPI.feedURLs(from: try fixture("pocketcasts-feeds")))
@@ -100,7 +100,7 @@ struct PocketCastsAPITests {
     /// asked for by itself. The answer's shape is unverified until the
     /// probe; the decoder takes the measured cache form at the top level
     /// or under `episode`, and anything else is nil.
-    @Test("Einzelabfrage: Titel, Adresse und Datum, oben oder unter episode; ohne uuid nil")
+    @Test("Single query: title, address and date, at the top or under episode; without uuid nil")
     func episodeDetail() throws {
         let detail = try #require(PocketCastsAPI.episodeDetail(from: try fixture("pocketcasts-episode")))
         #expect(detail.uuid == "eeeeeeee-0000-4000-8000-000000000099")
@@ -116,7 +116,7 @@ struct PocketCastsAPITests {
         #expect(PocketCastsAPI.episodeDetail(from: Data("<html>".utf8)) == nil)
     }
 
-    @Test("die Bibliothek merkt sich, welche Staende ihren Griff aus der Einzelabfrage haben")
+    @Test("the library remembers which states have their handle from the single query")
     func libraryMarksLookedUp() throws {
         let podcasts = try #require(PocketCastsAPI.podcasts(from: try fixture("pocketcasts-list")))
         let feeds = try #require(PocketCastsAPI.feedURLs(from: try fixture("pocketcasts-feeds")))
@@ -131,7 +131,7 @@ struct PocketCastsAPITests {
         #expect(lib.states.filter { !$0.handleFromLookup }.allSatisfy { $0.episodeTitle == nil })
     }
 
-    @Test("Rot-Probe: gekipptes Pflichtfeld oder kaputtes JSON ergibt nil, nie einen Teil")
+    @Test("Red probe: a flipped required field or broken JSON yields nil, never a part")
     func brokenAnswers() {
         #expect(PocketCastsAPI.podcasts(from: Data("{\"podcasts\":[{\"title\":\"no uuid\"}]}".utf8)) == nil)
         #expect(PocketCastsAPI.episodeStates(from: Data("{\"episodes\":[{\"uuid\":\"x\"}]}".utf8)) == nil)

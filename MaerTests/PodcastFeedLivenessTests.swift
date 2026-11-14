@@ -12,14 +12,14 @@ import Foundation
 /// The health signal is therefore an ORDER, never a filter.
 struct PodcastFeedLivenessTests {
 
-    @Test("Schweigen ist keine schlechte Nachricht")
+    @Test("Silence is not bad news")
     func silenceIsUsable() {
         #expect(PodcastFeedLiveness.verdict(nil) == .usable)
         #expect(PodcastFeedLiveness.verdict(FeedLiveness()) == .usable)
         #expect(PodcastFeedLiveness.verdict(FeedLiveness(dead: 0, lastHttpStatus: 200)) == .usable)
     }
 
-    @Test("aufgegeben heisst aufgegeben")
+    @Test("given up means given up")
     func goneIsGone() {
         #expect(PodcastFeedLiveness.verdict(FeedLiveness(dead: 1)) == .gone)
         // 0 = never reached.
@@ -30,7 +30,7 @@ struct PodcastFeedLivenessTests {
         #expect(PodcastFeedLiveness.verdict(FeedLiveness(dead: 0, lastHttpStatus: 301)) == .usable)
     }
 
-    @Test("stolpernd ist nicht tot")
+    @Test("stumbling is not dead")
     func stumblingIsOnlyDoubtful() {
         #expect(PodcastFeedLiveness.verdict(
             FeedLiveness(dead: 0, lastHttpStatus: 200, parseErrors: 3)) == .doubtful)
@@ -38,7 +38,7 @@ struct PodcastFeedLivenessTests {
             FeedLiveness(dead: 0, lastHttpStatus: 200, crawlErrors: 2)) == .doubtful)
     }
 
-    @Test("umordnen, nie wegwerfen — und die Rangfolge bleibt in der Gruppe")
+    @Test("reorder, never discard, and the ranking stays within the group")
     func reordersWithoutDropping() {
         struct Row: Equatable { let name: String; let liveness: FeedLiveness? }
         let rows = [
@@ -55,7 +55,7 @@ struct PodcastFeedLivenessTests {
         #expect(Set(out.map(\.name)) == Set(rows.map(\.name)))
     }
 
-    @Test("ein flaechiger Ausfall leert keine Reihe")
+    @Test("a widespread outage empties no row")
     func anOutageCannotEmptyTheRow() {
         struct Row: Equatable { let name: String; let liveness: FeedLiveness? }
         // Every single one condemned: the row still stands, only reordered.

@@ -56,7 +56,7 @@ struct PodcastPublishCountTests {
     /// The seat became replaceable; the app's store must still take exactly
     /// the app's values, or every subscription would move to a place the app
     /// never reads.
-    @Test("der Abo-Speicher der App nimmt die Werte der App")
+    @Test("the subscription store of the app takes the values of the app")
     @MainActor
     func theAppStoreTakesTheAppsValues() {
         let app = PodcastSubscriptions.shared
@@ -67,7 +67,7 @@ struct PodcastPublishCountTests {
         #expect(app.isTheApp)
     }
 
-    @Test("Wie oft der Abo-Speicher meldet: je Auffrischen, je Abo, je Abbestellen")
+    @Test("How often the subscription store reports: per refresh, per subscription, per unsubscribe")
     @MainActor
     func howOftenTheSubscriptionStorePublishes() async throws {
         let folder = FileManager.default.temporaryDirectory

@@ -8,19 +8,19 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// `PlayerSourceRouter` ist EIN Navigationspunkt, und `open(_:)` ist seine
-/// Tuer: dort steht die Diagnose-Zeile, die auf dem Geraet zeigt, ob ein Tipp
-/// feuert und ob er routet. Der Router wurde genau deshalb gebaut, weil die
-/// vorige Verdrahtung ueber die Umgebung einen Tipp still verschlucken konnte.
+/// `PlayerSourceRouter` is ONE navigation point, and `open(_:)` is its
+/// door: the diagnostic line sits there, showing on the device whether a tap
+/// fires and whether it routes. The router was built for exactly this reason:
+/// the previous wiring through the environment could swallow a tap silently.
 ///
-/// Zwei Stellen riefen den registrierten Verschluss DIREKT und gingen damit an
-/// der Tuer vorbei — und der Kommentar darueber sagte woertlich „through the
-/// ONE navigation point, not past it". Ein Sprung aus einer Mitteilung hinter-
-/// liess also keine Spur, und ohne registrierten Verschluss war er ein stiller
-/// Fehlschlag: genau das, was der Router beenden sollte.
+/// Two places called the registered closure DIRECTLY and so went past the
+/// door, and the comment above them literally said „through the
+/// ONE navigation point, not past it". A jump from a notification therefore
+/// left no trace, and without a registered closure it was a silent
+/// failure: exactly what the router was meant to end.
 ///
-/// Der Bestand ist die Zahl, nicht die Absicht: `handler` darf ausserhalb
-/// seiner eigenen Datei GENAU EINMAL vorkommen, naemlich als Registrierung.
+/// The count is the measure, not the intent: `handler` may occur outside
+/// its own file EXACTLY ONCE, namely as the registration.
 struct PlayerSourceDoorFenceTests {
     private func codeOf(_ relative: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -30,7 +30,7 @@ struct PlayerSourceDoorFenceTests {
             .joined(separator: "\n")
     }
 
-    @Test("Nur die Registrierung fasst den Rueckruf an, alle anderen gehen durch die Tuer", .needsTheSources)
+    @Test("Only the registration touches the callback, all others go through the door", .needsTheSources)
     func onlyTheRegistrationTouchesTheClosure() throws {
         let ownFile = "Sources/Views/PlayerSourceNavigation.swift"
         let expected: [String: (count: Int, reason: String)] = [
@@ -54,10 +54,10 @@ struct PlayerSourceDoorFenceTests {
                 "jemand fasst den Rueckruf ausserhalb der Registrierung an")
     }
 
-    /// Und die Gegenrichtung, damit der Bestand oben nicht deshalb stimmt,
-    /// weil die Tuer verschwunden ist: `open(_:)` ruft den Verschluss wirklich
-    /// und protokolliert davor.
-    @Test("Die Tuer protokolliert und ruft dann", .needsTheSources)
+    /// And the opposite direction, so the count above does not hold merely
+    /// because the door has vanished: `open(_:)` really calls the closure
+    /// and logs before it.
+    @Test("The door logs and then calls", .needsTheSources)
     func theDoorLogsAndThenCalls() throws {
         let code = try codeOf("Sources/Views/PlayerSourceNavigation.swift")
         guard let door = code.range(of: "func open(_ target: PlayerSourceTarget)"),
@@ -67,8 +67,8 @@ struct PlayerSourceDoorFenceTests {
         }
         #expect(door.lowerBound < log.lowerBound && log.lowerBound < call.lowerBound,
                 "die Diagnose-Zeile steht nicht mehr vor dem Ruf")
-        // Und sie nennt, OB ein Verschluss da war. Ohne diese Haelfte sieht
-        // ein stiller Fehlschlag im Log aus wie ein gelungener Sprung.
+        // And it says WHETHER a closure was there. Without this half, a silent
+        // failure looks in the log like a successful jump.
         #expect(code.contains("handler != nil"),
                 "die Diagnose sagt nicht mehr, ob ueberhaupt ein Verschluss registriert war")
     }

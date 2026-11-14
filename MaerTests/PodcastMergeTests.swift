@@ -8,13 +8,13 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Nicht ein Feld wird geprüft, sondern das
-/// VERFAHREN. Eine gespeicherte Show mit WENIGER Folgen und gesetzten
-/// Speicher-Tatsachen gegen eine frische mit MEHR. Überlebt jede davon?
+/// Not a field is checked, but the
+/// PROCEDURE. A stored show with FEWER episodes and set
+/// store facts against a fresh one with MORE. Does each of them survive?
 ///
-/// Wächst die Liste der Speicher-Tatsachen, muss dieser Test mitwachsen. Genau
-/// dafür ist er da: Beim alten Verfahren musste jedes Mal jemand daran denken,
-/// und beim zweiten Feld hat niemand daran gedacht.
+/// If the list of store facts grows, this test must grow with it. That is
+/// exactly what it is for: with the old procedure someone had to remember it
+/// every time, and at the second field nobody did.
 struct PodcastMergeTests {
     /// The cases live in `Fixtures/Shared/abos/merge.json`, read by Swift
     /// and Kotlin alike: every store fact (the show's origin, an episode's
@@ -44,12 +44,12 @@ struct PodcastMergeTests {
         return s
     }
 
-    @Test("gemeinsame Faelle: merge traegt vier Faelle")
+    @Test("shared cases: merge carries four cases")
     func mergeCasesLoaded() {
         #expect(Self.merges.count == 4)
     }
 
-    @Test("gemeinsame Faelle: jede Speicher-Tatsache ueberlebt die Vereinigung, je Fall wie die Datei sagt", arguments: merges)
+    @Test("shared cases: every store fact survives the union, per case as the file says", arguments: merges)
     func everyStoreFactSurvivesAsTheFileSays(_ c: SharedCase) throws {
         let input = try c.value("input")
         let expect = try c.value("expect")

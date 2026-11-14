@@ -9,18 +9,18 @@ import Foundation
 import Combine
 @testable import Maer
 
-/// Die manuelle Premium-Markierung aenderte einen Wert und ueberliess das
-/// Benachrichtigen dem RUFER. Vier Stellen taten es, und alle vier dachten
-/// daran — was Glueck ist und keine Zusage. Eine fuenfte haette die Markierung
-/// gesetzt und jede Zeile haette die alte weitergezeigt, ohne ein Wort.
+/// The manual premium mark changed a value and left the
+/// notifying to the CALLER. Four places did it, and all four remembered
+/// to, which is luck and no guarantee. A fifth would have set the mark
+/// and every row would have kept showing the old one, without a word.
 ///
-/// Dieselbe Form wie `canPlayNow`: eine Pflicht, die auf die Rufer verteilt
-/// ist, ist eine Behauptung ueber alle kuenftigen Rufer.
+/// The same form as `canPlayNow`: a duty that is spread over the callers
+/// is a claim about all future callers.
 @MainActor
 struct PremiumMarkNotifiesTests {
-    /// Am VERHALTEN: die Aenderung selbst meldet sich. Der Fall haelt das
-    /// Versprechen, das vorher an vier Stellen von Hand eingeloest wurde.
-    @Test("Die Markierung benachrichtigt selbst")
+    /// On BEHAVIOR: the change reports itself. The case holds the
+    /// promise that was previously kept by hand in four places.
+    @Test("The mark notifies by itself")
     func themarkNotifiesItself() async {
         let defaults = UserDefaults(suiteName: "premium-mark-test")!
         defaults.removePersistentDomain(forName: "premium-mark-test")
@@ -30,22 +30,22 @@ struct PremiumMarkNotifiesTests {
 
         PodcastSubscriptions.setManualPremium(true, feedURL: "https://example.org/feed.xml",
                                               defaults: defaults)
-        // Die Meldung laeuft ueber eine MainActor-Aufgabe, wie die Wolken-
-        // Notiz daneben; ein Durchlauf genuegt, um sie ankommen zu lassen.
+        // The notification runs through a MainActor task, like the cloud
+        // note beside it; one pass suffices to let it arrive.
         await Task.yield()
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(seen > 0, "die Markierung aendert etwas, ohne dass eine Flaeche davon erfaehrt")
 
-        // Und die Sache selbst ist wirklich passiert, sonst pruefte der Fall
-        // nur einen Publisher.
+        // And the thing itself really happened, otherwise the case would check
+        // only a publisher.
         #expect(PodcastSubscriptions.isManuallyMarkedPremium("https://example.org/feed.xml",
                                                              defaults: defaults))
         defaults.removePersistentDomain(forName: "premium-mark-test")
     }
 
-    /// Und der Bestand: kein Rufer stoesst den Publisher noch selbst an. Wer
-    /// es wieder tut, hat die Pflicht zurueck auf die Rufer verteilt.
-    @Test("Keine Flaeche stoesst den Abo-Publisher nach einer Markierung selbst an", .needsTheSources)
+    /// And the count: no caller still triggers the publisher itself. Whoever
+    /// does it again has spread the duty back over the callers.
+    @Test("No surface triggers the subscription publisher itself after a mark", .needsTheSources)
     func noSurfacePokesThePublisher() throws {
         let allowed: [String: String] = [
             "Sources/Providers/PodcastSubscriptions.swift":

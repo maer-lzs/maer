@@ -195,7 +195,7 @@ struct PodcastSectionsTests {
         #expect(detached.nextUp.map(\.id) == ["s1e3"])
     }
 
-    /// Welle 3 / C-Lehre: the SOURCE no longer culls (the row previews via
+    /// Wave 3 / C lesson: the SOURCE no longer culls (the row previews via
     /// RowPreview, the page shows the full stock). 200 is a sanity bound,
     /// not a curation. This test used to pin the old 10-cap.
     @Test func nextUpKeepsFullStock() {
@@ -215,7 +215,7 @@ struct PodcastSectionsTests {
 
     // MARK: - Teil 2: grid sort + filter
 
-    @Test("gespiegelte Shows wandern in die Gruppe, nicht ins Abo-Raster")
+    @Test("mirrored shows move into the group, not into the subscription grid")
     func mirroredShowsSplitIntoTheirGroup() {
         var mirrored = show("m1", episodes: [episode("m1e1", pubDate: 100)])
         mirrored.origin = "pinchflat:tube.example"
@@ -235,7 +235,7 @@ struct PodcastSectionsTests {
         #expect(result.mirroredShows.map(\.show.id) == ["m2", "m1"])
     }
 
-    @Test("5abb1e9-Kuer: Kapsel-Kennung — mirroredEpisodeGuids und Item-Id sind DIESELBE Kette")
+    @Test("5abb1e9 free-skate: capsule identifier, mirroredEpisodeGuids and item id are the SAME chain")
     func capsuleIdsMatchThroughTheRealChain() {
         var mirrored = show("m1", episodes: [episode("rss:m1:e1", pubDate: 100)])
         mirrored.origin = "pinchflat:tube.example"
@@ -307,12 +307,12 @@ struct PodcastSectionsTests {
                            feedURL: "https://example.com/\(id)", episodes: episodes)
     }
 
-    @Test("gemeinsame Faelle: show-order traegt elf Faelle")
+    @Test("shared cases: show-order carries eleven cases")
     func orderCasesLoaded() {
         #expect(Self.order.count == 11)
     }
 
-    @Test("gemeinsame Faelle: das Raster ordnet und filtert je Fall wie die Datei sagt, newestPerShow nimmt je Sendung die neueste", arguments: order)
+    @Test("shared cases: the grid orders and filters per case as the file says, newestPerShow takes the newest per show", arguments: order)
     func theGridOrdersAsTheFileSays(_ c: SharedCase) throws {
         let input = try c.value("input")
         let shows = input["shows"]?.array ?? []
@@ -332,7 +332,7 @@ struct PodcastSectionsTests {
 }
 #endif
 
-// MARK: - Spiegel seeden nicht, tote Kacheln ruecken nach
+// MARK: - Mirrors do not seed, dead tiles move up
 
 struct RecommendationSeedTests {
     private func result(_ id: String, artwork: String?) -> PodcastSearchResult {
@@ -340,33 +340,33 @@ struct RecommendationSeedTests {
                             feedURL: "https://x.example/\(id).xml")
     }
 
-    @Test("Umordnen statt Wegwerfen — ein flaechiger Ausfall kostet Ordnung, nicht Inhalt")
+    @Test("Reorder instead of discarding: a widespread outage costs order, not content")
     func reorderingNeverDrops() async {
-        // Keine Artwork-URL ⇒ nachgereiht; nichts verschwindet.
+        // No artwork URL ⇒ moved to the back; nothing disappears.
         let entries = [result("a", artwork: nil), result("b", artwork: nil)]
         let out = await PodcastRecommendationsStore.preferLoadableArtwork(entries, shown: 6)
         #expect(out.count == entries.count)
         #expect(Set(out.map(\.id)) == Set(entries.map(\.id)))
     }
 
-    @Test("nicht geprobte Kandidaten bleiben in ihrer Reihenfolge hinten dran")
+    @Test("untested candidates stay at the back in their order")
     func unprobedKeepTheirOrder() async {
         let entries = (1...20).map { result("e\($0)", artwork: nil) }
         let out = await PodcastRecommendationsStore.preferLoadableArtwork(entries, shown: 2)
         #expect(out.count == 20)
-        // Der Schwanz (nie geprobt) behaelt seine Ordnung.
+        // The tail (never tested) keeps its order.
         #expect(out.suffix(5).map(\.id) == entries.suffix(5).map(\.id))
     }
 }
 
-/// The Empfohlen fix. REAL author equality, and the fences carry
+/// The „Empfohlen" fix. REAL author equality, and the fences carry
 /// the measured cases verbatim (the "Einschlafen" anchor booked 25/25
 /// foreign shows as sameAuthor through the old title branch).
 @Suite struct RecommendationAuthorMatchTests {
 
     /// The title branch is GONE: a title carrying the anchor word proves
     /// nothing about authorship.
-    @Test("Einschlafen-Anker bucht 0 fremde Autoren als sameAuthor")
+    @Test("„Einschlafen“ anchor books 0 foreign authors as sameAuthor")
     func titleWordsAreNoAuthors() {
         for foreign in ["Toby Baier", "Jan Lindner", "Wikipedia & Schønlein Media",
                         "Understood.org, Laura Key", "SWR",
@@ -379,7 +379,7 @@ struct RecommendationSeedTests {
 
     /// The direction hole is gone: a candidate author that merely CONTAINS
     /// the anchor (or vice versa) is a different house.
-    @Test("Sport bucht weder Barstool noch FOX")
+    @Test("Sport books neither Barstool nor FOX")
     func substringsAreNoAuthors() {
         #expect(!PodcastRecommendationsStore.sameAuthor("Barstool Sports", anchor: "Sport"))
         #expect(!PodcastRecommendationsStore.sameAuthor("FOX Sports", anchor: "Sport"))
@@ -388,7 +388,7 @@ struct RecommendationSeedTests {
 
     /// Real matches stay: folded equality is case-, diacritic- and
     /// punctuation-blind, never word-blind.
-    @Test("echte ZEIT-Shows bleiben")
+    @Test("real ZEIT shows stay")
     func realAuthorsStillMatch() {
         #expect(PodcastRecommendationsStore.sameAuthor("DIE ZEIT", anchor: "DIE ZEIT"))
         #expect(PodcastRecommendationsStore.sameAuthor("Die  Zeit", anchor: "DIE ZEIT"))
@@ -410,7 +410,7 @@ struct RecommendationSeedTests {
         { map[$0.title] ?? .popular }
     }
 
-    @Test("Autoren zuerst bis zur Hälfte, Kategorie dann Charts dahinter")
+    @Test("Authors first up to the half, category then charts behind")
     func authorsLeadThenCategoryThenCharts() {
         let list = [r("c1", author: nil), r("g1", author: "G"),
                     r("a1", author: "ZEIT"), r("a2", author: "NDR"),
@@ -422,7 +422,7 @@ struct RecommendationSeedTests {
         #expect(out.map(\.title) == ["a1", "a2", "g1", "g2", "c1", "c2"])
     }
 
-    @Test("max 2 je Autor — reihenweit, auch über die Kategorie-Karten")
+    @Test("max 2 per author, row-wide, also across the category cards")
     func perAuthorCapIsRowWide() {
         let list = [r("a1", author: "ZEIT"), r("a2", author: "ZEIT"),
                     r("a3", author: "ZEIT"), r("g1", author: "ZEIT"),
@@ -438,10 +438,10 @@ struct RecommendationSeedTests {
         #expect(out.count == 5)
     }
 
-    @Test("der Autoren-Anteil zählt die REIHE, nicht die geordnete Liste")
+    @Test("the author share counts the ROW, not the ordered list")
     func authorShareCountsTheRowNotTheList() {
-        // Sechs Autor-Karten, aber die Reihe zeigt nur sechs von zwölf
-        // Einträgen: die halbe REIHE sind drei Plätze, nicht sechs.
+        // Six author cards, but the row shows only six of twelve
+        // entries: half the ROW is three slots, not six.
         let authors = (1...6).map { r("a\($0)", author: "Verlag \(($0 + 1) / 2)") }
         let rest = (1...6).map { r("c\($0)", author: nil) }
         var map: [String: PodcastRecommendationsStore.Reason] = [:]
@@ -450,19 +450,19 @@ struct RecommendationSeedTests {
         }
         let out = PodcastRecommendationsStore.composePriority(
             authors + rest, reason: reasons(map), limit: 12, rowLength: 6)
-        // Drei Autor-Karten führen, dann kommt anderes; die restlichen
-        // Autor-Karten fallen hinter die Füllung, statt die Reihe zu füllen.
+        // Three author cards lead, then something else follows; the remaining
+        // author cards fall behind the filler, instead of filling the row.
         #expect(out.prefix(3).map(\.title) == ["a1", "a2", "a3"])
         #expect(out.prefix(6).filter { $0.title.hasPrefix("a") }.count == 3)
-        // Die Liste bleibt vollständig: geordnet wird, nie verworfen.
+        // The list stays complete: it is ordered, never discarded.
         #expect(out.count == 12)
-        // Ohne `rowLength` gilt die alte Lesart, Liste gleich Reihe.
+        // Without `rowLength` the old reading applies, list equals row.
         let whole = PodcastRecommendationsStore.composePriority(
             authors + rest, reason: reasons(map), limit: 12)
         #expect(whole.prefix(6).filter { $0.title.hasPrefix("a") }.count == 6)
     }
 
-    @Test("dünner Autoren-Tag: die Reihe bleibt voll, Charts füllen auf")
+    @Test("thin author day: the row stays full, charts fill up")
     func thinAuthorDayKeepsRowLength() {
         let list = [r("a1", author: "ZEIT"), r("c1", author: nil),
                     r("c2", author: nil), r("c3", author: nil)]
@@ -472,12 +472,12 @@ struct RecommendationSeedTests {
         #expect(out.first?.title == "a1")
     }
 
-    /// Punkt 4 der Karte verlangt „Reihen mit benanntem Grund", und nennt
-    /// ZWEI Wendungen: „Weil du … hoerst" und „Vom selben Verlag wie …".
-    /// Die erste stand, die zweite nicht: der Grund kannte nur den Verlag,
-    /// nicht die Sendung, aus der er stammt. Der Verlagsname allein sagt, WER
-    /// es gemacht hat; die Sendung sagt, WARUM es hier steht.
-    @Test("Kennt der Grund die eigene Sendung, nennt er sie")
+    /// Point 4 of the map demands „Reihen mit benanntem Grund", and names
+    /// TWO phrasings: „Weil du … hoerst" and „Vom selben Verlag wie …".
+    /// The first existed, the second did not: the reason knew only the publisher,
+    /// not the show it comes from. The publisher name alone says WHO
+    /// made it; the show says WHY it appears here.
+    @Test("If the reason knows its own show, it names it")
     func thereasonNamesTheOwnShowWhenItKnowsIt() {
         let named = PodcastRecommendationsStore.reasonLine(
             .sameAuthor("ZEIT ONLINE", likeShow: "Alles gesagt?"))
@@ -487,11 +487,11 @@ struct RecommendationSeedTests {
                 "die Wendung mit der Sendung soll den Verlagsnamen ersetzen, nicht ergaenzen")
     }
 
-    /// Gegenprobe, und sie ist der Grund fuer den Rueckfall: kommt der
-    /// Spitzen-Autor aus einer mitgehoerten Sendung oder passt keine eigene
-    /// Sendung genau, ist die Sendung unbekannt. Dann steht die aeltere
-    /// Wendung, die wahr ist und weniger sagt, statt einer Zeile mit Luecke.
-    @Test("Ohne bekannte eigene Sendung bleibt die aeltere Wendung")
+    /// Counter-check, and it is the reason for the fallback: if the
+    /// top author comes from a co-listened show or no own
+    /// show matches exactly, the show is unknown. Then the older
+    /// phrasing appears, which is true and says less, instead of a line with a gap.
+    @Test("Without a known own show the older phrasing stays")
     func withoutAKnownOwnShowTheOlderWordingStands() {
         let plain = PodcastRecommendationsStore.reasonLine(
             .sameAuthor("ZEIT ONLINE", likeShow: nil))
@@ -499,7 +499,7 @@ struct RecommendationSeedTests {
         #expect(!plain.isEmpty)
     }
 
-    @Test("die Kategorie-Zeile klingt nie wie ein Autoren-Treffer")
+    @Test("the category line never sounds like an author hit")
     func categoryLineNeverSoundsLikeAnAuthorHit() {
         // The invariant of the reason line: it never lies, and a category
         // weight must be audibly distinct from an author hit. With one

@@ -22,7 +22,7 @@ struct PlayerDismissZoneTests {
 
     /// The live row stands where the scrubber stands, with a menu at its
     /// edge: both take the one inset, so neither lies under a strip.
-    @Test("die Live-Zeile nimmt den Rand des Scrubbers", .needsTheSources)
+    @Test("the live row takes the scrubber's inset", .needsTheSources)
     func theLiveRowTakesTheScrubbersInset() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
@@ -73,7 +73,7 @@ struct PlayerDismissZoneTests {
     /// notice standing): the slot lies below, beside or above the controls,
     /// never over them, and the pill fits in it. Where the controls fill the
     /// visible player there is no slot.
-    @Test("die Pille im grossen Player steht nie ueber der Steuerung: unter, neben oder ueber ihr, sonst gar nicht")
+    @Test("the pill in the full player is never over the controls: below, beside or above them, otherwise not at all")
     func theNoticeSlotNeverCoversTheControls() throws {
         let pill: CGFloat = 38
         let upright = CGSize(width: 402, height: 874)
@@ -104,7 +104,7 @@ struct PlayerDismissZoneTests {
     /// The pill's height starts at zero at every opening of the player,
     /// before it is measured: a gap of a few points below the controls must
     /// not take the pill then.
-    @Test("eine noch nicht gemessene Pille nimmt keine kleine Luecke unter der Steuerung")
+    @Test("a pill not yet measured does not take a small gap below the controls")
     func anUnmeasuredPillTakesNoSmallGap() {
         let upright = CGSize(width: 402, height: 874)
         // A few points below the controls, room above them.
@@ -122,7 +122,7 @@ struct PlayerDismissZoneTests {
     /// the controls; scrolling from one to the other never shows both and
     /// never neither. The pill shows where the slot is (`FullPlayerOverlay`),
     /// the line asks the same answer.
-    @Test("der Satz eines Titels, der nicht starten kann, steht im grossen Player in jeder Lage genau einmal: Pille mit Platz, Zeile ohne, beim Scrollen nie beides, nie keins")
+    @Test("the sentence of a title that cannot start appears in the full player exactly once in every position: pill with room, line without, never both and never neither while scrolling")
     func aStoppingErrorStandsExactlyOnce() {
         let notice = PlaybackNotice.cannotPlay("Kein Titel")
         let upright = CGSize(width: 402, height: 874)
@@ -160,7 +160,7 @@ struct PlayerDismissZoneTests {
     /// The notice under the controls and the lasting failure can carry the
     /// same sentence (two failures map to one in `ErrorSentence.of`). It
     /// stands once; two different ones stand both, the notice first.
-    @Test("traegt der Hinweis unter der Steuerung denselben Satz wie der bleibende Fehler, steht er einmal; zwei verschiedene stehen beide")
+    @Test("when the notice under the controls carries the same sentence as the lasting failure, it appears once; two different ones both appear")
     func theSameSentenceStandsOnceUnderTheControls() {
         let notice = PlaybackNotice.cannotPlay("Kein Titel")
         let same = NoticePlacement.linesUnderControls(shown: notice, held: notice, pillHasRoom: false, error: notice.label)
@@ -172,7 +172,7 @@ struct PlayerDismissZoneTests {
         #expect(NoticePlacement.linesUnderControls(shown: nil, held: nil, pillHasRoom: false, error: nil).isEmpty)
     }
 
-    @Test("die Zeile unter der Steuerung fragt dieselbe Antwort wie die Pille", .needsTheSources)
+    @Test("the line under the controls asks the same answer as the pill", .needsTheSources)
     func theLineAsksTheSlotOfThePill() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))

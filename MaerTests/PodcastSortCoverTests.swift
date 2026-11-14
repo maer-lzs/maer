@@ -23,12 +23,12 @@ struct PodcastSortCoverTests {
     /// show's counts, and nothing at all is the placeholder, honestly.
     nonisolated static let cover = SharedCases.cases("sort-cover")
 
-    @Test("gemeinsame Faelle: sort-cover traegt sechs Faelle")
+    @Test("shared cases: sort-cover carries six cases")
     func coverCasesLoaded() {
         #expect(Self.cover.count == 6)
     }
 
-    @Test("gemeinsame Faelle: ein leeres Bild ist keines, dann gilt das Sendungsbild, je Fall wie die Datei sagt", arguments: cover)
+    @Test("shared cases: an empty image is none, then the show image applies, per case as the file says", arguments: cover)
     func anEmptyImageIsNoImage(_ c: SharedCase) throws {
         let input = try c.value("input")
         let expect = c["expect"]?.string
@@ -43,7 +43,7 @@ struct PodcastSortCoverTests {
         }
     }
 
-    @Test("Folgen-Cover: kein Leser waehlt das Bild mehr mit ??, und der Import von PodcastIndex speichert kein leeres", .needsTheSources)
+    @Test("Episode cover: no reader picks the image with ?? any more, and the PodcastIndex import stores no empty one", .needsTheSources)
     func everyReaderAsksTheRule() throws {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() {
@@ -59,7 +59,7 @@ struct PodcastSortCoverTests {
 
     // MARK: - The sort
 
-    @Test("Sortierung: gespeichert und gelesen unter derselben Kennung; der Zustand entscheidet, ob gelesen wird")
+    @Test("Sorting: stored and read under the same identifier; the state decides whether it is read")
     func theSortIsReadWhereItIsWritten() throws {
         let suite = "podcastsort-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -79,7 +79,7 @@ struct PodcastSortCoverTests {
                                             defaults: defaults).newestFirst == PodcastShowPreferences.default.newestFirst)
     }
 
-    @Test("Sortierung: die Sendungsseite liest und schreibt nur unter preferencesId und liest bei jedem Wechsel neu", .needsTheSources)
+    @Test("Sorting: the show page reads and writes only under preferencesId and re-reads at every change", .needsTheSources)
     func theShowPageUsesOneId() throws {
         let page = try Self.source("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(page.components(separatedBy: "PodcastShowPreferences.load(").count - 1 == 1)
@@ -100,7 +100,7 @@ struct PodcastSortCoverTests {
 
     // MARK: - The image of a previous address
 
-    @Test("Bild: eine Ladung, deren Adresse gewechselt hat, schreibt ihr Bild nicht mehr", .needsTheSources)
+    @Test("Image: a load whose address has changed no longer writes its image", .needsTheSources)
     func aCancelledLoadWritesNothing() throws {
         let view = try Self.source("Sources/Views/CachedAsyncImage.swift")
         let call = try #require(view.range(of: "await Artwork.image("))

@@ -21,7 +21,7 @@ struct QueueTrackEndTests {
 
     // MARK: - The queue
 
-    @Test("Warteschlange: ein Musik-Server-Titel spielt aus sich selbst, sobald sein Server eingerichtet ist")
+    @Test("Queue: a music server title plays on its own as soon as its server is set up")
     func aServerSongResolvesOnDemand() {
         for id in ["jf:song:9", "sub:song:9", "jf:album:4", "sub:album:4"] {
             let resolved = SyncCarried.resolve(itemId: id, carried: nil, known: nil, sourceConfigured: true).item
@@ -41,7 +41,7 @@ struct QueueTrackEndTests {
         #expect(SyncCarried.resolve(itemId: "local:/x.mp3", carried: nil, known: nil, sourceConfigured: true).reason == .fileNotOnDevice)
     }
 
-    @Test("Warteschlange: die eine Frage resolvesOnDemand, Katalog immer, Musik-Server nur eingerichtet")
+    @Test("Queue: the one question resolvesOnDemand, catalog always, music server only when set up")
     func theOnDemandQuestion() {
         #expect(SyncCarried.resolvesOnDemand("lv:12", sourceConfigured: false))
         #expect(SyncCarried.resolvesOnDemand("jf:song:1", sourceConfigured: true))
@@ -52,7 +52,7 @@ struct QueueTrackEndTests {
         #expect(!SyncCarried.resolvesOnDemand("radio:rb:x", sourceConfigured: true))
     }
 
-    @Test("Warteschlange: das Weiterschalten findet einen Jellyfin-Titel, den dieser Lauf nie gelistet hat")
+    @Test("Queue: advancing finds a Jellyfin title that this run never listed")
     func theAdvanceFindsAnUnlistedSong() {
         // The advance's own rule with the seam's answer as `resolves`, the
         // way `PlayerCoordinator.advanceInputs` wires it; nothing is known locally.
@@ -66,7 +66,7 @@ struct QueueTrackEndTests {
 
     // MARK: - The end of a title
 
-    @Test("Titelende: fehlt das Wort des Servers, entscheidet die lokale Marke, und ein gehoerter Titel startet bei 0")
+    @Test("Track end: if the server's word is missing, the local mark decides, and a heard title starts at 0")
     func aHeardSongStartsAgain() {
         // The measured case: a Jellyfin song of 272 s, heard to its end,
         // the detail without progress. It opened at 272 and ended at once.
@@ -89,7 +89,7 @@ struct QueueTrackEndTests {
         #expect(!PlayerCoordinator.resolvesToRestart(explicitRestart: false, autoplay: false, isFinished: true))
     }
 
-    @Test("Titelende: der Start fragt die Regel mit der lokalen Marke, nicht nur den Server", .needsTheSources)
+    @Test("Track end: the start asks the rule with the local mark, not only the server", .needsTheSources)
     func theStartAsksTheRule() throws {
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("isFinished: Self.isFinishedAtOpen("))
@@ -100,7 +100,7 @@ struct QueueTrackEndTests {
 
     // MARK: - The full player
 
-    @Test("Grosser Player: ein Ladekreis nur, wenn etwas laedt; ohne Gegenstand ist es nichts")
+    @Test("Full player: a loading circle only when something is loading; without a subject it is nothing")
     func theScreenNeverSpinsOverNothing() {
         #expect(PlayerScreenContent.of(hasSession: true, isLoading: true, loadError: "x") == .player)
         #expect(PlayerScreenContent.of(hasSession: false, isLoading: true, loadError: nil) == .loading)
@@ -115,7 +115,7 @@ struct QueueTrackEndTests {
     /// session, no session while loading, the new session), never show the
     /// spinner once a session was shown; a load that fails shows its error,
     /// and a first open still spins.
-    @Test("Grosser Player: ein Titelwechsel zeigt keinen Ladekreis zwischen zwei Titeln, der alte Titel bleibt bis zum neuen", .needsTheSources)
+    @Test("Full player: a title change shows no loading circle between two titles, the old title stays until the new one", .needsTheSources)
     func aTitleChangeShowsNoSpinnerBetweenTitles() throws {
         let change: [(hasSession: Bool, isLoading: Bool, loadError: String?)] = [
             (true, false, nil), (false, true, nil), (false, true, nil), (true, false, nil),
@@ -150,7 +150,7 @@ struct QueueTrackEndTests {
     /// already stopped (claim, lock screen and widget for the old title). It
     /// takes no input of any kind, and the one grip that says so blocks the
     /// accessibility tree with the finger.
-    @Test("Grosser Player: der gehaltene alte Titel nimmt keine Eingabe an, weder Finger noch VoiceOver noch Schaltersteuerung", .needsTheSources)
+    @Test("Full player: the held old title accepts no input, neither finger nor VoiceOver nor switch control", .needsTheSources)
     func theHeldPlayerTakesNoInput() throws {
         let screen = try Self.source("Sources/Views/PlayerScreen.swift")
         #expect(screen.contains(".takesInput(content == .player)"), "the held player is not closed by the input grip")
@@ -167,7 +167,7 @@ struct QueueTrackEndTests {
     /// measured, a hint that came without a change of `isPlaying` showed only
     /// on an unrelated redraw. Every notice of the model goes into the one
     /// channel, which the pill observes itself, in both places.
-    @Test("Statushinweis: jeder Hinweis des Modells kommt im Kanal an, beide Pillen lesen ihn dort", .needsTheSources)
+    @Test("Status notice: every notice of the model arrives in the channel, both pills read it there", .needsTheSources)
     @MainActor
     func theChannelCarriesTheHint() throws {
         let id = "rss:hint-carry:\(UUID().uuidString)"
@@ -200,7 +200,7 @@ struct QueueTrackEndTests {
 
     /// An open by id that resolves nothing starts nothing; the line is the
     /// only trace of that tap.
-    @Test("Oeffnen per Kennung, die nicht aufloest: nichts spielt, eine Zeile sagt es", .needsTheSources)
+    @Test("Opening by an identifier that does not resolve: nothing plays, a line says so", .needsTheSources)
     func anUnresolvedOpenLeavesALine() throws {
         let source = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         let start = try #require(source.range(of: "func open(itemId: String) async {"), "the open by id is gone")
@@ -217,7 +217,7 @@ struct QueueTrackEndTests {
                 "the resolver's failed fetch leaves no line with its reason")
     }
 
-    @Test("Grosser Player: er schliesst auf nichts, und nur der aktuelle Oeffnungslauf beendet das Laden", .needsTheSources)
+    @Test("Full player: it closes on nothing, and only the current opening run ends the loading", .needsTheSources)
     func thePlayerClosesOnNothing() throws {
         let overlay = try Self.source("Sources/Views/FullPlayerOverlay.swift")
         #expect(overlay.contains(".onChange(of: coordinator.screenContent == .nothing, initial: true)"))
@@ -234,7 +234,7 @@ struct QueueTrackEndTests {
         #expect(!coordinator.contains("defer { isLoading = false }"))
     }
 
-    @Test("Grosser Player: Als gehoert markieren leert die Sitzung nur, wenn nichts folgt", .needsTheSources)
+    @Test("Full player: Mark as heard empties the session only when nothing follows", .needsTheSources)
     func markingHandsOverWhenSomethingFollows() throws {
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         let start = try #require(coordinator.range(of: "func markPlayedAndAdvance(itemId: String) {"))
@@ -248,7 +248,7 @@ struct QueueTrackEndTests {
 
     // MARK: - Music of both servers
 
-    @Test("Musik: die Werkzeuge des Players kennen beide Server, ein Jellyfin-Hoerbuch ist keine Musik")
+    @Test("Music: the tools of the player know both servers, a Jellyfin audiobook is not music")
     func serverMusicIsBothServers() {
         for id in ["sub:song:1", "sub:album:1", "jf:song:1", "jf:album:1", "jf:playlist:1"] {
             #expect(MusicSourceRule.isServerMusic(id), "\(id)")
@@ -258,7 +258,7 @@ struct QueueTrackEndTests {
         }
     }
 
-    @Test("Musik: kein isSubsonic, wo Musik gemeint ist, und der Liedtext fragt den Server des Titels", .needsTheSources)
+    @Test("Music: no isSubsonic where music is meant, and the lyrics ask the server of the title", .needsTheSources)
     func noSubsonicStandsForMusic() throws {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/ItemNamespace.swift")
@@ -274,7 +274,7 @@ struct QueueTrackEndTests {
                 "a bare song id carries no namespace and reached the first server")
     }
 
-    @Test("Warteschlange: die Ansicht holt das Detail ueber die eine Frage und zeigt jeden Eintrag", .needsTheSources)
+    @Test("Queue: the view fetches the detail through the one question and shows every entry", .needsTheSources)
     func theQueueViewShowsEveryEntry() throws {
         let view = try Self.source("Sources/Views/PlayQueueView.swift")
         #expect(view.contains("guard SyncCarried.resolvesOnDemand("))

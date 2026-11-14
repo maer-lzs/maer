@@ -8,17 +8,17 @@ import Foundation
 import SwiftUI
 @testable import Maer
 
-/// Eine Sendungsseite, zwei Zustaende. Die Zaeune halten die Grenze fest:
-/// Ansehen schreibt nichts, Abspielen schreibt genau einen Hoerstand, und die
-/// Sperren sind Konstruktion statt Sichtpruefung.
+/// One show page, two states. The fences pin the boundary:
+/// viewing writes nothing, playing writes exactly one listening state, and the
+/// locks are construction instead of visual inspection.
 struct PodcastShowModeTests {
 
-    // MARK: - Ansehen schreibt nichts
+    // MARK: - Viewing writes nothing
 
-    /// Der Kern der Auflage: eine nicht abonnierte Sendung anzusehen, ihre
-    /// Liste zu zeichnen und zu sortieren, laesst den Speicher byte-gleich.
-    /// Der Zaun sitzt an der EINEN Schreibstelle, nicht an der Ansicht, damit
-    /// eine spaeter hinzugefuegte Aufrufstelle ihn nicht umgehen kann.
+    /// The core of the requirement: viewing an unsubscribed show, drawing its
+    /// list and sorting it leaves the store byte-identical.
+    /// The fence sits at the ONE write place, not at the view, so that
+    /// a call site added later cannot bypass it.
     @Test("looking at a show writes nothing, subscribing to it remembers")
     func browsingLeavesTheStoreUntouched() throws {
         let suite = "showmode-\(UUID().uuidString)"
@@ -36,16 +36,16 @@ struct PodcastShowModeTests {
         #expect(defaults.object(forKey: PodcastShowPreferences.filterKey(showId: showId)) == nil,
                 "das Ansehen hat einen Filter-Zustand hinterlassen")
 
-        // Rot-Probe am Instrument: derselbe Aufruf im abonnierten Zustand
-        // schreibt sehr wohl. Ein Zaun, der nie etwas sieht, beweist nichts.
+        // Red probe on the instrument: the same call in the subscribed state
+        // does write. A fence that never sees anything proves nothing.
         prefs.save(showId: showId, mode: .subscribed, defaults: defaults)
         #expect(defaults.object(forKey: PodcastShowPreferences.sortKey(showId: showId)) as? Bool == false)
         #expect(defaults.object(forKey: PodcastShowPreferences.filterKey(showId: showId)) as? Bool == true)
     }
 
-    /// Eine angesehene Sendung faengt bei der Vorgabe an, auch wenn unter
-    /// ihrer Kennung noch alte Schluessel liegen. Sonst haette ein frueheres
-    /// Abo einen unsichtbaren Filter in die neue Ansicht getragen.
+    /// A viewed show starts at the default, even if old keys still lie under
+    /// its identifier. Otherwise an earlier subscription would have carried
+    /// an invisible filter into the new view.
     @Test("a browsed show starts from the default, whatever lies under its id")
     func browsedPreferencesIgnoreOldKeys() throws {
         let suite = "showmode-load-\(UUID().uuidString)"
@@ -62,10 +62,10 @@ struct PodcastShowModeTests {
                 == PodcastShowPreferences(newestFirst: false, unplayedOnly: true))
     }
 
-    // MARK: - Die Sperren sind Konstruktion
+    // MARK: - The locks are construction
 
-    /// Was das Abo wirklich unterscheidet, steht als Wert da. Die Ansicht
-    /// fragt ihn, statt an vier Stellen `if subscribed` zu schreiben.
+    /// What the subscription really distinguishes is there as a value. The view
+    /// asks it, instead of writing `if subscribed` in four places.
     @Test("the state carries the abilities; the browsed state has none of them but the history for the visit")
     func capabilitiesFollowTheState() {
         let subscribed = PodcastShowCapabilities.of(.subscribed)
@@ -81,11 +81,11 @@ struct PodcastShowModeTests {
         #expect(subscribed.marksAllEpisodes && !browsed.marksAllEpisodes)
     }
 
-    // MARK: - Es gibt nur noch eine Sendungsseite
+    // MARK: - There is only one show page left
 
-    /// Die zweite Sendungsseite ist weg, und die Route fuehrt beide Zustaende
-    /// auf dieselbe Ansicht. Ohne diesen Zaun kaeme die Vorschau als
-    /// Sonderfall zurueck, und die beiden Flaechen drifteten wieder.
+    /// The second show page is gone, and the route leads both states
+    /// to the same view. Without this fence the preview would return as a
+    /// special case, and the two surfaces would drift apart again.
     @Test("there is one show page, and the route leads both states to it", .needsTheSources)
     func oneShowPageOnly() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -108,12 +108,12 @@ struct PodcastShowModeTests {
                 "die Route fuehrt einen nicht abonnierten Feed nicht mehr auf die Seite")
     }
 
-    /// Der Abo-Zustand darf nicht am LADEZUSTAND der Speicher haengen. Die
-    /// Speicher fuellen sich nebenlaeufig; eine Seite, die waehrend eines
-    /// Kaltstarts geoeffnet wird, findet sie leer. Wer die Sendung als WERT
-    /// hereinreicht, hat sie aus einem Speicher, und damit endet die Suche.
-    /// Sonst boete die Seite an, eine bereits abonnierte Sendung zu
-    /// abonnieren, und das ist genau die Abnahme-Marke.
+    /// The subscription state must not depend on the LOADING STATE of the stores. The
+    /// stores fill concurrently; a page opened during a
+    /// cold start finds them empty. Whoever passes the show in as a VALUE
+    /// has it from a store, and the search ends there.
+    /// Otherwise the page would offer to subscribe to an already subscribed show,
+    /// and that is exactly the acceptance mark.
     @Test("a show handed in by value ends the lookup, so a cold open stays subscribed", .needsTheSources)
     func aSeededShowCountsAsSubscribed() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -128,9 +128,9 @@ struct PodcastShowModeTests {
                 "die Suche kann wieder leer ausgehen, obwohl eine Sendung hereingereicht wurde")
     }
 
-    /// Der Download-Knopf ist im angesehenen Zustand ABWESEND, nicht
-    /// abgeschaltet. Die Seite loest die Faehigkeit einmal auf und reicht sie
-    /// hinunter, wie die Herkunfts-Kapsel.
+    /// The download button is ABSENT in the viewed state, not
+    /// disabled. The page resolves the capability once and passes it
+    /// down, like the origin capsule.
     @Test("the row asks for the download ability instead of deciding itself", .needsTheSources)
     func theRowIsHandedItsDownloadAbility() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -147,13 +147,13 @@ struct PodcastShowModeTests {
                 "die Seite reicht die Faehigkeit nicht mehr hinunter")
     }
 
-    // MARK: - Von Hand als gehoert markieren
+    // MARK: - Marking as heard by hand
 
-    /// Markieren ist eine Aussage ueber das eigene Hoeren und gehoert damit in
-    /// dieselbe Familie wie ein Hoerstand, auch ohne Abo. Es schreibt die
-    /// Endposition ueber die dritte Schreibstelle, und die trug die Regel
-    /// nicht: ohne sie ueberlebt die Position ihre Aufloesung, und die Kachel
-    /// traegt keinen Namen.
+    /// Marking is a statement about one's own listening and so belongs in
+    /// the same family as a listening state, even without a subscription. It writes the
+    /// end position through the third write place, and the rule did not
+    /// cover that one: without it the position outlives its resolution, and the tile
+    /// carries no name.
     @Test("marking a browsed episode by hand keeps it resolvable, a tombstone does not")
     func markingByHandKeepsTheEpisodeResolvable() throws {
         let suite = "showmode-mark-\(UUID().uuidString)"
@@ -187,9 +187,9 @@ struct PodcastShowModeTests {
                                 "die von Hand markierte Folge ist nicht mehr aufloesbar")
         #expect(kept.episodeTitle == "Erste Folge")
 
-        // Rot-Probe: der Ungehoert-Vermerk sagt das Gegenteil und schreibt
-        // deshalb nichts nieder. Ohne sie meldete eine Schreibstelle, die JEDE
-        // Kennung niederschreibt, genauso gruen.
+        // Red probe: the unheard note says the opposite and therefore writes
+        // nothing down. Without it, a write place that writes down EVERY
+        // identifier would report green just the same.
         ListeningStore.store(untouched,
                              entry: ProgressMark.entry(position: 0, duration: 0, nowMs: 1_000),
                              in: defaults)
@@ -197,25 +197,25 @@ struct PodcastShowModeTests {
                 "der Ungehoert-Vermerk schreibt die Folge nieder")
     }
 
-    // MARK: - Ein 404 wegen fehlendem Abo vermerkt nichts als weg
+    // MARK: - A 404 due to a missing subscription notes nothing as gone
 
-    /// Ein Fehlschlag beim Aufloesen einer Folge ist kein Urteil ueber den
-    /// Eintrag. Die Klassifizierung trennt beides, und nur ein klares Weg
-    /// darf vermerken.
+    /// A failure when resolving an episode is no verdict on the
+    /// entry. The classification separates the two, and only a clear gone
+    /// may note it.
     @Test("a 404 for a missing subscription is not a dead entry")
     func aMissingSubscriptionIsNotAGoneEntry() {
-        // Der Vermerk gilt nur fuer Katalog-Kennungen. Eine Podcast-Folge
-        // gehoert ihrem Feed, und ein 404 sagt hier nur, dass diese App sie
-        // gerade nicht aufloesen konnte.
+        // The note applies only to catalog identifiers. A podcast episode
+        // belongs to its feed, and a 404 here says only that this app could not
+        // resolve it just now.
         #expect(!FreeCatalog.isCatalogId("rss:https://example.org/feed.xml:guid-1"),
                 "eine Podcast-Folge wuerde als toter Katalog-Eintrag vermerkt")
-        // Rot-Probe: an einer echten Katalog-Kennung greift dieselbe Frage.
+        // Red probe: on a real catalog identifier the same question applies.
         #expect(FreeCatalog.isCatalogId(FreeCatalog.jamendoPrefix + "1234"))
     }
 }
 
-/// Die Einstellungen einer Sendung erreicht man auch von ihrer Folge
-/// aus, und das Blatt nennt die Sendung als erste Zeile statt im Titel.
+/// The settings of a show can also be reached from its episode,
+/// and the sheet names the show as the first line instead of in the title.
 @MainActor
 struct PodcastShowSettingsReachTests {
     @MainActor final class Held { var value = PodcastShowPreferences.default }
@@ -226,7 +226,7 @@ struct PodcastShowSettingsReachTests {
         return try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
     }
 
-    @Test("eine Wahl im Blatt schreibt ueber die eine Regel, und angesehen schreibt sie nichts")
+    @Test("a choice in the sheet writes through the one rule, and when viewed it writes nothing")
     func aChoiceWritesThroughTheOneRule() throws {
         let suite = "showsettings-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -264,7 +264,7 @@ struct PodcastShowSettingsReachTests {
         #expect(notes.said.isEmpty, "dieselbe Wahl noch einmal reist nicht")
     }
 
-    @Test("eine Geste schreibt und sagt nur ihre Wahl, ein fremd uebernommener Wert bleibt")
+    @Test("a gesture writes and says only its choice, a value adopted from elsewhere stays")
     func aGestureWritesOnlyItsChoice() throws {
         let suite = "showsettings-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -292,7 +292,7 @@ struct PodcastShowSettingsReachTests {
         #expect(notes.said == ["\(filter)=true"], "only the tapped choice travels, said: \(notes.said)")
     }
 
-    @Test("GT-15 und D7: die Folge oeffnet das Blatt ihrer Sendung, es heisst Einstellungen und nennt die Sendung zuerst", .needsTheSources)
+    @Test("GT-15 and D7: the episode opens the sheet of its show, it is called Settings and names the show first", .needsTheSources)
     func theEpisodeOpensTheShowSettings() throws {
         let episode = try Self.source("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift")
         #expect(episode.contains("PodcastShowSettingsButton { showSettings = true }"), "die Folge hat das Zeichen")

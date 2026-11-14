@@ -25,7 +25,7 @@ struct PodcastFeedAuthApplyTests {
 
     private let entry = FeedAuthBlock.Entry(credentials: .init(user: "u", password: "p"), at: 1_700_000_000_000)
 
-    @Test("ein apply ohne eigenen Bestand tut nichts: kein Schrieb, kein Stempel")
+    @Test("an apply without own stock does nothing: no write, no stamp")
     func applyWithoutOwnStockDoesNothing() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -36,7 +36,7 @@ struct PodcastFeedAuthApplyTests {
         #expect(stamps(defaults).isEmpty, "nothing may be stamped either")
     }
 
-    @Test("gestempelt wird nur ein gelungener Schrieb; ein gescheiterter laesst den Moment stehen")
+    @Test("only a successful write is stamped; a failed one leaves the moment as it is")
     func onlyALandedWriteIsStamped() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -54,7 +54,7 @@ struct PodcastFeedAuthApplyTests {
         #expect(writes == 0)
     }
 
-    @Test("die eigene Eingabe: ohne gelandeten Schrieb kein neuer Moment")
+    @Test("the own input: without a landed write no new moment")
     func ownEditStampsOnlyALandedWrite() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }

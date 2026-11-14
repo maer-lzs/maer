@@ -130,7 +130,7 @@ struct PrivacyManifestFenceTests {
         }
     }
 
-    @Test("das Manifest der App nennt genau die Kategorien, die ihr Code ruft, je mit ihrem Grund", .needsTheSources)
+    @Test("the manifest of the app names exactly the categories its code calls, each with its reason", .needsTheSources)
     func theAppManifestMatchesItsSources() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         let called = try Self.called(by: SourceTree.files(under: sources))
@@ -140,7 +140,7 @@ struct PrivacyManifestFenceTests {
         expectMatch(declared: try Self.declared(in: manifest), called: called, target: "the app")
     }
 
-    @Test("das Widget ruft keine Kategorie ohne eigenes Manifest", .needsTheSources, .needsTheProjectFile)
+    @Test("the widget calls no category without its own manifest", .needsTheSources, .needsTheProjectFile)
     func theWidgetManifestMatchesItsSources() throws {
         let project = try String(contentsOf: SourceTree.root.appendingPathComponent("Maer.xcodeproj/project.pbxproj"),
                                  encoding: .utf8)
@@ -159,7 +159,7 @@ struct PrivacyManifestFenceTests {
         expectMatch(declared: declared, called: called, target: "the widget")
     }
 
-    @Test("der Leser trennt Aufruf, Methode gleichen Namens und Kommentar")
+    @Test("the reader separates call, method of the same name and comment")
     func theReaderSeesTheCallNotItsNeighbours() throws {
         #expect(Self.categoriesCalled(in: "let v = try url.resourceValues(forKeys: [.contentModificationDateKey])")
                 == ["NSPrivacyAccessedAPICategoryFileTimestamp"])

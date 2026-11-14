@@ -55,7 +55,7 @@ struct PlaylistOwnerTests {
         try await body()
     }
 
-    @Test("A's Listen ruhen beim Wechsel, B sieht keine davon, der Rueckweg zu A bringt jede Liste Zeile fuer Zeile zurueck")
+    @Test("A's lists rest at the switch, B sees none of them, the way back to A brings every list back row by row")
     func theListsRestUnderTheirAccount() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -104,7 +104,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("kann die Ruhe nicht gelegt werden, bleiben die Listen und die Runde haelt an")
+    @Test("if the rest cannot be laid down, the lists stay and the round halts")
     func anUnlaidRestHoldsTheRound() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -128,7 +128,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("sind die Zeilen beim Wechsel ungelesen, bleiben A's Listen unveraendert und die Runde haelt an")
+    @Test("if the rows are unread at the switch, A's lists stay unchanged and the round halts")
     func unreadRowsHoldTheSwitch() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -162,7 +162,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("ein offenes Ersetzen eines frueheren Laufs und ein drittes Konto: B's Ruhe traegt keine Liste von A, A's bleiben bei A")
+    @Test("an open replace of an earlier run and a third account: B's rest carries no list of A, A's stay with A")
     func aThirdAccountAfterAnOpenReplacement() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -188,7 +188,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("das Ersetzen der Listen landet mit seiner Marke, erst dann settled der Halter; ein Neustart davor ersetzt nicht noch einmal, was B danach anlegte")
+    @Test("the replace of the lists lands with its mark, only then does the holder settle; a restart before it does not replace again what B created afterwards")
     func theReplacementLandsWithItsMark() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -215,7 +215,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("ein Wechsel bei ausgeschaltetem Sync und ohne Halter: A's Listen ruhen unter A, B sieht keine, B's Liste bleibt B's, auch wenn Sync wieder an ist")
+    @Test("a switch with sync off and without a holder: A's lists rest under A, B sees none, B's list stays B's, even when sync is on again")
     func aSwitchWithSyncOffAndNoHolder() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -241,7 +241,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("ein Wechsel, dessen Ersetzen nicht ankam, wird beim naechsten Start beendet, ohne die Ruhe zu ueberschreiben")
+    @Test("a switch whose replace did not arrive is finished at the next start, without overwriting the rest")
     func aBrokenReplacementEndsWithoutTouchingTheRest() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -274,7 +274,7 @@ struct PlaylistOwnerTests {
         try KeyedRowStore<MaerPlaylists.Playlist>.undecodedNow(table: .maerPlaylist, reader: try #require(try database.readerNow()))
     }
 
-    @Test("eine Zeile, die dieser Bau nicht liest, ruht mit A, steht nie unter B und kommt auf dem Rueckweg ungelesen zurueck")
+    @Test("a row this build does not read rests with A, never appears under B and comes back unread on the way back")
     func anUnreadRowRestsWithItsAccount() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -317,7 +317,7 @@ struct PlaylistOwnerTests {
     /// Two hand-overs without waiting between them: the second one must
     /// not read the rows before the first one's write landed, or B's rest
     /// carries A's unread row and both accounts hold it.
-    @Test("zwei Uebergaben ohne Warten: die zweite liest die Zeilen erst nach dem Schrieb der ersten")
+    @Test("two handovers without waiting: the second reads the rows only after the write of the first")
     func twoHandOversWithoutWaitingReadAfterTheWrite() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }
@@ -352,7 +352,7 @@ struct PlaylistOwnerTests {
         }
     }
 
-    @Test("bricht die Uebergabe nach dem Ablegen und vor dem Ersetzen ab, geht die ungelesene Zeile nicht verloren und steht nicht doppelt")
+    @Test("if the handover aborts after laying down and before replacing, the unread row is not lost and does not appear twice")
     func anUnreadRowSurvivesABrokenReplacement() async throws {
         let rig = try rig()
         defer { try? FileManager.default.removeItem(at: rig.directory) }

@@ -8,41 +8,41 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Das Messinstrument dazu, dass eine Gehört-Marke zurückkippt: Es muss die
-/// beiden Ursachen TRENNEN, nicht eine davon nahelegen.
+/// The measuring instrument for a heard mark flipping back: it must
+/// SEPARATE the two causes, not suggest one of them.
 struct ProgressDiagnosisTests {
     private func entry(position: Double, updatedAt: Double, duration: Double) -> ProgressDiagnosis.Entry {
         .init(title: "Folge 26", guid: "rss:x:26", position: position,
               updatedAt: updatedAt, feedDuration: duration)
     }
 
-    @Test("eine gewachsene Dauer lässt die Marke fallen — genau das Bild aus dem Befund")
+    @Test("a grown duration drops the mark, exactly the picture from the finding")
     func grownDurationShowsAsInProgress() {
-        // Als gehört markiert bei 3.420 s; der Feed meldet heute drei Minuten mehr.
+        // Marked as heard at 3.420 s; the feed reports three minutes more today.
         let e = entry(position: 3_420, updatedAt: 1_000, duration: 3_600)
         #expect(ProgressDiagnosis.verdict(e, tail: 0) == .inProgress(remaining: 180))
-        // Und mit der damaligen Dauer waere es gehört gewesen.
+        // And with the duration of back then it would have been heard.
         #expect(ProgressDiagnosis.verdict(entry(position: 3_420, updatedAt: 1_000, duration: 3_420), tail: 0) == .played)
     }
 
-    @Test("der Zeitstempel trennt die beiden Thesen — das ist der ganze Zweck")
+    @Test("the timestamp separates the two theses, that is the whole purpose")
     func timestampSeparatesTheCauses() {
         let sync: Double = 10_000
-        // Lange vor dem Abgleich geschrieben: niemand hat angefasst.
+        // Written long before the sync: nobody touched it.
         #expect(ProgressDiagnosis.trace(entry(position: 1, updatedAt: 5_000, duration: 60),
                                         lastSync: sync) == .olderThanSync)
-        // Zum Abgleich geschrieben: etwas hat überschrieben.
+        // Written at the sync: something overwrote it.
         #expect(ProgressDiagnosis.trace(entry(position: 1, updatedAt: 10_030, duration: 60),
                                         lastSync: sync) == .writtenBySync)
-        // Danach geschrieben: die eigene Hand.
+        // Written afterwards: the own hand.
         #expect(ProgressDiagnosis.trace(entry(position: 1, updatedAt: 20_000, duration: 60),
                                         lastSync: sync) == .newerThanSync)
-        // Ohne bekannten Abgleich wird NICHTS behauptet.
+        // Without a known sync NOTHING is claimed.
         #expect(ProgressDiagnosis.trace(entry(position: 1, updatedAt: 20_000, duration: 60),
                                         lastSync: nil) == .noSyncKnown)
     }
 
-    @Test("der Bericht nennt Position, heutige Dauer, Zeitstempel und seine Deutung")
+    @Test("the report names position, today's duration, timestamp and its interpretation")
     func reportCarriesTheDecidingValues() {
         let text = ProgressDiagnosis.report(
             show: "The Rest Is History",
@@ -55,7 +55,7 @@ struct ProgressDiagnosisTests {
         #expect(text.contains("rss:x:26"))
     }
 
-    @Test("ohne gespeicherte Positionen sagt der Bericht das, statt leer zu sein")
+    @Test("without stored positions the report says so, instead of being empty")
     func emptyIsStated() {
         let text = ProgressDiagnosis.report(show: "Leer", entries: [], lastSync: nil,
                                             now: 0, format: { String(Int($0)) })
@@ -64,17 +64,17 @@ struct ProgressDiagnosisTests {
 }
 
 
-// MARK: - Die BUCH-Ansicht desselben Instruments
+// MARK: - The BOOK view of the same instrument
 
 struct BookProgressDiagnosisTests {
     private func stamp(_ s: Double) -> String { String(Int(s)) }
     private func time(_ s: Double) -> String { String(Int(s)) + "s" }
 
-    @Test("der Bericht nennt den Ruecksprung, den der Start ausloesen wuerde")
+    @Test("the report names the jump back that the start would trigger")
     func namesTheBackwardJump() {
-        // Die gemessene Lage: lokal deutlich weiter, aber ÄLTER
-        // gestempelt als der Serverstand ⇒ der Start nimmt den Server und
-        // wirft zurueck. Genau das muss das Instrument sagen.
+        // The measured situation: locally clearly further, but stamped OLDER
+        // than the server state ⇒ the start takes the server and
+        // throws back. Exactly that is what the instrument must say.
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: 3600, serverUpdatedAtMs: 2_000_000,
             localPosition: 4800, localSavedAtMs: 1_000_000,
@@ -87,7 +87,7 @@ struct BookProgressDiagnosisTests {
         #expect(report.contains("heruntergeladen: ja"))
     }
 
-    @Test("ein NEUERER lokaler Stand gewinnt — und der Bericht sagt es")
+    @Test("a NEWER local state wins, and the report says so")
     func localWinsWhenNewer() {
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: 3600, serverUpdatedAtMs: 1_000_000,
@@ -100,7 +100,7 @@ struct BookProgressDiagnosisTests {
         #expect(report.contains("offene Sync-Aufträge: 2"))
     }
 
-    @Test("fehlende Seiten werden benannt, nicht erfunden")
+    @Test("missing pages are named, not invented")
     func missingSidesAreNamed() {
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: nil, serverUpdatedAtMs: nil,

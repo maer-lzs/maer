@@ -55,7 +55,7 @@ struct PodcastUnknownBaseTests {
             .appendingPathExtension("wipe-refused.txt").path)
     }
 
-    @Test("bei unbekannter Grundlage entfernt ein leerer Schnappschuss ohne Absicht nichts, die Verweigerung hinterlaesst ihre Notiz")
+    @Test("with an unknown base an empty snapshot without intent removes nothing, the refusal leaves its note")
     func anEmptySnapshotUnderAnUnknownBaseIsRefused() async throws {
         try await withOwnStore { folder, defaults, database in
             let run = UUID().uuidString.prefix(8)
@@ -74,7 +74,7 @@ struct PodcastUnknownBaseTests {
         }
     }
 
-    @Test("scheitert die volle Lesung nach den Koepfen, bleibt eine Abbestellung nach dem Neustart weg")
+    @Test("if the full read fails after the heads, an unsubscribe stays gone after the restart")
     func anUnsubscribeAfterAFailedFullReadSurvives() async throws {
         try await withOwnStore { folder, defaults, database in
             let run = UUID().uuidString.prefix(8)
@@ -99,7 +99,7 @@ struct PodcastUnknownBaseTests {
     /// The tombstones of the subscription family are the person's
     /// unsubscribes made on another device: when they leave the list empty,
     /// that empty list is the person's intent and lands.
-    @Test("Grabsteine aus der Wolke, die die Liste leer raeumen, bleiben nach dem Neustart weg")
+    @Test("tombstones from the cloud that clear the list empty stay gone after the restart")
     func cloudTombstonesThatEmptyTheListSurvive() async throws {
         try await withOwnStore { folder, defaults, database in
             let run = UUID().uuidString.prefix(8)
@@ -126,7 +126,7 @@ struct PodcastUnknownBaseTests {
     /// before that write runs a mirror round takes the mirrored one
     /// (refused). The list is empty when the write runs, and the permission
     /// does not ride along: the mirrored row stays.
-    @Test("eine Abbestellung, waehrend noch eine Sendung stand, erlaubt nicht das Leeren durch eine Spiegel-Runde danach")
+    @Test("an unsubscribe while a show was still there does not allow emptying by a mirror round afterwards")
     func aPermissionDoesNotCoverAMirrorRoundAfterIt() async throws {
         try await withOwnStore { folder, defaults, database in
             let run = UUID().uuidString.prefix(8)
@@ -151,7 +151,7 @@ struct PodcastUnknownBaseTests {
         }
     }
 
-    @Test("zwei eingereihte Schriebe bei unbekannter Grundlage, der zweite leer: der leere entfernt nichts")
+    @Test("two queued writes with an unknown base, the second empty: the empty one removes nothing")
     func twoQueuedWritesUnderAnUnknownBase() async throws {
         try await withOwnStore { folder, defaults, database in
             let run = UUID().uuidString.prefix(8)
@@ -180,7 +180,7 @@ struct PodcastUnknownBaseTests {
     /// The guard is asked of the base the write really takes, not of the one
     /// at the moment the write was handed over: on fresh rows the first
     /// write has not landed yet when the empty one is queued.
-    @Test("der Schutz fragt die Grundlage, die der Schrieb nimmt: frisch, ein Schrieb und ein leerer eingereiht, nichts entfernt")
+    @Test("the protection asks the base the write takes: fresh, one write and one empty queued, nothing removed")
     func theGuardAsksTheBaseTheWriteTakes() async throws {
         try await withOwnStore { folder, defaults, database in
             let show = Self.show("https://feeds.example.org/\(UUID().uuidString.prefix(8))/frisch.xml")
@@ -196,7 +196,7 @@ struct PodcastUnknownBaseTests {
         }
     }
 
-    @Test("bei unbekannter Grundlage bleibt eine abbestellte Sendung nach dem Neustart weg, eine nie gelesene Zeile bleibt")
+    @Test("with an unknown base an unsubscribed show stays gone after the restart, a never-read row stays")
     func anUnsubscribeSurvivesTheRestart() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("unknown-base-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -243,7 +243,7 @@ struct PodcastUnknownBaseTests {
     /// The adoption by the list's own rule: the rows' order, a show of the
     /// run in its row's place with the row's episodes joined, a show only
     /// the run holds at the end.
-    @Test("die Uebernahme der Abos: Reihenfolge der Zeilen, Folgen vereinigt, die Sendung des Laufs am Ende")
+    @Test("the adoption of the subscriptions: order of the rows, episodes merged, the show of the run at the end")
     func theAdoptionRule() {
         var rowA = Self.show("https://feeds.example.org/a.xml")
         let rowB = Self.show("https://feeds.example.org/b.xml")
@@ -261,7 +261,7 @@ struct PodcastUnknownBaseTests {
     /// A start whose read failed before it saw a show: a write waits until
     /// the rows are read, then the show of the rows stands with its episodes
     /// beside the one of the run, in memory and in the rows.
-    @Test("Abos nach gescheitertem Start: ein Schrieb liest zuerst, die Sendung der Zeilen bleibt mit ihren Folgen")
+    @Test("Subscriptions after a failed start: a write reads first, the show of the rows stays with its episodes")
     func aWriteAfterAFailedStartReadsFirst() async throws {
         try await withOwnStore { folder, defaults, database in
             let connection = try database.connection()

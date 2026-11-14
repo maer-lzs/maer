@@ -24,7 +24,7 @@ struct PlayerToolRuleTests {
         PlayerToolRule.tools(for: input, driveModeOpen: true)
     }
 
-    @Test("bei geschlossenem Tor gibt es den Fahrmodus in keiner Art, und das Tor ist zu")
+    @Test("with the gate closed, drive mode exists in no kind, and the gate is shut")
     func driveModeClosed() {
         #expect(!DriveModeGate.isOpen)
         for content in [PlayerToolRule.Content.spokenWord, .music, .liveStream] {
@@ -32,7 +32,7 @@ struct PlayerToolRuleTests {
         }
     }
 
-    @Test("kein Eingang erreicht den Fahrmodus: Knopf, Siri, Selbststart und Einstellungen fragen das Tor", .needsTheSources)
+    @Test("no entry reaches drive mode: button, Siri, self-start and settings ask the gate", .needsTheSources)
     func noEntryReachesDriveMode() throws {
         let read = { (path: String) in
             SyncContractFenceTests.stripped(
@@ -54,50 +54,50 @@ struct PlayerToolRuleTests {
         #expect(setters.isEmpty, "drive mode is switched on past its gate: \(setters)")
     }
 
-    @Test("ein Hoerbuch vom Server zeigt Schlange, Lesezeichen, Fahrmodus, Gehoert, Playlist")
+    @Test("an audiobook from the server shows queue, bookmarks, drive mode, heard, playlist")
     func serverBook() {
         let tools = open(input(.spokenWord, bookmarks: true))
         #expect(tools == [.queue, .bookmarks, .driveMode, .markFinished, .playlist])
     }
 
-    @Test("ein Katalog-Hoerbuch hat keine Lesezeichen, aber eine Quelle und die Gehoert-Marke")
+    @Test("a catalog audiobook has no bookmarks, but a source and the heard mark")
     func catalogueBook() {
         let tools = open(input(.spokenWord, catalogue: true))
         #expect(tools == [.queue, .driveMode, .markFinished, .playlist, .source])
     }
 
-    @Test("eine Folge mit Transkript zeigt es, ohne Lesezeichen")
+    @Test("an episode with a transcript shows it, without bookmarks")
     func episodeWithTranscript() {
         let tools = open(input(.spokenWord, transcript: true))
         #expect(tools == [.queue, .driveMode, .transcript, .markFinished, .playlist])
     }
 
-    /// Der Entscheid: bei Musik faellt die Gehoert-Marke weg.
-    @Test("Musik hat keine Gehoert-Marke, wohl aber Playlist und gefundenen Liedtext")
+    /// The decision: for music the heard mark is dropped.
+    @Test("Music has no heard mark, but a playlist and found lyrics")
     func music() {
         let tools = open(input(.music, lyrics: true))
         #expect(!tools.contains(.markFinished))
         #expect(tools == [.queue, .driveMode, .lyrics, .playlist])
     }
 
-    @Test("Katalog-Musik traegt die Quelle, sonst wie Musik")
+    @Test("Catalog music carries the source, otherwise like music")
     func catalogueMusic() {
         let tools = open(input(.music, catalogue: true))
         #expect(tools == [.queue, .driveMode, .playlist, .source])
     }
 
-    /// Ein Stream ist nie gehoert und steht in keiner Playlist: nur die
-    /// zwei Werkzeuge, die keinem Titel gehoeren.
-    @Test("Radio zeigt nur Schlange und Fahrmodus")
+    /// A stream is never heard and is in no playlist: only the
+    /// two tools that belong to no title.
+    @Test("Radio shows only queue and drive mode")
     func radio() {
         #expect(open(input(.liveStream)) == [.queue, .driveMode])
     }
 
-    /// Rot-Probe auf die FORM: die Regel ordnet positiv zu. Eine
-    /// Verneinung wie „nicht Musik" wuerde jeder kuenftigen Familie alles
-    /// vererben.
-    /// Der Pruefer als pure Funktion ueber den Quelltext: Kommentarzeilen
-    /// fallen weg, dann werden die verneinten Art-Formen gezaehlt.
+    /// Red probe on the FORM: the rule assigns positively. A
+    /// negation like „nicht Musik" would pass everything on to every
+    /// future family.
+    /// The checker as a pure function over the source text: comment lines
+    /// are dropped, then the negated kind forms are counted.
     private static func negatedKindForms(in text: String) -> [String] {
         let code = text.split(separator: "\n").filter {
             !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//")
@@ -105,15 +105,15 @@ struct PlayerToolRuleTests {
         return ["!= .music", "!isMusic", "!= .liveStream", "!= .spokenWord"].filter { code.contains($0) }
     }
 
-    @Test("die Regel enthaelt keine Verneinung einer Art", .needsTheSources)
+    @Test("the rule contains no negation of a kind", .needsTheSources)
     func ruleIsWrittenPositively() throws {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Models/PlayerToolRule.swift")
         let text = try String(contentsOf: file, encoding: .utf8)
         #expect(Self.negatedKindForms(in: text).isEmpty)
-        // Rot-Proben am PRUEFER: die Form im Code faellt auf, dieselbe
-        // Form in einem Kommentar nicht.
+        // Red probes on the CHECKER: the form in code is caught, the same
+        // form in a comment is not.
         #expect(Self.negatedKindForms(in: "if kind != .music { x }") == ["!= .music"])
         #expect(Self.negatedKindForms(in: "// if kind != .music { x }").isEmpty)
     }

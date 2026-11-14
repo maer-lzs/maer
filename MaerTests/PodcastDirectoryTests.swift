@@ -8,11 +8,11 @@ import Foundation
 import Testing
 @testable import Maer
 
-/// Test für die PodcastIndex-Signatur. SHA1(Key+Secret+Datum). Ein falscher
-/// Hash fällt sonst erst als 401 beim Server auf.
+/// Test of the PodcastIndex signature. SHA1(Key+Secret+Date). A wrong
+/// hash would show up only as a 401 at the server.
 struct PodcastDirectoryTests {
 
-    @Test("SHA1-Auth-Header gegen bekannten Wert")
+    @Test("SHA1 auth header against a known value")
     func authHeaderMatchesKnownSHA1() {
         // SHA1("abc") = a9993e364706816aba3e25717850c26c9cd0d89d
         let header = PodcastIndexDirectory.authHeader(key: "a", secret: "b", date: "c")

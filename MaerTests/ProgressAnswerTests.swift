@@ -24,7 +24,7 @@ struct ProgressAnswerTests {
         )
     }
 
-    @Test("die Regel: ein gescheiterter Abruf ersetzt keinen bekannten Fortschritt")
+    @Test("the rule: a failed fetch replaces no known progress")
     func theRule() {
         let known = ["b1": BookProgress(fraction: 0.4, isFinished: false, lastUpdate: 1)]
         let fetched = ["b1": BookProgress(fraction: 0.6, isFinished: false, lastUpdate: 2)]
@@ -33,7 +33,7 @@ struct ProgressAnswerTests {
         #expect(ProgressAnswer.of([:], known: known).isEmpty, "an answered empty map is an answer")
     }
 
-    @Test("die Seiten kommen, der Fortschritt scheitert: die Balken bleiben")
+    @Test("the pages arrive, the progress fails: the bars stay")
     func theBarsStayWhenTheProgressFails() async throws {
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("maer-progress-\(UUID().uuidString)")
@@ -54,7 +54,7 @@ struct ProgressAnswerTests {
                 "a failed progress fetch wiped the bar")
     }
 
-    @Test("kein Ladeweg setzt bei einem Fehlschlag leeren Fortschritt", .needsTheSources)
+    @Test("no load path sets empty progress on a failure", .needsTheSources)
     func noLoadPathFallsBackToEmpty() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/LibraryViewModel.swift"), encoding: .utf8))

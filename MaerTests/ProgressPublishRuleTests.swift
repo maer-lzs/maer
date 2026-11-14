@@ -38,7 +38,7 @@ struct ProgressPublishRuleTests {
         (1...chunks).map { Double($0) / Double(chunks) }
     }
 
-    @Test("ein Download meldet rund hundertmal, gleich wie fein die Stuecke kommen")
+    @Test("a download reports about a hundred times, however fine the chunks arrive")
     func aDownloadPublishesAboutAHundredTimes() {
         // A 200 MB book in 64 KB chunks, and the same book reported a
         // hundred thousand times: the count stays at the percent steps.
@@ -50,7 +50,7 @@ struct ProgressPublishRuleTests {
         #expect(coarse < 3_200 / 30)
     }
 
-    @Test("grobe Meldungen gehen alle hinaus, und das Ende immer")
+    @Test("coarse reports all go out, and the end always")
     func coarseReportsAllGoOutAndTheEndAlways() {
         #expect(Self.publishes(for: Self.evenStream(chunks: 10)) == 10)
         // A report just below the next step is held back, the end is not.
@@ -60,7 +60,7 @@ struct ProgressPublishRuleTests {
                 == .skip)
     }
 
-    @Test("eine unbekannte Groesse wird einmal gemeldet, nicht je Stueck")
+    @Test("an unknown size is reported once, not per chunk")
     func anUnknownSizeGoesOutOnce() {
         #expect(Self.publishes(for: Array(repeating: -1, count: 500)) == 1)
         #expect(ProgressPublishRule.outcome(current: 0, lastPublished: nil, fraction: -1)
@@ -69,7 +69,7 @@ struct ProgressPublishRuleTests {
                 == .skip)
     }
 
-    @Test("wer nicht laedt, meldet nichts")
+    @Test("whoever is not loading reports nothing")
     func nothingGoesOutWhileNotDownloading() {
         #expect(ProgressPublishRule.outcome(current: nil, lastPublished: nil, fraction: 0.5) == .skip)
         #expect(ProgressPublishRule.outcome(current: nil, lastPublished: 0.4, fraction: 1) == .skip)

@@ -38,7 +38,7 @@ struct PlaylistCarrierTests {
         return snap
     }
 
-    @Test("der Schluessel-Traeger: eine Momentaufnahme reist in den Blob und zurueck, mit jedem Feld")
+    @Test("the key carrier: a snapshot travels into the blob and back, with every field")
     func keyValueCarrierRoundTripsASnapshot() {
         let store = InMemoryCloudStore()
         let carrier = KeyValuePlaylistCarrier(store: store)
@@ -54,7 +54,7 @@ struct PlaylistCarrierTests {
         #expect(back.tombstones["gone"] == 1_699_000_000)
     }
 
-    @Test("ein Blob von vor den Feldern liest als Vereinigung, kein fehlendes Feld wirft")
+    @Test("a blob from before the fields reads as a union, no missing field throws")
     func aBlobFromBeforeTheFieldsStillReads() {
         let store = InMemoryCloudStore()
         // The oldest shape: name, updatedAt, items only.
@@ -68,7 +68,7 @@ struct PlaylistCarrierTests {
         #expect(held.lists["old"]?.removed.isEmpty == true)
     }
 
-    @Test("der Start meldet genau einen Beobachter an, ein zweiter Start keinen weiteren")
+    @Test("the start registers exactly one observer, a second start no further one")
     func startRegistersAtMostOneObserver() {
         let carrier = KeyValuePlaylistCarrier(store: InMemoryCloudStore())
         carrier.start { }
@@ -76,14 +76,14 @@ struct PlaylistCarrierTests {
         #expect(carrier.observerRegistrations == 1)
     }
 
-    @Test("die Fabrik stellt die Playlisten auf den Dienst, sobald ein Zugang da ist, sonst auf den Schluessel")
+    @Test("the factory puts the playlists on the service as soon as an access exists, otherwise on the key")
     func theFactoryChoosesByAccess() {
         #expect(PlaylistCarriers.make(access: nil) is KeyValuePlaylistCarrier)
         let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
         #expect(PlaylistCarriers.make(access: access) is MaerSyncPlaylistCarrier)
     }
 
-    @Test("der Dienst-Traeger: die Momentaufnahme reist als EIN Dokument, eine fremde Fassung weckt den Laeufer")
+    @Test("the service carrier: the snapshot travels as ONE document, a foreign version wakes the runner")
     func serviceCarrierWritesOneWholeDocument() async throws {
         let name = "playlist-svc-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
@@ -120,7 +120,7 @@ struct PlaylistCarrierTests {
         #expect(session.claims.isEmpty)
     }
 
-    @Test("der CloudKit-Draht traegt jedes Feld hin und zurueck, mit und ohne Geraet")
+    @Test("the CloudKit wire carries every field there and back, with and without a device")
     func theCloudKitWireRoundTrips() throws {
         let entry = try #require(sample.lists["l1"])
         let back = try #require(MaerPlaylistEntryWire.decode(MaerPlaylistEntryWire.encode(entry)))
@@ -131,7 +131,7 @@ struct PlaylistCarrierTests {
         #expect(MaerPlaylistEntryWire.decode(Data("nonsense".utf8)) == nil)
     }
 
-    @Test("eine Form fuer drei Draehte: jeder huellt dasselbe Paar, jeder mit seiner Geraete-Gepflogenheit", .needsTheSources)
+    @Test("one form for three wires: each wraps the same pair, each with its own device convention", .needsTheSources)
     func oneShapeForThreeWires() throws {
         // The pair itself: what it writes, it reads; an empty device reads as none.
         let entry = try #require(sample.lists["l1"])
@@ -207,7 +207,7 @@ struct PlaylistCarrierTests {
         })
     }
 
-    @Test("der Draht traegt jedes Feld hin und zurueck; Unlesbares ist keine Momentaufnahme")
+    @Test("the wire carries every field there and back; unreadable data is no snapshot")
     func theServiceWireRoundTrips() throws {
         let data = try MaerSyncPlaylistWire.encode(sample)
         #expect(sameSnapshot(MaerSyncPlaylistWire.decode(data), sample))

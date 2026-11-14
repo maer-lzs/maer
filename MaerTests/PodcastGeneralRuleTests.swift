@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Werte fuer alle Sendungen: wer folgt, wer eine eigene
-/// Einstellung hat, was eine Aenderung trifft und was sie kostet.
+/// Values for all shows: who follows, who has an own
+/// setting, what a change affects and what it costs.
 @MainActor
 struct PodcastGeneralRuleTests {
     static func source(_ path: String) throws -> String {
@@ -17,14 +17,14 @@ struct PodcastGeneralRuleTests {
         return try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
     }
 
-    @Test("ohne eigenen Wert folgt die Sendung, und ein Wert gleich dem allgemeinen ist keine eigene Einstellung")
+    @Test("without an own value the show follows, and a value equal to the general one is no own setting")
     func whoFollows() {
         #expect(PodcastGeneralRule.effective(stored: nil, general: "latest") == "latest")
         #expect(PodcastGeneralRule.effective(stored: "off", general: "latest") == "off")
         #expect(PodcastGeneralRule.own(stored: ["a": "latest", "b": "all", "c": "off"], general: "all") == ["a", "c"])
     }
 
-    @Test("Alle ueberschreiben nimmt jede eigene, Nur ohne eigene nimmt nur die Kopien des alten Werts")
+    @Test("„Alle ueberschreiben“ takes every own setting, „Nur ohne eigene“ takes only the copies of the old value")
     func whatAChangeClears() {
         let stored = ["a": "latest", "b": "all"]
         #expect(PodcastGeneralRule.cleared(stored: stored, old: "all", answer: .overwriteAll) == ["a", "b"])
@@ -32,7 +32,7 @@ struct PodcastGeneralRuleTests {
                 "a keeps its own; b stored the old value and follows the new one")
     }
 
-    @Test("Die Frage nennt die Sendungen mit eigener Einstellung und den neuen Wert")
+    @Test("The question names the shows with an own setting and the new value")
     func theQuestionNamesTheShows() {
         let show = PodcastShow(id: "rss:own", title: "Eigene", author: nil, artworkURL: nil,
                                description: nil, feedURL: "https://example.org/own.xml", episodes: [])
@@ -41,7 +41,7 @@ struct PodcastGeneralRuleTests {
         #expect(asked.message.contains(PodcastGeneralField.newEpisodes.label("off")), "\(asked.message)")
     }
 
-    @Test("Ein Nutzer ohne Aenderung merkt nichts: ohne allgemeinen Wert gelten die alten Vorgaben")
+    @Test("A user without a change notices nothing: without a general value the old defaults apply")
     func nothingChangesWithoutAChoice() throws {
         try #require(UserDefaults.standard.object(forKey: AppStorageKeys.podcastInboxModeAll) == nil)
         for key in ["podcastAutoDownloadModeAll", "podcastAutoDownloadOnAll",
@@ -56,7 +56,7 @@ struct PodcastGeneralRuleTests {
         #expect(PodcastGeneralField.allCases.allSatisfy { $0.stored(showId) == nil }, "nothing was written")
     }
 
-    @Test("Neue Folgen und die Richtung reisen, Ein/Aus und Anzahl der Automatik bleiben auf dem Geraet", .needsTheSources)
+    @Test("New episodes and the direction travel, on/off and count of the automation stay on the device", .needsTheSources)
     func whatTravels() throws {
         #expect(UserChoiceCatalog.statics[AppStorageKeys.podcastInboxModeAll] == .travels)
         #expect(UserChoiceCatalog.travelingScalars.contains(AppStorageKeys.podcastInboxModeAll))
@@ -81,7 +81,7 @@ struct PodcastGeneralRuleTests {
         }
     }
 
-    @Test("D1 und der Rueckweg: der Podcast-Reiter zeigt die Werte fuer alle, das Blatt jeder Sendung bietet Wie fuer alle", .needsTheSources)
+    @Test("D1 and the way back: the podcast tab shows the values for all, the sheet of every show offers „Wie fuer alle“", .needsTheSources)
     func theSurfacesAreWired() throws {
         let settings = try Self.source("Sources/Views/SettingsView.swift")
         let tabs = try #require(settings.range(of: "switch tab {"))

@@ -15,7 +15,7 @@ import Foundation
 struct PodcastFeedAddressTests {
     /// The image door raises a feed's cleartext image address the same
     /// way, and keeps host, path and query.
-    @Test("eine http-Bildadresse geht als https hinaus, sonst unveraendert")
+    @Test("an http image address goes out as https, otherwise unchanged")
     func imageAddressIsRaised() {
         let raised = PodcastFeedAddress.upgraded(URL(string: "http://ichef.bbci.co.uk/images/ic/3000x3000/p0.jpg?v=1")!, ownHosts: [])
         #expect(raised.absoluteString == "https://ichef.bbci.co.uk/images/ic/3000x3000/p0.jpg?v=1")
@@ -23,7 +23,7 @@ struct PodcastFeedAddressTests {
         #expect(kept.absoluteString == "https://files.relay.fm/a.png")
     }
 
-    @Test("das Geraet selbst wird nicht gehoben: eine Adresse auf dem Loopback bleibt http, jeder andere Host nicht")
+    @Test("the device itself is not upgraded: an address on the loopback stays http, every other host does not")
     func loopbackStaysCleartext() {
         for host in ["127.0.0.1:8811", "localhost:8080", "[::1]:9"] {
             let url = URL(string: "http://\(host)/cover.png")!
@@ -34,7 +34,7 @@ struct PodcastFeedAddressTests {
         #expect(PodcastFeedAddress.upgraded(URL(string: "http://192.168.178.5/cover.png")!, ownHosts: []).scheme == "https")
     }
 
-    @Test("ein eigener Server behaelt http, fuer Cover und Feeds; ein fremder Host daneben wird gehoben")
+    @Test("an own server keeps http, for covers and feeds; a foreign host beside it is upgraded")
     func anOwnServerKeepsItsScheme() throws {
         let own: Set<String> = ["100.64.0.7", "nas.local"]
         for address in ["http://100.64.0.7:13378/api/items/1/cover", "http://nas.local:4533/rest/getCoverArt?id=1"] {
@@ -48,7 +48,7 @@ struct PodcastFeedAddressTests {
         #expect(PodcastFeedAddress.requestURL("http://feeds.example.org/show", ownHosts: own)?.scheme == "https")
     }
 
-    @Test("die Hosts der eigenen Server, auch aus Eintraegen ohne Schema")
+    @Test("the hosts of the own servers, also from entries without a scheme")
     func theHostsOfTheOwnServers() throws {
         #expect(KnownServers.host(of: "http://100.64.0.7:13378") == "100.64.0.7")
         #expect(KnownServers.host(of: "100.64.0.7:13378") == "100.64.0.7")
@@ -62,7 +62,7 @@ struct PodcastFeedAddressTests {
         #expect(KnownServers.hosts(defaults: defaults) == ["100.64.0.7", "nas.local"])
     }
 
-    @Test("ein eingerichteter Server, dessen Vorschlag entfernt ist, bleibt eigen und behaelt http")
+    @Test("a configured server whose suggestion is removed stays own and keeps http")
     func aSetUpServerStaysOwnWithoutItsSuggestion() throws {
         let defaults = try #require(UserDefaults(suiteName: "own-hosts-\(UUID().uuidString)"))
         let entry = KnownServer(url: "http://100.64.0.7:13378", service: .audiobookshelf, lastSuccessAt: 1)
@@ -77,7 +77,7 @@ struct PodcastFeedAddressTests {
 
     /// Measured on a register of its own with twelve entries, so every call
     /// decodes a filled register and not the empty one of the test's host.
-    @Test("Messung: die eigenen Hosts je Cover-Anfrage, 200 Aufrufe hintereinander, mit zwoelf Eintraegen im Register")
+    @Test("Measurement: the own hosts per cover request, 200 calls in a row, with twelve entries in the register")
     func theOwnHostsCostPerRequest() throws {
         let defaults = try #require(UserDefaults(suiteName: "own-hosts-cost-\(UUID().uuidString)"))
         let services: [KnownServer.Service] = [.audiobookshelf, .subsonic, .jellyfin, .gpodder, .pinchflat, .maerSync]
@@ -97,7 +97,7 @@ struct PodcastFeedAddressTests {
         #expect(micros / 200 < 1000, "over a millisecond per cover request: a held image of the hosts belongs in")
     }
 
-    @Test("eine http-Adresse geht als https-Anfrage raus")
+    @Test("an http address goes out as an https request")
     func cleartextIsRaised() {
         #expect(PodcastFeedAddress.requestURL("http://feeds.example.org/show", ownHosts: [])?.absoluteString
                 == "https://feeds.example.org/show")
@@ -107,7 +107,7 @@ struct PodcastFeedAddressTests {
         #expect(PodcastFeedAddress.requestURL("HTTP://Feeds.Example.org/Show", ownHosts: [])?.scheme == "https")
     }
 
-    @Test("Pfad, Abfrage und Gross-/Kleinschreibung bleiben unangetastet")
+    @Test("path, query and letter case stay untouched")
     func onlyTheSchemeChanges() {
         let raised = PodcastFeedAddress.requestURL("http://feeds.example.org/Show?token=AbC&x=1", ownHosts: [])
         // The address is an identity: lowercasing it would turn a token into a
@@ -115,7 +115,7 @@ struct PodcastFeedAddressTests {
         #expect(raised?.absoluteString == "https://feeds.example.org/Show?token=AbC&x=1")
     }
 
-    @Test("schema-lose Eingabe wird https, https bleibt https")
+    @Test("scheme-less input becomes https, https stays https")
     func defaultsAndPassThrough() {
         #expect(PodcastFeedAddress.requestURL("feeds.example.org/show")?.absoluteString
                 == "https://feeds.example.org/show")
@@ -127,14 +127,14 @@ struct PodcastFeedAddressTests {
         #expect(PodcastFeedAddress.requestURL("   ") == nil)
     }
 
-    @Test("ein fremdes Schema ist nicht Sache dieser Regel")
+    @Test("a foreign scheme is not the concern of this rule")
     func foreignSchemesPassThrough() {
         // Not web transport at all. Raising it would invent an address.
         #expect(PodcastFeedAddress.requestURL("file:///tmp/feed.xml")?.scheme == "file")
         #expect(PodcastFeedAddress.upgraded(URL(string: "itpc://example.org/f")!).scheme == "itpc")
     }
 
-    @Test("die Erhebung kann keinen Abo-Zwilling erzeugen")
+    @Test("the upgrade cannot create a subscription twin")
     func identityIsSchemeFree() {
         // The subscription identity strips the scheme, so raising the REQUEST
         // cannot split one subscription into two. Without this the fix would

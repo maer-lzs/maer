@@ -45,12 +45,12 @@ struct PodcastMigrationTests {
                            description: nil, feedURL: value["feedURL"]?.string ?? "", episodes: episodes)
     }
 
-    @Test("gemeinsame Faelle: migration traegt vier Faelle")
+    @Test("shared cases: migration carries four cases")
     func migrationCasesLoaded() {
         #expect(Self.migration.count == 4)
     }
 
-    @Test("gemeinsame Faelle: der Umzug schluesselt um, verschiebt den Fortschritt und faltet je Fall wie die Datei sagt", arguments: migration)
+    @Test("shared cases: the move rekeys, shifts the progress and folds, per case as the file says", arguments: migration)
     func theMigrationAnswersAsTheFileSays(_ c: SharedCase) throws {
         let input = try c.value("input")
         let expect = try c.value("expect")

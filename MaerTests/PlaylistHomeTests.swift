@@ -14,14 +14,14 @@ struct PlaylistHomeTests {
         PlaylistHome.of(itemIds: ids, isRoutine: ids.contains(where: ItemNamespace.isRoutineRule)) { _ in form }
     }
 
-    @Test("je Art ihr Ort: Musik im Musik-Reiter, Podcasts bei Podcasts, Hoerbuecher in der Bibliothek")
+    @Test("each kind has its place: music in the music tab, podcasts at podcasts, audiobooks in the library")
     func eachKindHasItsPlace() {
         #expect(Self.home(["sub:song:1", "jf:album:2"]) == .music)
         #expect(Self.home(["rss:feed:ep1", "abspod:lib:ep2"]) == .podcasts)
         #expect(Self.home(["li_book1", "local:file", "jf:book:3", "lv:42"]) == .library)
     }
 
-    @Test("gemischt, Radio und eine unbekannte Art stehen auf Start, eine Routine immer")
+    @Test("mixed, radio and an unknown kind sit on Start, a routine always")
     func mixedListsStandOnStart() {
         #expect(Self.home(["sub:song:1", "rss:feed:ep1"]) == .start)
         #expect(Self.home(["li_book1", "rss:feed:ep1"]) == .start)
@@ -31,12 +31,12 @@ struct PlaylistHomeTests {
         #expect(PlaylistHome.of(kinds: [.music], isRoutine: true) == .start)
     }
 
-    @Test("eine leere Liste bleibt im Musik-Reiter, wo sie angelegt wird")
+    @Test("an empty list stays in the music tab, where it is created")
     func anEmptyListStaysInMusic() {
         #expect(Self.home([]) == .music)
     }
 
-    @Test("ein Katalogtitel folgt seiner Form: eine Lesung ist ein Hoerbuch, ein Album Musik")
+    @Test("a catalog title follows its form: a reading is an audiobook, an album is music")
     func aCatalogTitleFollowsItsForm() {
         #expect(Self.home(["lv:42"]) == .library)
         #expect(Self.home(["jam:7"]) == .music)
@@ -44,7 +44,7 @@ struct PlaylistHomeTests {
         #expect(Self.home(["lva:x"]) == .library)
     }
 
-    @Test("die Seite aller Listen traegt den Namen ihres Abschnitts, Routinen oder Playlisten", .needsTheSources)
+    @Test("the page of all lists carries the name of its section, routines or playlists", .needsTheSources)
     func thePageTakesTheSectionsName() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistNameList.swift")
         #expect(text.contains("if limit == nil { section(lists, title: title) .navigationTitle(title) }"),
@@ -52,7 +52,7 @@ struct PlaylistHomeTests {
         #expect(!text.contains(".navigationTitle(\"Playlists\")"), "the page is always called Playlists")
     }
 
-    @Test("eine Liste, deren Inhalt wechselt, wandert mit")
+    @Test("a list whose content changes moves along")
     func aListMovesWithItsContent() {
         var ids = ["rss:feed:ep1"]
         #expect(Self.home(ids) == .podcasts)

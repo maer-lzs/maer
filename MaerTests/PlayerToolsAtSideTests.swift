@@ -20,7 +20,7 @@ struct PlayerToolsAtSideTests {
             try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("bei seitlicher Leiste steht der Player seine Spalte aus den zwei Bauteilen, ohne eigenen Stapel", .needsTheSources)
+    @Test("with a side bar, the player builds its column from the two components, without its own stack", .needsTheSources)
     func besideTheColumnThePlayerStandsItsOwn() throws {
         let library = try source("Sources/Views/LibraryView.swift")
         #expect(library.contains(".environment(\\.playerToolsAtSide, tabBarPlacement.isSide)"))
@@ -38,7 +38,7 @@ struct PlayerToolsAtSideTests {
                 "the dismiss zones take the column's taps")
     }
 
-    @Test("die Werkzeuge stehen einmal: in der Reihe oder in der Spalte, der Timer ebenso", .needsTheSources)
+    @Test("the tools appear once: in the row or in the column, the timer likewise", .needsTheSources)
     func theToolsStandOnce() throws {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.contains("if toolsAtSide {\n                    if tools.contains(.source) { catalogSourceControl }\n                } else {\n                    MeasuredFits {"))
@@ -52,7 +52,7 @@ struct PlayerToolsAtSideTests {
         #expect(!player.contains("}\n        .font(.footnote)\n        .accessibilityIdentifier(\"player-"))
     }
 
-    @Test("der Player teilt am Falz, den die Bibliothek nennt, und oeffnet nie von selbst", .needsTheSources)
+    @Test("the player splits at the fold the library names, and never opens by itself", .needsTheSources)
     func thePlayerDividesAtTheFoldAndNeverOpensItself() throws {
         let library = try source("Sources/Views/LibraryView.swift")
         // One fold for the pages, the player, the playback bar and the settings.
@@ -70,7 +70,7 @@ struct PlayerToolsAtSideTests {
         #expect(!library.contains("$isShowingFullPlayer") && !library.contains("isShowingFullPlayer.toggle"))
     }
 
-    @Test("der Grund reicht bis an jede Ecke, der Inhalt bleibt in der freien Flaeche", .needsTheSources)
+    @Test("the background reaches every corner, the content stays in the free area", .needsTheSources)
     func theGroundFillsAndTheContentKeepsClear() throws {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
@@ -78,7 +78,7 @@ struct PlayerToolsAtSideTests {
         #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
     }
 
-    @Test("oben in der Spalte schliesst ein runder Knopf den Player ueber die eine Funktion", .needsTheSources)
+    @Test("at the top of the column a round button closes the player through the one function", .needsTheSources)
     func theColumnClosesThePlayer() throws {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.contains("VStack(spacing: SideColumnStyle.gap) {\n            SideRoundButton(systemImage: \"xmark\", label: \"Close\") { closePlayer() }"))
@@ -86,14 +86,14 @@ struct PlayerToolsAtSideTests {
         #expect(overlay.contains(".environment(\\.closePlayer) { slideOutAndDismiss() }"))
     }
 
-    @Test("die Einstellungen schliessen neben der Spalte ueber denselben Knopf, ohne Spalte ueber Fertig", .needsTheSources)
+    @Test("the settings close beside the column through the same button, without a column through Done", .needsTheSources)
     func theSettingsCloseFromTheColumn() throws {
         let settings = try source("Sources/Views/SettingsView.swift")
         #expect(settings.contains("VStack {\n                        SideRoundButton(systemImage: \"xmark\", label: \"Close\") { dismiss() }"))
         #expect(settings.contains("if !sectionsAtSide {\n                ToolbarItem(placement: .confirmationAction) {\n                    Button(\"Done\") { dismiss() }"))
     }
 
-    @Test("die Transportreihe gibt in ihren Abstaenden nach und weitet die Spalte nie", .needsTheSources)
+    @Test("the transport row yields in its spacing and never widens the column", .needsTheSources)
     func theTransportRowGivesWayInItsGaps() throws {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.contains("let gap = Spacer(minLength: 12).frame(maxWidth: maxGap)\n        return HStack(spacing: 0) {"))

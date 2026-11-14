@@ -18,7 +18,7 @@ struct PodcastServerSaveTests {
         UserDefaults(suiteName: "server-save-\(UUID().uuidString)")!
     }
 
-    @Test("haelt die Server-Folge einen neueren Stand, bleibt er lokal und geht kein aelterer an den Server")
+    @Test("if the server episode holds a newer state, it stays local and no older one goes to the server")
     func aNewerTwinIsNotPaintedOver() {
         let d = suite()
         ListeningStore.record("rss:save:e1", position: 30, duration: 1800, atMs: 1_000, in: d)
@@ -30,7 +30,7 @@ struct PodcastServerSaveTests {
         #expect(ListeningStore.backup("rss:save:e1", in: d) == nil, "the feed episode keeps a stand")
     }
 
-    @Test("ist der Stand der Feed-Folge neuer oder das Ziel leer, geht er hinueber und an den Server")
+    @Test("if the state of the feed episode is newer or the target empty, it goes over and to the server")
     func theWinningStandGoesToTheServer() {
         let d = suite()
         ListeningStore.record("rss:save:e2", position: 300, duration: 1800, atMs: 9_000, in: d)

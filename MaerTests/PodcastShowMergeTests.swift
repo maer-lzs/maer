@@ -8,14 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Die quellenübergreifende Sendungsliste stand fünfmal im Baum, von Hand
-/// kopiert, und die Kopien waren NICHT gleich: zwei fragten den ABS-Quellen-
-/// schalter, drei nicht. Drei von ihnen behaupteten im eigenen Kommentar,
-/// Spiegel der anderen zu sein.
+/// The cross-source show list stood five times in the tree, copied by
+/// hand, and the copies were NOT equal: two asked the ABS source
+/// switch, three did not. Three of them claimed in their own comment
+/// to mirror the others.
 ///
-/// Dieser Fall hält zwei Dinge fest: was „einmal" bedeutet (am Verhalten der
-/// puren Regel) und dass es keine sechste handgeschriebene Fassung mehr gibt
-/// (am Quelltext, mit Bestand und Grund je Eintrag).
+/// This case pins two things: what „einmal" means (on the behavior of the
+/// pure rule) and that there is no sixth hand-written version any more
+/// (on the source text, with count and reason per entry).
 struct PodcastShowMergeTests {
     private func show(_ id: String, feed: String) -> PodcastShow {
         PodcastShow(id: id, title: id, author: nil, artworkURL: nil,
@@ -27,9 +27,9 @@ struct PodcastShowMergeTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
-    // MARK: - Die pure Regel
+    // MARK: - The pure rule
 
-    @Test("Dieselbe Sendung aus beiden Quellen steht einmal, und die ABS-Seite gewinnt")
+    @Test("The same show from both sources appears once, and the ABS side wins")
     func duplicateKeepsTheServerSide() {
         let merged = PodcastShowMerge.merge(
             abs: [show("abs", feed: "https://example.org/feed.xml")],
@@ -37,14 +37,14 @@ struct PodcastShowMergeTests {
         #expect(merged.map(\.id) == ["abs"])
     }
 
-    /// Der Vergleich läuft über die NORMALISIERTE Adresse. Zwei Schreib-
-    /// weisen desselben Feeds sind dieselbe Sendung, sonst stünde sie
-    /// doppelt — genau der Fall, für den es die Regel gibt.
-    @Test("Zwei Schreibweisen derselben Adresse sind eine Sendung")
+    /// The comparison runs over the NORMALIZED address. Two spellings
+    /// of the same feed are the same show, otherwise it would appear
+    /// twice: exactly the case the rule exists for.
+    @Test("Two spellings of the same address are one show")
     func spellingDoesNotSplitAShow() {
-        // Zwei Adressen, die sich in Schema, www, Groß-/Kleinschreibung,
-        // Schrägstrich und Zähl-Parameter unterscheiden und denselben Feed
-        // meinen. Wären sie gleich geschrieben, prüfte der Fall nichts.
+        // Two addresses that differ in scheme, www, letter case,
+        // slash and counting parameter and mean the same feed.
+        // Were they spelled the same, the case would check nothing.
         let a = "https://www.Example.org/feed.xml/"
         let b = "http://example.org/feed.xml?utm_source=irgendwas"
         #expect(a != b)
@@ -54,7 +54,7 @@ struct PodcastShowMergeTests {
                 "verschieden geschriebene Adressen desselben Feeds wurden zu zwei Sendungen")
     }
 
-    @Test("Eine Sendung nur einer Quelle bleibt, und die Reihenfolge bleibt auch")
+    @Test("A show from only one source stays, and the order stays too")
     func orderIsKept() {
         let merged = PodcastShowMerge.merge(
             abs: [show("a1", feed: "https://a.org/1"), show("a2", feed: "https://a.org/2")],
@@ -63,7 +63,7 @@ struct PodcastShowMergeTests {
                 "die Liste ordnet sich unter dem Nutzer um")
     }
 
-    @Test("Leere Quellen ergeben die jeweils andere")
+    @Test("Empty sources yield the respective other one")
     func emptySideChangesNothing() {
         let one = [show("r1", feed: "https://r.org/1")]
         #expect(PodcastShowMerge.merge(abs: [], rss: one).map(\.id) == ["r1"])
@@ -71,16 +71,16 @@ struct PodcastShowMergeTests {
         #expect(PodcastShowMerge.merge(abs: [], rss: []).isEmpty)
     }
 
-    @Test("Die Abo-Frage findet den Feed unabhaengig von der Schreibweise")
+    @Test("The subscription question finds the feed regardless of spelling")
     func containsNormalises() {
         let shows = [show("s", feed: "https://example.org/feed.xml")]
         #expect(PodcastShowMerge.contains(feedURL: "https://example.org/feed.xml", in: shows))
         #expect(!PodcastShowMerge.contains(feedURL: "https://other.org/feed.xml", in: shows))
     }
 
-    // MARK: - Die Saat der Empfehlungen (Produkt-Entscheid 08.09.2026)
+    // MARK: - The seed of the recommendations (product decision 08.09.2026)
 
-    @Test("Eine Sendung aus beiden Toepfen steht in der Saat einmal")
+    @Test("A show from both pots appears once in the seed")
     func seedFoldsTheTwins() {
         let groups = PodcastShowMerge.foldByFeed([
             show("abs", feed: "https://example.org/feed.xml"),
@@ -94,24 +94,24 @@ struct PodcastShowMergeTests {
                 "die Gruppe muss ihre Zwillinge behalten, sonst geht Hoerzeit verloren")
     }
 
-    /// Ohne diesen Fall koennte die Faltung eine Sendung SCHWAECHER machen:
-    /// die Hoerzeit steht je Sendungs-Kennung, und die zwei Kopien haben
-    /// zwei Kennungen. Faellt die eine weg, faellt ihre Zeit mit.
-    @Test("Falten kostet eine Sendung ihre Hoerzeit nicht")
+    /// Without this case the folding could make a show WEAKER:
+    /// the listening time is kept per show identifier, and the two copies have
+    /// two identifiers. If one drops out, its time drops with it.
+    @Test("Folding does not cost a show its listening time")
     func foldingCostsNoListeningTime() {
         let groups = PodcastShowMerge.foldByFeed([
             show("abs", feed: "https://example.org/feed.xml"),
             show("rss", feed: "https://example.org/feed.xml"),
         ])
-        // Die ganze Geschichte liegt unter der Kennung, die NICHT ueberlebt.
+        // The whole history lies under the identifier that does NOT survive.
         let lifted = PodcastShowMerge.liftingTwins(["rss": 900], groups: groups)
         #expect(lifted["abs"] == 900, "die Zeit des Zwillings ging verloren")
     }
 
-    /// MAX und nicht Summe: dieselbe Folge kann unter beiden Schreibweisen
-    /// eine gespeicherte Stelle tragen. Summieren zaehlte ein Hoeren doppelt
-    /// und waere genau der Fehler, gegen den die Faltung gebaut ist.
-    @Test("Zwei Kopien mit Zeit ergeben nicht die Summe")
+    /// MAX and not sum: the same episode can carry a stored position
+    /// under both spellings. Summing would count one listen twice
+    /// and be exactly the error the folding is built against.
+    @Test("Two copies with time do not give the sum")
     func twinsDoNotAddUp() {
         let groups = PodcastShowMerge.foldByFeed([
             show("abs", feed: "https://example.org/feed.xml"),
@@ -121,34 +121,34 @@ struct PodcastShowMergeTests {
         #expect(lifted["abs"] == 900, "die Zwillingszeiten wurden addiert statt verglichen")
     }
 
-    @Test("Eine Sendung aus nur einer Quelle behaelt ihre Zeit unveraendert")
+    @Test("A show from only one source keeps its time unchanged")
     func singleSourceIsUntouched() {
         let groups = PodcastShowMerge.foldByFeed([show("nur-rss", feed: "https://other.org/feed.xml")])
         #expect(PodcastShowMerge.liftingTwins(["nur-rss": 120], groups: groups)["nur-rss"] == 120)
-        // Ohne Zeit entsteht auch keine.
+        // Without time none arises either.
         #expect(PodcastShowMerge.liftingTwins([:], groups: groups)["nur-rss"] == nil)
     }
 
-    /// Der Kapsel-Ausschluss der Saat fragt die ADRESSE und nicht die Kopie.
-    /// `origin` wird nur lokal gesetzt, ABS setzt es nie, und die Server-
-    /// Spiegelung schiebt Kapseln wie alles andere hinueber — der ABS-
-    /// Zwilling kommt also OHNE Markierung zurueck. Ein Filter je Kopie
-    /// liesse ihn in eine OEFFENTLICHE Katalogsuche laufen (der IDA-Vorfall).
-    @Test("Eine gespiegelte Kapsel bleibt auch als ABS-Zwilling draussen")
+    /// The capsule exclusion of the seed asks the ADDRESS and not the copy.
+    /// `origin` is set only locally, ABS never sets it, and the server
+    /// mirroring carries capsules over like everything else, so the ABS
+    /// twin comes back WITHOUT a mark. A filter per copy
+    /// would let it run into a PUBLIC catalog search (the IDA incident).
+    @Test("A mirrored capsule stays out also as an ABS twin")
     func mirroredCapsuleStaysOutThroughItsTwin() {
         var capsule = show("rss-kapsel", feed: "https://pinchflat.local/feed.xml")
         capsule.origin = "pinchflat"
-        let twin = show("abs-kapsel", feed: "https://pinchflat.local/feed.xml")  // ohne origin
+        let twin = show("abs-kapsel", feed: "https://pinchflat.local/feed.xml")  // without origin
         #expect(PodcastShowMerge.seedGroups(abs: [twin], rss: [capsule]).isEmpty,
                 "der unmarkierte Server-Zwilling der Kapsel kam durch")
-        // Gegenprobe: dieselbe Sendung OHNE Markierung bleibt drin. Sonst
-        // koennte der Fall auch gruen sein, weil die Saat gar nichts durchlaesst.
+        // Counter-check: the same show WITHOUT a mark stays in. Otherwise
+        // the case could also be green because the seed lets nothing through.
         var plain = capsule
         plain.origin = nil
         #expect(PodcastShowMerge.seedGroups(abs: [twin], rss: [plain]).count == 1)
     }
 
-    @Test("Die Saat faellt eine Sendung aus beiden Toepfen auf eine zusammen")
+    @Test("The seed folds a show from both pots into one")
     func seedFoldsAcrossPots() {
         let groups = PodcastShowMerge.seedGroups(
             abs: [show("abs", feed: "https://example.org/feed.xml")],
@@ -157,9 +157,9 @@ struct PodcastShowMergeTests {
         #expect(groups.map { $0.first?.id } == ["abs", "nur-rss"])
     }
 
-    // MARK: - Was wir BESITZEN (die zweite Frage der Tuer)
+    // MARK: - What we OWN (the second question of the door)
 
-    @Test("Die Abo-Adressen sind eine Menge, und die Schreibweise faltet mit")
+    @Test("The subscription addresses are a set, and the spelling folds along")
     func normalizedFeedsFoldsSpelling() {
         let feeds = PodcastShowMerge.normalizedFeeds([
             show("a", feed: "https://www.Example.org/feed.xml/"),
@@ -170,12 +170,12 @@ struct PodcastShowMergeTests {
         #expect(feeds.contains(PodcastIdentity.normalizeFeedURL("https://other.org/feed.xml")))
     }
 
-    /// Sechs Stellen bauten die Vereinigung „was wir besitzen" von Hand,
-    /// immer ueber dieselben zwei vollen Listen, immer um sie an
-    /// `excludingSubscribed` zu geben. Sie waren sich einig, was Glueck war:
-    /// eine Menge, der eine Adresse fehlt, stellt eine Sendung, der jemand
-    /// schon folgt, zurueck in seine Empfehlungen.
-    @Test("Niemand baut die Besitz-Vereinigung noch selbst", .needsTheSources)
+    /// Six places built the union „was wir besitzen" by hand,
+    /// always over the same two full lists, always to pass it to
+    /// `excludingSubscribed`. They agreed on what luck was:
+    /// a set that lacks an address puts a show someone
+    /// already follows back into their recommendations.
+    @Test("Nobody builds the ownership union by hand any more", .needsTheSources)
     func nobodyBuildsTheOwnedUnionByHand() throws {
         let allowed = "Sources/ViewModels/PodcastShowSources.swift"
         var offenders: [String] = []
@@ -184,8 +184,8 @@ struct PodcastShowMergeTests {
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let relative = SourceTree.relativePath(of: url)
             if relative == allowed { continue }
-            // Zwischenraeume zusammengeschoben, damit ein Umbruch mitten im
-            // Ausdruck den Fund nicht verbirgt.
+            // Whitespace collapsed, so that a line break in the middle of the
+            // expression does not hide the find.
             let flat = try sourceText(relative)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
@@ -196,11 +196,11 @@ struct PodcastShowMergeTests {
         #expect(offenders.isEmpty, "handgeschriebene Besitz-Vereinigung in: \(offenders)")
     }
 
-    // MARK: - Der Bestand am Quelltext
+    // MARK: - The count on the source text
 
-    /// Die Zwischengröße der handgeschriebenen Fassung. Wer die Liste wieder
-    /// selbst zusammensetzt, braucht sie; wer die Regel ruft, nicht.
-    @Test("Niemand setzt die quellenuebergreifende Liste noch selbst zusammen", .needsTheSources)
+    /// The intermediate quantity of the hand-written version. Whoever assembles the list
+    /// again by hand needs it; whoever calls the rule does not.
+    @Test("Nobody assembles the cross-source list by hand any more", .needsTheSources)
     func nobodyBuildsTheMergeByHand() throws {
         let allowed = ["Sources/Models/PodcastShowMerge.swift"]
         var offenders: [String] = []
@@ -216,10 +216,10 @@ struct PodcastShowMergeTests {
                 "handgeschriebene Fassung der Quellen-Vereinigung in: \(offenders.joined(separator: ", "))")
     }
 
-    /// `activeShows` heißt „nicht archiviert" und weiß nichts vom Quellen-
-    /// schalter. Genau in dieser Lücke sind die drei ungetorten Kopien
-    /// gelandet. Der Bestand nennt je Leser den Grund, warum er ihn liest.
-    @Test("activeShows wird nur an zwei Stellen gelesen, und beide sagen warum", .needsTheSources)
+    /// `activeShows` means „nicht archiviert" and knows nothing of the source
+    /// switch. Exactly in this gap the three ungated copies
+    /// landed. The count names per reader the reason why it reads it.
+    @Test("activeShows is read in only two places, and both say why", .needsTheSources)
     func activeShowsHasTwoReadersWithReasons() throws {
         let expected: [String: String] = [
             "Sources/ViewModels/PodcastShowSources.swift":
@@ -238,7 +238,7 @@ struct PodcastShowMergeTests {
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: "\n")
-            // Die Erklaerung im Anbieter selbst ist die Fassung, nicht ein Leser.
+            // The explanation in the provider itself is the definition, not a reader.
             if body.contains("activeShows"), !body.contains("var activeShows") {
                 found.insert(relative)
             }

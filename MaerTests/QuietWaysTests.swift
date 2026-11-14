@@ -21,7 +21,7 @@ struct QuietWaysTests {
 
     // MARK: - An older service
 
-    @Test("aelterer Dienst: 404 am Schluessel oder Handschlag und 426 auf jedem Datenweg heissen beim Namen")
+    @Test("older service: 404 at the key or handshake and 426 on every data path are called by name")
     func anOlderServiceIsNamedWhereTheNumberIsRead() {
         #expect(failure { _ = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 404)) } == .serviceIsOlder)
         #expect(failure { _ = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 426)) } == .serviceIsOlder,
@@ -36,7 +36,7 @@ struct QuietWaysTests {
         #expect(failure { _ = try MaerSyncAnswer.document(MaerSyncReply(status: 404)) } == nil)
     }
 
-    @Test("aelterer Dienst, der gemessene Fall vom 24.09.: 426 auf /v2/key durch die echte Tuer haelt die Laeufe an")
+    @Test("older service, the measured case of 24.09.: 426 on /v2/key through the real door stops the runners")
     @MainActor
     func theMeasuredCaseStops() async throws {
         // The contract-5 service answered 426 on /v2/key, measured at its code. Every request of
@@ -76,7 +76,7 @@ struct QuietWaysTests {
         func note(_ path: String) { all.append(path) }
     }
 
-    @Test("aelterer Dienst: die Rueckkehr in den Vordergrund fragt genau einmal neu, sonst nichts", .needsTheSources)
+    @Test("older service: the return to the foreground asks exactly once anew, nothing else", .needsTheSources)
     func theReturnAsksOnce() throws {
         let housekeeping = try Self.source("Sources/ViewModels/AppHousekeeping.swift")
         let ask = try #require(housekeeping.range(of: "MaerSyncCarriers.session.askAgainOnReturn()"))
@@ -86,7 +86,7 @@ struct QuietWaysTests {
         #expect(session.contains("func askAgainOnReturn() { guard serviceOlder else { return } serviceOlder = false"))
     }
 
-    @Test("aelterer Dienst: die Seite sagt es, vor dem Token und nach dem Schalter")
+    @Test("older service: the page says so, before the token and after the switch")
     func thePageSaysIt() {
         #expect(MaerSyncStanding.standing(syncAcrossDevices: true, signedIn: true,
                                           tokenRefused: true, serviceOlder: true) == .serviceOlder)
@@ -94,7 +94,7 @@ struct QuietWaysTests {
                                           serviceOlder: true) == .switchedOff)
     }
 
-    @Test("aelterer Dienst: die Anmeldung nennt ihn auch auf dem Weg ueber Salz und Token")
+    @Test("older service: the login names it also on the path via salt and token")
     func theSignInNamesItOnEveryStep() {
         for step in [MaerSyncSignIn.Step.signInSalt, .signInToken, .changeSalt, .change] {
             #expect(MaerSyncSignIn.outcome(forSignInError: MaerSyncFailure.serviceIsOlder, host: "h", step: step) == .serviceIsOlder)
@@ -103,7 +103,7 @@ struct QuietWaysTests {
 
     // MARK: - Every refusal says itself
 
-    @Test("Abweisung: 401, 428 und 429 an Anmeldung und Wechsel fuehren zu ihrem Satz")
+    @Test("Rejection: 401, 428 and 429 at login and switch lead to their sentence")
     func refusalsKeepTheirOutcome() {
         #expect(MaerSyncSignIn.outcome(forSignInError: MaerSyncFailure.unauthorized, host: nil, step: .change) == .refused)
         #expect(MaerSyncSignIn.outcome(forSignInError: MaerSyncFailure.passwordChanged, host: nil, step: .signInToken) == .refused)
@@ -112,7 +112,7 @@ struct QuietWaysTests {
                 == .tooManyAttempts(retryAfter: 30))
     }
 
-    @Test("Abweisung: jeder Ausgang schreibt zuerst seine Logzeile mit Schritt, und jeder Weg nennt seinen Schritt", .needsTheSources)
+    @Test("Rejection: every exit first writes its log line with step, and every path names its step", .needsTheSources)
     func everyFailureWritesItsLine() throws {
         let signIn = try Self.source("Sources/Networking/MaerSyncSignIn.swift")
         let head = try #require(signIn.range(of: "nonisolated static func outcome(forSignInError error: Error, host: String?, step: Step) -> Outcome {"))

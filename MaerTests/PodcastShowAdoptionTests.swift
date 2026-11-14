@@ -15,7 +15,7 @@ import Foundation
 /// nothing, and an adoption for another show reads nothing.
 struct PodcastShowAdoptionTests {
 
-    @Test("Die Regel: eine Uebernahme beruehrt genau die neun reisenden Werte ihrer Sendung")
+    @Test("The rule: an adoption touches exactly the nine travelling values of its show")
     func theRule() {
         let show = "feed:adopt-a"
         let keys = PodcastShowPreferences.travellingKeys(showId: show)
@@ -32,7 +32,7 @@ struct PodcastShowAdoptionTests {
         #expect(PodcastShowPreferences.adoptedKeys(["keys": ["a", "b"]]) == ["a", "b"])
     }
 
-    @Test("Die Schluessel einer Sendung sind genau die reisenden Familien je Sendung des Katalogs")
+    @Test("The keys of a show are exactly the travelling families per show of the catalog")
     func theKeysAreTheCatalogsFamilies() {
         let show = "feed:adopt-a"
         // The podcast families, and "counts as played", which a show shares
@@ -44,7 +44,7 @@ struct PodcastShowAdoptionTests {
                 "a family that starts to travel is read again on an open page, and none is read that does not travel")
     }
 
-    @Test("Seite, Blatt und Blatt der Folgenseite lesen bei einer Uebernahme ihrer Sendung nach und schreiben dabei nichts", .needsTheSources)
+    @Test("Page, sheet and the sheet of the episode page re-read on an adoption of their show and write nothing in doing so", .needsTheSources)
     func theThreePlacesReadAgainAndWriteNothing() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let page = try String(contentsOf: root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8)

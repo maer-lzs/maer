@@ -283,7 +283,7 @@ struct PublicReadmeFenceTests {
         }
     }
 
-    @Test("die READMEs sind Startseiten: kurz, und jede verlinkt ihre Detailseiten, die es gibt", .needsTheSources)
+    @Test("the READMEs are landing pages: short, and each links its detail pages that exist", .needsTheSources)
     func theReadmesAreShortAndLinkTheirDetails() throws {
         for (name, text) in try Self.readmeTexts() {
             let words = text.split(whereSeparator: { $0 == " " || $0 == "\n" }).count
@@ -301,7 +301,7 @@ struct PublicReadmeFenceTests {
         }
     }
 
-    @Test("die zwei oeffentlichen READMEs nennen keine Rolle", .needsTheSources)
+    @Test("the two public READMEs name no role", .needsTheSources)
     func theTwoPublicReadmesNameNoRole() throws {
         let files = try Self.readmeTexts()
         for (name, text) in files {
@@ -325,7 +325,7 @@ struct PublicReadmeFenceTests {
     /// The instrument itself, in both directions. Every line here was measured
     /// in the tree before it was written down; a form nobody writes would make
     /// the fence look stronger than it is.
-    @Test("der Leseflaechen-Zaun faengt jede Beugung und keine Kollision")
+    @Test("the reading-surface fence catches every inflection and no collision")
     func theReadmeFenceCatchesEveryFormAndNoCollision() {
         let muessenReissen = [
             "- 9/9 Subsonic endpoints clean (Takt's matrix, wave 3)",
@@ -410,7 +410,7 @@ struct PublicReadmeFenceTests {
     /// stand in the tree. The thing list was taken from the stock, not from
     /// imagination: eleven places carry the cadence, and these are their
     /// shapes.
-    @Test("das Fachwort steht in drei Gestalten, die Person in keiner davon")
+    @Test("the technical term appears in three forms, the person in none of them")
     func theCadenceHasItsOwnShapes() {
         let sache = [
             "Der Nachlade-Takt haengt am selben Tageswechsel",
@@ -447,7 +447,7 @@ struct PublicReadmeFenceTests {
     /// The guard in the code and the reviewing role share a word; the code's
     /// guard takes the closed shapes, the role is everything else. The lines
     /// are the shapes the tree really carries.
-    @Test("die Wache im Code steht in ihren Gestalten, die Rolle in keiner davon")
+    @Test("the guard in the code appears in its forms, the role in none of them")
     func theGuardHasItsOwnShapes() {
         let sache = [
             "/// Die Wache kostete mehr als das, was sie bewachte.",
@@ -484,7 +484,7 @@ struct PublicReadmeFenceTests {
     /// notice keeps is recognised by shape, not by a year: the exemption that
     /// carried `2026` would have stopped working in January, silently, with
     /// seven hundred allowed lines hanging on it.
-    @Test("die Werkstatt-Dateien nennen keine Rolle mehr", .needsTheSources)
+    @Test("the workshop files no longer name a role", .needsTheSources)
     func theWorkshopFilesNameNoRole() throws {
         let files = try Self.workshopTexts()
         try #require(files.count > 40, "der Zaun hat die Werkstatt nicht gelesen")
@@ -519,7 +519,7 @@ struct PublicReadmeFenceTests {
     /// the open count finds is either a form the fence searches, or it is
     /// named as an ordinary word. A spelling the fence does not know turns
     /// this red before it can stand green somewhere else.
-    @Test("die offene Zaehlung findet nichts, was der Zaun nicht kennt", .needsTheSources)
+    @Test("the open count finds nothing that the fence does not know", .needsTheSources)
     func theOpenCountFindsNothingTheFenceDoesNotKnow() throws {
         #expect(try Self.openCountWords(in: "MOMOS INVARIANTE, one piece, die Taktung")
                 == ["MOMOS", "piece", "Taktung"])
@@ -584,7 +584,7 @@ struct PublicReadmeFenceTests {
     /// The other half of the same repair: the claim about the service is
     /// measured in both languages, because the wrong sentence has a German
     /// spelling too.
-    @Test("die Dienst-Aussage wird als Aussage gemessen, nicht als englische Schreibweise")
+    @Test("the service statement is measured as a statement, not as an English spelling")
     func theServiceClaimIsMeasuredAsAClaim() {
         let deutscherRueckfall = """
         - **Ein eigener Sync-Dienst.** Unter Einstellungen, Sync (eigenes Repository,
@@ -612,7 +612,7 @@ struct PublicReadmeFenceTests {
     /// `Standardbibliothek Python`, so half the surface was unmeasured while
     /// the fence looked green. What is measured now is the CLAIM: wherever
     /// the service's language is named, the build that runs is named with it.
-    @Test("beide Leseflaechen nennen die ausgelieferte Fassung des Dienstes", .needsTheSources)
+    @Test("both reading surfaces name the shipped version of the service", .needsTheSources)
     func bothSurfacesNameTheDeployedBuild() throws {
         for (name, text) in try Self.readmeTexts() {
             #expect(text.contains("Rust"), "\(name) sagt nicht, was ausgeliefert wird")
@@ -628,7 +628,7 @@ struct PublicReadmeFenceTests {
     /// Parity of the two surfaces. The German one may be shorter, but it may
     /// not be silent: it went five months without knowing the service existed,
     /// including in the section about where data travels.
-    @Test("die deutsche Leseflaeche kennt den Dienst, auch im Datenschutz-Abschnitt", .needsTheSources)
+    @Test("the German reading surface knows the service, also in the privacy section", .needsTheSources)
     func theGermanSurfaceKnowsTheService() throws {
         let files = try Self.readmeTexts()
         for (name, text) in files {
@@ -667,7 +667,7 @@ struct PublicReadmeFenceTests {
         return String(rest[..<end])
     }
 
-    @Test("beide ausfuehrlichen Datenschutz-Abschnitte nennen beide Traeger", .needsTheSources)
+    @Test("both detailed privacy sections name both carriers", .needsTheSources)
     func bothPrivacySectionsNameBothCarriers() throws {
         // The full statement stands on the detail pages; the READMEs link it.
         let files = try Self.surfaceTexts()
@@ -686,7 +686,7 @@ struct PublicReadmeFenceTests {
     /// Both surfaces point at the same repository, and at one a stranger can
     /// reach. The old address answered only inside the owner's mesh, so every
     /// link on the public mirror was dead for everybody else.
-    @Test("beide Leseflaechen nennen dieselbe, erreichbare Adresse", .needsTheSources)
+    @Test("both reading surfaces name the same, reachable address", .needsTheSources)
     func bothSurfacesPointAtTheSameAddress() throws {
         for (name, text) in try Self.readmeTexts() {
             #expect(!text.contains("git.lschroeder.eu"),
@@ -722,7 +722,7 @@ struct PublicReadmeFenceTests {
 
     /// One thought, one sentence, on the surface too. The stock is zero in
     /// both files and may only stay there.
-    @Test("die zwei READMEs tragen keinen Gedankenstrich", .needsTheSources)
+    @Test("the two READMEs carry no dash", .needsTheSources)
     func theTwoReadmesCarryNoDash() throws {
         for (name, text) in try Self.surfaceTexts() {
             let strich = text.filter { $0 == "\u{2014}" || $0 == "\u{2013}" }.count

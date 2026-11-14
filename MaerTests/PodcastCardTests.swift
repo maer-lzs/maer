@@ -11,7 +11,7 @@ import Foundation
 /// The episode card in Continue: title and the line under it stand together,
 /// the room for a second title line lies below both.
 struct PodcastCardTests {
-    @Test("Titel und Zeile darunter stehen ohne Luecke, der Platz fuer die zweite Titelzeile steht darunter", .needsTheSources)
+    @Test("title and the line below it have no gap, the room for the second title line is below that", .needsTheSources)
     func titleAndShowStandWithoutAGap() throws {
         let card = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastComponents.swift"),

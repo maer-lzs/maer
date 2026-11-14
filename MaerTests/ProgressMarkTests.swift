@@ -8,13 +8,13 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Eine Gehört-Marke muss eine schwankende Dauer überleben.
+/// A heard mark must survive a fluctuating duration.
 struct ProgressMarkTests {
-    /// Der Fünf-Sekunden-Tick vergleicht die PHASE vor und nach dem
-    /// Schreiben. Zehn Ticks mitten in einer Folge sind ein einziger
-    /// Wechsel (ungehört zu angefangen), nicht zehn; der ganze Zustand
-    /// traegt die Position und waere jedes Mal neu.
-    @Test("zehn Ticks in einer Folge sind ein Phasenwechsel, nicht zehn")
+    /// The five-second tick compares the PHASE before and after
+    /// writing. Ten ticks in the middle of an episode are a single
+    /// change (unheard to started), not ten; the whole state
+    /// carries the position and would be new every time.
+    @Test("ten ticks in an episode are one phase change, not ten")
     func tenTicksInProgressChangeThePhaseOnce() {
         var stored: [Double]? = nil
         var phaseChanges = 0
@@ -30,25 +30,25 @@ struct ProgressMarkTests {
             stored = next
         }
         #expect(phaseChanges == 1, "die Phase kippt einmal von ungehoert auf angefangen")
-        // Rot-Probe am Instrument: der ganze Zustand haette jeden Tick
-        // gemeldet, und genau das war der Dauerlauf der Podcast-Flaeche.
+        // Red probe on the instrument: the whole state would have reported
+        // every tick, and that was exactly the endless run of the podcast surface.
         #expect(stateChanges == 10)
-        // Und die gehoerte Linie ist weiter ein Wechsel.
+        // And the heard line is still a change.
         let end = ProgressMark.advancing(stored, position: 1_800, duration: 1_800, nowMs: 60_000)
         #expect(ProgressMark.state(stored: end, currentDuration: 1_800, tail: 0).phase == .played)
     }
 
-    @Test("die gewachsene Werbe-Dauer kippt die Marke nicht mehr")
+    @Test("the grown ad duration no longer flips the mark")
     func grownDurationNoLongerBreaksThePlayedState() {
-        // Markiert bei 3.420 s, als der Feed 3.420 s meldete.
+        // Marked at 3.420 s, when the feed reported 3.420 s.
         let stored = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
-        // Beim nächsten Abruf steckt drei Minuten Werbung mehr drin.
+        // At the next fetch, three more minutes of ads are in it.
         #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 3_600, tail: 0))
-        // Und auch, wenn sie wieder verschwindet (zufällig, laut Doku).
+        // And also when it disappears again (randomly, per the docs).
         #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 3_300, tail: 0))
     }
 
-    @Test("ein alter Eintrag ohne dritten Wert verhält sich unverändert")
+    @Test("an old entry without a third value behaves unchanged")
     func legacyEntriesKeepTheOldRule() {
         let legacy: [Double] = [3_420, 1_000]
         #expect(ProgressMark.isPlayed(stored: legacy, currentDuration: 3_420, tail: 0))
@@ -56,14 +56,14 @@ struct ProgressMarkTests {
                 "das ist der alte Weg — er bleibt für Einträge, die keinen Bezug tragen")
     }
 
-    @Test("eine halb gehörte Folge bleibt halb gehört")
+    @Test("a half-heard episode stays half heard")
     func partialStaysPartial() {
         let stored = ProgressMark.entry(position: 600, duration: 3_600, nowMs: 1_000)
         #expect(!ProgressMark.isPlayed(stored: stored, currentDuration: 3_600, tail: 0))
         #expect(!ProgressMark.isPlayed(stored: stored, currentDuration: 3_000, tail: 0))
     }
 
-    @Test("ohne bekannte Dauer trägt weiterhin der Wächterwert")
+    @Test("without a known duration the sentinel value still carries")
     func sentinelStillCarriesDurationlessEpisodes() {
         let stored = ProgressMark.entry(position: ProgressMark.playedSentinel, duration: 0, nowMs: 1_000)
         #expect(stored.count == 2, "eine unbekannte Dauer wird NICHT erfunden")
@@ -74,13 +74,13 @@ struct ProgressMarkTests {
 
 
 
-    @Test("die EINE Zustands-Entscheidung — Listen und Store urteilen gleich")
+    @Test("the ONE state decision: lists and store judge the same")
     func stateIsTheSameEverywhere() {
-        // Markiert bei 3.420, Feed meldet heute 3.600. Die Nachbildung in
-        // den Listen zeigte wieder eine Restzeit.
+        // Marked at 3.420, feed reports 3.600 today. The imitation in
+        // the lists showed a remaining time again.
         let healed = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
         #expect(ProgressMark.state(stored: healed, currentDuration: 3_600, tail: 0) == .played)
-        // Halb gehoert bleibt halb gehoert, mit Restzeit gegen die HEUTIGE Dauer.
+        // Half heard stays half heard, with remaining time against TODAY's duration.
         let half = ProgressMark.entry(position: 600, duration: 3_600, nowMs: 1_000)
         #expect(ProgressMark.state(stored: half, currentDuration: 3_600, tail: 0)
                 == .inProgress(fraction: 600.0 / 3_600.0, remaining: 3_000))
@@ -89,7 +89,7 @@ struct ProgressMarkTests {
                 "der Grabstein liest sich als ungehoert")
     }
 
-    @Test("der Zeitstempel wird benannt gelesen, nicht als letztes Element")
+    @Test("the timestamp is read by name, not as the last element")
     func timestampIsReadByName() {
         #expect(ProgressMark.timestamp([3_420, 1_700_000_000_000, 3_420]) == 1_700_000_000_000)
         #expect(ProgressMark.timestamp([3_420, 1_700_000_000_000]) == 1_700_000_000_000)
@@ -97,47 +97,47 @@ struct ProgressMarkTests {
         #expect(ProgressMark.timestamp(nil) == nil)
     }
 
-    @Test("ein Eintrag ohne Dauer loescht den vorhandenen Bezugspunkt NICHT")
+    @Test("an entry without a duration does NOT delete the existing reference point")
     func advancingCarriesTheReferencePoint() {
         let good = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
-        // Der gpodder-Pull ohne `total`. Vorher entstand hier eine
-        // Zwei-Werte-Marke, die die gute ueberschrieb.
+        // The gpodder pull without `total`. Before, a
+        // two-value mark arose here that overwrote the good one.
         let advanced = ProgressMark.advancing(good, position: 3_420, duration: 0, nowMs: 2_000)
         #expect(ProgressMark.markedDuration(advanced) == 3_420)
         #expect(advanced[1] == 2_000, "Position und Zeitstempel kommen weiterhin von der Quelle")
         #expect(ProgressMark.isPlayed(stored: advanced, currentDuration: 3_600, tail: 0))
-        // Eine BEKANNTE neue Dauer gewinnt gegen die alte.
+        // A KNOWN new duration wins against the old one.
         let fresher = ProgressMark.advancing(good, position: 3_500, duration: 3_500, nowMs: 3_000)
         #expect(ProgressMark.markedDuration(fresher) == 3_500)
-        // Ohne Vorgaenger bleibt es beim alten Verhalten.
+        // Without a predecessor the old behavior stays.
         #expect(ProgressMark.advancing(nil, position: 10, duration: 0, nowMs: 1).count == 2)
     }
 
-    @Test("Nachtragen ergaenzt nur die Dauer — und erfindet nie einen Eintrag")
+    @Test("Backfilling adds only the duration, and never invents an entry")
     func supplementingOnlyAddsTheMissingReference() {
         let old: [Double] = [3_420, 1_000]
         let healed = ProgressMark.supplementing(old, duration: 3_420)
         #expect(healed == [3_420, 1_000, 3_420], "Position und Zeitstempel bleiben unangetastet")
-        // Nichts zu tun: hat schon einen Bezugspunkt …
+        // Nothing to do: already has a reference point …
         #expect(ProgressMark.supplementing([3_420, 1_000, 3_420], duration: 3_600) == nil)
-        // … oder die Gegenseite kennt keine Dauer.
+        // … or the other side knows no duration.
         #expect(ProgressMark.supplementing(old, duration: 0) == nil)
     }
 
-    @Test("die vom Server gemeldete Dauer heilt einen bestehenden Eintrag")
+    @Test("the duration reported by the server heals an existing entry")
     func serverTotalRepairsOldEntries() {
-        // gpodder liefert Position UND total; damit ist der Bezugspunkt da,
-        // ohne dass irgendetwas geraten wird.
+        // gpodder delivers position AND total; so the reference point is there,
+        // without anything being guessed.
         let fromServer = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 9_000)
         #expect(ProgressMark.isPlayed(stored: fromServer, currentDuration: 3_600, tail: 0),
                 "nach dem naechsten Abgleich gilt die Folge wieder als gehoert")
-        // Meldet der Server kein total, bleibt es beim alten Verhalten.
-        // Eine erfundene Dauer waere schlimmer als keine.
+        // If the server reports no total, the old behavior stays.
+        // An invented duration would be worse than none.
         let withoutTotal = ProgressMark.entry(position: 3_420, duration: 0, nowMs: 9_000)
         #expect(withoutTotal.count == 2)
     }
 
-    @Test("nach aussen geht unveraendert die echte Endposition")
+    @Test("outward, the real end position goes unchanged")
     func outwardValueIsUnchanged() {
         let stored = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
         #expect(stored[0] == 3_420, "gpodder und ABS erwarten position = total")

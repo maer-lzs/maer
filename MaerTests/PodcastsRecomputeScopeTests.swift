@@ -14,7 +14,7 @@ import Foundation
 /// path as one the person subscribed by hand. Without a move the grid stands
 /// until the next app start.
 struct PodcastsRecomputeScopeTests {
-    @Test("Adoption aus dem Konto bewegt den Recompute-Token wie ein Abonnieren von Hand; ohne Aenderung bleibt er")
+    @Test("Adoption from the account moves the recompute token like a manual subscribe; without a change it stays")
     @MainActor
     func adoptionMovesTheToken() async throws {
         let subs = PodcastSubscriptions.shared
@@ -36,7 +36,7 @@ struct PodcastsRecomputeScopeTests {
                 try await Task.sleep(nanoseconds: 20_000_000)
             }
         }
-        // Rot-Probe: no change, no move (a settled token stays).
+        // Red probe: no change, no move (a settled token stays).
         try await Task.sleep(nanoseconds: 50_000_000)
         let before = scope.token
         try await Task.sleep(nanoseconds: 100_000_000)
@@ -56,8 +56,8 @@ struct PodcastsRecomputeScopeTests {
 
     /// An entry that arrives from outside the podcast store (a local start,
     /// a takeover, a pot adoption) reaches the tab through the listening
-    /// revision. Rot-Probe: without a bump the token stands.
-    @Test("Ein Stoss der Hoer-Revision bewegt den Token; ohne Stoss steht er")
+    /// revision. Red probe: without a bump the token stands.
+    @Test("A burst of the listening revision moves the token; without a burst it stays")
     @MainActor
     func revisionBumpMovesTheToken() async throws {
         let scope = PodcastsRecomputeScope.shared
@@ -76,7 +76,7 @@ struct PodcastsRecomputeScopeTests {
     /// token, so a finished or deleted download must move it, and so must a
     /// download swapped at equal count. Before, two of them keyed on the
     /// number of shows and stayed on yesterday's grid.
-    @Test("Ein Download, der kommt, geht oder bei gleicher Zahl getauscht wird, bewegt den Token")
+    @Test("A download that arrives, leaves or is swapped at the same count moves the token")
     func aChangedDownloadMovesTheToken() {
         let feeds = ["https://example.org/a.xml"]
         let counters = ["1", "2", "3"]
@@ -98,7 +98,7 @@ struct PodcastsRecomputeScopeTests {
     /// Every task in the podcast pages that computes the snapshot (and with
     /// it the downloaded set) runs through `taskOnPodcastChange`, never through
     /// a `.task` of its own that the download set cannot move.
-    @Test("Jede Podcast-Seite, die den Schnappschuss rechnet, haengt an der Kennung", .needsTheSources)
+    @Test("Every podcast page that computes the snapshot hangs on the identifier", .needsTheSources)
     func everySnapshotTaskHangsOnTheToken() throws {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/Views/PodcastsView.swift"), encoding: .utf8)

@@ -23,7 +23,7 @@ struct PodcastRowDiffTests {
                     episodes: (0..<episodes).reversed().map { episode($0, show: id) })
     }
 
-    @Test("Unveraendert ist leer; alles aus dem Nichts sind alle Zeilen mit Position")
+    @Test("Unchanged is empty; everything from nothing is all rows with position")
     func unchangedIsEmptyAndFreshIsEverything() {
         let stock = [show("a", episodes: 3), show("b", episodes: 2)]
         #expect(PodcastRowDiff.compute(previous: stock, current: stock).isEmpty)
@@ -35,7 +35,7 @@ struct PodcastRowDiffTests {
         #expect(all.showsRemoved.isEmpty && all.episodesRemoved.isEmpty)
     }
 
-    @Test("Eine neue Folge vorn bewegt die Zeilen IHRER Sendung, keine andere; der Kopf bleibt")
+    @Test("A new episode at the front moves the rows of ITS show, no other; the head stays")
     func newEpisodeMovesOnlyItsShow() {
         let before = [show("a", episodes: 3), show("b", episodes: 2)]
         var after = before
@@ -53,7 +53,7 @@ struct PodcastRowDiffTests {
         #expect(one.showsUpserted.isEmpty)
     }
 
-    @Test("Kopf geaendert = eine Zeile; Sendung weg = eine Entfernung; Folge weg = eine Entfernung; Umsortierung bewegt die Koepfe")
+    @Test("Head changed = one row; show gone = one removal; episode gone = one removal; reordering moves the heads")
     func headsRemovalsAndOrder() {
         let before = [show("a", episodes: 2), show("b", episodes: 2), show("c", episodes: 1)]
         var renamed = before

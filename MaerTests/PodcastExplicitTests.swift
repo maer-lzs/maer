@@ -11,7 +11,7 @@ import Foundation
 /// The explicit mark of podcasts: one rule, one letter, on episode rows, the
 /// episode page and the show page.
 struct PodcastExplicitTests {
-    @Test("eine Folge traegt das E nach ihrem eigenen Kennzeichen, ohne eines nach dem der Sendung")
+    @Test("an episode carries the E by its own flag, without one by the flag of the show")
     func theEpisodeTagWinsElseTheShow() {
         #expect(PodcastExplicit.marks(episode: true, show: false))
         #expect(!PodcastExplicit.marks(episode: false, show: true), "a clean episode of an explicit show")
@@ -20,7 +20,7 @@ struct PodcastExplicitTests {
         #expect(PodcastExplicit.marks(show: true) && !PodcastExplicit.marks(show: nil))
     }
 
-    @Test("Zeile, Folgenseite und Sendung fragen die eine Regel, keine Stelle schreibt das E selbst", .needsTheSources)
+    @Test("row, episode page and show ask the one rule, no place writes the E itself", .needsTheSources)
     func everySurfaceAsksTheRule() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(
@@ -39,7 +39,7 @@ struct PodcastExplicitTests {
     /// The row's facts come from the store its list observes, any store:
     /// a kept episode without an enclosure is text only, the show's tag
     /// marks a clean episode of it, and an episode no show holds plays.
-    @Test("die Fakten einer Folgenzeile kommen aus dem Speicher, den die Liste beobachtet, jedem")
+    @Test("the facts of an episode row come from the store the list observes, from any of them")
     @MainActor
     func theRowsFactsComeFromTheObservedStore() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("episode-facts-\(UUID().uuidString)")
@@ -74,7 +74,7 @@ struct PodcastExplicitTests {
 
     /// The row and the page reach no subscription store of their own; each
     /// caller of the row hands the facts from the store it observes.
-    @Test("Folgenzeile und Folgenseite greifen keinen Abo-Speicher, die Rufer reichen ihn", .needsTheSources)
+    @Test("episode row and episode page grab no subscription store, the callers pass it in", .needsTheSources)
     func theRowAndThePageReachNoStore() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(

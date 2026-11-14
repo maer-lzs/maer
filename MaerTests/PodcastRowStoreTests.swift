@@ -34,7 +34,7 @@ struct PodcastRowStoreTests {
         return (try await PodcastRowStore(connection: db), db)
     }
 
-    @Test("Ersetzen und Zurücklesen: Reihenfolge der Sendungen und der Folgen, jedes Feld")
+    @Test("Replacing and reading back: order of the shows and the episodes, every field")
     func replaceAllRoundTrip() async throws {
         let (store, _) = try await store()
         let stock = [show("a", episodes: 3), show("b", episodes: 2), show("c", episodes: 0)]
@@ -47,7 +47,7 @@ struct PodcastRowStoreTests {
         #expect(try await store.counts() == PodcastRowStore.Counts(shows: 1, episodes: 2))
     }
 
-    @Test("Ein Diff schreibt die genannten Zeilen; eine entfernte Sendung nimmt ihre Folgen mit; leer ist ein No-op")
+    @Test("A diff writes the named rows; a removed show takes its episodes along; empty is a no-op")
     func applyWritesTheNamedRows() async throws {
         let (store, _) = try await store()
         let before = [show("a", episodes: 3), show("b", episodes: 2)]
@@ -67,7 +67,7 @@ struct PodcastRowStoreTests {
         #expect(try await store.apply(PodcastRowDiff()) == PodcastRowStore.Counts(shows: 0, episodes: 0))
     }
 
-    @Test("Eine unlesbare Zeile wird uebersprungen, der Rest kommt; die Familie hat ihre eigene Schema-Version")
+    @Test("An unreadable row is skipped, the rest comes through; the family has its own schema version")
     func unreadableRowIsSkipped() async throws {
         let (store, db) = try await store()
         try await store.replaceAll([show("a", episodes: 2)])

@@ -25,7 +25,7 @@ struct PodcastSubscriptionsDefaultsTests {
         try await body()
     }
 
-    @Test("die Premium-Pruefung liest Sperre und Markierung aus den uebergebenen defaults, nicht aus denen der App")
+    @Test("the premium check reads lock and mark from the passed defaults, not from those of the app")
     func thePremiumTestReadsTheGivenDefaults() async {
         let feed = "https://feeds.example.org/\(UUID().uuidString)/feed.xml"
         let key = PodcastIdentity.feedKey(feed)
@@ -43,7 +43,7 @@ struct PodcastSubscriptionsDefaultsTests {
         }
     }
 
-    @Test("ein Speicher mit eigenen defaults liest die offenen Uebernahmen nicht aus denen der App")
+    @Test("a store with its own defaults does not read the open adoptions from those of the app")
     func aStoreReadsItsOwnPendingAdoptions() async throws {
         let feedKey = "pending-\(UUID().uuidString)"
         FeedAdoptionPending.mark(feedKey: feedKey, feedURL: "https://feeds.example.org/x.xml", reason: .dismissed)
@@ -64,7 +64,7 @@ struct PodcastSubscriptionsDefaultsTests {
 
     /// The class, asked of the source: every call from the subscriptions to
     /// a function that takes `defaults:` passes it on.
-    @Test("jeder Aufruf einer Funktion mit defaults aus dem Abo-Speicher reicht seine defaults weiter", .needsTheSources)
+    @Test("every call of a function with defaults from the subscription store passes its defaults on", .needsTheSources)
     func everyCallPassesTheDefaults() throws {
         let store = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))

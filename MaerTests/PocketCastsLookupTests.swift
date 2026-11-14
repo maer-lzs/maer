@@ -21,7 +21,7 @@ struct PocketCastsLookupTests {
         return try! JSONSerialization.data(withJSONObject: row)
     }
 
-    @Test("jede fehlende Folge einmal, im Deckel, in Reihenfolge; 404 laeuft weiter")
+    @Test("each missing episode once, within the cap, in order; 404 carries on")
     func asksEachOnceWithinBudget() async {
         var seen: [String] = []
         let round = await PocketCastsClient.lookupRound(uuids: ["a", "b", "c", "d"], budget: 3) { uuid in
@@ -38,7 +38,7 @@ struct PocketCastsLookupTests {
         #expect(round.details.map(\.uuid) == ["a", "c"])
     }
 
-    @Test("429 oder 5xx beendet die Runde mit dem Status, das Gefragte bleibt gezaehlt")
+    @Test("429 or 5xx ends the round with the status, what was asked stays counted")
     func refusalEndsTheRound() async {
         var seen: [String] = []
         let throttled = await PocketCastsClient.lookupRound(uuids: ["a", "b", "c"], budget: 300) { uuid in
@@ -54,7 +54,7 @@ struct PocketCastsLookupTests {
         #expect(forbidden.status == "403" && forbidden.asked == 1)
     }
 
-    @Test("unbekannte Form und unerreichbarer Host beenden die Runde, nichts wird geraten")
+    @Test("unknown form and unreachable host end the round, nothing is guessed")
     func unknownShapeAndUnreachableEndTheRound() async {
         let shape = await PocketCastsClient.lookupRound(uuids: ["a", "b"], budget: 300) { _ in
             (Data("{\"result\":\"something else\"}".utf8), 200)
@@ -69,7 +69,7 @@ struct PocketCastsLookupTests {
         #expect(spent.asked == 0)
     }
 
-    @Test("der Deckel je Import ist dreihundert")
+    @Test("the cap per import is three hundred")
     func capIsThreeHundred() {
         #expect(PocketCastsClient.lookupCap == 300)
     }

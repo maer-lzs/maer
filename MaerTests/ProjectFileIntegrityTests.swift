@@ -81,7 +81,7 @@ struct ProjectFileIntegrityTests {
             }
         }
         #expect(offenders.isEmpty, "these views drive the player or the sync from body: \(offenders)")
-        // Rot-Probe in both directions: a call right under `var body` is
+        // Red probe in both directions: a call right under `var body` is
         // caught, the same call inside a handler is not.
         let bad = "struct V: View {\n    var body: some View {\n        Text(\"x\")\n        coordinator.viewModel?.stop()\n    }\n}"
         #expect(Self.bodyLevelPlayerOrSyncCalls(in: bad) == [4])
@@ -97,9 +97,9 @@ struct ProjectFileIntegrityTests {
 
     @Test("pbxproj: the project never references itself", .needsTheProjectFile)
     func noSelfReference() throws {
-        // Die Bedingung am Fall hat schon entschieden, dass die Datei da
-        // ist. Fehlt sie hier trotzdem, ist sie unlesbar, und das ist ein
-        // Befund und keine Enthaltung.
+        // The condition on the case has already decided that the file is
+        // there. If it is missing here anyway, it is unreadable, and that is a
+        // finding and no abstention.
         let text = try #require(Self.projectFile, "die Projektdatei liegt da und ist nicht lesbar")
         let count = text.components(separatedBy: "wrapper.pb-project").count - 1
         #expect(count == 0,
@@ -114,15 +114,15 @@ struct ProjectFileIntegrityTests {
     /// key file. Can be swept into the app bundle. Lose the path and both
     /// problems return silently, so it is nailed down here.
     /// The app-store permission (LICENSE-ADDITIONAL-TERMS, part 1) can only be granted
-    /// weil er ALLEINIGER Rechteinhaber ist. Und das ist er nur, solange das
-    /// Projekt keine Fremdabhängigkeit einzieht. Eine still dazugekommene
-    /// SPM-Abhängigkeit brächte fremden Code (und fremde Lizenz) in dieselbe
-    /// Binärdatei und würde die Ausnahme aushöhlen, ohne dass jemand es
-    /// bemerkt. Deshalb ist die Zahl hier festgenagelt: 0.
-    /// GPL § 7 verlangt den Hinweis auf Zusatzbedingungen ausdrücklich **in
-    /// den Quelldateien**. Nicht nur in der Wurzel. Eine
-    /// neue Datei ohne diese Zeile ließe die Bedingung still ausfallen, und
-    /// niemand würde es merken. Derselbe Mechanismus wie beim pbxproj-Zaun.
+    /// because he is the SOLE rights holder. And he is that only as long as the
+    /// project pulls in no third-party dependency. A silently added
+    /// SPM dependency would bring foreign code (and a foreign licence) into the same
+    /// binary and would hollow out the exception without anyone
+    /// noticing. That is why the number is nailed down here: 0.
+    /// GPL § 7 requires the notice of additional terms expressly **in
+    /// the source files**. Not only in the root. A
+    /// new file without this line would let the condition silently lapse, and
+    /// nobody would notice. The same mechanism as with the pbxproj fence.
     @Test("every source file carries copyright, SPDX and the additional-terms notice", .needsTheSources)
     func everySourceFileCarriesTheLicenceHeader() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -149,9 +149,9 @@ struct ProjectFileIntegrityTests {
 
     @Test("no third-party dependency sneaks in (the licence exception rests on it)", .needsTheProjectFile)
     func noExternalDependencies() throws {
-        // Die Bedingung am Fall hat schon entschieden, dass die Datei da
-        // ist. Fehlt sie hier trotzdem, ist sie unlesbar, und das ist ein
-        // Befund und keine Enthaltung.
+        // The condition on the case has already decided that the file is
+        // there. If it is missing here anyway, it is unreadable, and that is a
+        // finding and no abstention.
         let text = try #require(Self.projectFile, "die Projektdatei liegt da und ist nicht lesbar")
         #expect(!text.contains("XCRemoteSwiftPackageReference"),
                 "a new SPM dependency changes the licence situation — see LICENSE-ADDITIONAL-TERMS")
@@ -163,11 +163,11 @@ struct ProjectFileIntegrityTests {
                 "the additional terms must travel with the binary they apply to")
     }
 
-    /// Ein vollstaendiges JWT stand im Klartext in einer gewoehnlichen
-    /// View-Datei. Also im oeffentlichen Spiegel und dauerhaft in der
-    /// Historie. Der Zugang ist zurueckgebaut; dieser Zaun sorgt dafuer, dass
-    /// so etwas nicht zum Testen wiederkommt. JWTs haben eine erkennbare Form
-    /// (`eyJ` = base64 von `{"`), das genuegt als Muster.
+    /// A complete JWT stood in plain text in an ordinary
+    /// view file. So in the public mirror and permanently in the
+    /// history. The access has been rolled back; this fence makes sure that
+    /// nothing like it comes back for testing. JWTs have a recognizable form
+    /// (`eyJ` = base64 of `{"`), which suffices as a pattern.
     @Test("no access token is hard-coded in the sources", .needsTheSources)
     func noHardCodedTokens() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -179,7 +179,7 @@ struct ProjectFileIntegrityTests {
             for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 checked += 1
-                // Ein JWT im Quelltext: "eyJ" gefolgt von base64 und einem Punkt.
+                // A JWT in the source text: "eyJ" followed by base64 and a dot.
                 if text.range(of: #""eyJ[A-Za-z0-9_-]{8,}\."#, options: .regularExpression) != nil {
                     offenders.append(url.lastPathComponent)
                 }
@@ -190,12 +190,12 @@ struct ProjectFileIntegrityTests {
                 "a JWT is hard-coded in the sources — credentials belong in App Store Connect's review notes, never in a shipped file")
     }
 
-    /// SECHS handgepflegte User-Agent-Zeichenketten mit vier
-    /// Versionswerten und zwei Adressen. Eine davon nannte die private Forge und
-    /// ging bei jedem Kuenstlerbild-Abruf nach draussen. Jetzt gibt es genau
-    /// eine, aus der Bundle-Version abgeleitet. Der Zaun haelt das: kein
-    /// hartkodiertes `Maer/<Ziffer>` mehr in den Quellen, und die eine
-    /// Definition steht in `AppUserAgent`.
+    /// SIX hand-maintained user-agent strings with four
+    /// version values and two addresses. One of them named the private forge and
+    /// went outside with every artist-image fetch. Now there is exactly
+    /// one, derived from the bundle version. The fence holds that: no
+    /// hard-coded `Maer/<digit>` any more in the sources, and the one
+    /// definition lives in `AppUserAgent`.
     @Test("exactly one User-Agent, and no hard-coded version literal", .needsTheSources)
     func oneUserAgent() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -221,12 +221,12 @@ struct ProjectFileIntegrityTests {
         #expect(definitions == 1, "the identification is defined exactly once")
     }
 
-    /// Eine Kennung auf dem CONTAINER faltet den Teilbaum zu einem
-    /// Element. Die Playlist-Karte trug ihren Namen von aussen, und damit
-    /// meldeten Karte, Details-Pille und Zufalls-Ecke denselben: drei
-    /// Bedienelemente, ein Name, fuer VoiceOver dreimal dasselbe. Der Zaun
-    /// haelt die Form, nicht die eine Fundstelle — eine Kennung gehoert an
-    /// das Element, das sie meint. Rot-Probe steht im Test selbst.
+    /// An identifier on the CONTAINER folds the subtree into one
+    /// element. The playlist card carried its name from outside, and so
+    /// card, details pill and shuffle corner reported the same one: three
+    /// controls, one name, the same thing three times for VoiceOver. The fence
+    /// holds the form, not the one place found; an identifier belongs on
+    /// the element it means. The red probe is in the test itself.
     @Test("no accessibility identifier sits on a card container", .needsTheSources)
     func identifiersNameTheElementNotTheContainer() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -247,21 +247,21 @@ struct ProjectFileIntegrityTests {
         #expect(checked > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "the name lands on the container and swallows the names of the controls inside")
-        // Rot-Probe: die alte Form wird erkannt.
+        // Red probe: the old form is recognized.
         let old = ["ForEach(sources) { source in",
                    "    PlaylistCard(source: source, playerCoordinator: playerCoordinator)",
                    "        .accessibilityIdentifier(\"server-playlist-\\(source.id)\")"]
         #expect(Self.constructedComponent(before: 2, in: old) == "PlaylistCard")
-        // …und die richtige Form nicht: die Karte benennt sich selbst.
+        // …and the right form is not: the card names itself.
         let now = ["Button { open() } label: { … }",
                    "    .buttonStyle(.plain)",
                    "    .accessibilityIdentifier(Self.identifier(for: source))"]
         #expect(Self.constructedComponent(before: 2, in: now) == nil)
     }
 
-    /// Der Bauteil-Aufruf ueber einer Kennungs-Zeile, falls es einen gibt.
-    /// Nur die naechste tragende Zeile zaehlt: steht dazwischen ein
-    /// Modifizierer, haengt die Kennung an ihm und nicht am Bauteil.
+    /// The component call above an identifier line, if there is one.
+    /// Only the next carrying line counts: if a modifier stands in
+    /// between, the identifier hangs on it and not on the component.
     private static func constructedComponent(before index: Int, in lines: [String]) -> String? {
         var cursor = index - 1
         while cursor >= 0 {
@@ -275,12 +275,12 @@ struct ProjectFileIntegrityTests {
         return nil
     }
 
-    /// Die acht Katalogquellen hatten ein zweites, handgeschriebenes
-    /// Aktivierungssystem. Die Vorgabe stand 35× in elf Dateien. Alle 35
-    /// stimmten überein; erzwungen hat das
-    /// niemand, ein `bool(forKey:)` an einer Stelle hätte sie gekippt.
-    /// Jetzt steht sie einmal je Quelle in `AppStorageKeys`. Ohne diesen Zaun
-    /// ist der Aufräumtag in drei Monaten rückgängig gemacht.
+    /// The eight catalog sources had a second, hand-written
+    /// activation system. The default stood 35× in eleven files. All 35
+    /// agreed; nobody enforced that,
+    /// a `bool(forKey:)` in one place would have tipped it.
+    /// Now it stands once per source in `AppStorageKeys`. Without this fence
+    /// the cleanup day is undone in three months.
     @Test("the default 'on' lives in exactly one file", .needsTheSources)
     func noScatteredDefaults() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -301,9 +301,9 @@ struct ProjectFileIntegrityTests {
 
     @Test("pbxproj: the app target syncs Sources, not the repo root", .needsTheProjectFile)
     func appTargetSyncsSourcesOnly() throws {
-        // Die Bedingung am Fall hat schon entschieden, dass die Datei da
-        // ist. Fehlt sie hier trotzdem, ist sie unlesbar, und das ist ein
-        // Befund und keine Enthaltung.
+        // The condition on the case has already decided that the file is
+        // there. If it is missing here anyway, it is unreadable, and that is a
+        // finding and no abstention.
         let text = try #require(Self.projectFile, "die Projektdatei liegt da und ist nicht lesbar")
         #expect(text.contains("path = Sources;"),
                 "the synchronised app group lost `path = Sources` — the repo root would be swept again (self-reference + bundle pollution)")
@@ -416,7 +416,7 @@ struct ProjectFileIntegrityTests {
     /// function and borrowed its key. The two statements below are the real
     /// pair. The flushed witness (legitimate, two values, its own key) and
     /// the backup removal that follows it.
-    @Test("der Schreiber-Zaun endet an der Klammer, nicht am Zeichenfenster")
+    @Test("the writer fence ends at the parenthesis, not at the character window")
     func writerFenceStopsAtTheStatementEnd() {
         #expect(Self.rawPositionWriters(in: """
                 defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
@@ -635,7 +635,7 @@ extension ProjectFileIntegrityTests {
     }
 }
 
-// MARK: - 🟡 Kuratierte Picks kommen aus EINER geprobten Quelle
+// MARK: - 🟡 Curated picks come from ONE probed source
 
 extension ProjectFileIntegrityTests {
     /// Finds preview rows that build their items themselves instead of going
@@ -667,7 +667,7 @@ extension ProjectFileIntegrityTests {
         return offenders
     }
 
-    @Test("kuratierte Vorschau-Reihen beziehen ihre Picks ueber den geprobten Eintrittspunkt", .needsTheSources)
+    @Test("curated preview rows get their picks through the probed entry point", .needsTheSources)
     func previewPicksComeFromTheProbedEntryPoint() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -680,35 +680,35 @@ extension ProjectFileIntegrityTests {
                 "diese Vorschau-Reihe umgeht die Lebend-Probe: \(Self.unprobedPickRows(in: text))")
     }
 
-    /// Beweislauf: der Zaun muss die Form finden, die ausgeliefert war.
-    @Test("der Pick-Zaun faengt die ungeprobte Zuweisung, die ausgeliefert war")
+    /// Proof run: the fence must find the form that shipped.
+    @Test("the pick fence catches the unprobed assignment that shipped")
     func pickFenceCatchesTheShippedShape() {
         let shipped = """
                         rows.netlabels = docs.compactMap { provider.remember(popular: $0) }
         """
         #expect(Self.unprobedPickRows(in: shipped).count == 1)
-        // Der geprobte Eintrittspunkt ist kein Verstoss …
+        // The probed entry point is no violation …
         #expect(Self.unprobedPickRows(
             in: "rows.netlabels = await Self.picks(docs, cap: 6, provider: provider)").isEmpty)
-        // … und der breitere Zweitschnitt bleibt ausdruecklich erlaubt.
+        // … and the broader second cut remains expressly allowed.
         #expect(Self.unprobedPickRows(
             in: "rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }").isEmpty)
     }
 }
 
-// MARK: - Das Instrument fragt die Regel, es kopiert sie nicht
+// MARK: - The instrument asks the rule, it does not copy it
 
 extension ProjectFileIntegrityTests {
-    @Test("die Fortschritts-Diagnose vergleicht nicht selbst", .needsTheSources)
+    @Test("the progress diagnosis does not compare by itself", .needsTheSources)
     func diagnosisAsksTheSharedRule() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent(
             "Sources/Models/ProgressDiagnosis.swift"), encoding: .utf8)
-        // Sie MUSS die geteilte Regel rufen …
+        // It MUST call the shared rule …
         #expect(text.contains("SyncRules.shouldRestoreLocalPosition"))
-        // … und darf den Vergleich nicht danebenstellen (die Form, die
-        // ausgeliefert war: `localAt > serverAt && abs(...) > 5`).
+        // … and must not set the comparison beside it (the form that
+        // shipped: `localAt > serverAt && abs(...) > 5`).
         let collapsed = text.replacingOccurrences(of: " ", with: "")
         #expect(!collapsed.contains("localAt>serverAt&&abs("),
                 "die Startregel ist wieder kopiert statt gefragt")
@@ -718,7 +718,7 @@ extension ProjectFileIntegrityTests {
     /// judged by the SHARED rules. The same reason as above, and the same
     /// failure mode: identical today, silently divergent the day a tolerance
     /// moves.
-    @Test("der Start fragt beide Zeugen-Regeln, statt selbst zu vergleichen", .needsTheSources)
+    @Test("the start asks both witness rules, instead of comparing by itself", .needsTheSources)
     func startAsksTheSharedWitnessRules() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -735,7 +735,7 @@ extension ProjectFileIntegrityTests {
     /// The witness only helps if it SURVIVES the sync. The deletion is the
     /// shipped shape that caused the null start; it may not come back without
     /// the tombstone beside it.
-    @Test("der Sync loescht den Zeugen nicht ersatzlos", .needsTheSources)
+    @Test("the sync does not delete the witness without replacement", .needsTheSources)
     func syncKeepsAWitness() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -755,7 +755,7 @@ extension ProjectFileIntegrityTests {
     /// same class as a stale constant. It must keep a SECOND writer, the
     /// one that carries the
     /// server's answer into it.
-    @Test("das gecachte Detail wird nicht nur beim Herunterladen geschrieben", .needsTheSources)
+    @Test("the cached detail is not written only on download", .needsTheSources)
     func cachedDetailIsKeptCurrent() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -794,7 +794,7 @@ extension ProjectFileIntegrityTests {
                                    range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
     }
 
-    @Test("die Journeys rollen die Scroll-Suche nicht selbst", .needsTheUITests)
+    @Test("the journeys do not roll their own scroll search", .needsTheUITests)
     func journeysUseTheSharedScrollHelper() throws {
         #expect(Self.handRolledScrollLoops(in: try Self.journeyText()) == 0,
                 "a journey searches with its own swipe loop again instead of waitScrollingTo")
@@ -802,7 +802,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run: the fence must catch the shape that shipped. Single-line as
     /// well as multi-line, with both predicates.
-    @Test("der Scroll-Zaun faengt die ausgelieferten Formen")
+    @Test("the scroll fence catches the shipped forms")
     func scrollFenceCatchesTheShippedShapes() {
         #expect(Self.handRolledScrollLoops(
             in: "while !toggle.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }") == 1)
@@ -833,7 +833,7 @@ extension ProjectFileIntegrityTests {
 
     /// The start precondition belongs in `launchSeeded`. One place, not
     /// twelve copies, and none that bets on an element below the fold.
-    @Test("die Start-Vorbedingung steht genau einmal, im geteilten Start", .needsTheUITests)
+    @Test("the start precondition appears exactly once, in the shared start", .needsTheUITests)
     func launchPreconditionLivesInLaunchSeeded() throws {
         let text = try Self.journeyText()
         #expect(Self.blindSeedBookWaits(in: text) == 0,
@@ -843,7 +843,7 @@ extension ProjectFileIntegrityTests {
     }
 
     /// Proof run on the form that shipped. Twelve times, word for word.
-    @Test("der Vorbedingungs-Zaun faengt die ausgelieferte Form")
+    @Test("the precondition fence catches the shipped form")
     func preconditionFenceCatchesTheShippedShape() {
         #expect(Self.blindSeedBookWaits(
             in: #"XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))"#) == 1)
@@ -860,7 +860,7 @@ extension ProjectFileIntegrityTests {
     /// Exactly ONE place may build the app. The shared `launch`. Everything
     /// else forgot the foreground wait once already, which is why the radio
     /// journeys tapped into a launch animation.
-    @Test("nur der geteilte Start baut die App auf", .needsTheUITests)
+    @Test("only the shared start launches the app", .needsTheUITests)
     func journeysLaunchThroughTheSharedEntry() throws {
         let builds = Self.appBuildSites(in: try Self.journeyText())
         #expect(builds == 1, "a journey builds the app itself again (\(builds) places)")
@@ -868,7 +868,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the form that shipped: thirteen journeys built their own
     /// app, two of them without ever waiting for the foreground.
-    @Test("der Start-Zaun faengt die ausgelieferte Form")
+    @Test("the start fence catches the shipped form")
     func launchFenceCatchesTheShippedShape() {
         #expect(Self.appBuildSites(in: """
                 let app = XCUIApplication()
@@ -895,7 +895,7 @@ extension ProjectFileIntegrityTests {
 
     /// One way back for every journey, `backFromPage`: it knows the side
     /// column, where the system stands the back button outside every bar.
-    @Test("die Journeys gehen ueber den einen geteilten Weg zurueck", .needsTheUITests)
+    @Test("the journeys go back over the one shared path", .needsTheUITests)
     func journeysGoBackThroughTheSharedWay() {
         let sites = Self.sourceTexts(in: ["MaerUITests"]).map { Self.ownBackSites(in: $0.text) }
         #expect(sites.count >= 5, "the fence read no journey file: \(sites.count)")
@@ -907,7 +907,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the forms that shipped: the setup journey's index tap
     /// and a journey's own copy of the helper.
-    @Test("der Zurueck-Zaun faengt die ausgelieferten Formen")
+    @Test("the back fence catches the shipped forms")
     func backFenceCatchesTheShippedShapes() {
         #expect(Self.ownBackSites(in: "app.navigationBars.buttons.element(boundBy: 0).tap()").indexed == 1)
         #expect(Self.ownBackSites(in: "private func backFromPage(_ app: XCUIApplication) {").helpers == 1)
@@ -931,7 +931,7 @@ extension ProjectFileIntegrityTests {
                                    range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
     }
 
-    @Test("nur der geteilte Schlitz spannt eine Kachelreihe auf", .needsTheSources)
+    @Test("only the shared slot spans a tile row", .needsTheSources)
     func cardRowsAskTheSharedSlot() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -950,7 +950,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the shape that shipped: fifteen places passed the literal
     /// `false`, which on an iPad meant full width ÷ 3.
-    @Test("der Schlitz-Zaun faengt die ausgelieferte Form")
+    @Test("the slot fence catches the shipped form")
     func slotFenceCatchesTheShippedShape() {
         #expect(Self.ownSlotSites(in: """
                     .containerRelativeFrame(.horizontal,
@@ -964,7 +964,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.ownSlotSites(in: ".cardRowSlot(spacing: 14)") == 0)
     }
 
-    // MARK: - Playlisten: ein Weg hinein, ein Ort der Anlage
+    // MARK: - Playlists: one way in, one place of creation
 
     /// Every source file, so a sweep sees the whole class instead of the
     /// files someone remembered.
@@ -985,7 +985,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("keine Flaeche haelt sich einen eigenen Playlist-Weg", .needsTheSources)
+    @Test("no surface keeps its own playlist path", .needsTheSources)
     func playlistRoutesAreShared() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -999,7 +999,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the three shapes that shipped. The server-only sheet, its
     /// target type and the device-only menu.
-    @Test("der Playlist-Weg-Zaun faengt die ausgelieferten Formen")
+    @Test("the playlist-path fence catches the shipped forms")
     func playlistRouteFenceCatchesTheShippedShapes() {
         #expect(Self.ownPlaylistRoutes(in: """
                     MaerPlaylistMenu(itemId: item.id,
@@ -1021,7 +1021,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("angelegt wird an genau einer Stelle", .needsTheSources)
+    @Test("creation happens in exactly one place", .needsTheSources)
     func creatingHappensInOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "AddToPlaylistSheet.swift" {
@@ -1035,7 +1035,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run: both worlds' shipped create calls are caught, the routing
     /// through the shared dialog is not.
-    @Test("der Anlage-Zaun faengt die ausgelieferten Formen")
+    @Test("the creation fence catches the shipped forms")
     func creationFenceCatchesTheShippedShapes() {
         #expect(Self.directListCreations(
             in: "MaerPlaylists.shared.create(name: name, itemIds: PlayQueue.shared.ids)") == 1)
@@ -1046,7 +1046,7 @@ extension ProjectFileIntegrityTests {
             in: "PlaylistPresenter.shared.askToCreate(place: .device, host: playlistHost)") == 0)
     }
 
-    // MARK: - Feed-Anfragen gehen nie im Klartext raus
+    // MARK: - Feed requests never go out in plain text
 
     /// A feed request built straight from a stored/directory address, past
     /// the one rule that raises it (`PodcastFeedAddress`). Statement-based,
@@ -1057,7 +1057,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("keine Feed-Anfrage baut ihre Adresse selbst", .needsTheSources)
+    @Test("no feed request builds its address itself", .needsTheSources)
     func feedRequestsAskTheSharedAddress() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "PodcastFeedAddress.swift" {
@@ -1071,7 +1071,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the three shapes that shipped. The preview, the refresh
     /// loop and the artwork probe each built their own URL.
-    @Test("der Feed-Adress-Zaun faengt die ausgelieferten Formen")
+    @Test("the feed-address fence catches the shipped forms")
     func feedAddressFenceCatchesTheShippedShapes() {
         #expect(Self.rawFeedRequestSites(
             in: "guard let url = URL(string: feedURL) else { failed = true; return }") == 1)
@@ -1084,7 +1084,7 @@ extension ProjectFileIntegrityTests {
             in: "guard let url = PodcastFeedAddress.requestURL(feedURL) else { return nil }") == 0)
     }
 
-    // MARK: - Hoerstand-Invariante: kein Pfad entfernt einen Stand ersatzlos
+    // MARK: - Listening-state invariant: no path removes a state without replacement
 
     /// A raw removal of a progress key. The whole weekend's error family came
     /// from exactly one such line: the sync deleted the local witness after
@@ -1149,7 +1149,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("ausserhalb des Bestands baut niemand einen Fortschritts-Schluessel", .needsTheSources)
+    @Test("outside the stock nobody builds a progress key", .needsTheSources)
     func onlyTheStockBuildsProgressKeys() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles()
@@ -1163,7 +1163,7 @@ extension ProjectFileIntegrityTests {
     }
 
     /// Proof run: the shipped key export, and a plain build.
-    @Test("der Schluessel-Zaun faengt die ausgelieferte Weitergabe")
+    @Test("the key fence catches the shipped hand-off")
     func keyFenceCatchesTheShippedExport() {
         #expect(Self.progressKeyBuilders(in: """
                     var localPositionKey: String? {
@@ -1175,7 +1175,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.progressKeyBuilders(in: "ListeningStore.mark(item.id)") == 0)
     }
 
-    @Test("keine Flaeche fasst die Fortschritts-Schluessel selbst an", .needsTheSources)
+    @Test("no surface touches the progress keys itself", .needsTheSources)
     func everySurfaceAsksTheStock() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles()
@@ -1190,7 +1190,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on all THREE shipped forms. The one the old fence caught,
     /// and the two it was blind to.
-    @Test("der Zugriffs-Zaun faengt alle drei ausgelieferten Formen")
+    @Test("the access fence catches all three shipped forms")
     func accessFenceCatchesAllThreeShapes() {
         // 1. direct. The only shape the first version knew.
         #expect(Self.rawProgressAccesses(in: """
@@ -1215,7 +1215,7 @@ extension ProjectFileIntegrityTests {
     /// The ticker is class-blind by construction. The moment a call-site
     /// condition appears around it, one class loses its local truth again, and
     /// that asymmetry is where the whole null-start family came from.
-    @Test("der Sekundenschreiber kennt keine Klassen-Ausnahme", .needsTheSources)
+    @Test("the seconds writer knows no class exception", .needsTheSources)
     func theTickerWritesForEveryClass() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -1233,7 +1233,7 @@ extension ProjectFileIntegrityTests {
         }
     }
 
-    @Test("kein Sync-Pfad entfernt einen Hoerstand ersatzlos", .needsTheSources)
+    @Test("no sync path removes a listening state without replacement", .needsTheSources)
     func noPathRemovesAListeningState() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
@@ -1247,7 +1247,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the shipped shapes. The sync deletion that caused the
     /// null start, and the re-keying that overwrote a newer stand.
-    @Test("der Invarianten-Zaun faengt die ausgelieferten Formen")
+    @Test("the invariant fence catches the shipped forms")
     func invariantFenceCatchesTheShippedShapes() {
         #expect(Self.rawProgressRemovals(
             in: "UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(id))") == 1)
@@ -1260,7 +1260,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.rawProgressRemovals(in: "ListeningStore.clearBackup(item.id)") == 0)
     }
 
-    // MARK: - Stempel-Regel: ein festes Format braucht ein festes Gebietsschema
+    // MARK: - Stamp rule: a fixed format needs a fixed locale
 
     /// A `DateFormatter` with a fixed `dateFormat` but no fixed locale. Under a
     /// non-Gregorian calendar (selectable in iOS settings) the same instant
@@ -1287,7 +1287,7 @@ extension ProjectFileIntegrityTests {
         return count
     }
 
-    @Test("kein festes Datumsformat ohne festes Gebietsschema", .needsTheSources)
+    @Test("no fixed date format without a fixed locale", .needsTheSources)
     func fixedFormatsCarryAFixedLocale() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1301,7 +1301,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the two shipped shapes. The listening statistics, whose
     /// day string is a STORED KEY, and the catalogue air-date parse.
-    @Test("der Gebietsschema-Zaun faengt die ausgelieferten Formen")
+    @Test("the locale fence catches the shipped forms")
     func localeFenceCatchesTheShippedShapes() {
         #expect(Self.localeLessFixedFormats(in: """
                 let formatter = DateFormatter()
@@ -1321,7 +1321,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.localeLessFixedFormats(in: "let f = ISO8601DateFormatter()") == 0)
     }
 
-    // MARK: - Einstellungs-Schluessel stehen an EINER Stelle
+    // MARK: - Settings keys live in ONE place
 
     /// A raw string inside `@AppStorage`. The keys live in `AppStorageKeys`;
     /// a literal beside them is the drift a rename breaks silently. Measured
@@ -1335,7 +1335,7 @@ extension ProjectFileIntegrityTests {
                                    range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
     }
 
-    @Test("kein Einstellungs-Schluessel steht als roher String im Baum", .needsTheSources)
+    @Test("no settings key stands as a raw string in the tree", .needsTheSources)
     func storageKeysComeFromTheOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1349,7 +1349,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the shipped form. The literal that stood next to its own
     /// constant, and the correct spelling beside it.
-    @Test("der Schluessel-Zaun faengt die ausgelieferte Form")
+    @Test("the key fence catches the shipped form")
     func storageKeyFenceCatchesTheShippedShape() {
         #expect(Self.rawStorageKeyLiterals(
             in: #"@AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true"#) == 1)
@@ -1357,7 +1357,7 @@ extension ProjectFileIntegrityTests {
             in: "@AppStorage(AppStorageKeys.podcastAutoSaveOnPlay) private var x = true") == 0)
     }
 
-    // MARK: - Ein Feld an einem gespeicherten Typ ist eine stille Migration
+    // MARK: - A field on a stored type is a silent migration
 
     /// A decode whose BYTES come from a local store. File, UserDefaults, the
     /// key-value store, the app group. That is the cut between "persisted" and
@@ -1388,7 +1388,7 @@ extension ProjectFileIntegrityTests {
     /// value back is how a read error becomes permanent loss. The file is
     /// overwritten with the emptiness. This is the shape worth naming; the
     /// fence only counts it, the report ranks it.
-    @Test("gespeicherte Typen sind erhoben, damit ein neues Feld keine Historie kostet", .needsTheSources)
+    @Test("stored types are inventoried, so that a new field costs no history", .needsTheSources)
     func persistedTypesAreKnown() throws {
         var found: Set<String> = []
         for file in Self.sourceFiles() {
@@ -1418,7 +1418,7 @@ extension ProjectFileIntegrityTests {
                 "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform, oder der Bestand liegt ueber der Zaehlung (\(drift ?? "")): \(found.sorted())")
     }
 
-    @Test("der Persistenz-Zaun trennt Ablage von Netzantwort")
+    @Test("the persistence fence separates storage from network response")
     func persistedFenceSeparatesStoreFromNetwork() {
         let store = """
         guard let data = try? Data(contentsOf: fileURL),
@@ -1432,8 +1432,8 @@ extension ProjectFileIntegrityTests {
         """
         #expect(Self.persistedDecodes(in: defaults).map(\.type) == ["Operation"])
 
-        // Eine Netzantwort ist KEINE Ablage. Sonst faengt der Zaun 30 DTOs
-        // und wird nach zwei Wochen abgeschaltet.
+        // A network response is NO storage. Otherwise the fence catches 30 DTOs
+        // and is switched off after two weeks.
         let network = """
         let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
@@ -1441,7 +1441,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.persistedDecodes(in: network).isEmpty)
     }
 
-    // MARK: - Aufloesen ist kein Hoeren
+    // MARK: - Resolving is not listening
 
     /// The body of every `fetchItemDetail`, brace-exact. A character window
     /// would read past the closing brace into the next function. The same
@@ -1480,7 +1480,7 @@ extension ProjectFileIntegrityTests {
         }
     }
 
-    @Test("keine Zaehlung in einer Aufloesungs-Funktion", .needsTheSources)
+    @Test("no counting in a resolution function", .needsTheSources)
     func resolvingNeverCounts() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1494,7 +1494,7 @@ extension ProjectFileIntegrityTests {
 
     /// Proof run on the shipped form. The two calls that really stood in
     /// `RadioProvider.fetchItemDetail`, and the booking beside it that is fine.
-    @Test("der Zaehl-Zaun faengt die ausgelieferte Form und endet an der Klammer")
+    @Test("the count fence catches the shipped form and ends at the parenthesis")
     func bookingFenceCatchesTheShippedShape() {
         let shipped = """
         func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -1520,7 +1520,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.bookingsInsideDetailFetch(in: fixed) == 0)
     }
 
-    // MARK: - Der Inhaltstyp ist kein Antwortgeber mehr
+    // MARK: - The content type is no longer an answer giver
 
     /// Every shape in which the old single content type could still be ASKED.
     /// The pair replaced it as the answer; a surface that reads the stored
@@ -1533,7 +1533,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("den alten Inhaltstyp befragt nur noch die Ablage selbst", .needsTheSources)
+    @Test("only the storage itself still queries the old content type", .needsTheSources)
     func legacyContentTypeIsNotAnAnswer() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1552,7 +1552,7 @@ extension ProjectFileIntegrityTests {
     /// A fence that only ever reports 0 proves nothing. This one is measured
     /// against the shapes that REALLY stood in the tree before the pair became
     /// the answer, one per read site.
-    @Test("der Inhaltstyp-Zaun faengt die drei ausgelieferten Lesestellen")
+    @Test("the content-type fence catches the three shipped read sites")
     func legacyContentTypeFenceCatchesTheShippedShapes() {
         #expect(Self.legacyContentTypeReads(
             in: "let subsonicServesMusic = AppStorageKeys.subsonicActive && !AppStorageKeys.subsonicIsAudiobooksValue") == 1)
@@ -1577,7 +1577,7 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
     }
 
-    @Test("der Name mediaType gehoert der String-Ebene, nicht dem Aufzaehlungstyp", .needsTheSources)
+    @Test("the name mediaType belongs to the string level, not to the enumeration type", .needsTheSources)
     func mediaTypeNameIsNotAmbiguous() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1589,13 +1589,13 @@ extension ProjectFileIntegrityTests {
                 "these files spell the enum meaning with the String layer's name: \(offenders)")
     }
 
-    @Test("der Namens-Zaun faengt die ausgelieferten Formen")
+    @Test("the name fence catches the shipped forms")
     func ambiguityFenceCatchesTheShippedShapes() {
         #expect(Self.ambiguousMediaTypeNames(
             in: "    var mediaType: MediaType { .radio }") == 1)
         #expect(Self.ambiguousMediaTypeNames(
             in: "where provider.mediaType == .audiobooks && provider.isAvailable {") == 1)
-        // Die STRING-Ebene bleibt unberuehrt. Sie darf den Namen behalten.
+        // The STRING level stays untouched. It may keep the name.
         #expect(Self.ambiguousMediaTypeNames(in: "    var mediaType: String? = nil") == 0)
         #expect(Self.ambiguousMediaTypeNames(
             in: #"return libs.filter { ($0.mediaType ?? "book") == "book" }"#) == 0)
@@ -1603,7 +1603,7 @@ extension ProjectFileIntegrityTests {
             in: "func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem]") == 0)
     }
 
-    @Test("kein Provider gibt seinen Typ noch als Einzelwert heraus", .needsTheSources)
+    @Test("no provider still hands out its type as a single value", .needsTheSources)
     func providersAnswerWithASet() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -1615,7 +1615,7 @@ extension ProjectFileIntegrityTests {
     }
 }
 
-// MARK: - Der Quelltext spricht ohne uns
+// MARK: - The source text speaks without us
 
 extension ProjectFileIntegrityTests {
 
@@ -1848,6 +1848,48 @@ extension ProjectFileIntegrityTests {
         #expect(found.isEmpty, "a comment in the app is English; a German title goes in quotes: \(found)")
     }
 
+    /// The display name of each `@Test` and `@Suite`, per line: the first
+    /// string literal right after the bracket.
+    static func testNames(in text: String) -> [(index: Int, name: String)] {
+        let pattern = #/@(?:Test|Suite)\("((?:[^"\\]|\\.)*)"/#
+        var out: [(Int, String)] = []
+        for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            for match in String(line).matches(of: pattern) { out.append((index, String(match.output.1))) }
+        }
+        return out
+    }
+
+    @Test("test comments and test names are English: no German function word outside quotes", .needsTheTests)
+    func testCommentsAndNamesAreEnglish() throws {
+        let files = Self.sourceTexts(in: ["MaerTests", "MaerUITests"])
+        try #require(files.count > 100, "the fence read no test file: \(files.count)")
+        var found: [String] = []
+        for (name, text) in files {
+            for (number, comment) in Self.comments(in: text) {
+                let words = Self.germanWords(in: comment)
+                if !words.isEmpty { found.append("\(name):\(number + 1) \(words)") }
+            }
+            for (number, title) in Self.testNames(in: text) {
+                let words = Self.germanWords(in: title.replacingOccurrences(of: "\\\"", with: "\""))
+                if !words.isEmpty { found.append("\(name):\(number + 1) name \(words)") }
+            }
+        }
+        #expect(found.isEmpty, "a test comment and a test name are English; a German title goes in quotes: \(found)")
+    }
+
+    @Test("the test name reader takes the first string of a test and a suite")
+    func testNamesReadTheFirstString() {
+        // The lines are joined at run time, so the fence never reads them as names of this file.
+        let text = [
+            "@" + #"Suite("eine Suite") struct S {"#,
+            "@" + #"Test("the name \"mit\" a quote", .needsTheTests, arguments: ["und"])"#,
+            #"#expect(x, "not a name")"#,
+        ].joined(separator: "\n")
+        #expect(Self.testNames(in: text).map(\.name) == ["eine Suite", #"the name \"mit\" a quote"#])
+        #expect(Self.germanWords(in: "eine Suite") == ["eine"])
+        #expect(Self.germanWords(in: #"the name "mit" a quote"#).isEmpty, "a quoted word inside a name is content")
+    }
+
     private static func isWordCharacter(_ character: Character) -> Bool {
         character.isLetter || character.isNumber || character == "-" || character == "_"
     }
@@ -1893,12 +1935,7 @@ extension ProjectFileIntegrityTests {
     /// the count that stood on the day of measuring, none chosen on its own.
     nonisolated static let testDecisionStock: [String: Int] = [
         "MediaDownloadOfferTests.swift": 1,
-        "PlayerToolRuleTests.swift": 1,
-        "PlaylistEmptyCardTests.swift": 1,
-        "PodcastShowMergeTests.swift": 1,
-        "PodcastShowModeTests.swift": 1,
-        "PodcastSubscribeNoticeTests.swift": 2,
-        "ProjectFileIntegrityTests.swift": 7,
+        "ProjectFileIntegrityTests.swift": 1,
         "PublicReadmeFenceTests.swift": 2,
         "StockReasonFenceTests.swift": 1,
     ]
@@ -1968,7 +2005,7 @@ extension ProjectFileIntegrityTests {
         return out
     }
 
-    @Test("Namen und Meldungen der Pruefungen nennen die Sache: kein Kuerzel vorn, keine Geschichte", .needsTheTests)
+    @Test("Names and messages of the checks name the thing: no shorthand up front, no history", .needsTheTests)
     func testLabelsNameTheThing() throws {
         let files = Self.sourceTexts(in: ["MaerTests", "MaerUITests"])
         try #require(files.count > 100, "the fence read no test file")
@@ -1981,7 +2018,7 @@ extension ProjectFileIntegrityTests {
         #expect(found.isEmpty, "a name or a message notes the history, not the thing: \(found)")
     }
 
-    @Test("der Leser der Namen greift beide Formen und laesst die Sache stehen")
+    @Test("the reader of the names catches both forms and leaves the thing alone")
     func historyMarksReadBothForms() {
         let noted = ["W-1: x", "e4bd910: x", "Teil 2: x", "S2b I1: x", "kurz, Abnahme folgt", "nach K-W4902", "TF-9 Z2: x"]
         for label in noted { #expect(!Self.historyMarks(in: label).isEmpty, "\(label)") }
@@ -2036,7 +2073,7 @@ extension ProjectFileIntegrityTests {
     /// the count that stood on the day of measuring, none chosen on its own.
     nonisolated static let historyShorthandStock: [String: Int] = ["RadioModels.swift": 9, "FreeAudiobooksPage.swift": 6, "PlayerView.swift": 6, "HoerspielCuration.swift": 5, "PlayerViewModel.swift": 4, "PodcastNavigation.swift": 3, "PodcastWorkOrder.swift": 3, "PodcastsView.swift": 3, "AppStorageKeys.swift": 2, "FreeCatalogClients.swift": 2, "FreeCatalogSources.swift": 2, "HomeView.swift": 2, "MusicLibraryPages.swift": 2, "MusicView.swift": 2, "MusicViewModel.swift": 2, "PlayerViewModel+NowPlaying.swift": 2, "PodcastSections.swift": 2, "PodcastSourceView.swift": 2, "RadioArtworkLookup.swift": 2, "RadioNavigation.swift": 2, "RadioProvider.swift": 2, "BookDetailScreen.swift": 1, "LibrarySortOptions.swift": 1, "LibraryView.swift": 1, "MediaTile.swift": 1, "MusicNavigation.swift": 1, "OERRCuration.swift": 1, "OERRLiveStore.swift": 1, "PodcastComponents.swift": 1, "PodcastDirectory.swift": 1, "PodcastRecommendationsStore.swift": 1, "PodcastShowSettingsSheet.swift": 1, "PodcastIdentity.swift": 1,"RadioStationDetailView.swift": 1, "RediscoverSections.swift": 1, "UserChoiceSync.swift": 1]
 
-    @Test("Geschichts-Kuerzel aelterer Laeufe in Kommentaren sind je Datei gezaehlt, der Bestand ist die Zaehlung", .needsTheSources)
+    @Test("History shorthands of older runs in comments are counted per file, the count is the stock", .needsTheSources)
     func historyShorthandsAreCounted() throws {
         let files = Self.sourceTexts()
         #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
@@ -2163,29 +2200,29 @@ extension ProjectFileIntegrityTests {
         #expect(offenders.isEmpty, "a dash still carries two statements: \(offenders)")
     }
 
-    /// Der ID-Umzug ist ZU ENDE: mit dem Ende der Bruecken-Aera fielen
-    /// auch die drei gepinnten Stellen (KVS-Topf, App-Group,
-    /// CloudKit-Container) und der alte Keychain-Service. Der alte Stamm
-    /// darf in Sources NIRGENDS mehr stehen, auch nicht der alte
-    /// Projektname als Code- oder Pfadname. Die einzige Ausnahme ist der
-    /// Ruhestands-Verweis der Keychain-Hygiene, der den alten Service
-    /// zum LOESCHEN nennen muss.
-    /// Die Mac-Notwehr traegt nur, solange sie die EINZIGE Slider-Stelle
-    /// ist: ein zweiter nackter `Slider(` irgendwo umgeht sie lautlos,
-    /// und der Absturz waere zurueck, ohne dass jemand etwas merkt.
-    /// Ein reiner Domaenentyp darf nicht in einer Datei wohnen, die ein
-    /// Framework importiert: die Wohnadresse allein machte PodcastShow
-    /// und PodcastEpisode fuer die pure Schicht unerreichbar (die
-    /// Quellen-Wache uebersetzt unseren echten Dekodierer auf Linux,
-    /// Foundation-only, und verweigerte die Datei). Der Typ ist unschuldig,
-    /// die Adresse war es nicht.
-    @Test("Codable-Domaenentypen wohnen nicht in Framework-Dateien", .needsTheSources)
+    /// The ID move is OVER: with the end of the bridge era the three
+    /// pinned places (KVS pot, app group,
+    /// CloudKit container) and the old keychain service dropped as well. The old
+    /// stem may appear NOWHERE in Sources any more, not even the old
+    /// project name as a code or path name. The only exception is the
+    /// retirement reference of the keychain hygiene, which must name the old service
+    /// for DELETING.
+    /// The Mac emergency measure holds only as long as it is the ONLY slider place:
+    /// a second bare `Slider(` anywhere bypasses it silently,
+    /// and the crash would be back without anyone noticing.
+    /// A pure domain type must not live in a file that imports a
+    /// framework: the address alone made PodcastShow
+    /// and PodcastEpisode unreachable for the pure layer (the
+    /// source guard translates our real decoder on Linux,
+    /// Foundation-only, and rejected the file). The type is innocent,
+    /// the address was not.
+    @Test("Codable domain types do not live in framework files", .needsTheSources)
     func codableTypesLiveInPureFiles() throws {
-        // Die BESTANDSAUFNAHME (Aufzaehlpflicht des Entscheids): diese
-        // vier wohnen heute noch in Framework-Dateien. Sie sind kein
-        // Freibrief, sondern die Liste, die abgearbeitet wird, sobald
-        // eine von ihnen die pure Schicht wirklich blockiert; die
-        // Podcast-Typen sind ausgezogen, weil sie es TATEN.
+        // The INVENTORY (enumeration duty of the decision): these
+        // four still live in framework files today. They are no
+        // free pass, but the list that is worked off as soon as
+        // one of them really blocks the pure layer; the
+        // podcast types moved out because they DID.
         let bestand: Set<String> = ["LibraryDiskCache", "ListeningStatsData",
                                     "LyricsLine", "SongLyrics"]
         var offenders: [String] = []
@@ -2194,10 +2231,10 @@ extension ProjectFileIntegrityTests {
             let frameworks = ["import Combine", "import SwiftUI", "import UIKit"]
             guard frameworks.contains(where: { text.contains($0) }) else { continue }
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                // NUR eigenstaendige Typen: ein GESCHACHTELTER (eingerueckter)
-                // Typ gehoert seinem Besitzer und teilt dessen Adresse
-                // zu Recht. Die Frage ist die Wohnung des Domaenentyps,
-                // nicht die eines inneren Berichts-Records.
+                // ONLY standalone types: a NESTED (indented)
+                // type belongs to its owner and rightly shares its address.
+                // The question is the home of the domain type,
+                // not that of an inner report record.
                 guard !line.hasPrefix(" "), !line.hasPrefix("\t") else { continue }
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard trimmed.hasPrefix("nonisolated struct ") || trimmed.hasPrefix("struct ") else { continue }
@@ -2212,18 +2249,18 @@ extension ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty,
                 "ein Codable-Domaenentyp in einer Framework-Datei: \(offenders)")
-        // Rot-Probe: der Zaun saehe genau diese Form.
+        // Red probe: the fence would see exactly this form.
         #expect("nonisolated struct X: Codable, Sendable {".contains(": Codable"))
     }
 
-    /// Die Dateien, die die Quellen-Pruefung auf Linux uebersetzt, stehen
-    /// in EINER Liste, `tools/source-check/quellen.json`; die Pruefung liest
-    /// dieselbe Datei am gepinnten Stand. Nur diese Dateien muessen mit dem
-    /// auskommen, was Linux hat (Entscheid vom 09.10.2026): vorher galt die Regel fuer ganz
-    /// `Sources/Models`, und die Liste lag in einem anderen Repo und lief
-    /// der App davon. Positivliste statt Erinnerung, der Bestand namentlich
-    /// nach RELATIVEM Pfad. Der Pruefer als pure Funktion ueber EINE Zeile,
-    /// damit die Rot-Probe den PRUEFER fuettert und nicht einen String.
+    /// The files that the source check translates on Linux are in
+    /// ONE list, `tools/source-check/quellen.json`; the check reads
+    /// the same file at the pinned state. Only these files must get by with
+    /// what Linux has (decision of 09.10.2026): before, the rule applied to all of
+    /// `Sources/Models`, and the list lay in another repo and ran away
+    /// from the app. Positive list instead of memory, the count by name
+    /// by RELATIVE path. The checker as a pure function over ONE line,
+    /// so that the red probe feeds the CHECKER and not a string.
     struct PureSources: Decodable {
         let sources: [String]
         let allowedImports: Set<String>
@@ -2261,7 +2298,7 @@ extension ProjectFileIntegrityTests {
         return module
     }
 
-    @Test("die Dateien der Quellen-Pruefung importieren nur, was Linux hat", .needsTheSources)
+    @Test("the files of the source check import only what Linux has", .needsTheSources)
     func pureSourcesImportOnlyWhatLinuxHas() throws {
         let list = try Self.pureSources()
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -2283,7 +2320,7 @@ extension ProjectFileIntegrityTests {
         #expect(missing.isEmpty, "listed but not in the tree, the list is behind the app: \(missing)")
         #expect(offenders.isEmpty, "a module Linux does not have in a file of the source check: \(offenders)")
         #expect(Set(list.holdings.keys).isSubset(of: Set(list.sources)), "a holding for a file the list does not carry")
-        // Rot-Proben am PRUEFER, in beide Richtungen.
+        // Red probes on the CHECKER, in both directions.
         let probe = PureSources(sources: ["Sources/A.swift"], allowedImports: ["Foundation"],
                                 holdings: ["Sources/A.swift": ["SQLite3"]])
         #expect(Self.offendingImport(line: "import SwiftUI", relativePath: "Sources/A.swift", list: probe) == "SwiftUI")
@@ -2299,7 +2336,7 @@ extension ProjectFileIntegrityTests {
     /// to https; a call site that reads from the session directly would
     /// be refused by App Transport Security on every feed with `http://`
     /// images and show a placeholder instead.
-    @Test("Bildbytes kommen nur durch die eine Tuer, die http auf https hebt", .needsTheSources)
+    @Test("Image bytes come only through the one door that lifts http to https", .needsTheSources)
     func coverBytesPassTheOneDoor() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "URLSession+Maer.swift" {
@@ -2312,7 +2349,7 @@ extension ProjectFileIntegrityTests {
             }
         }
         #expect(offenders.isEmpty, "these read image bytes past the https door: \(offenders)")
-        // Rot-Probe: der Zaun saehe genau diese Zeile, auch mit Leerraum.
+        // Red probe: the fence would see exactly this line, also with whitespace.
         #expect("try await URLSession.coverImage .data(from: url)".split(separator: " ").joined().contains("coverImage.data(from:"))
         #expect(!"try await URLSession.coverImage.coverData(from: url)".contains("coverImage.data(from:"))
     }
@@ -2320,7 +2357,7 @@ extension ProjectFileIntegrityTests {
     /// The archive.org identifier is cut out of an item id in ONE place,
     /// which knows the song address. A surface that drops the prefix itself
     /// sends `%23<index>` into every link for a song.
-    @Test("die archive.org-Kennung wird nur an einer Stelle aus der Id geschnitten", .needsTheSources)
+    @Test("the archive.org identifier is cut from the id in only one place", .needsTheSources)
     func archiveIdentifierIsCutInOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "FreeCatalog.swift" {
@@ -2336,7 +2373,7 @@ extension ProjectFileIntegrityTests {
         #expect("String(id.dropFirst(FreeCatalog.archivePrefix.count))".contains("dropFirst(FreeCatalog.archivePrefix.count)"))
     }
 
-    @Test("kein System-Slider in Sources, der Balken ist der PlatformScrubber", .needsTheSources)
+    @Test("no system slider in Sources, the bar is the PlatformScrubber", .needsTheSources)
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
@@ -2351,25 +2388,25 @@ extension ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty,
                 "ein System-Slider statt des einen Balkens: \(offenders)")
-        // Rot-Probe: der Zaun saehe genau diese Zeile.
+        // Red probe: the fence would see exactly this line.
         #expect("        Slider(value: $x, in: 0...1)".contains("Slider("))
     }
 
-    /// Das Zahnrad gehoert den Tab-Wurzeln und keiner geschobenen Seite.
-    /// Die Regel war vorher begruendet, aber von aussen unsichtbar: der
-    /// Nutzer sieht einer Flaeche nicht an, ob sie Wurzel oder geschoben
-    /// ist, und las den Unterschied als Willkuer. Ein Zaun statt eines
-    /// Kommentars, weil die naechste Detailseite ihn sonst wieder
-    /// mitbringt. Die Tab-Wurzel traegt es an zwei Stellen, nie beide
-    /// zugleich: in der Kopfzeile, und bei seitlicher Leiste oben in der
-    /// Spalte, nur an der Wurzel, weil die Kopfzeile dort an der
-    /// Statusleiste endet und eine geschobene Seite an dieser Stelle den
-    /// Zurueck-Knopf des Systems traegt.
+    /// The gear belongs to the tab roots and to no pushed page.
+    /// The rule was justified before, but invisible from outside: the
+    /// user cannot tell by looking at a surface whether it is a root or pushed,
+    /// and read the difference as arbitrariness. A fence instead of a
+    /// comment, because the next detail page would otherwise bring it
+    /// back. The tab root carries it in two places, never both
+    /// at once: in the header row, and with a side bar at the top of the
+    /// column, only at the root, because the header row there ends at the
+    /// status bar and a pushed page carries the system's
+    /// back button at this spot.
     nonisolated static let gearExceptions: [String: String] = [
         "SettingsView.swift": "das Zeichen des Bereichs Allgemein in der Bereichsleiste der Einstellungen, kein Weg in sie",
     ]
 
-    @Test("das Zahnrad steht nur an der Tab-Wurzel, in Kopfzeile und Seitenspalte", .needsTheSources)
+    @Test("the gear appears only at the tab root, in header row and side column", .needsTheSources)
     func settingsGearLivesOnlyAtTheTabRoot() throws {
         var fundstellen: [String] = []
         var ausnahmen: Set<String> = []
@@ -2389,19 +2426,19 @@ extension ProjectFileIntegrityTests {
                 "eine Stelle ist nicht die Tab-Wurzel: \(fundstellen)")
         #expect(ausnahmen == Set(Self.gearExceptions.keys),
                 "eine Ausnahme ohne Zahnrad ist eine, die niemand mehr nachsieht: \(ausnahmen)")
-        // Die Spalte zeichnet es nur, solange die Regel es zeigt.
+        // The column draws it only as long as the rule shows it.
         let library = try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8)
         #expect(library.contains("if sideCogShown {\n                            SideRoundButton(systemImage: \"gearshape\", label: \"Settings\") { showSettings = true }"),
                 "das Zahnrad der Spalte steht ohne die Regel der Tab-Wurzel")
-        // Rot-Probe des Zaehlers: ein Text mit zwei Zahnraedern und einem im
-        // Kommentar zaehlt zwei.
+        // Red probe of the counter: a text with two gears and one in a
+        // comment counts two.
         let probe = "Image(systemName: \"gearshape\")\n// gearshape\n    systemImage: \"gearshape\","
         #expect(Self.gearLines(in: probe) == [1, 3])
     }
 
-    /// Die Zeilen eines Textes (ab 1), die das Zahnrad ausserhalb eines
-    /// Kommentars nennen.
+    /// The lines of a text (from 1) that name the gear outside a
+    /// comment.
     nonisolated static func gearLines(in text: String) -> [Int] {
         text.split(separator: "\n", omittingEmptySubsequences: false).enumerated().compactMap { number, line in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -2410,7 +2447,7 @@ extension ProjectFileIntegrityTests {
         }
     }
 
-    @Test("der alte Stamm kommt in Sources nicht mehr vor", .needsTheSources)
+    @Test("the old stem no longer occurs in Sources", .needsTheSources)
     func oldIdentityStemIsGone() throws {
         let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]
         var offenders: [String] = []
@@ -2420,7 +2457,7 @@ extension ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty,
                 "alter Identitaets-Stamm in Sources: \(offenders.sorted())")
-        // Rot-Probe: der Zaun saehe jeden Rueckfall.
+        // Red probe: the fence would see every relapse.
         #expect("let x = \"de.lzs.\" + \"anything\"".contains("de.lzs"))
     }
 
@@ -2448,7 +2485,7 @@ extension ProjectFileIntegrityTests {
         return out
     }
 
-    @Test("der alte Stamm kommt in docs und tools nicht mehr vor", .needsTheSources)
+    @Test("the old stem no longer occurs in docs and tools", .needsTheSources)
     func oldIdentityStemIsGoneFromDocsAndTools() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         var files = try FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("docs"),
@@ -2480,24 +2517,24 @@ extension ProjectFileIntegrityTests {
         #expect(Self.oldStemLines(in: "id `de.lzs.ABSPlayer`", fileName: "app-keys.md") == [1], "the id history is appstore.md's alone")
     }
 
-    /// Kein Zeuge kehrt still zurueck, und der Bestand faellt nur.
+    /// No witness returns silently, and the count only falls.
     ///
-    /// Die Form `guard <Bedingung> else { return }` am Anfang eines Falls ist
-    /// **kein Ueberspringen**: der Fall meldet BESTANDEN und hat nichts
-    /// gemessen. Sie stand an fuenfzehn Stellen, die meisten davon in
-    /// ZAEUNEN, zwei mit dem Satz „sources unreadable, no verdict" daneben
-    /// und einem gruenen Haekchen darunter. Sie hat sich durch Abschreiben
-    /// fortgepflanzt, also schafft ein Handgriff sie nicht ab.
+    /// The form `guard <condition> else { return }` at the start of a case is
+    /// **no skipping**: the case reports PASSED and has measured
+    /// nothing. It stood in fifteen places, most of them in
+    /// FENCES, two with the sentence „sources unreadable, no verdict" beside it
+    /// and a green checkmark below. It spread by copying,
+    /// so no single fix gets rid of it.
     ///
-    /// Was an ihre Stelle tritt, trennt die zwei Gruende: **liegt die Quelle
-    /// dieser Kopie nicht bei**, entscheidet das eine Bedingung VOR dem Lauf
-    /// (`.needsTheSources` und ihre Nachbarn), und der Fall erscheint als
-    /// uebersprungen · **ist sie da und der Zaun hat trotzdem nichts
-    /// gelesen**, ist das ein Befund und gehoert rot.
-    @Test("kein Zeuge kehrt still zurueck", .needsTheTests)
+    /// What takes its place separates the two reasons: **if the source
+    /// is not included in this copy**, a condition decides that BEFORE the run
+    /// (`.needsTheSources` and its neighbors), and the case appears as
+    /// skipped · **if it is there and the fence read nothing
+    /// anyway**, that is a finding and belongs red.
+    @Test("no witness returns silently", .needsTheTests)
     func noWitnessReturnsSilently() throws {
-        // Der Bestand je Datei, mit Grund im Eintrag. Ein Eintrag ohne Grund
-        // waere eine Ausnahme, die niemand nachgesehen hat.
+        // The count per file, with the reason in the entry. An entry without a reason
+        // would be an exception nobody has looked at.
         let stock: [String: (count: Int, reason: String)] = [
             "ProjectFileIntegrityTests.swift":
                 (1, "ein guard INNERHALB eines Fixture-Textes, den ein anderer Zaun liest"),
@@ -2514,11 +2551,11 @@ extension ProjectFileIntegrityTests {
             }.count
             if hits > 0 { found[url.lastPathComponent] = hits }
         }
-        // Derselbe Riegel, den dieser Zaun einfordert, an ihm selbst.
+        // The same bolt that this fence demands, on itself.
         #expect(checked > 0, "der Zaun hat keine Testdatei gelesen, also misst er nichts")
         let drift = StockDrift.findings(counts: found, stock: stock.mapValues(\.count))
         #expect(drift.isEmpty, "a case returns silently, or a stock above the count: \(drift)")
-        // Rot-Probe im Fall selbst: der Sucher saehe die Form ueberhaupt.
+        // Red probe in the case itself: the searcher would see the form at all.
         let sample = "        guard names.isEmpty else { return }"
         #expect(sample.trimmingCharacters(in: .whitespaces).hasPrefix("guard "))
         #expect(sample.trimmingCharacters(in: .whitespaces).hasSuffix("else { return }"))

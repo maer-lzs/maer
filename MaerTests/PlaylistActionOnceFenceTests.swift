@@ -37,7 +37,7 @@ struct PlaylistActionOnceFenceTests {
         return result
     }
 
-    @Test("Zur Playlist hinzufuegen steht in jedem Menue genau einmal", .needsTheSources)
+    @Test("Add to playlist appears in every menu exactly once", .needsTheSources)
     func onePlaylistActionPerMenu() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -49,7 +49,7 @@ struct PlaylistActionOnceFenceTests {
         #expect(offenders.isEmpty, "\(offenders)")
     }
 
-    @Test("Der Pruefer saehe das Doppel (Rot-Probe)")
+    @Test("The checker would see the duplicate (red probe)")
     func checkerSeesTheDouble() {
         let double = """
         .contextMenu {

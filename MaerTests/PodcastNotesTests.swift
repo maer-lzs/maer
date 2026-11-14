@@ -33,7 +33,7 @@ struct PodcastNotesTests {
         return (try await PodcastRowStore(connection: db), db)
     }
 
-    @Test("teilen nimmt die Shownotes aus dem Bestand, laesst einen Stempel, ein gleicher Text wird nicht neu geschrieben")
+    @Test("sharing takes the show notes from the stock, leaves a stamp, an identical text is not written again")
     func splitTakesTheNotesAndLeavesAStamp() throws {
         let stock = [show("a", [episode("e1", notes: "Text A"), episode("e2", notes: ""), episode("e3", notes: nil)])]
         let split = try #require(PodcastNotes.split(stock, stampBefore: { _ in nil }))
@@ -48,7 +48,7 @@ struct PodcastNotesTests {
         #expect(PodcastNotes.stamp("Text A") != PodcastNotes.stamp("Text B"))
     }
 
-    @Test("frischer Text ersetzt den gespeicherten")
+    @Test("fresh text replaces the stored one")
     func aFreshTextReplacesTheStoredOne() async throws {
         let (store, _) = try await memoryStore()
         try await store.apply(PodcastRowDiff.compute(previous: [], current: [show("a", [episode("e1", notes: nil)])]),
@@ -58,7 +58,7 @@ struct PodcastNotesTests {
         #expect(try await store.notes(guid: "e1") == "Text B", "the stored text stood over the fresh one")
     }
 
-    @Test("eine Datenbank der Version 1 traegt die Shownotes nach dem Heben in der Tabelle, die Nutzlast ohne, Version 2")
+    @Test("a version 1 database carries the show notes in the table after lifting, the payload without, version 2")
     func theMoveCarriesTheNotesOut() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         // The tables and the version as a build of version 1 left them.
@@ -81,7 +81,7 @@ struct PodcastNotesTests {
         #expect(loaded.first?.episodes.first?.guid == "e1", "the episode is gone after the move")
     }
 
-    @Test("eine Nutzlast mit Shownotes gibt sie der Tabelle, bevor sie ueberschrieben oder entfernt wird, nie ueber eine stehende")
+    @Test("a payload with show notes gives them to the table before it is overwritten or removed, never over an existing one")
     func aPayloadWithNotesGivesThemBeforeItGoes() async throws {
         let (store, db) = try await memoryStore()
         try await store.apply(PodcastRowDiff.compute(previous: [], current: [show("a", [])]))
@@ -123,7 +123,7 @@ struct PodcastNotesTests {
         return db
     }
 
-    @Test("nach dem Umzug auf Version 2 packt ein VACUUM die Datei einmal")
+    @Test("after the move to version 2 a VACUUM compacts the file once")
     func theMovePacksTheFileOnce() async throws {
         let unpacked = try await versionOneWithNotes()
         _ = try await PodcastRowStore(connection: unpacked, vacuum: "SELECT 1")
@@ -134,7 +134,7 @@ struct PodcastNotesTests {
         #expect(try await store.notes(guid: "e7")?.hasSuffix("7") == true, "the precondition: the move ran")
     }
 
-    @Test("ein gescheitertes VACUUM nach dem Umzug laesst die Datenbank offen und die Version 2 stehen")
+    @Test("a failed VACUUM after the move leaves the database open and version 2 in place")
     func aFailedVacuumLeavesTheDatabaseOpen() async throws {
         let db = try await versionOneWithNotes()
         let store = try await PodcastRowStore(connection: db, vacuum: "NOT A VACUUM")
@@ -143,7 +143,7 @@ struct PodcastNotesTests {
         #expect(try await store.counts() == PodcastRowStore.Counts(shows: 1, episodes: 300))
     }
 
-    @Test("eine Nutzlast, die kein JSON ist, traegt keine Shownotes: Heben, Ueberschreiben und Entfernen gehen durch, auch ueber Ausloesern in aelterer Form")
+    @Test("a payload that is not JSON carries no show notes: lifting, overwriting and removing go through, also over triggers in an older form")
     func aPayloadThatIsNoJSONCarriesNoNotes() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         for statement in Self.versionOneOpen { try await db.execute(statement) }
@@ -172,7 +172,7 @@ struct PodcastNotesTests {
         #expect(try await store.counts() == PodcastRowStore.Counts(shows: 1, episodes: 1))
     }
 
-    @Test("eine entfernte Sendung nimmt ihre Folgen mit, ihre Shownotes bleiben")
+    @Test("a removed show takes its episodes along, its show notes stay")
     func theNotesStayWhenTheRowsGo() async throws {
         let (store, _) = try await memoryStore()
         let stock = [show("a", [episode("e1", notes: nil)])]
@@ -182,7 +182,7 @@ struct PodcastNotesTests {
         #expect(try await store.notes(guid: "e1") == "bleibt", "the notes left with their episode row")
     }
 
-    @Test("das Raeumen laesst Shownotes gehen, die keine Zeile und kein ruhender Bestand nennt")
+    @Test("clearing out lets show notes go that no row and no resting stock names")
     func theSweepKeepsWhatARowOrARestNames() async throws {
         let (store, db) = try await memoryStore()
         let stock = [show("a", [episode("e1", notes: nil)])]
@@ -209,7 +209,7 @@ struct PodcastNotesTests {
     /// Measured for the report: what a build of version 1 does with rows
     /// of version 2. It opens them as above, reads every row, and its
     /// write of a payload with notes over a slim one keeps the table's note.
-    @Test("ein Bau der Version 1 liest eine Datenbank der Version 2, leert nichts, und sein Schrieb nimmt keine Notiz")
+    @Test("a version 1 build reads a version 2 database, empties nothing, and its write takes no note")
     func aVersionOneBuildReadsAndEmptiesNothing() async throws {
         let (store, db) = try await memoryStore()
         let stock = [show("a", [episode("e1", notes: nil), episode("e2", notes: nil)])]
@@ -248,7 +248,7 @@ struct PodcastNotesTests {
     /// refresh that changes only one episode's text writes it without a
     /// further write. An episode the feed no longer carries stays: no
     /// episode is ever taken from a show.
-    @Test("Abo und Abgleich: keine Shownotes im Bestand, in der Datenbank der frische Text, auch wenn sich nur der Text aendert")
+    @Test("Subscription and sync: no show notes in the stock, the fresh text in the database, even when only the text changes")
     func theStockCarriesNoNotesAndAChangedTextLands() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("notes-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -292,7 +292,7 @@ struct PodcastNotesTests {
     /// The published stock is a second door beside the setter of `shows`:
     /// a write to it past the setter keeps the shownotes in memory. Only
     /// the setter writes it, at its two assignments, in both directions.
-    @Test("der veroeffentlichte Bestand wird nur im Setter von shows geschrieben, an zwei Stellen", .needsTheSources)
+    @Test("the published stock is written only in the setter of shows, in two places", .needsTheSources)
     func onlyTheSetterWritesTheStock() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
@@ -314,7 +314,7 @@ struct PodcastNotesTests {
     /// The shownotes leave a stock before it is assigned: a change that
     /// brings notes publishes once, as one without them does, so the caches
     /// are rebuilt and the rows bumped once per change, not twice.
-    @Test("ein Bestand mit Shownotes wird einmal gesetzt: ein Stoss je Wechsel, mit und ohne Shownotes")
+    @Test("a stock with show notes is set once: one burst per change, with and without show notes")
     func aStockWithNotesIsSetOnce() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("notes-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -343,7 +343,7 @@ struct PodcastNotesTests {
 
     /// The account that leaves at a hand-over keeps its shownotes for its
     /// return; an unsubscribe lets the show's shownotes go.
-    @Test("Shownotes bleiben ueber eine Uebergabe und den Rueckweg, ein Abbestellen laesst sie gehen")
+    @Test("Show notes stay across a handover and the way back, an unsubscribe lets them go")
     func theNotesRestWithTheAccountAndGoWithTheShow() async throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("notes-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -404,7 +404,7 @@ struct PodcastNotesTests {
     /// The number the order names: the text of 1,000 episodes held in
     /// memory before and after, with about 3 KB of shownotes each. Printed
     /// as `EPISODERAM`; the case holds only that the stock went slim.
-    @Test("Messung: Textbytes von 1.000 Folgen im Speicher vor und nach dem Teilen")
+    @Test("Measurement: text bytes of 1,000 episodes in memory before and after sharing")
     func theTextOfAThousandEpisodes() throws {
         let notes = String(repeating: "Shownotes mit Links und Kapiteln. ", count: 90)
         let stock = [show("m", (0..<1_000).map { n in

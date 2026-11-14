@@ -18,7 +18,7 @@ struct PositionStockTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
-    @Test("Der Bestand wird einmal gelesen; ein Wiedergabe-Tick liest danach keinen Positions-Schluessel")
+    @Test("The stock is read once; a playback tick afterwards reads no position key")
     func aTickReadsNoPositionKey() throws {
         let name = "position-counting-\(UUID().uuidString)"
         let counting = try #require(ForeignMarksTests.CountingDefaults(suiteName: name))
@@ -53,7 +53,7 @@ struct PositionStockTests {
     /// A row the build cannot read (text in the position column) is counted
     /// at the start, not dropped silently, and the id move names the stands
     /// as a step that missed rows; a whole table misses none.
-    @Test("eine Zeile, die nicht liest, wird gezaehlt statt still verworfen, und der Umzug nennt die Hoerstaende")
+    @Test("a row that does not read is counted instead of silently dropped, and the move names the listening states")
     func anUnreadStandRowIsCounted() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -76,7 +76,7 @@ struct PositionStockTests {
         #expect(!ListeningStore.startMissedRows(in: defaults))
     }
 
-    @Test("der erste Start zieht den Altbestand in die Tabelle, setzt die Marke und raeumt die alten Schluessel erst nach voller Deckung")
+    @Test("the first start pulls the old stock into the table, sets the mark and clears the old keys only after full coverage")
     func theFirstStartMovesTheStock() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -114,7 +114,7 @@ struct PositionStockTests {
         #expect(defaults.object(forKey: "localPosition.rss:move:b") == nil, "and it never went to the defaults")
     }
 
-    @Test("fehlt ein alter Eintrag in der Tabelle, bleibt genau sein Schluessel stehen; die gedeckten gehen")
+    @Test("if an old entry is missing in the table, exactly its key stays; the covered ones go")
     func aMissingEntryKeepsItsOwnKey() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -144,7 +144,7 @@ struct PositionStockTests {
         #expect(ListeningStore.backup("rss:keep:lost", in: defaults) == nil, "a kept key does not come back into the stock")
     }
 
-    @Test("bricht der erste Start vor der Marke ab, verliert der naechste nichts, was dazwischen geschrieben wurde")
+    @Test("if the first start aborts before the mark, the next loses nothing that was written in between")
     func aBrokenFirstStartLosesNothing() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -178,7 +178,7 @@ struct PositionStockTests {
                 && defaults.object(forKey: "flushedPosition.rss:win:a") == nil, "the old keys are covered by newer rows and go")
     }
 
-    @Test("bricht der erste Start vor der Marke ab und scheitert beim naechsten das Lesen der Tabelle, bleiben ihre Zeilen, die Marke kommt nicht, die Schluessel bleiben")
+    @Test("if the first start aborts before the mark and reading the table fails at the next, its rows stay, the mark does not come, the keys stay")
     func aResumeOverAFailedReadKeepsTheRows() async throws {
         let (defaults, name) = suite()
         let (store, _, file) = try await fileTable()
@@ -207,7 +207,7 @@ struct PositionStockTests {
         #expect(defaults.object(forKey: "localPosition.rss:win:a") != nil, "an old key went over an unread table")
     }
 
-    @Test("liest der Start die Marke des Umzugs nicht, obwohl die Tabelle Zeilen hat, geht keine Zeile, und die Marke wartet")
+    @Test("if the start does not read the mark of the move although the table has rows, no row goes, and the mark waits")
     func aMisreadMoveMarkEmptiesNothing() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -235,7 +235,7 @@ struct PositionStockTests {
         #expect(try await store.all()["rss:kept:a"]?.entry == [50, 5_000], "a write of this run went over the row")
     }
 
-    @Test("eine Reparatur ueber alten Schluesseln laesst eine Zeile stehen, die kein alter Schluessel nennt")
+    @Test("a repair over old keys leaves a row that no old key names")
     func theRepairKeepsARowNoOldKeyNames() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -261,7 +261,7 @@ struct PositionStockTests {
         #expect(rows["rss:new:b"]?.entry == [70, 7_000], "the repair removed a row no old key names")
     }
 
-    @Test("eine Zeile aus dem Konto mit alter Zeit, die waehrend der Reparatur eintrifft, bleibt")
+    @Test("a row from the account with an old time that arrives during the repair stays")
     func aRowThatArrivesDuringTheRepairStays() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -291,7 +291,7 @@ struct PositionStockTests {
         #expect(rows["rss:acct:c"]?.entry == [30, 500], "the repair took a row that arrived after its read")
     }
 
-    @Test("eine Flush-Marke, die waehrend der Reparatur eintrifft, bleibt; eine, die da war und keinen alten Schluessel hat, geht")
+    @Test("a flush mark that arrives during the repair stays; one that was there and has no old key goes")
     func aFlushedMarkThatArrivesDuringTheRepairStays() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
@@ -330,7 +330,7 @@ struct PositionStockTests {
         #expect(flushed["rss:old:b"] == [40, 9_000], "the repair set a newer mark back to its old key")
     }
 
-    @Test("scheitert nach dem Umzug das Lesen der Tabelle, schreibt ein Einzelschrieb nur Neueres und entfernt nichts")
+    @Test("if reading the table fails after the move, a single write writes only newer data and removes nothing")
     func aFailedReadWritesOnlyNewer() async throws {
         let (defaults, name) = suite()
         let (store, _, file) = try await fileTable()
@@ -360,7 +360,7 @@ struct PositionStockTests {
         #expect(try await store.allFlushed()["rss:row:a"] == [50, 5_500])
     }
 
-    @Test("die Deckung, je Eintrag gleich oder neuer, ein Grabstein zaehlt wie jeder Eintrag")
+    @Test("the coverage, per entry equal or newer, a tombstone counts like every entry")
     func theCoverageRule() {
         let legacy = ListeningStore.Stock(backups: ["a": [10, 1_000], "tomb": [0, 2_000], "radio:x": [5, 1],
                                                     "short": [1]],
@@ -390,7 +390,7 @@ struct PositionStockTests {
         #expect(merged.flushed == ["a": [10, 1_500], "b": [20, 3_500]])
     }
 
-    @Test("Ein Bestand in der alten Form wird ohne Verlust gelesen, auch ganze Zahlen und das zuletzt Gesendete")
+    @Test("A stock in the old form is read without loss, also whole numbers and the last sent")
     func theOldFormLoadsWhole() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -416,7 +416,7 @@ struct PositionStockTests {
         #expect(ListeningStore.mark("rss:old:two", in: defaults)?.source == .backup)
     }
 
-    @Test("Der Start bringt die Zeilen genau auf den Bestand: ein Grabstein ist ein Eintrag, eine Zeile ohne Schluessel geht")
+    @Test("The start brings the rows exactly to the stock: a tombstone is an entry, a row without a key goes")
     func theRowsFollowTheStockAtStart() async throws {
         let (defaults, name) = suite()
         defer {
@@ -461,7 +461,7 @@ struct PositionStockTests {
         "DerivedStores.swift": "lists the user-owned prefixes for a fence, reads no value",
     ]
 
-    @Test("Niemand liest oder schreibt localPosition. oder flushedPosition., ausser dem Laden und dem Raeumen der alten Schluessel", .needsTheSources)
+    @Test("Nobody reads or writes localPosition. or flushedPosition., except the loading and the clearing of the old keys", .needsTheSources)
     func noOneReadsPositionKeys() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.contains { $0.lastPathComponent == "ListeningStore.swift" },
@@ -526,7 +526,7 @@ struct PositionStockTests {
         return (defaults, store, loadNow, file)
     }
 
-    @Test("nach dem Umzug liest das Laden des Bestands die Domaene nicht, nur die Kette liest die alten Schluessel einmal")
+    @Test("after the move, loading the stock does not read the domain, only the chain reads the old keys once")
     func afterTheMoveTheStartWalksNothing() async throws {
         let name = "position-walks-\(UUID().uuidString)"
         let (defaults, store, loadNow, file) = try await movedStock(name, rows: ["rss:walk:a": [100, 1_000]])
@@ -545,7 +545,7 @@ struct PositionStockTests {
         #expect(defaults.walks.withLock { $0 } == 1, "the old keys are read once, on the chain")
     }
 
-    @Test("ein spaeter Altschluessel geht in den Bestand, wenn er neuer ist als die Zeile; bei Gleichstand gewinnt die Zeile und sein Schluessel bleibt")
+    @Test("a late legacy key goes into the stock if it is newer than the row; on a tie the row wins and its key stays")
     func aLateOldKeyNewerThanItsRowIsAdopted() async throws {
         let name = "position-late-\(UUID().uuidString)"
         let (defaults, store, loadNow, file) = try await movedStock(name, rows: ["rss:late:newer": [100, 1_000],
@@ -573,7 +573,7 @@ struct PositionStockTests {
                 "the key of a tie went")
     }
 
-    @Test("ein Altschluessel ohne Zeile kommt nur zurueck, wenn er nach dem letzten Gang geschrieben wurde; ein frueherer belebt keinen geraeumten Stand und behaelt seinen Schluessel")
+    @Test("a legacy key without a row comes back only if it was written after the last pass; an earlier one revives no cleared state and keeps its key")
     func anOldKeyWithoutARowComesBackOnlyWhenWrittenSince() async throws {
         let name = "position-norow-\(UUID().uuidString)"
         let (defaults, store, loadNow, file) = try await movedStock(name, rows: [:])
@@ -599,7 +599,7 @@ struct PositionStockTests {
         #expect((defaults.object(forKey: ListeningStore.legacyWalkKey) as? Double ?? 0) > 5_000, "the walk is not noted")
     }
 
-    @Test("die Regel der spaeten Altschluessel als Tabelle")
+    @Test("the rule of the late legacy keys as a table")
     func theLateRuleAsATable() {
         let table: [String: [Double]] = ["rss:r:row": [10, 1_000]]
         let legacy: [String: [Double]] = ["rss:r:row": [20, 1_001], "rss:r:new": [5, 3_000],

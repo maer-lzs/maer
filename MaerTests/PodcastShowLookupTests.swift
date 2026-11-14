@@ -29,12 +29,12 @@ struct PodcastShowLookupTests {
         show(value["id"]?.string ?? "", feed: value["feedURL"]?.string ?? "", episodes: value["episodes"]?.strings ?? [])
     }
 
-    @Test("gemeinsame Faelle: show-lookup traegt drei Faelle")
+    @Test("shared cases: show-lookup carries three cases")
     func lookupCasesLoaded() {
         #expect(Self.lookup.count == 3)
     }
 
-    @Test("gemeinsame Faelle: die Sendung einer Folge kommt je Fall aus der Quelle, die die Datei nennt", arguments: lookup)
+    @Test("shared cases: the show of an episode comes per case from the source the file names", arguments: lookup)
     func theShowOfAnEpisodeComesFromTheSourceItsIdNames(_ c: SharedCase) throws {
         let input = try c.value("input")
         let subscribed = (input["subscribed"]?.object ?? [:]).mapValues(Self.show)
@@ -46,7 +46,7 @@ struct PodcastShowLookupTests {
 
     /// No view asks the RSS provider by name for an episode's show, nor for
     /// the episodes of a show: the show carries them, and the mapping is pure.
-    @Test("keine Ansicht fragt den RSS-Anbieter beim Namen nach einer Sendung oder ihren Folgen", .needsTheSources)
+    @Test("no view asks the RSS provider by name for a show or its episodes", .needsTheSources)
     func noViewAsksTheRSSProviderByNameForAShow() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")

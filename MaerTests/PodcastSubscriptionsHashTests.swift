@@ -13,7 +13,7 @@ import Testing
 /// so that "fixing" the start value fails here instead of orphaning every
 /// stored id.
 struct PodcastSubscriptionsHashTests {
-    @Test("Der Feed-Hash bleibt, wie er ist, auch wenn er nicht FNV-1a ist")
+    @Test("The feed hash stays as it is, even though it is not FNV-1a")
     func theFeedHashNeverChanges() {
         #expect(PodcastIdentity.stableHash("") == "14650fb0739d0383")
         #expect(PodcastIdentity.stableHash("example.com/feed") == "2df29e1f29180479")

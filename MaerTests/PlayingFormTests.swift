@@ -21,7 +21,7 @@ struct PlayingFormTests {
         return try #require(FreeCatalogProvider.shared.remember(popular: doc)).id
     }
 
-    @Test("Ein Netlabel-Album aus dem Zufall gilt im Player als Musik, bevor die Marke geschrieben ist")
+    @Test("A netlabel album from shuffle counts as music in the player before the mark is written")
     func aShuffledNetlabelAlbumIsMusic() throws {
         let id = try netlabelAlbum("maer-witness-playing-form-\(UUID().uuidString)")
         #expect(ListeningStore.startedForm(id) == nil, "the witness starts without a mark")
@@ -40,7 +40,7 @@ struct PlayingFormTests {
         #expect(RemoteCommandRule.kind(forItem: id, markedForm: model.playingForm) == .songs, "the title keys move songs")
     }
 
-    @Test("Die Regeln fuer Sprung und Titeltasten nehmen die Form mit, ohne Form bleibt es beim Bisherigen")
+    @Test("The rules for skip and title buttons take the form along, without a form they stay as before")
     func theRulesTakeTheForm() {
         let id = FreeCatalog.archivePrefix + "maer-witness-rules"
         #expect(PlaybackSkip.content(forItemId: id, markedForm: .album) == .music)
@@ -52,7 +52,7 @@ struct PlayingFormTests {
 
     /// Every form question of the player reads the one place, and the
     /// release page pauses what plays from it.
-    @Test("Jede Formfrage des Players liest die eine Stelle, die Katalog-Albumseite pausiert", .needsTheSources)
+    @Test("Every form question of the player reads the one place, the catalog album page pauses", .needsTheSources)
     func everyQuestionReadsThePlace() throws {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path),
