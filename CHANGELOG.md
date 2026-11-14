@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.7 (Build 65)
 
 **A station link that does not load opens the station's page with
 Retry.** When the station catalog does not answer, because the device
