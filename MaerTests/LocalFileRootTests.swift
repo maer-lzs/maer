@@ -95,7 +95,7 @@ struct LocalFileRootTests {
         library.delete(id: "local:book")
         #expect(root.removed == ["local:book"], "the root was asked what removing does")
         #expect(FileManager.default.fileExists(atPath: linked.appendingPathComponent("a.m4a").path),
-                "a linked folder stays where it is (decided 23.09.)")
+                "a linked folder stays where it is")
         #expect(library.entries.isEmpty, "the entry itself is gone")
         await library.awaitPendingWrites()
     }

@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Home "Rediscover" (Teil 3): purely local candidates from the library, three
+/// Home "Rediscover": purely local candidates from the library, three
 /// sources in fixed priority. (a) started items whose last progress is older
 /// than `pausedAfter`, (b) additions sitting unheard for longer than
 /// `unheardAfter`, (c) the next volume of a series whose predecessor was

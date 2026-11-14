@@ -377,7 +377,7 @@ struct PlayerView: View {
         Group {
             if viewModel.isLiveStream {
                 if let songCover = viewModel.icySongArtwork {
-                    // Teil 2: a resolved now-playing cover (MusicBrainz → Cover
+                    // A resolved now-playing cover (MusicBrainz → Cover
                     // Art Archive) is real album art. Show it full size.
                     Image(uiImage: songCover)
                         .resizable().aspectRatio(1, contentMode: .fit)
@@ -686,7 +686,7 @@ struct PlayerView: View {
         return Date().addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened)
     }
 
-    /// Teil 1: the active radio station (with its variants). Resolved from the
+    /// The active radio station (with its variants). Resolved from the
     /// store/session so the live quality menu can offer the codec/bitrate
     /// variants. nil for non-radio or a single-variant station (→ no menu).
     private var liveStation: RadioStation? {
@@ -697,7 +697,7 @@ struct PlayerView: View {
     }
 
     /// Live radio. No scrubber, no duration; a LIVE mark plus the
-    /// elapsed listening time (the only honest number for a stream). Teil 1: a
+    /// elapsed listening time (the only honest number for a stream). A
     /// quality menu appears when the station ships codec/bitrate variants.
     private var liveRow: some View {
         HStack(spacing: 8) {
@@ -717,7 +717,7 @@ struct PlayerView: View {
         .frame(minHeight: 44)
     }
 
-    /// Teil 1: switch the live stream to another codec/bitrate variant. Good
+    /// Switch the live stream to another codec/bitrate variant. Good
     /// when the current one stutters. The choice persists per station and the
     /// station re-opens at the chosen stream (the play path picks it up).
     private func qualityMenu(for station: RadioStation) -> some View {

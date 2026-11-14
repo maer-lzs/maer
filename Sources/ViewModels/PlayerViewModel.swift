@@ -134,7 +134,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Raw ICY StreamTitle from the live stream (radio). Parsed for
     /// display via `icyNowPlaying`; reset on every item switch.
     @Published var icyStreamTitle: String?
-    /// Teil 2: the resolved now-playing cover for the CURRENT ICY song (nil =
+    /// The resolved now-playing cover for the CURRENT ICY song (nil =
     /// show the station logo). Drives the in-app player cover; the lock screen
     /// uses `artworkImage`. Reset on every item switch.
     @Published var icySongArtwork: UIImage?
@@ -265,7 +265,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// due again, and the artwork built for the image it shows.
     var lastNowPlaying: NowPlayingRefresh.Written?
     var nowPlayingArtwork: (image: ObjectIdentifier, artwork: MPMediaItemArtwork)?
-    /// Teil 2: the station logo (favicon) for live radio. The fallback the ICY
+    /// The station logo (favicon) for live radio. The fallback the ICY
     /// now-playing cover reverts to when a song has no Cover Art Archive match.
     /// Set by `loadArtwork`, read by `refreshICYArtwork` (both in +NowPlaying).
     var stationArtwork: UIImage?
@@ -1041,7 +1041,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         itemTrackIndex.removeAll()
         icyStreamTitle = nil   // never carry a song title across items
         icySongArtwork = nil   // nor its resolved cover
-        stationArtwork = nil   // Teil 2: the next station loads its own logo
+        stationArtwork = nil   // the next station loads its own logo
         queueAppendIndex = tracks.count
         waitsForPlannedTrack = false
         // A track that cannot be built (no address, a sign-in that cannot be
@@ -1152,7 +1152,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     guard let self, self.icyStreamTitle != value else { return }
                     self.icyStreamTitle = value
                     self.updateNowPlayingInfo()
-                    // Teil 2: try to resolve now-playing cover art for the song.
+                    // Try to resolve now-playing cover art for the song.
                     self.refreshICYArtwork()
                 }
             }

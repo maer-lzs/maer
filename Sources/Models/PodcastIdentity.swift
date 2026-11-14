@@ -74,7 +74,7 @@ nonisolated enum PodcastIdentity {
         return heard.first { !$0.title.isEmpty && feedKey($0.feedURL) == key }?.title
     }
 
-    /// Provider-premium (Teil 5 cut): the comparable host of a feed URL.
+    /// Provider premium: the comparable host of a feed URL.
     /// Scheme/`www.` stripped, lowercased, up to the first path segment.
     nonisolated static func feedHost(_ raw: String) -> String {
         var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)

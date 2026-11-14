@@ -1911,6 +1911,11 @@ extension ProjectFileIntegrityTests {
             hits.append(token)
         }
         if line.contains("Auftrag ") { hits.append("Auftrag") }
+        // A work package's number (`Teil 2`) is history too; a quoted one
+        // ("Teil 3 von 5", an episode marker the code reads) is content.
+        let unquoted = withoutCodeSpans(line)
+            .replacingOccurrences(of: #""[^"]*"|„[^“"]*[“"]"#, with: " ", options: .regularExpression)
+        hits += matches(of: #"\bTeil [0-9]+"#, in: unquoted)
         hits += decisionWords(in: line)
         // A build number and a finding number (`Build 48`, `47-6`) are the
         // same history in another shape. A range of numbers (`0,99-1,49`)
@@ -1932,11 +1937,12 @@ extension ProjectFileIntegrityTests {
     /// the phrase of an agreement, an exception with a shorthand, a person
     /// behind "per".
     nonisolated static let decisionPatterns = [
-        #"(?i)\b(decided|decision)\b[^.]{0,20}[0-9]{1,2}\.[0-9]{1,2}\."#,
+        #"(?i)\b(decided|decision)\b[^.]{0,20}[0-9]{2}\.[0-9]{2}\."#,
+        #"(?i)\b(decided|decision)\b[^.]{0,20}\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b"#,
         #"(?i)\(\s*decision"#,
         #"(?i)\bas (agreed|decided)\b"#,
         #"\b[Ee]xceptions?\s+\(?[A-Z]{1,3}[0-9]+"#,
-        #"(?i)\bper\s+(laurenz|momo|pie|takt|wache|fable)\b"#,
+        #"(?i)\bper\s+(laurenz|momo|pie|takt|wache|fable|chonk|lechonk|kreide)\b"#,
     ]
 
     static func decisionWords(in line: String) -> [String] {
@@ -1958,6 +1964,31 @@ extension ProjectFileIntegrityTests {
                 blocks.append((index, [comment], prose))
             }
             last = index
+        }
+        return blocks + blockComments(in: text)
+    }
+
+    /// A `/* … */` comment over several lines as one block: its lines between
+    /// the markers carry no slashes, so the line reader does not see them.
+    static func blockComments(in text: String) -> [(index: Int, lines: [String], prose: String)] {
+        var blocks: [(index: Int, lines: [String], prose: String)] = []
+        var open: (index: Int, lines: [String])?
+        for (index, raw) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let line = String(raw)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if var current = open {
+                current.lines.append(line)
+                open = current
+                if trimmed.contains("*/") {
+                    let prose = current.lines
+                        .map { $0.replacingOccurrences(of: #"^\s*(/\*+|\*+/?)?\s*|\s*\*/.*$"#, with: "", options: .regularExpression) }
+                        .joined(separator: " ")
+                    blocks.append((current.index, current.lines, prose))
+                    open = nil
+                }
+            } else if trimmed.hasPrefix("/*"), !trimmed.contains("*/") {
+                open = (index, [line])
+            }
         }
         return blocks
     }
@@ -2117,7 +2148,7 @@ extension ProjectFileIntegrityTests {
     /// in 36 files. The stock is the count; a line rewritten lowers it.
     /// BESTAND OHNE EINZELGRUENDE: one sentence covers every entry, each is
     /// the count that stood on the day of measuring, none chosen on its own.
-    nonisolated static let historyShorthandStock: [String: Int] = ["RadioModels.swift": 9, "FreeAudiobooksPage.swift": 6, "PlayerView.swift": 6, "HoerspielCuration.swift": 5, "PlayerViewModel.swift": 4, "PodcastNavigation.swift": 3, "PodcastWorkOrder.swift": 3, "PodcastsView.swift": 3, "AppStorageKeys.swift": 2, "FreeCatalogClients.swift": 2, "FreeCatalogSources.swift": 2, "HomeView.swift": 2, "MusicLibraryPages.swift": 2, "MusicView.swift": 2, "MusicViewModel.swift": 2, "PlayerViewModel+NowPlaying.swift": 2, "PodcastSections.swift": 2, "PodcastSourceView.swift": 2, "RadioArtworkLookup.swift": 2, "RadioNavigation.swift": 2, "RadioProvider.swift": 2, "BookDetailScreen.swift": 1, "LibrarySortOptions.swift": 1, "LibraryView.swift": 1, "MediaTile.swift": 1, "MusicNavigation.swift": 1, "OERRCuration.swift": 1, "OERRLiveStore.swift": 1, "PodcastComponents.swift": 1, "PodcastDirectory.swift": 1, "PodcastRecommendationsStore.swift": 1, "PodcastShowSettingsSheet.swift": 1, "PodcastIdentity.swift": 1,"RadioStationDetailView.swift": 1, "RediscoverSections.swift": 1, "UserChoiceSync.swift": 1]
+    nonisolated static let historyShorthandStock: [String: Int] = ["FreeAudiobooksPage.swift": 6, "HoerspielCuration.swift": 5, "PodcastNavigation.swift": 3, "PodcastWorkOrder.swift": 3, "FreeCatalogClients.swift": 2, "FreeCatalogSources.swift": 2, "MusicLibraryPages.swift": 2, "PlayerView.swift": 2, "BookDetailScreen.swift": 1, "MusicNavigation.swift": 1, "MusicView.swift": 1, "OERRCuration.swift": 1, "OERRLiveStore.swift": 1, "PodcastComponents.swift": 1, "PodcastDirectory.swift": 1, "PodcastSections.swift": 1, "PodcastShowSettingsSheet.swift": 1, "PodcastsView.swift": 1, "UserChoiceSync.swift": 1]
 
     @Test("History shorthands of older runs in comments are counted per file, the count is the stock", .needsTheSources)
     func historyShorthandsAreCounted() throws {
@@ -2175,6 +2206,18 @@ extension ProjectFileIntegrityTests {
         #expect(Self.orderShorthands(in: "/// Mix form as decided for the rows") == ["as decided"])
         #expect(Self.orderShorthands(in: "/// kept as an exception X12 for now") == ["exception X12"])
         #expect(Self.orderShorthands(in: "/// stays, per Momo") == ["per Momo"])
+        #expect(Self.orderShorthands(in: "/// stays, per LeChonk and per Kreide") == ["per LeChonk", "per Kreide"],
+                "every role behind per")
+        #expect(Self.orderShorthands(in: "/// the decision, see 3.5. for the rows").isEmpty,
+                "a section number is no date")
+        #expect(Self.orderShorthands(in: "/// stays (decided 06.09.)") == ["decided 06.09."])
+        #expect(Self.orderShorthands(in: "/// kept, decided 2026-11-14 for now") == ["decided 2026-11-14"],
+                "the date in its ISO form")
+        #expect(Self.orderShorthands(in: "/// Teil 2: the cover of the song") == ["Teil 2"], "a work package's number")
+        #expect(Self.orderShorthands(in: "/// markers like \"Teil 3 von 5\" and `Teil 3`").isEmpty,
+                "a quoted marker is content")
+        #expect(Self.decisionNotesAcrossLines(in: "/*\n the column (decided\n 23.10.2026) and more\n */").map(\.hit)
+                == ["decided 23.10."], "a note across the lines of a block comment")
         #expect(Self.decisionNotesAcrossLines(in: "// the column\n// (decided\n// 23.10.2026) and the scopes").map(\.hit)
                 == ["decided 23.10."], "a note split by a line break is one note")
         #expect(Self.decisionNotesAcrossLines(in: "// the column\n// (decided\n// 23.10.2026) and the scopes").map(\.index) == [0])

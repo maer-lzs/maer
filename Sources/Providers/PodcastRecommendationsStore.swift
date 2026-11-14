@@ -28,7 +28,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     private var loadedAt: Date?
     private var isLoading = false
 
-    /// Home "Discover" (Teil 4): where a recommendation came from. The honest
+    /// Home "Discover": where a recommendation came from. The honest
     /// subtitle reason. Derived ONLY from local signals against the public
     /// catalog; no profile leaves the device.
     enum Reason: Equatable {
@@ -514,7 +514,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// What the person's own usage says, in one list. A co-listened show
     /// (heard through, never followed) counts HALF, and only from its
     /// second episode on: hearing a show through says something about
-    /// taste, following it says it twice, and one episode is a look
+    /// taste, following it says it twice, and one episode is a look.
     /// Nothing here subscribes to anything.
     private var tasteShows: [TasteShow] {
         var out = mineShows.map {

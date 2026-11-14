@@ -465,7 +465,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         return nil
     }
 
-    /// Teil 4 "Discover" (stage 1: podcast shows): one row from the existing
+    /// "Discover" (stage 1: podcast shows): one row from the existing
     /// RecommendationsStore (PodcastIndex/charts, same as the podcast tab),
     /// with an HONEST reason as the subtitle. Derived locally only. Already
     /// subscribed shows never appear (filtered again at render time, the pool
@@ -858,7 +858,7 @@ RowHeading(title: "Rediscover",
         }
     }
 
-    /// Teil 3: assemble the three candidate sources (mixed media types) and let
+    /// Assemble the three candidate sources (mixed media types) and let
     /// the pure logic pick. Timestamps normalized to seconds.
     private func computeRediscover(
         bookContinue: [(id: String, ts: Double)],

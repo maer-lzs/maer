@@ -14,9 +14,9 @@ nonisolated struct RecentShowInfo: Identifiable {
     let show: PodcastShow
     let lastUpdated: Double   // ms epoch of the newest episode
     let newCount: Int
-    /// Teil 2: the show has at least one downloaded episode.
+    /// The show has at least one downloaded episode.
     var hasDownloads: Bool = false
-    /// Teil 2: total unplayed episodes (drives "Most Unplayed" sort + filter).
+    /// Total unplayed episodes (drives "Most Unplayed" sort + filter).
     var unplayedCount: Int = 0
     var id: String { show.id }
 }

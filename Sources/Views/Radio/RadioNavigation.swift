@@ -12,7 +12,7 @@ import SwiftUI
 enum RadioRoute: Hashable {
     /// Stations for a curated genre (Radio Browser tag). The byTag list.
     case genre(tag: String, title: String)
-    /// Teil 1: a station's detail page (info + codec/bitrate variant picker).
+    /// A station's detail page (info + codec/bitrate variant picker).
     case station(RadioStation)
     /// The page a station link opens when the catalog gave no station.
     case stationLink(uuid: String, gap: SharedLinkOpener.StationGap)
@@ -25,7 +25,7 @@ enum RadioRoute: Hashable {
     case myStations
 }
 
-/// Teil 1: push a RadioRoute from a non-link surface (a context-menu button).
+/// Push a RadioRoute from a non-link surface (a context-menu button).
 /// Set on the NavigationStack itself by LibraryView, like `pushMusicRoute`, so
 /// pushed views inherit it and a tap that also plays can still open the detail.
 nonisolated struct PushRadioRouteKey: EnvironmentKey {

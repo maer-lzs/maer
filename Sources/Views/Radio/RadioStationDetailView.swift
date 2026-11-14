@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Teil 1: the station detail page. Reached from a station's context menu
+/// The station detail page. Reached from a station's context menu
 /// ("Station Details"). The tap itself still plays directly, this is the
 /// opt-in surface for the info and the codec/bitrate variant picker. The choice
 /// persists per station (RadioStore) and the next play (and the live-player

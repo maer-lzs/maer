@@ -18,7 +18,7 @@ struct MusicSource {
     /// One page of the album catalog for a given SORT (offset, size). The live
     /// wiring maps the semantic MusicSortOption to the Subsonic getAlbumList2
     /// type here (provider-level mapping. A future provider translates or
-    /// reports a case unavailable). Teil 2.
+    /// reports a case unavailable).
     var albumsPage: @MainActor @Sendable (_ sort: MusicSortOption, _ offset: Int, _ size: Int) async throws -> [LibraryItem]
     var shelf: @MainActor @Sendable (_ shelf: MusicShelf, _ size: Int) async throws -> [LibraryItem]
     var artists: @MainActor @Sendable () async throws -> [MusicArtist]
@@ -106,7 +106,7 @@ final class MusicViewModel: ObservableObject {
     /// Whether the tab has started its first load (`MusicPageState.of`).
     /// A reload sets `isLoading` right after the reset, so the change shows.
     var hasAsked: Bool { runs.hasStarted }
-    /// Teil 2: active album-grid sort (server-side). Shelves stay fixed.
+    /// Active album-grid sort (server-side). Shelves stay fixed.
     var sort: MusicSortOption = .nameAZ
     /// How long the first album page may take before the page says the
     /// server takes too long, with its retry. Measured before: no deadline

@@ -394,7 +394,7 @@ extension PlayerViewModel {
         }
     }
 
-    /// Teil 2: best-effort now-playing cover for live radio. On an ICY song with
+    /// Best-effort now-playing cover for live radio. On an ICY song with
     /// both artist and title, look the cover up (MusicBrainz → Cover Art Archive)
     /// and, if found and still current, show it on the lock screen / in-app
     /// player. Reverts to the station logo first, so a previous song's cover
@@ -425,7 +425,7 @@ extension PlayerViewModel {
         }
     }
 
-    /// Teil 2: drop any resolved song cover and show the station logo again.
+    /// Drop any resolved song cover and show the station logo again.
     private func revertToStationLogo() {
         icySongArtwork = nil
         if let logo = stationArtwork, artworkImage !== logo {

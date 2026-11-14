@@ -25,7 +25,7 @@ struct MusicView: View {
     #else
     @StateObject private var vm = MusicViewModel()
     #endif
-    // Teil 2: server-side album sort, persisted; shared with the toolbar menu in
+    // Server-side album sort, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage key.
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
     /// Which presentation hierarchy the row cards ask (root, here).

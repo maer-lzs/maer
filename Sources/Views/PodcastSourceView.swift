@@ -268,7 +268,7 @@ struct PodcastSourceView: View {
         PodcastShowSources.isSubscribed(feedURL: feedURL)
     }
 
-    /// Teil 5 cut: a credentialed subscription on the SAME host as the typed
+    /// A credentialed subscription on the SAME host as the typed
     /// URL. The "provider account" is derived from existing feeds, no new
     /// persistence. Only offered while the login fields are empty.
     private var providerLoginSource: PodcastShow? {
@@ -550,7 +550,7 @@ struct PodcastSourceView: View {
                                          id: "feed-username")
                 CredentialField.secret("Password (optional)", text: $feedPassword,
                                        id: "feed-password")
-                // Teil 5 (provider premium, foundation cut): another show of a
+                // Provider premium: another show of a
                 // provider you already have a login for. Reuse it, visibly.
                 if let source = providerLoginSource {
                     Label("Will use your \(PodcastIdentity.feedHost(source.feedURL)) login (from “\(source.title)”)",

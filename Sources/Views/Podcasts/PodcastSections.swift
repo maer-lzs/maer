@@ -237,7 +237,7 @@ enum PodcastSections {
         )
     }
 
-    /// Pure filter + sort of the show grid (Teil 2, testable). "Recently
+    /// Pure filter + sort of the show grid (testable). "Recently
     /// updated" = newest episode first (default); "Name A to Z" alphabetical;
     /// "Most unplayed" by unplayed count. Filter drops shows without downloads /
     /// without unplayed episodes.

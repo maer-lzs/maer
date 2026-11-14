@@ -5,7 +5,7 @@
 
 import Foundation
 
-// Per-tab sort/filter options (Teil 2). Deliberately NOT a shared protocol.
+// Per-tab sort/filter options. Deliberately NOT a shared protocol.
 // Three small independent enums following the audiobook `SortOption` pattern
 // (rawValue = stable persistence key, `label` localized). The audiobook
 // `SortOption`/`FilterOption` live in LibraryViewModel and stay the reference.

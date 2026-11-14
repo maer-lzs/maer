@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The Home tab's standard grid tile (Teil 1, rebuilt from the former
+/// The Home tab's standard grid tile (rebuilt from the former
 /// EpisodeTile): a square image with slots.
 /// - optional small corner badge at the image's bottom-LEFT (~24 pt, white
 ///   border; the featured cards' show-badge pattern),

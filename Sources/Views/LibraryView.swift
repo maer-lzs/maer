@@ -160,7 +160,7 @@ struct LibraryView: View {
     /// Active content-type tab. Today audiobooks only; the bottom tab bar only
     /// appears when a second source brings a different type.
     @State private var selectedMediaType: MediaType = .home
-    // Teil 2: per-tab sort/filter, shared with the tab content via the same
+    // Per-tab sort/filter, shared with the tab content via the same
     // AppStorage keys (audiobooks keep using LibraryViewModel's own state).
     // The podcast/music sort state no longer lives here. It moved to
     // the surfaces that own it (PodcastsView, MusicAlbumsPage). LibraryView

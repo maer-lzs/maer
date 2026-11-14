@@ -17,7 +17,7 @@ nonisolated enum AppStorageKeys {
     /// Last bottom-bar cover accent (RGBA components). Restored at launch
     /// so the bar never falls back to neutral once an item has ever played.
     static let bottomBarAccent = "bottomBarAccent"
-    /// Teil 5: ONE opt-out for the Home recommendation sections (Rediscover +
+    /// ONE opt-out for the Home recommendation sections (Rediscover +
     /// Discover); default on.
     static let homeRecommendations = "homeRecommendations"
     /// Speed for books that have no per-book rate saved yet.
@@ -963,7 +963,7 @@ nonisolated enum AppStorageKeys {
     static let librarySortOption = "librarySortOption"
     static let libraryFilterOption = "libraryFilterOption"
     static let librarySortAscending = "librarySortAscending"
-    // Teil 2: per-tab sort/filter (audiobooks reuse the library* keys above).
+    // Per-tab sort/filter (audiobooks reuse the library* keys above).
     static let podcastSortOption = "podcastSortOption"
     static let podcastFilterOption = "podcastFilterOption"
     static let musicSortOption = "musicSortOption"

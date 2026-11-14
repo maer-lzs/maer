@@ -26,7 +26,7 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     var codec: String? = nil
     /// RB vote mass. The regional socket/floor decides on it.
     var votes: Int? = nil
-    /// Teil 1: the sibling codec/bitrate variants of this station (the collapse
+    /// The sibling codec/bitrate variants of this station (the collapse
     /// keeps the best as default and attaches ALL variants here, self included).
     /// Optional so already-persisted stations decode unchanged (no key → nil);
     /// nested variants are always flattened to nil (no recursion).
@@ -59,7 +59,7 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
         return host
     }
 
-    /// Teil 1: human label for the variant picker. "128 kbps · MP3", one part,
+    /// Human label for the variant picker. "128 kbps · MP3", one part,
     /// or a generic fallback. Foundation-only (like the curated genre titles).
     var qualityLabel: String {
         var parts: [String] = []
@@ -183,7 +183,7 @@ nonisolated enum RadioMapping {
                 buckets.append((name: name, country: code, members: [flat]))
             }
         }
-        // Teil 1: rank each bucket (best first) and let the surviving best carry
+        // Rank each bucket (best first) and let the surviving best carry
         // the full variant list (self included) so the detail page can offer a
         // picker. Bucket order = first appearance (the highest-voted variant's
         // position), preserved.
@@ -195,14 +195,14 @@ nonisolated enum RadioMapping {
         }
     }
 
-    /// Teil 1 (pure): a STABLE key for a station's variant selection. Survives
+    /// Pure: a STABLE key for a station's variant selection. Survives
     /// catalog rotation (a different variant winning the collapse) because it
     /// keys on the normalized name + country, not the volatile stationuuid.
     static func variantKey(for station: RadioStation) -> String {
         normalizedStationName(station.name) + "|" + (normalizedCountry(station.countryCode) ?? "")
     }
 
-    /// Teil 1 (pure): resolve the stream to play. The user's persisted variant
+    /// Pure: resolve the stream to play. The user's persisted variant
     /// choice when it still exists among the station's variants, else the best
     /// (default) stream.
     static func effectiveStreamURL(for station: RadioStation, selectedURL: String?) -> String {
@@ -393,7 +393,7 @@ nonisolated enum RadioStore {
     static let manualKey = "radioManualStations"
     static let recentsKey = "radioRecents"
     static let recentsCap = 8
-    // Teil 3: play-frequency ("Most Played"). The counts are the source of
+    // Play-frequency ("Most Played"). The counts are the source of
     // truth; the whole stations are stored alongside so the row stays resolvable
     // after the volatile catalog rotates (like recents). The store is bounded by
     // keeping the top-ranked entries, so a heavy favorite is never evicted.
@@ -633,7 +633,7 @@ nonisolated enum RadioStore {
         return try? JSONDecoder().decode(DiscoveryCache.self, from: data)
     }
 
-    // MARK: - Teil 3: play frequency
+    // MARK: - Play frequency
 
     static func playCounts(defaults: UserDefaults = .standard) -> [String: Int] {
         guard let data = defaults.data(forKey: playCountsKey),
@@ -674,7 +674,7 @@ nonisolated enum RadioStore {
                                 seconds: seconds, limit: limit)
     }
 
-    // MARK: - Teil 1: per-station codec/bitrate variant selection
+    // MARK: - Per-station codec/bitrate variant selection
 
     static let variantSelectionKey = "radioVariantSelection"   // [variantKey: streamURL]
 
@@ -716,7 +716,7 @@ nonisolated enum RadioStore {
     }
 }
 
-/// Teil 3 (pure, tested): rank stations by play frequency. Positive counts only,
+/// Pure, tested: rank stations by play frequency. Positive counts only,
 /// descending; ties keep the later-stored (more-recently-played) station first;
 /// capped. Foundation-only (MaerCore rule). No store, no UI.
 nonisolated enum RadioRanking {

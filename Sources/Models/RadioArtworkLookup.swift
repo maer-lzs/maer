@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Teil 2: MusicBrainz recording-search response (subset). A recording carries
+/// MusicBrainz recording-search response (subset). A recording carries
 /// the releases it appears on; the first release MBID drives the Cover Art
 /// Archive lookup. Foundation-only (MaerCore rule).
 nonisolated struct MBRecordingResponse: Decodable, Sendable {
@@ -18,7 +18,7 @@ nonisolated struct MBRelease: Decodable, Sendable {
     let id: String
 }
 
-/// Teil 2 (pure, tested): the decision + URL/parse logic for looking up
+/// Pure, tested: the decision + URL/parse logic for looking up
 /// now-playing cover art from an ICY "Artist - Title" pair, via MusicBrainz →
 /// Cover Art Archive. No key, no proprietary third party (Mär vision). The
 /// network orchestration + caching lives in `RadioArtworkService`.

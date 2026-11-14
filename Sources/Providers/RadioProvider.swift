@@ -36,7 +36,7 @@ final class RadioProvider: AudioProvider {
         (RadioStore.favorites() + RadioStore.manualStations()).map(Self.libraryItem(for:))
     }
 
-    /// The last-heard ring and the play-frequency count (Teil 3, "Most Played").
+    /// The last-heard ring and the play-frequency count ("Most Played").
     ///
     /// This is deliberately NOT in `fetchItemDetail`: resolving an item is not
     /// listening to it. The same resolution serves the bounded server check, the
@@ -52,7 +52,7 @@ final class RadioProvider: AudioProvider {
         guard let station = RadioStore.station(forId: itemId) ?? sessionStations[itemId] else {
             throw URLError(.resourceUnavailable)
         }
-        // Teil 1: honor the user's per-station variant choice (else the best).
+        // Honor the user's per-station variant choice (else the best).
         let streamURL = RadioMapping.effectiveStreamURL(
             for: station, selectedURL: RadioStore.selectedVariantURL(for: station))
         // What actually plays (vs the tap line above), and the icy-name check
