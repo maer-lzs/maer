@@ -303,6 +303,10 @@ struct EffectsSheet: View {
                 }
             }
         }
+        // The sheet hangs on a button inside the player, whose words are
+        // white: without its own base colour every row would be white on
+        // the light sheet, `.primary` included.
+        .foregroundStyle(Color.primary)
         .softTopScrollEdge()
         .presentationDetents([.medium, .large])
     }
