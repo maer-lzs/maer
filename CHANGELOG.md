@@ -38,6 +38,12 @@ started, and a second tap puts it back in order; what you added to Up
 Next yourself stays where it is. The next album or playlist you start
 plays in order again.
 
+**Appearance set back to System follows the system again.** After
+choosing Dark or Light in Settings and then System, the open settings
+stayed in the former look and did not follow when the system switched
+between light and dark. The choice now applies to the whole window, and
+every sheet takes it from there.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

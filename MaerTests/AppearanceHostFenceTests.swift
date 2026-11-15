@@ -67,21 +67,29 @@ struct AppearanceHostFenceTests {
         #expect(AppearanceChoice.of("system") == .system)
         #expect(AppearanceChoice.of(nil) == .system)
         #expect(AppearanceChoice.of("sepia") == .system, "an unknown value is no decision")
-        // The scheme the host hands SwiftUI: light and dark set it, the
-        // system choice hands over nothing.
-        #expect(AppearanceHost.scheme(AppearanceChoice.of("light")) == .light)
-        #expect(AppearanceHost.scheme(AppearanceChoice.of("dark")) == .dark)
-        #expect(AppearanceHost.scheme(AppearanceChoice.of("system")) == nil)
-        // Nobody else maps the stored string to a scheme.
+        // The style the host sets on the windows: light and dark set it,
+        // the system choice sets none.
+        #expect(AppearanceHost.style(AppearanceChoice.of("light")) == .light)
+        #expect(AppearanceHost.style(AppearanceChoice.of("dark")) == .dark)
+        #expect(AppearanceHost.style(AppearanceChoice.of("system")) == .unspecified)
+        // Nobody else sets a scheme or a style; only drive mode keeps its own.
         var readers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
-            guard text.contains("preferredColorScheme") else { continue }
-            if !["AppearanceHost.swift", "DriveModeView.swift"].contains(file.lastPathComponent) {
-                readers.append(file.lastPathComponent)
-            }
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let schemes = code.components(separatedBy: "preferredColorScheme(").count - 1
+            let styles = code.components(separatedBy: "overrideUserInterfaceStyle = ").count - 1
+            if schemes + styles > 0 { readers.append("\(file.lastPathComponent): \(schemes)/\(styles)") }
         }
-        #expect(readers.isEmpty, "these files set a colour scheme beside the building block: \(readers)")
+        #expect(readers.sorted() == ["AppearanceHost.swift: 0/1", "DriveModeView.swift: 1/0"],
+                "a file sets a colour scheme beside the building block: \(readers)")
+        // A preferred scheme of nil left an open sheet in the former one.
+        let host = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/Views/AppearanceHost.swift"), encoding: .utf8))
+        #expect(host.contains(".background(WindowStyle(style: Self.style(AppearanceChoice.of(appearance))))"),
+                "the choice does not reach the windows")
+        #expect(host.contains("view.style = style") && host.contains("super.didMoveToWindow()\n            apply()"),
+                "the choice does not reach a window when it changes or when a view reaches it")
+        #expect(host.contains("for window in window?.windowScene?.windows ?? []"), "the choice skips a window of the scene")
     }
 }
 #endif

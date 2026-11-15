@@ -24,7 +24,7 @@ struct NoScrollBarsFenceTests {
         #expect(setters == ["AppearanceHost.swift: 1"], "a view sets its scroll bars itself: \(setters)")
         let host = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/AppearanceHost.swift"), encoding: .utf8))
-        #expect(host.contains(".preferredColorScheme(Self.scheme(AppearanceChoice.of(appearance)))\n            .noScrollBars()"))
+        #expect(host.contains(".background(WindowStyle(style: Self.style(AppearanceChoice.of(appearance))))\n            .noScrollBars()"))
         // The leaf that keeps its own scheme carries the rule itself.
         let library = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LibraryView.swift"), encoding: .utf8))
