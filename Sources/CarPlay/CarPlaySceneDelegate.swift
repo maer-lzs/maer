@@ -441,7 +441,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             ?? Self.square(symbol: list.isRoutine ? "repeat" : "music.note.list")
         return Tile(image: picture, title: list.name, subtitle: nil) { [weak self] in
             await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
-            self?.showNowPlaying()
+            self?.showAfterOpen(nil)
         }
     }
 
@@ -681,13 +681,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                 tiles.append(Tile(image: picture, title: source.title,
                                   subtitle: nil) { [weak self] in
                     await SharedRows.playAlbum(item, fromTrackAt: 0, on: session.playerCoordinator)
-                    self?.showNowPlaying()
+                    self?.showAfterOpen(nil)
                 })
             case .maerPlaylist(let id):
                 tiles.append(Tile(image: picture, title: source.title, subtitle: nil) { [weak self] in
                     guard let list = store.playlist(id: id) else { return }
                     await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
-                    self?.showNowPlaying()
+                    self?.showAfterOpen(nil)
                 })
             default: break
             }
@@ -761,7 +761,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                 Task { @MainActor [weak self] in
                     await SharedRows.playAlbum(item, fromTrackAt: track.start,
                                                on: session.playerCoordinator)
-                    self?.showNowPlaying()
+                    self?.showAfterOpen(nil)
                     completion()
                 }
             }
@@ -851,7 +851,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         row.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
                 await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
-                self?.showNowPlaying()
+                self?.showAfterOpen(nil)
                 completion()
             }
         }
@@ -958,7 +958,32 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func openTitle(_ item: LibraryItem) async {
         await session.playerCoordinator.open(item: item)
-        showNowPlaying()
+        showAfterOpen(item.id)
+    }
+
+    /// After an open in the car: the player, or a hint when the open
+    /// started nothing (`CarPlayLayout.afterOpen`). `requested` is the
+    /// title asked for, nil for a list or an album.
+    private func showAfterOpen(_ requested: String?) {
+        let coordinator = session.playerCoordinator
+        switch CarPlayLayout.afterOpen(requested: requested, active: coordinator.activeItem?.id,
+                                       failure: coordinator.loadError) {
+        case .player:
+            showNowPlaying()
+        case .hint(let sentence):
+            showHint(sentence)
+        }
+    }
+
+    /// A sentence in the car with OK, for an open that started nothing.
+    private func showHint(_ sentence: String) {
+        guard let interfaceController else { return }
+        let ok = CPAlertAction(title: String(localized: "OK"), style: .cancel) { [weak interfaceController] _ in
+            interfaceController?.dismissTemplate(animated: true, completion: Self.settled("hint closed"))
+        }
+        Logger.player.notice("CARPLAY open failed, hint shown")
+        interfaceController.presentTemplate(CPAlertTemplate(titleVariants: [sentence], actions: [ok]),
+                                            animated: true, completion: Self.settled("hint"))
     }
 
     // MARK: - Player

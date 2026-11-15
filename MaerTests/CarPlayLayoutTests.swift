@@ -164,5 +164,36 @@ struct CarPlayLayoutTests {
             #expect(car.contains(signal), "the car does not follow \(signal)")
         }
     }
+
+    @Test("after an open in the car: the player when the title runs, a hint with the app's sentence when it started nothing")
+    func afterAnOpenAsATable() {
+        #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b1", failure: nil) == .player)
+        #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b1", failure: "stale") == .player,
+                "a sentence left from before beats a title that plays")
+        #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b0", failure: "Offline.") == .hint("Offline."),
+                "the player would show another title")
+        #expect(CarPlayLayout.afterOpen(requested: "b1", active: nil, failure: "Offline.") == .hint("Offline."))
+        #expect(CarPlayLayout.afterOpen(requested: "b1", active: nil, failure: nil) == .player,
+                "an open without a sentence (the title on its way) keeps the player")
+        #expect(CarPlayLayout.afterOpen(requested: nil, active: "s3", failure: "x") == .player, "a list runs some title")
+        #expect(CarPlayLayout.afterOpen(requested: nil, active: nil, failure: "Offline.") == .hint("Offline."))
+    }
+
+    @Test("every open in the car goes through the one rule; only a station shows the player straight", .needsTheSources)
+    func everyOpenAsksTheRule() throws {
+        let car = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/CarPlay/CarPlaySceneDelegate.swift"), encoding: .utf8))
+        let lines = car.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        var straight: [String] = []
+        for (index, line) in lines.enumerated() where line == "self?.showNowPlaying()" {
+            if index == 0 || !lines[index - 1].hasPrefix("RadioPlay.play(") { straight.append(lines[max(index - 1, 0)]) }
+        }
+        #expect(straight.isEmpty, "the player is shown straight after: \(straight)")
+        let opens = lines.filter { $0.hasPrefix("await RoutinePlayback.start(") || $0.hasPrefix("await SharedRows.playAlbum(") }
+        let asks = lines.filter { $0 == "self?.showAfterOpen(nil)" }
+        #expect(!opens.isEmpty && opens.count == asks.count, "\(opens.count) list or album starts, \(asks.count) asks")
+        let open = try #require(lines.firstIndex(of: "await session.playerCoordinator.open(item: item)"), "the open of a title")
+        #expect(lines[open + 1] == "showAfterOpen(item.id)", "the open of a title shows the player straight")
+    }
 }
 #endif

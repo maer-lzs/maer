@@ -6,6 +6,11 @@
 cannot start before the device has been unlocked once after a restart,
 the hint now says book, episode or title instead of always episode.
 
+**In the car, a title that cannot start says why.** When a book, an
+episode, a list or an album you tap in CarPlay cannot start, for example
+offline and not downloaded, the car shows the reason with OK instead of
+the player with another title or none.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

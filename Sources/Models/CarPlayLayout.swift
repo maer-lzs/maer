@@ -65,6 +65,30 @@ nonisolated enum CarPlayLayout {
         return mayPush(depth: depth) ? .push : .full
     }
 
+    /// What follows a tap on a title in the car.
+    enum AfterOpen: Equatable {
+        /// The player, as the title plays or is on its way.
+        case player
+        /// A hint with the sentence the app shows for the failed open.
+        case hint(String)
+    }
+
+    /// The player when the title asked for is the one now active (for a
+    /// list or an album, `requested` nil: when any title is); when it is
+    /// not and the open said why, a hint with that sentence instead of a
+    /// player that would show another title or none. An open that went on
+    /// without a sentence (the same title already on its way) keeps the
+    /// player.
+    static func afterOpen(requested: String?, active: String?, failure: String?) -> AfterOpen {
+        if let requested {
+            if active == requested { return .player }
+        } else if active != nil {
+            return .player
+        }
+        if let failure, !failure.isEmpty { return .hint(failure) }
+        return .player
+    }
+
     /// Whether a cover in a row of covers carries its name: the system
     /// draws one from iOS 26 on. A list is known by its name alone, so
     /// without it lists stay rows of text.
