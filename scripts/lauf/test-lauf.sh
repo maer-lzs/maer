@@ -403,5 +403,16 @@ git checkout -q scheibe
 if [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ $r3 -ne 0 ] && [ "$(git ls-remote origin refs/heads/scheibe | cut -f1)" = "$(git rev-parse scheibe)" ]; then
     ok "31 no rewriting on any branch"; else fail "31 no rewriting on any branch" "$o1 / $o2 / $o3"; fi
 
+# 32. A change only at a brace or at whitespace still selects: a test file
+# selects itself, a source file the tests naming its types.
+git checkout -q -B klammer "$BASE"
+printf 'struct SoundCurveTests {\n}\n' > MaerTests/SoundCurveTests.swift
+printf 'enum PlaybackSkip {\n}\n' > Sources/Models/PlaybackSkip.swift
+git add -A && git commit -q --no-verify -m "Move two braces"
+out="$(plan)"
+git checkout -q scheibe
+if has "$out" "datei SoundCurveTests" && has "$out" "datei PlaybackSkipTests"; then
+    ok "32 a brace or whitespace alone still selects"; else fail "32 a brace or whitespace alone still selects" "$out"; fi
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]

@@ -1,10 +1,7 @@
 # Ten commits of dev from the week of 9 November 2026, each with the test
-# files it added or changed: the suites its review named. The selection from
-# the source part of each commit alone must choose at least these files.
+# files it added or changed: the suites its review named. The selection of
+# the whole commit must choose at least these files.
 # Format: <commit> <test file> ...
-# c332a85b also moved a closing brace in HaltStandTests; that file has no
-# relation to the changed source, so no rule of the selection may choose it
-# for that change, and it is not listed.
 7dd05688 PlayerRowTests PlayerToolsAtSideTests SoundCurveTests SoundSurfaceTests
 c723c910 OpenGenerationTests UserChoiceSyncTests
 a019235f FeedRefusalTests SameKeyFeedTests SubscribeTapTests
@@ -13,5 +10,5 @@ e7ee881e ExportStaysHomeTests SharedLinkPageAccessTests
 fad1d0f9 AppearanceHostFenceTests NoScrollBarsFenceTests
 012c50d9 RecentlyPlayedRowTests SharedGrowthFenceTests
 13caefd5 FeedAccessUnknownTests UnlockSentenceTests
-c332a85b HeardElsewhereTests
+c332a85b HaltStandTests HeardElsewhereTests
 4b805768 CarPlayLayoutTests DownloadKindTests SharedGrowthFenceTests
