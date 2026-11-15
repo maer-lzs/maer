@@ -485,8 +485,8 @@ struct PlayerView: View {
             // Chapter / part line: a real chapter · author, the fallback
             // marker ("Teil 12 von 39" / "ab 3:15"), or the artist for music.
             if let subtitle = chapterSubtitle {
-                // A fallback book's line is its part ("Teil 2 von 3"): it
-                // opens the parts. Any other line leads to its source.
+                // A fallback book's line names its part: it opens the
+                // parts. Any other line leads to its source.
                 if viewModel.chaptersAreFallback && hasChapterEntry {
                     partsLine {
                         Text(subtitle)
