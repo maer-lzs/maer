@@ -2740,16 +2740,6 @@
         }
       }
     },
-    "Clearer Speech" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sprache klarer"
-          }
-        }
-      }
-    },
     "Clears derived caches only (catalog stock, day shelves, resolved lookups). Nothing of yours is touched; the app refetches on the next visit." : {
       "localizations" : {
         "de" : {
@@ -4751,6 +4741,16 @@
         }
       }
     },
+    "Fuller" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voller Klang"
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "de" : {
@@ -6111,16 +6111,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Songtexte online nachschlagen"
-          }
-        }
-      }
-    },
-    "Louder" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lauter"
           }
         }
       }
@@ -11228,7 +11218,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gesprochenes"
+            "value" : "Gesprochenes Wort"
           }
         }
       }
@@ -14160,12 +14150,12 @@
         }
       }
     },
-    "Volume raised to %lld %%" : {
+    "Volume raised to %lld percent" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lautstärke auf %lld %% angehoben"
+            "value" : "Lautstärke auf %lld Prozent angehoben"
           }
         }
       }

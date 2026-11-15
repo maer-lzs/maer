@@ -106,7 +106,7 @@ playlists appear in the Music tab beside those of a Subsonic server.
 
 **Sound effects for each device.** Next to the speed in the player,
 Effects opens a sheet for the device the sound goes out on now: Original,
-Clearer Speech, Old Recordings or Louder, each but Original at a strength
+Spoken Word, Old Recordings or Fuller, each but Original at a strength
 from 1 to 4, and a volume boost of up to 6 dB with a limiter that keeps
 loud passages clean; Original also takes the boost back to 100 percent.
 A curve at the top of the sheet shows what the setting does to the

@@ -117,7 +117,7 @@ struct SoundSurfaceTests {
         let player = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(
             "Sources/Views/PlayerView.swift"), encoding: .utf8))
         let button = try #require(functionBody(of: "struct EffectsButton: View {", in: views))
-        #expect(button.contains("if dynamicTypeSize.isAccessibilitySize {") && button.contains(".accessibilityLabel(Text(\"Effects\"))"),
+        #expect(button.contains("if iconOnly || dynamicTypeSize.isAccessibilitySize {") && button.contains(".accessibilityLabel(Text(\"Effects\"))"),
                 "at the accessibility sizes the word breaks into letters beside the speed")
         let speed = try #require(functionBody(of: "private var speedControl: some View {", in: player))
         #expect(speed.contains("SpeedMenu(viewModel: viewModel)") && speed.contains("EffectsButton(viewModel: viewModel)"),

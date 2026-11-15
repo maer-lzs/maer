@@ -109,6 +109,8 @@ struct SoundCurveTests {
         let views = try read("Sources/Views/SoundViews.swift")
         #expect(views.contains("default: \"Original\"") && views.contains("case .off: Text(\"Original\")"),
                 "the flat position is still called Off")
+        #expect(views.contains("case \"speech\": \"Spoken Word\"") && views.contains("case \"louder\": \"Fuller\""),
+                "the presets do not carry the names used elsewhere for these curves")
         #expect(views.contains("SoundCurveView(setting: shownSetting)"), "the choice shows no curve")
         #expect(views.contains("SoundCurve.curve(setting, count: Self.samples)")
                 && views.contains(".accessibilityValue(Text(verbatim: Self.words(SoundCurve.changes(setting))))"),

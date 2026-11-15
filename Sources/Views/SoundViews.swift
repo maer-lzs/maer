@@ -115,9 +115,9 @@ struct SoundChoiceSections: View {
 enum SoundPresetName {
     static func name(_ id: String) -> LocalizedStringKey {
         switch id {
-        case "speech": "Clearer Speech"
+        case "speech": "Spoken Word"
         case "oldRecordings": "Old Recordings"
-        case "louder": "Louder"
+        case "louder": "Fuller"
         // The flat position: the sound as recorded, the boost still free.
         default: "Original"
         }
@@ -192,7 +192,7 @@ struct SoundCurveView: View {
             case .lowered(.voice): String(localized: "Voice lowered")
             case .raised(.treble): String(localized: "Treble raised")
             case .lowered(.treble): String(localized: "Treble lowered")
-            case .louder(let percent): String(localized: "Volume raised to \(percent) %")
+            case .louder(let percent): String(localized: "Volume raised to \(percent) percent")
             }
         }.formatted(.list(type: .and))
     }
