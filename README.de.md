@@ -80,6 +80,7 @@ Eine App, ein Player und eine Gestaltung für vier Arten von Audio. Jede Funktio
 
 - Eine Suche über alle Quellen, ein Start-Reiter über alle Medien und Mär-Playlisten über Quellen hinweg
 - Ein Fortschritt, der nie an den Anfang springt, zwischen Geräten und ohne Netz
+- Klangeffekte je Ausgabegerät (Original, Gesprochenes Wort, Alte Aufnahmen, Voller Klang) in vier Stärken, mit Verstärkung und einer Kurve, die zeigt, was sie tun
 - CarPlay, Widgets, Siri und Kurzbefehle, Sperrbildschirm und Dynamic Island
 - Eine Sendung, Folge, einen Sender, ein freies Hörbuch oder einen Titel von Jamendo als Link teilen
 - iPhone, iPad und das iPhone Duo, Dynamic Type und VoiceOver

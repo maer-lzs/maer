@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.8 (Build 66)
 
 **A tidier player.** Under the playback buttons there are now four:
 speed, sleep timer, sound and More; for music the queue stands where the
