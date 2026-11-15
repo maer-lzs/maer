@@ -128,6 +128,8 @@ final class PlaybackContext: ObservableObject {
         let rekeyed = NavidromeRekey.rekeyed(ids, map)
         guard rekeyed != ids else { return 0 }
         ids = rekeyed
+        // The order before a shuffle names the same entries.
+        orderBeforeShuffle = orderBeforeShuffle.map { NavidromeRekey.rekeyed($0, map) }
         save()
         return changed
     }
@@ -155,6 +157,10 @@ final class PlaybackContext: ObservableObject {
         let fresh = parts.filter { PlayQueue.canHold($0) }
         guard !fresh.isEmpty, fresh != [id] else { return true }
         ids.replaceSubrange(at...at, with: fresh)
+        // The order before a shuffle holds the parts at the entry's place.
+        if let before = orderBeforeShuffle, let place = before.firstIndex(of: id) {
+            orderBeforeShuffle?.replaceSubrange(place...place, with: fresh)
+        }
         save()
         return true
     }

@@ -198,6 +198,21 @@ struct CarPlayLayoutTests {
         #expect(!context.isShuffled)
     }
 
+    @Test("a context mixed and then rekeyed or expanded goes back to the order under its new entries")
+    @MainActor
+    func theOrderBeforeAShuffleFollowsEveryWrite() {
+        let context = PlaybackContext()
+        context.replace(ids: ["sub:song:1", "sub:album:a", "sub:song:3", "sub:song:4"], source: "List")
+        var generator = SplitMix(state: 11)
+        context.setShuffled(true, using: &generator)
+        // A drawn album becomes its songs, then the server answers to new ids.
+        #expect(context.expand("sub:album:a", into: ["sub:song:a1", "sub:song:a2"]))
+        _ = context.rekey { $0.replacingOccurrences(of: "sub:", with: "nd:") }
+        context.setShuffled(false)
+        #expect(context.ids == ["nd:song:1", "nd:song:a1", "nd:song:a2", "nd:song:3", "nd:song:4"],
+                "back in order brought old ids or put the album's songs at the end: \(context.ids)")
+    }
+
     @Test("back in order: the waiting titles in their former order, a title that came in since after them")
     func backInOrderAsATable() {
         #expect(MediaShuffle.backInOrder(now: ["c", "a", "b"], before: ["a", "b", "c"]) == ["a", "b", "c"])
