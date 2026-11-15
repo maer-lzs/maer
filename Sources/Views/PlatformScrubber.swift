@@ -26,6 +26,9 @@ struct PlatformScrubber: View {
     /// Same contract as `Slider(onEditingChanged:)`: true when a drag
     /// begins, false when it ends (the caller seeks on false).
     let onEditingChanged: (Bool) -> Void
+    /// The bar's colour: white on the player's dark ground, the label
+    /// colour on a sheet that follows the appearance.
+    var color: Color = .white
 
     /// The bar's thickness at rest and while held.
     static let restHeight: CGFloat = 7
@@ -45,8 +48,8 @@ struct PlatformScrubber: View {
             let width = max(geo.size.width, 1)
             let height = dragging ? Self.heldHeight : Self.restHeight
             ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.25))
-                Capsule().fill(.white.opacity(dragging ? 1 : 0.85))
+                Capsule().fill(color.opacity(0.25))
+                Capsule().fill(color.opacity(dragging ? 1 : 0.85))
                     .frame(width: width * fraction)
             }
             .frame(height: height)

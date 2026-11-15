@@ -104,7 +104,9 @@ struct SoundCurveTests {
                 "the presets do not carry the names used elsewhere for these curves")
         #expect(views.contains("SoundCurveView(setting: shownSetting)"), "the choice shows no curve")
         let sheet = try #require(functionBody(of: "struct EffectsSheet: View {", in: views))
-        #expect(sheet.contains(".foregroundStyle(Color.primary)"), "the sheet takes the player's white for its rows")
+        #expect(sheet.contains(".foregroundStyle(Color.primary, Color.secondary, Color(uiColor: .tertiaryLabel))"),
+                "the sheet takes the player's white for its rows")
+        #expect(views.contains("color: Color.primary)"), "the boost bar is white on the light sheet")
         #expect(views.contains("SoundCurve.curve(setting, count: Self.samples)")
                 && views.contains(".accessibilityValue(Text(verbatim: Self.words(SoundCurve.changes(setting))))"),
                 "the drawing or its words do not come from the one curve")

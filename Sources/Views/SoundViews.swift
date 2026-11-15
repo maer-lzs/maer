@@ -90,7 +90,8 @@ struct SoundChoiceSections: View {
                                      guard !editing, let draft = draftPercent else { return }
                                      setting.gain = SoundSurface.gain(percent: draft)
                                      draftPercent = nil
-                                 })
+                                 },
+                                 color: Color.primary)
                     .accessibilityElement()
                     .accessibilityLabel(Text("Volume boost"))
                     .accessibilityValue(Text(verbatim: "\(shownPercent) %"))
@@ -304,9 +305,9 @@ struct EffectsSheet: View {
             }
         }
         // The sheet hangs on a button inside the player, whose words are
-        // white: without its own base colour every row would be white on
-        // the light sheet, `.primary` included.
-        .foregroundStyle(Color.primary)
+        // white: without its own three levels every row would be white on
+        // the light sheet, `.primary` and `.secondary` included.
+        .foregroundStyle(Color.primary, Color.secondary, Color(uiColor: .tertiaryLabel))
         .softTopScrollEdge()
         .presentationDetents([.medium, .large])
     }
