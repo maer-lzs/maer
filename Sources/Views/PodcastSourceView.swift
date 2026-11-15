@@ -25,6 +25,8 @@ struct PodcastSourceView: View {
     /// `true`, which is what every session did so far.
     @AppStorage(AppStorageKeys.podcastSubscribeToServer) private var subscribeToServer = true
     @State private var subscribeError: String?
+    /// Whether that error says the address counts as a followed show.
+    @State private var subscribeErrorAlreadyHeld = false
     /// Use ABS as a podcast source (default OFF. ABS is primarily an audiobook server).
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
 
@@ -149,11 +151,11 @@ struct PodcastSourceView: View {
             pending: $pendingImport,
             message: $importMessage,
             onPick: handleImport))
-        .alert("Subscribe failed", isPresented: Binding(
+        .alert(Text(verbatim: SubscribeTap.failureTitle(alreadyHeld: subscribeErrorAlreadyHeld)), isPresented: Binding(
             get: { subscribeError != nil },
-            set: { if !$0 { subscribeError = nil } }
+            set: { if !$0 { subscribeError = nil; subscribeErrorAlreadyHeld = false } }
         )) {
-            Button("OK", role: .cancel) { subscribeError = nil }
+            Button("OK", role: .cancel) { subscribeError = nil; subscribeErrorAlreadyHeld = false }
         } message: {
             if let subscribeError { Text(subscribeError) }
         }
@@ -303,6 +305,7 @@ struct PodcastSourceView: View {
         case .notSubscribed:
             return false
         case .keptApart(let title):
+            subscribeErrorAlreadyHeld = true
             subscribeError = PodcastSubscriptions.keptApartSentence(title)
             return false
         case .setOut:

@@ -43,9 +43,11 @@ private struct PodcastSubscribeNoticeHost: ViewModifier {
         } message: {
             Text("Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable.")
         }
-        // A subscribe tap that subscribed nothing (`SubscribeTap.failed`).
-        .alert("Subscribe failed", isPresented: Binding(get: { subs.tapFailureNotice != nil },
-                                                         set: { if !$0 { subs.tapFailureNotice = nil } })) {
+        // A subscribe tap that subscribed nothing (`SubscribeTap.failed`,
+        // `.alreadyHeld` under its own headline).
+        .alert(Text(verbatim: SubscribeTap.failureTitle(alreadyHeld: subs.tapFailureAlreadyHeld)),
+               isPresented: Binding(get: { subs.tapFailureNotice != nil },
+                     set: { if !$0 { subs.tapFailureNotice = nil } })) {
             Button("OK", role: .cancel) { subs.tapFailureNotice = nil }
         } message: {
             Text(verbatim: subs.tapFailureNotice ?? "")

@@ -46,10 +46,10 @@ struct SubscribeTapTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let subs = PodcastSubscriptions.shared
-        defer { subs.tapFailureNotice = nil; subs.serverUnreadNotice = false }
+        defer { subs.tapFailureNotice = nil; subs.tapFailureAlreadyHeld = false; subs.serverUnreadNotice = false }
 
-        for tap in [SubscribeTap.failed(sentence: "The feed could not be loaded."), .setOut,
-                    .subscribed, .heldOnServer] {
+        for tap in [SubscribeTap.failed(sentence: "The feed could not be loaded."), .alreadyHeld(sentence: "Held."),
+                    .setOut, .subscribed, .heldOnServer] {
             let store = BrowsedEpisodes()
             let heard = show(feedURL: "https://x.example/feed-\(UUID().uuidString)")
             let guid = heard.episodes[0].guid
@@ -70,7 +70,11 @@ struct SubscribeTapTests {
                 #expect(browsed, "a tap that subscribed nothing forgot the browsed episode: \(tap)")
             }
             switch tap {
-            case .failed(let sentence): #expect(subs.tapFailureNotice == sentence, "the failure is not said")
+            case .failed(let sentence):
+                #expect(subs.tapFailureNotice == sentence && !subs.tapFailureAlreadyHeld, "the failure is not said")
+            case .alreadyHeld(let sentence):
+                #expect(subs.tapFailureNotice == sentence && subs.tapFailureAlreadyHeld,
+                        "a followed show is not said under its own headline")
             case .setOut: #expect(subs.serverUnreadNotice, "the set-out tap is not said")
             case .subscribed, .heldOnServer:
                 #expect(subs.tapFailureNotice == nil && !subs.serverUnreadNotice, "a subscription says a failure")

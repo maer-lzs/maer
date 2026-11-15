@@ -69,6 +69,8 @@ struct PodcastShowView: View {
     @State private var newLinkText = ""
     @State private var askingNewLink = false
     @State private var newLinkFailed = false
+    /// The sentence for a new link that counts as a followed show.
+    @State private var newLinkKeptApart: String?
     @State private var freeTwinFailed = false
     /// Counts the page's reads; see `readPreferences`.
     @State private var readCount = 0
@@ -321,11 +323,14 @@ struct PodcastShowView: View {
                 guard let show = storedShow else { return }
                 let link = newLinkText.trimmingCharacters(in: .whitespaces)
                 Task {
-                    if await subs.replaceShowLink(showId: show.id, newURL: link) {
+                    switch await subs.replaceShowLink(showId: show.id, newURL: link) {
+                    case .followed:
                         // The page stands for the old address; the show
                         // lives on under the new one in the list.
                         if subs.shows.first(where: { $0.id == show.id }) == nil { dismiss() }
-                    } else {
+                    case .keptApart(let title):
+                        newLinkKeptApart = PodcastSubscriptions.keptApartSentence(title)
+                    case .failed:
                         newLinkFailed = true
                     }
                 }
@@ -336,6 +341,12 @@ struct PodcastShowView: View {
         }
         .alert("The new link could not be followed", isPresented: $newLinkFailed) {
             Button("OK", role: .cancel) {}
+        }
+        .alert(Text(verbatim: SubscribeTap.failureTitle(alreadyHeld: true)),
+               isPresented: Binding(get: { newLinkKeptApart != nil }, set: { if !$0 { newLinkKeptApart = nil } })) {
+            Button("OK", role: .cancel) { newLinkKeptApart = nil }
+        } message: {
+            Text(verbatim: newLinkKeptApart ?? "")
         }
         .alert("The free feed could not be followed", isPresented: $freeTwinFailed) {
             Button("OK", role: .cancel) {}

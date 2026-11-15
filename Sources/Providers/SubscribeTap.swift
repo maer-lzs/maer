@@ -25,6 +25,16 @@ enum SubscribeTap: Equatable {
     case setOut
     /// Nothing subscribed: the server refused or the feed did not load.
     case failed(sentence: String)
+    /// Nothing subscribed: the address counts as a show followed here that
+    /// is another feed (`PodcastSubscriptions.keptApart`).
+    case alreadyHeld(sentence: String)
+
+    /// The headline of the notice that says a tap subscribed nothing: an
+    /// address that counts as a followed show is no failure, it says it is
+    /// followed already.
+    static func failureTitle(alreadyHeld: Bool) -> String {
+        alreadyHeld ? String(localized: "Already subscribed") : String(localized: "Subscribe failed")
+    }
 
     /// The answer of the local branch.
     static func local(_ answer: PodcastSubscriptions.LocalSubscription) -> SubscribeTap {
@@ -33,7 +43,7 @@ enum SubscribeTap: Equatable {
         case .onServer: .heldOnServer
         case .setOut: .setOut
         case .notSubscribed: .failed(sentence: String(localized: "The feed could not be loaded."))
-        case .keptApart(let title): .failed(sentence: PodcastSubscriptions.keptApartSentence(title))
+        case .keptApart(let title): .alreadyHeld(sentence: PodcastSubscriptions.keptApartSentence(title))
         }
     }
 

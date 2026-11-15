@@ -82,6 +82,9 @@ final class PodcastSubscriptions: ObservableObject {
     /// A subscribe tap on such a surface that subscribed nothing (the server
     /// refused, the feed did not load): the sentence the same host says.
     @Published var tapFailureNotice: String?
+    /// Whether that tap's address counts as a show followed here, which the
+    /// host says under its own headline (`SubscribeTap.failureTitle`).
+    @Published var tapFailureAlreadyHeld = false
 
     /// Feeds from the account this device could not follow yet (feed key
     /// ⇒ address and reason). The Podcasts tab shows them with the reason;
@@ -1027,27 +1030,38 @@ final class PodcastSubscriptions: ObservableObject {
     /// A new link for a subscribed show whose access is refused: the
     /// new address is followed, what was heard and downloaded goes over,
     /// and the old address leaves the account as the person's unsubscribe.
-    /// The same address typed again only asks the feed once more.
-    func replaceShowLink(showId: String, newURL: String, notesCloud: Bool = true) async -> Bool {
+    /// The same address typed again only asks the feed once more. A link
+    /// that counts as a followed show of another feed (`keptApart`) is
+    /// said as such.
+    func replaceShowLink(showId: String, newURL: String, notesCloud: Bool = true) async -> NewLink {
         await ensureLoaded()
-        guard let old = shows.first(where: { $0.id == showId }) else { return false }
+        guard let old = shows.first(where: { $0.id == showId }) else { return .failed }
         let before = Set(shows.map(\.id))
         let outcome = await follow(urlString: newURL, notesCloud: notesCloud, isSingleUserAct: true)
+        if case .keptApart(let title) = outcome { return .keptApart(title: title) }
         guard case .followed = outcome else {
             Logger.rss.notice("SUBSCRIBE new link for refused show: \(showId, privacy: .private(mask: .hash)) ok=false")
-            return false
+            return .failed
         }
         guard let new = shows.first(where: { !before.contains($0.id) }), new.id != old.id else {
             // The same feed: the fetch above was the fresh answer.
             await recheckAccess(showId: showId)
-            return true
+            return .followed
         }
         let carried = carryOver(from: old, to: new)
         // The unsubscribe also clears the old address's refusal record.
         unsubscribe(id: old.id, notesCloud: notesCloud)
         reloadProgress()
         Logger.rss.notice("SUBSCRIBE new link for refused show: \(showId, privacy: .private(mask: .hash)) ok=true matched=\(carried.matched) moved=\(carried.moved) adopted=\(carried.adopted)")
-        return true
+        return .followed
+    }
+
+    /// What a new link for a show did.
+    enum NewLink: Equatable {
+        case followed
+        /// The link counts as a followed show that is another feed.
+        case keptApart(title: String)
+        case failed
     }
 
     /// Tag a mirrored feed's provenance.

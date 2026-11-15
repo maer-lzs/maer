@@ -147,7 +147,7 @@ struct FeedRefusalTests {
         }
         let ok = await h.subs.replaceShowLink(showId: oldShow.id, newURL: new.absoluteString, notesCloud: false)
 
-        #expect(ok)
+        #expect(ok == .followed)
         #expect(h.subs.shows.map(\.feedURL) == [new.absoluteString], "nur noch die neue Adresse")
         #expect(ListeningStore.backup("rss:neu-2", in: h.defaults)?.first == 900, "der Hoerstand ging mit")
         #expect(ListeningStore.backup("rss:alt-2", in: h.defaults) == nil)
@@ -170,7 +170,7 @@ struct FeedRefusalTests {
         let oldShow = try #require(h.subs.shows.first)
         ListeningStore.store("rss:gleich-1", entry: [600, 1_700_000_000_000, 3000], in: h.defaults)
 
-        #expect(await h.subs.replaceShowLink(showId: oldShow.id, newURL: new.absoluteString, notesCloud: false))
+        #expect(await h.subs.replaceShowLink(showId: oldShow.id, newURL: new.absoluteString, notesCloud: false) == .followed)
 
         #expect(ListeningStore.backup("rss:gleich-1", in: h.defaults)?.first == 600)
     }

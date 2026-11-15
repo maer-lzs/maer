@@ -7,8 +7,8 @@ follow.** Two feed addresses that differ only in the case of their path,
 or in a parameter Mär does not tell apart, count as one subscription.
 Subscribing to the second one used to take over the show you already
 followed, with the new feed's title and address, and the first feed was
-no longer fetched. Now the show you follow stays as it is, and Mär says
-that the address counts as that show. An address of the same feed, over
+no longer fetched. Now the show you follow stays as it is, and Mär says,
+under Already subscribed, that the address counts as that show. An address of the same feed, over
 http or with a tracking parameter, still just refreshes it.
 
 **A private feed with its key in the path stays on your device.** A feed

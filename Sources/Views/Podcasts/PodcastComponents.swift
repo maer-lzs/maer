@@ -698,6 +698,11 @@ struct PodcastSubscribeBadge: View {
             subs.serverUnreadNotice = true
         case .failed(let sentence):
             Logger.rss.notice("SUBSCRIBE tap subscribed nothing, browsed episodes kept")
+            subs.tapFailureAlreadyHeld = false
+            subs.tapFailureNotice = sentence
+        case .alreadyHeld(let sentence):
+            Logger.rss.notice("SUBSCRIBE tap subscribed nothing, the address counts as a followed show")
+            subs.tapFailureAlreadyHeld = true
             subs.tapFailureNotice = sentence
         }
     }
