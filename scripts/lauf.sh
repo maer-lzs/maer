@@ -29,7 +29,7 @@ ABLAGE_ROOT="${LAUF_ABLAGE:-$HOME/Developer/maer-lauf/ablage}"
 BAU_ROOT="${LAUF_BAU:-$HOME/Developer/maer-lauf/bau}"
 TEMP_ROOTS="${LAUF_TEMP_ROOTS:-/private/tmp/ /tmp/ /private/var/folders/ /var/folders/}"
 WARTE_S="${LAUF_WARTE_S:-1800}"
-TAKT_S="${LAUF_TAKT_S:-30}"
+TICK_S="${LAUF_TICK_S:-30}"
 SIM_ARBEIT="${LAUF_SIM:-C1F0240C-E988-41D2-9081-4CFF0B8EA34B}"
 SIM_27_NAME="${LAUF_SIM_27_NAME:-Maer-Abschluss-27}"
 SIM_18_NAME="${LAUF_SIM_18_NAME:-Maer-Abschluss-18}"
@@ -74,7 +74,7 @@ for devices in json.load(sys.stdin)['devices'].values():
         [ -z "$foreign" ] && return 0
         [ "$waited" -ge "$WARTE_S" ] && stop "fremder Simulator gebootet: $foreign, Abbruch nach $waited s" 4
         [ "$waited" = 0 ] && say "fremder Simulator gebootet: $foreign, ich warte"
-        sleep "$TAKT_S"; waited=$((waited + TAKT_S))
+        sleep "$TICK_S"; waited=$((waited + TICK_S))
     done
 }
 

@@ -64,7 +64,9 @@ EOF
 chmod +x "$STUB/xcodebuild" "$STUB/simctl"
 export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_STUB_DIR="$STUB"
 export LAUF_ABLAGE="$DEV/ablage" LAUF_BAU="$DEV/bau" LAUF_TEMP_ROOTS="$TEMP/" LAUF_MIN_GB=0
-export LAUF_WARTE_S=4 LAUF_TAKT_S=1
+export LAUF_WARTE_S=4 LAUF_TICK_S=1
+# The copied hooks read the list of names from the fence of the real tree.
+export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/red" "$STUB/booted-foreign"; }
 
@@ -325,7 +327,7 @@ if [ $rc -ne 0 ] && [ $rc2 = 0 ] && [ $rc3 -ne 0 ] && [ $rc4 = 0 ]; then ok "24 
 
 # 25. A commit of the slice whose message breaks the rules stops the push and is named.
 git checkout -q -b regelbruch scheibe
-change Sources/Models/PlaybackSkip.swift "// rule" "The fable session adds a line"
+change Sources/Models/PlaybackSkip.swift "// rule" "The $(python3 -I "$REAL/scripts/hooks/rules.py" rolle) session adds a line"
 bad="$(git rev-parse --short HEAD)"
 clear_stub; bash scripts/lauf.sh abschluss >/dev/null 2>&1
 out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?

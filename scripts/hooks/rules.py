@@ -21,7 +21,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 AUTHORS = {"lzs <352619651+maer-lzs@users.noreply.github.com>"}
 
-ROLES = re.compile(r"\b(fable|momo|pie|takt|wache|lechonk|chonk|kreide|laurenz)\b", re.I)
+# The names of roles and people live in ONE place, the list of the fence that
+# keeps them out of the repository; the workshop may not carry them itself.
+# MAER_ROLE_FENCE points elsewhere for a witness repository without the tests.
+FENCE = os.environ.get("MAER_ROLE_FENCE",
+                       os.path.join(HERE, "..", "..", "MaerTests", "PublicReadmeFenceTests.swift"))
+# Names the fence does not list and the hooks refuse as well.
+FURTHER_NAMES = ["lechonk", "chonk", "kreide"]
+
+
+def role_names():
+    try:
+        text = open(FENCE, encoding="utf-8").read()
+    except OSError:
+        raise SystemExit(f"rules.py: the list of names is missing: {FENCE}")
+    match = re.search(r"static let roleNames = \[([^\]]*)\]", text)
+    if not match:
+        raise SystemExit(f"rules.py: no roleNames in {FENCE}")
+    names = re.findall(r'"([^"]+)"', match.group(1))
+    return sorted({n.lower() for n in names} | set(FURTHER_NAMES))
+
+
+ROLES = re.compile(r"\b(" + "|".join(role_names()) + r")\b", re.I)
 TRAILER = re.compile(r"^(co-authored-by|generated with|signed-off-by: claude)", re.I | re.M)
 CHANNEL_CODE = re.compile(r"(^|[^A-Za-z])[A-Z]{1,4}[0-9]{0,3}-[A-Za-z0-9]{1,6}(-[A-Za-z0-9]{1,6})*([^A-Za-z0-9]|$)")
 # A hash of the channel or the repository: seven to forty hex characters with
@@ -161,6 +182,10 @@ def check_staged():
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == "rolle":
+        # One name of the list, for the witnesses that must be refused.
+        print([n for n in role_names() if n not in FURTHER_NAMES][0])
+        return 0
     if len(sys.argv) >= 3 and sys.argv[1] == "msg":
         found, hints = check_message(open(sys.argv[2], encoding="utf-8").read()), []
     elif len(sys.argv) >= 2 and sys.argv[1] == "staged":

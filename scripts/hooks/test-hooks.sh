@@ -5,6 +5,11 @@
 # exits non-zero when any case goes the wrong way.
 set -u
 HOOKS="$(cd "$(dirname "$0")" && pwd)"
+# A name the hooks refuse, taken from their one list: the workshop does not
+# carry the names itself.
+ROLE="$(python3 -I "$HOOKS/rules.py" rolle)" || exit 2
+ROLE_CAPITAL="$(echo "${ROLE:0:1}" | tr '[:lower:]' '[:upper:]')${ROLE:1}"
+ROLE_UPPER="$(echo "$ROLE" | tr '[:lower:]' '[:upper:]')"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/hooks-witness.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 REPO="$WORK/repo"
@@ -38,7 +43,7 @@ expect() {
     git reset -q --hard HEAD
 }
 
-expect refuse "message names a role"        docs/a.md "one" "The fable session adds a line"
+expect refuse "message names a role"        docs/a.md "one" "The $ROLE session adds a line"
 expect pass   "message without a name"      docs/a.md "two" "A line about the queue"
 expect refuse "message carries a trailer"   docs/b.md "one" $'Adds a line\n\nCo-Authored-By: Someone <a@b.c>'
 expect refuse "message names a channel code" docs/b.md "two" "Builds K-EQ-13 in the sheet"
@@ -49,7 +54,7 @@ expect pass   "message quotes one German word" docs/c.md "three" "The notice say
 expect pass   "message quotes a German sentence in quotation marks" docs/c.md "four" 'The line said "Wenn an, erscheinen Künstler und Alben" before'
 expect refuse "comment is German"           Sources/A.swift "// Die Zeile wird nicht mehr gezeigt" "A comment in the source"
 expect pass   "comment is English"          Sources/B.swift "// The row is shown once" "A comment in the source"
-expect refuse "comment names a role"        Sources/C.swift "// Momo asked for this" "A comment in the source"
+expect refuse "comment names a role"        Sources/C.swift "// $ROLE_CAPITAL asked for this" "A comment in the source"
 expect refuse "line carries an access value" Sources/D.swift 'let token = "abcdef0123456789abcdef0123"' "A constant in the source"
 expect pass   "line names a key without its value" Sources/E.swift 'let tokenKey = AppKeys.podcastIndex' "A constant in the source"
 expect refuse "new markdown line carries a dash" docs/d.md "The row – four buttons" "A line in the docs"
@@ -65,8 +70,8 @@ expect pass   "German line in the inventory" docs/components.md "| Die Reihe zei
 
 # What would slip through otherwise.
 expect refuse "message names a channel hash" docs/j.md "one" "Follows the order as in a2caecfd"
-expect refuse "message names a role in capitals" docs/j.md "two" "The MOMO review adds a line"
-expect refuse "message names a role inside a word" docs/j.md "three" "A fable-built row"
+expect refuse "message names a role in capitals" docs/j.md "two" "The $ROLE_UPPER review adds a line"
+expect refuse "message names a role inside a word" docs/j.md "three" "A $ROLE-built row"
 expect refuse "string holds 40 hex characters" Sources/J.swift 'let seed = "0123456789abcdef0123456789abcdef01234567"' "A constant in the source"
 expect refuse "line carries an authorization value" docs/k.md "Authorization: token ghp0123456789abcdefABCDEF" "A line in the docs"
 expect refuse "Swift comment carries a dash" Sources/K.swift "// The row — four buttons" "A comment in the source"
