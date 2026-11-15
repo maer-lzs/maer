@@ -1,0 +1,1 @@
+# Words that look German but stand in English lines here, one per line, with the reason.

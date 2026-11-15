@@ -1,0 +1,3 @@
+#!/bin/sh
+# The rules of the staged change (rules.py).
+exec python3 -I "$(dirname "$0")/rules.py" staged
