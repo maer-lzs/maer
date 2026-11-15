@@ -1,0 +1,14 @@
+# Ten commits of dev from the week of 9 November 2026, each with the test
+# files it added or changed: the suites its review named. The selection from
+# the source part of each commit alone must choose at least these files.
+# Format: <commit> <test file> ...
+7dd05688 PlayerRowTests PlayerToolsAtSideTests SoundCurveTests SoundSurfaceTests
+c723c910 OpenGenerationTests UserChoiceSyncTests
+a019235f FeedRefusalTests SameKeyFeedTests SubscribeTapTests
+e7ee881e ExportStaysHomeTests SharedLinkPageAccessTests
+3443e61a CarPlayLayoutTests DownloadKindTests
+fad1d0f9 AppearanceHostFenceTests NoScrollBarsFenceTests
+012c50d9 RecentlyPlayedRowTests SharedGrowthFenceTests
+13caefd5 FeedAccessUnknownTests UnlockSentenceTests
+c332a85b HaltStandTests HeardElsewhereTests
+4b805768 CarPlayLayoutTests DownloadKindTests SharedGrowthFenceTests
