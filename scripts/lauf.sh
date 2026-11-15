@@ -33,6 +33,8 @@ TICK_S="${LAUF_TICK_S:-30}"
 SIM_ARBEIT="${LAUF_SIM:-C1F0240C-E988-41D2-9081-4CFF0B8EA34B}"
 SIM_27_NAME="${LAUF_SIM_27_NAME:-Maer-Abschluss-27}"
 SIM_18_NAME="${LAUF_SIM_18_NAME:-Maer-Abschluss-18}"
+SIM_DEVICES="${LAUF_SIM_DEVICES:-$HOME/Library/Developer/CoreSimulator/Devices}"
+SILENT_DEVICE="${LAUF_STILLES_GERAET:-BlackHole2ch_UID}"
 NOTES=refs/notes/lauf
 AUSWAHL="python3 -I $ROOT/scripts/lauf/auswahl.py"
 
@@ -76,6 +78,22 @@ for devices in json.load(sys.stdin)['devices'].values():
         [ "$waited" = 0 ] && say "fremder Simulator gebootet: $foreign, ich warte"
         sleep "$TICK_S"; waited=$((waited + TICK_S))
     done
+}
+
+# Sound and microphone of a shut down simulator go to the silent device, so
+# no run plays through the Mac. An erase clears this; it is written after.
+silence() {
+    local udid="$1" dir file
+    $SIMCTL shutdown "$udid" >/dev/null 2>&1
+    dir="$SIM_DEVICES/$udid/data/var/run"
+    file="$dir/com.apple.coresimulator.audio.plist"
+    mkdir -p "$dir" || stop "kein Ordner fuer den Ton von $udid" 2
+    [ -f "$file" ] || plutil -create xml1 "$file"
+    plutil -replace sim_output_device_uid -string "$SILENT_DEVICE" "$file" \
+        && plutil -replace sim_input_device_uid -string "$SILENT_DEVICE" "$file" \
+        && plutil -replace useHostDefaultOutputDevice -bool NO "$file" \
+        && plutil -replace useHostDefaultInputDevice -bool NO "$file" \
+        || stop "der Ton von $udid liess sich nicht stumm stellen" 2
 }
 
 STORE=""
@@ -173,6 +191,7 @@ auswahl|voll)
     fi
     echo "$plan" | grep -v '^datei ' | sed 's/^/lauf: /'
     wait_for_foreign "$SIM_ARBEIT"
+    silence "$SIM_ARBEIT"
     run_tests "$SIM_ARBEIT" "${args[@]+"${args[@]}"}" || stop "rot" 1
     if clean_tree; then write_note "$note_kind" 27; else say "der Baum ist offen: kein Vermerk"; fi
     if echo "$plan" | grep -qx "ui: ja" && [ "$kind" = auswahl ]; then
@@ -194,6 +213,7 @@ abschluss)
         wait_for_foreign "$udid"
         $SIMCTL shutdown "$udid" >/dev/null 2>&1
         $SIMCTL erase "$udid" >/dev/null 2>&1 || stop "$name liess sich nicht loeschen" 2
+        silence "$udid"
         say "voller Lauf auf $runtime ($name)"
         run_tests "$udid" || stop "rot auf $runtime: kein Vermerk" 1
     done
