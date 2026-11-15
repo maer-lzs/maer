@@ -110,8 +110,8 @@ compared only with its own and nothing leaves Up Next by mistake.
 longer says Subsonic has to be off: your Jellyfin albums, artists and
 playlists appear in the Music tab beside those of a Subsonic server.
 
-**Sound effects for each device.** Next to the speed in the player,
-Effects opens a sheet for the device the sound goes out on now: Original,
+**Sound effects for each device.** In the player's row under the
+playback buttons, Effects opens a sheet for the device the sound goes out on now: Original,
 Spoken Word, Old Recordings or Fuller, each but Original at a strength
 from 1 to 4, and a volume boost of up to 6 dB with a limiter that keeps
 loud passages clean; Original also takes the boost back to 100 percent.
