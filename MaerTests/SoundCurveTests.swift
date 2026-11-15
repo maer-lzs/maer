@@ -59,6 +59,27 @@ struct SoundCurveTests {
         #expect(SoundCurveView.words([]) == String(localized: "Sound unchanged"))
     }
 
+    @Test("the light ground lifts a dark cover colour in its tone, keeps a grey grey, and white text always reads on it")
+    func theLiftedGround() {
+        func contrast(_ c: [Double]) -> Double { TextContrast.againstWhite(red: c[0], green: c[1], blue: c[2]) }
+        let darkTeal = [0.05, 0.18, 0.2, 1.0]
+        let lifted = PlayerGround.lifted(darkTeal)
+        let (h0, s0, v0) = PlayerGround.hsv(darkTeal[0], darkTeal[1], darkTeal[2])
+        let (h1, s1, v1) = PlayerGround.hsv(lifted[0], lifted[1], lifted[2])
+        #expect(abs(h0 - h1) < 0.01, "the tone changed")
+        #expect(s1 > s0 && v1 > v0, "a dark teal is not clearer: \(lifted)")
+        #expect(contrast(lifted) >= TextContrast.readable - 0.01)
+        let grey = PlayerGround.lifted([0.2, 0.2, 0.2, 1])
+        #expect(abs(grey[0] - grey[1]) < 0.001 && abs(grey[1] - grey[2]) < 0.001, "a grey took a colour")
+        for colour in [[1.0, 0.9, 0.2, 1], [0.9, 0.1, 0.1, 1], [0.0, 0.0, 0.0, 1], [1.0, 1.0, 1.0, 1]] {
+            #expect(contrast(PlayerGround.lifted(colour)) >= TextContrast.readable - 0.01, "white does not read on \(colour)")
+        }
+        // The two conversions are each other's inverse.
+        let (h, s, v) = PlayerGround.hsv(0.3, 0.6, 0.9)
+        let back = PlayerGround.rgb(h, s, v)
+        #expect(abs(back.0 - 0.3) < 1e-9 && abs(back.1 - 0.6) < 1e-9 && abs(back.2 - 0.9) < 1e-9)
+    }
+
     @Test("the strength multiplies the preset's bands 1, 1.5, 2, 2.5; a setting stored without it reads as 1")
     func theStrength() throws {
         #expect(SoundSetting.strengths.map(SoundSetting.factor) == [1, 1.5, 2, 2.5])

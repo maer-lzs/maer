@@ -52,6 +52,10 @@ struct PlayerView: View {
     /// first accessibility step, and the time line keeps only the time left.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.colorScheme) private var colorScheme
+    /// The ground's colour: in the dark appearance the cover's own average,
+    /// in the light one lifted to show its tone (`PlayerGround`).
+    private var groundColor: Color { colorScheme == .dark ? colorLoader.accent : Self.lifted(colorLoader.accent) }
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
     /// The tabs stand at the side (`FullPlayerOverlay` hands it in): the
     /// glyph tools, the sleep timer and AirPlay stand in the player's own
@@ -87,7 +91,7 @@ struct PlayerView: View {
             // full-screen geometry: identical top coverage (status bar) at rest
             // AND on the first drag frame, same rounded corners as the glassEffect.
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Self.ground(colorLoader.accent))
+                .fill(Self.ground(groundColor))
                 // At rest almost opaque, fading out quickly while dragging → glass dominates.
                 .opacity(max(0.0, Self.groundOpacity - Double(dragProgress) * Self.groundOpacity))
                 // Beside a side column the content keeps to the free area,
@@ -98,7 +102,7 @@ struct PlayerView: View {
             // hinge side of a foldable, an iPad). Gone as soon as the drag
             // starts, so the moving sheet keeps its rounded corners.
             SheetCorners(radius: cornerRadius)
-                .fill(Self.ground(colorLoader.accent), style: FillStyle(eoFill: true))
+                .fill(Self.ground(groundColor), style: FillStyle(eoFill: true))
                 .opacity(SheetCorners.opacity(dragProgress: dragProgress))
                 .ignoresSafeArea()
 
@@ -1229,6 +1233,14 @@ extension PlayerView {
     /// and its open corners both fill with it.
     static let groundHold: Double = 0.45
     static let groundOpacity: Double = 0.95
+
+    /// The cover's colour as the ground takes it (`PlayerGround.lifted`).
+    static func lifted(_ accent: Color) -> Color {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(accent).getRed(&r, green: &g, blue: &b, alpha: &a)
+        let lifted = PlayerGround.lifted([r, g, b, a].map(Double.init))
+        return Color(red: lifted[0], green: lifted[1], blue: lifted[2], opacity: lifted[3])
+    }
 
     static func ground(_ accent: Color) -> LinearGradient {
         LinearGradient(stops: [.init(color: accent, location: 0), .init(color: accent, location: groundHold),

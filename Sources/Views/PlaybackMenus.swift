@@ -12,6 +12,7 @@ struct SpeedMenu: View {
     var iconOnly = false
     /// The player's row of symbols: the rate alone stands for the speed.
     var valueOnly = false
+    @Environment(\.colorScheme) private var colorScheme
 
     static let rates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
 
@@ -44,6 +45,9 @@ struct SpeedMenu: View {
             // Non-default speed is visible at a glance.
             .foregroundStyle(changed ? AnyShapeStyle(AppTheme.accent)
                                      : (iconOnly ? AnyShapeStyle(.primary) : AnyShapeStyle(.white)))
+            // In the player (not the bar) the ground is dark in every
+            // appearance: the accent takes its dark form.
+            .environment(\.colorScheme, iconOnly ? colorScheme : .dark)
         }
     }
 
@@ -64,6 +68,7 @@ struct SleepTimerMenu: View {
     var columnCell = false
     /// In the full player, whose ground is dark in every appearance.
     var onPlayer = false
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     static let options: [Double] = [5, 15, 30, 45, 60]
@@ -148,6 +153,7 @@ struct SleepTimerMenu: View {
             }
             .foregroundStyle(running ? AnyShapeStyle(AppTheme.accent)
                                      : (!onPlayer && (iconOnly || columnCell) ? AnyShapeStyle(.primary) : AnyShapeStyle(.white)))
+            .environment(\.colorScheme, onPlayer ? .dark : colorScheme)
         }
     }
 }

@@ -11,7 +11,10 @@ Playback, where music has its own; what you chose stays. On the iPhone
 the buttons show their symbols, on the iPad symbol and word, and
 VoiceOver says every name. At the largest text sizes the line under the
 title shows only the time left in the part, the sleep timer no longer
-breaks its word, and AirPlay stays on screen.
+breaks its word, and AirPlay stays on screen. The cover's colour now
+fills more of the background before it turns dark, and in the light
+appearance it shows its tone more clearly; a sound setting, a speed
+other than 1× and a running sleep timer stay visible there too.
 
 **A quick second tap on another title keeps it playing.** When you tap a
 title and then another one while the first is still checking the

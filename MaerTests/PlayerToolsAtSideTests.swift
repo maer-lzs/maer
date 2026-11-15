@@ -77,7 +77,9 @@ struct PlayerToolsAtSideTests {
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
         #expect(player.contains(".opacity(max(0.0, Self.groundOpacity - Double(dragProgress) * Self.groundOpacity))\n                .ignoresSafeArea()"))
         // The sheet and its open corners fill with the one ground.
-        #expect(player.components(separatedBy: "Self.ground(colorLoader.accent)").count - 1 == 2)
+        #expect(player.components(separatedBy: "Self.ground(groundColor)").count - 1 == 2)
+        #expect(player.contains("private var groundColor: Color { colorScheme == .dark ? colorLoader.accent : Self.lifted(colorLoader.accent) }"),
+                "the dark appearance does not keep the cover's own colour, or the light one is not lifted")
         #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
     }
 

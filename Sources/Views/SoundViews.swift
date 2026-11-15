@@ -266,6 +266,9 @@ struct EffectsButton: View {
             }
             .foregroundStyle(SoundSurface.isActive(viewModel.soundSetting, block: viewModel.soundBlock) ? AnyShapeStyle(AppTheme.accent)
                                                                           : AnyShapeStyle(.white))
+            // The player's ground is dark in every appearance: the accent
+            // takes its dark form here, the sheet keeps the appearance.
+            .environment(\.colorScheme, .dark)
         }
         .accessibilityIdentifier("player-effects")
         .sheet(isPresented: $showsSheet) {
