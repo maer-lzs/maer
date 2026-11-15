@@ -1,0 +1,48 @@
+#!/bin/bash
+# Mär — an audio player for self-hosted open ecosystems
+# Copyright (C) 2026 Laurenz Schröder
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+#
+# pre-push: every push goes through scripts/lauf.sh push. Refused always, also
+# through the script: another remote than origin, main, a tag, a deletion, and
+# anything that is no fast forward (force, force with lease, rewritten
+# history). dev needs the note of the final run at the pushed commit. Every
+# commit of the push keeps the rules of the commit message (rules.py).
+# The script is known by LAUF_PUSH=1; that can be set by hand (named limit).
+set -u
+HOOKS="$(cd "$(dirname "$0")" && pwd)"
+remote_name="$1"
+zero=0000000000000000000000000000000000000000
+refuse() { echo "pre-push: $*" >&2; exit 1; }
+
+[ "${LAUF_PUSH:-}" = 1 ] || refuse "Push nur ueber scripts/lauf.sh push <zweig|dev|nachzug|doku>"
+[ "$remote_name" = origin ] || refuse "nur nach origin, nicht nach $remote_name"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -n "${local_ref:-}" ] || continue
+    [ "$local_sha" = "$zero" ] && refuse "kein Loeschen: $remote_ref"
+    case "$remote_ref" in
+        refs/tags/*) refuse "kein Tag: $remote_ref";;
+        refs/heads/main) refuse "main bewegt nur der Auftraggeber";;
+    esac
+    if [ "$remote_sha" != "$zero" ]; then
+        git cat-file -e "$remote_sha" 2>/dev/null && git merge-base --is-ancestor "$remote_sha" "$local_sha" \
+            || refuse "kein Vorspulen auf $remote_ref: Geschichte wird nicht umgeschrieben"
+    fi
+    [ "$remote_ref" = refs/notes/lauf ] && continue
+    if [ "$remote_ref" = refs/heads/dev ]; then
+        tree="$(git rev-parse "$local_sha^{tree}")"
+        git notes --ref=lauf show "$local_sha" 2>/dev/null | grep "art=abschluss" | grep "laufzeiten=27,18.6" | grep "ergebnis=gruen" | grep -q "baum=$tree" \
+            || refuse "dev verlangt den Vermerk des vollen Laufs auf 27 und 18.6 an $(git rev-parse --short "$local_sha")"
+    fi
+    if [ "$remote_sha" = "$zero" ]; then range=("$local_sha" --not --remotes=origin); else range=("$remote_sha..$local_sha"); fi
+    for commit in $(git rev-list "${range[@]}"); do
+        message="$(mktemp)"
+        git log -1 --format=%B "$commit" > "$message"
+        why="$(python3 -I "$HOOKS/rules.py" msg "$message" 2>&1)"; rc=$?
+        rm -f "$message"
+        [ $rc -eq 0 ] || refuse "Commit $(git rev-parse --short "$commit") bricht die Regeln der Meldung: $why"
+    done
+done
+exit 0

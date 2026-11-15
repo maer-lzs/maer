@@ -1,0 +1,3 @@
+# Measurements: they run only in the full run, never in a selection.
+DefaultsBlockMeasureTests
+StartWalkMeasureTests

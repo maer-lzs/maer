@@ -1,0 +1,5 @@
+# Path prefix, the test files it selects, and the reason after the hash.
+docs/ AppTextDashFenceTests ComponentsTableFenceTests ExternalSourcesTests InventoryViewNamesFenceTests PerfSignpostFenceTests PublicReadmeFenceTests ProjectFileIntegrityTests ReadmeVersionFenceTests RetiredDocumentsFenceTests ServerGuidesTests SyncContractFenceTests # these suites read the documents
+README AppTextDashFenceTests PublicReadmeFenceTests ReadmeVersionFenceTests # these suites read the readmes
+CHANGELOG.md AppTextDashFenceTests ReadmeVersionFenceTests # these suites read the changelog
+site/ AppTextDashFenceTests PublicReadmeFenceTests SharedLinkAssociationTests SharedLinkPageTests SharedLinkPageAccessTests SharedLinkPageFeedTests # these suites read the pages of the site

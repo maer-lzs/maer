@@ -1,0 +1,12 @@
+# The fences: suites that read the whole source or the tests and hold a rule
+# for every file. They run with every selection. One test file per line.
+ConcurrencyFenceTests
+ExpectationFormFenceTests
+ExternalSourcesWitnessFenceTests
+IdFormHoldTests
+PerfSignpostFenceTests
+ProjectFileIntegrityTests
+PublicReadmeFenceTests
+RelativePathFenceTests
+ServerAnswersFenceTests
+StockReasonFenceTests
