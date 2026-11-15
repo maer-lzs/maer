@@ -91,7 +91,7 @@ struct PlayerView: View {
             // full-screen geometry: identical top coverage (status bar) at rest
             // AND on the first drag frame, same rounded corners as the glassEffect.
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Self.ground(groundColor))
+                .fill(Self.ground(groundColor, blackAt: Self.groundBlack(dark: colorScheme == .dark)))
                 // At rest almost opaque, fading out quickly while dragging → glass dominates.
                 .opacity(max(0.0, Self.groundOpacity - Double(dragProgress) * Self.groundOpacity))
                 // Beside a side column the content keeps to the free area,
@@ -102,7 +102,7 @@ struct PlayerView: View {
             // hinge side of a foldable, an iPad). Gone as soon as the drag
             // starts, so the moving sheet keeps its rounded corners.
             SheetCorners(radius: cornerRadius)
-                .fill(Self.ground(groundColor), style: FillStyle(eoFill: true))
+                .fill(Self.ground(groundColor, blackAt: Self.groundBlack(dark: colorScheme == .dark)), style: FillStyle(eoFill: true))
                 .opacity(SheetCorners.opacity(dragProgress: dragProgress))
                 .ignoresSafeArea()
 
@@ -904,14 +904,14 @@ struct PlayerView: View {
     private var secondaryControls: some View {
         HStack(spacing: 0) {
             if !viewModel.isLiveStream {
-                Group {
-                    if viewModel.isMusicItem {
-                        queueControl
-                    } else {
-                        SpeedMenu(viewModel: viewModel, valueOnly: toolsAsSymbols)
-                    }
+                // With the tools at the side the queue stands in the column.
+                if !viewModel.isMusicItem {
+                    SpeedMenu(viewModel: viewModel, valueOnly: toolsAsSymbols)
+                        .frame(maxWidth: .infinity)
+                } else if !toolsAtSide {
+                    queueControl
+                        .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
             }
             if !toolsAtSide {
                 SleepTimerMenu(viewModel: viewModel, columnCell: toolsAsSymbols, onPlayer: true)
@@ -1222,11 +1222,6 @@ struct PlayerView: View {
     }
 }
 
-/// The four corners a rounded sheet leaves open in its full-screen rect:
-/// the rect with the rounded rect cut out (even-odd). The glass keeps its one
-/// constant radius (a changing glass shape re-renders on every drag frame);
-/// this shape fills what it leaves open while the sheet rests.
-/// `nonisolated`: `Shape` is not main-actor bound, and the path is pure geometry.
 extension PlayerView {
     /// The player's ground: the cover's colour holds undimmed through the
     /// upper part (`groundHold`) and only then runs into black. The sheet
@@ -1242,9 +1237,13 @@ extension PlayerView {
         return Color(red: lifted[0], green: lifted[1], blue: lifted[2], opacity: lifted[3])
     }
 
-    static func ground(_ accent: Color) -> LinearGradient {
+    /// Where the ground is black: at the foot in the dark appearance, a
+    /// little higher in the light one, under the lifted colour.
+    static func groundBlack(dark: Bool) -> Double { dark ? 1 : 0.9 }
+
+    static func ground(_ accent: Color, blackAt: Double = 1) -> LinearGradient {
         LinearGradient(stops: [.init(color: accent, location: 0), .init(color: accent, location: groundHold),
-                               .init(color: .black, location: 1)],
+                               .init(color: .black, location: blackAt)],
                        startPoint: .top, endPoint: .bottom)
     }
 }
@@ -1264,6 +1263,11 @@ struct PlayerRowLabelStyle: LabelStyle {
     }
 }
 
+/// The four corners a rounded sheet leaves open in its full-screen rect:
+/// the rect with the rounded rect cut out (even-odd). The glass keeps its one
+/// constant radius (a changing glass shape re-renders on every drag frame);
+/// this shape fills what it leaves open while the sheet rests.
+/// `nonisolated`: `Shape` is not main-actor bound, and the path is pure geometry.
 nonisolated struct SheetCorners: Shape {
     var radius: CGFloat
 

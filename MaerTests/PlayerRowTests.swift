@@ -25,7 +25,8 @@ struct PlayerRowTests {
                      "EffectsButton(viewModel: viewModel, iconOnly: toolsAsSymbols)", "moreMenu"] {
             #expect(row.contains(part), "the row lacks \(part)")
         }
-        #expect(row.components(separatedBy: ".frame(maxWidth: .infinity)").count - 1 == 4, "the four do not share the width")
+        // Speed and queue are two branches, never both: five shares in the code, four on screen.
+        #expect(row.components(separatedBy: ".frame(maxWidth: .infinity)").count - 1 == 5, "the four do not share the width")
         for gone in ["setSkipInterval", "PlaybackSkip.options", "skipIntervalMenu", "symbolRow"] {
             #expect(!player.contains(gone), "the player still offers the skip interval or the old row: \(gone)")
         }

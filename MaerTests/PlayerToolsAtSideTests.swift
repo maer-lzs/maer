@@ -49,6 +49,11 @@ struct PlayerToolsAtSideTests {
         // Without anything in it the row is absent, not an empty stack.
         #expect(player.contains("if !toolsAtSide || tools.contains(.source) {\n            VStack(spacing: 18) {"))
         #expect(player.components(separatedBy: "if !toolsAtSide {\n                SleepTimerMenu(").count - 1 == 1)
+        // For music the queue is a button of the row, and with the tools at
+        // the side it stands only in the column, never twice.
+        #expect(player.contains("} else if !toolsAtSide {\n                    queueControl"), "the queue stands in the row and the column")
+        #expect(player.components(separatedBy: "queueControl").count - 1 == 4,
+                "the queue appears more often than in the row, the menu, the column and its declaration")
         // The tools carry no type size of their own; the row and the cell give it.
         #expect(!player.contains("}\n        .font(.footnote)\n        .accessibilityIdentifier(\"player-"))
     }
@@ -77,7 +82,9 @@ struct PlayerToolsAtSideTests {
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
         #expect(player.contains(".opacity(max(0.0, Self.groundOpacity - Double(dragProgress) * Self.groundOpacity))\n                .ignoresSafeArea()"))
         // The sheet and its open corners fill with the one ground.
-        #expect(player.components(separatedBy: "Self.ground(groundColor)").count - 1 == 2)
+        #expect(player.components(separatedBy: "Self.ground(groundColor, blackAt: Self.groundBlack(dark: colorScheme == .dark))").count - 1 == 2)
+        #expect(PlayerView.groundBlack(dark: true) == 1 && PlayerView.groundBlack(dark: false) == 0.9,
+                "the light ground does not turn black a little higher")
         #expect(player.contains("private var groundColor: Color { colorScheme == .dark ? colorLoader.accent : Self.lifted(colorLoader.accent) }"),
                 "the dark appearance does not keep the cover's own colour, or the light one is not lifted")
         #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
