@@ -13700,12 +13700,32 @@
         }
       }
     },
+    "Unlock this device once to play this book." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entsperre dieses Gerät einmal, dann spielt dieses Buch."
+          }
+        }
+      }
+    },
     "Unlock this device once to play this episode." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entsperre dieses Gerät einmal, dann spielt diese Folge."
+          }
+        }
+      }
+    },
+    "Unlock this device once to play this title." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entsperre dieses Gerät einmal, dann spielt dieser Titel."
           }
         }
       }

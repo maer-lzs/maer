@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**The hint to unlock the device names what you started.** When a title
+cannot start before the device has been unlocked once after a restart,
+the hint now says book, episode or title instead of always episode.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

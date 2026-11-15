@@ -499,6 +499,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
         showSourceHint(.cannotPlay(sentence))
     }
 
+    /// The sentence that asks to unlock the device once, naming what was
+    /// asked for (`UnlockSentence`).
+    private var unlockSentence: String {
+        UnlockSentence.of(UnlockSentence.kind(itemId: item?.id ?? "", isMusic: isMusicItem))
+    }
+
     private func activateAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setActive(true)
@@ -687,7 +693,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
             cannotPlay(queueWaitedForSignIn
-                       ? String(localized: "Unlock this device once to play this episode.")
+                       ? unlockSentence
                        : String(localized: "Audiobook could not be loaded."))
             return
         }
@@ -933,7 +939,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if unanswered {
             cannotPlay(String(localized: "Could not load. Tap play to try again."))
         } else {
-            cannotPlay(String(localized: "Unlock this device once to play this episode."))
+            cannotPlay(unlockSentence)
         }
     }
 
@@ -2118,7 +2124,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         isPlaying = false
         updateNowPlayingInfo()
         if queueWaitedForSignIn {
-            cannotPlay(String(localized: "Unlock this device once to play this episode."))
+            cannotPlay(unlockSentence)
         } else {
             showSourceHint(.trackFailed)
         }

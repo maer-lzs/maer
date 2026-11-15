@@ -157,7 +157,8 @@ struct FeedAccessUnknownTests {
             userMediaProgress: nil)
         let unknown = PlayerViewModel(provider: LockedProvider(headers: nil))
         await unknown.load(item: detail)
-        #expect(Self.cannotPlaySentence(unknown) == String(localized: "Unlock this device once to play this episode."))
+        #expect(Self.cannotPlaySentence(unknown) == String(localized: "Unlock this device once to play this book."),
+                "the start of a book names the book")
         let absent = PlayerViewModel(provider: LockedProvider(headers: [:]))
         await absent.load(item: detail)
         #expect(Self.cannotPlaySentence(absent) == nil, "without a sign-in the start goes on as before")
