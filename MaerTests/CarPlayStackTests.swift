@@ -76,7 +76,7 @@ struct CarPlayStackTests {
                 if !code.contains("completion: Self.settled(") { bare.append("\(file.lastPathComponent):\(number + 1)") }
             }
         }
-        #expect(seen == 4, "the stack changes in \(seen) places: the root, a list, the player laid on, back to the player")
+        #expect(seen == 6, "the stack changes in \(seen) places: the root, a list, the player laid on, back to the player, the hint after an open shown and closed")
         #expect(bare.isEmpty, "a change of the stack without the closure: \(bare)")
         let delegate = try String(contentsOf: root.appendingPathComponent("CarPlay/CarPlaySceneDelegate.swift"), encoding: .utf8)
         let push = try #require(functionBody(of: "private func push(_ template: CPTemplate)", in: delegate))

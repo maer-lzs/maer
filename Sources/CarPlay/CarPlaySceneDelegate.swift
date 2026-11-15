@@ -1000,8 +1000,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             interfaceController?.dismissTemplate(animated: true, completion: Self.settled("hint closed"))
         }
         Logger.player.notice("CARPLAY open failed, hint shown")
-        interfaceController.presentTemplate(CPAlertTemplate(titleVariants: [sentence], actions: [ok]),
-                                            animated: true, completion: Self.settled("hint"))
+        let hint = CPAlertTemplate(titleVariants: [sentence], actions: [ok])
+        interfaceController.presentTemplate(hint, animated: true, completion: Self.settled("hint"))
     }
 
     // MARK: - Player
