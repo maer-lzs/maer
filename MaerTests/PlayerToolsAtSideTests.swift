@@ -41,13 +41,14 @@ struct PlayerToolsAtSideTests {
     @Test("the tools appear once: in the row or in the column, the timer likewise", .needsTheSources)
     func theToolsStandOnce() throws {
         let player = try source("Sources/Views/PlayerView.swift")
-        #expect(player.contains("if toolsAtSide {\n                    if tools.contains(.source) { catalogSourceControl }\n                } else {\n                    MeasuredFits {"))
-        // The source block is a line under the row, never one of its cells.
-        #expect(player.contains(".labelStyle(.iconOnly)\n                    }\n                    .font(.footnote)\n                    if tools.contains(.source) { catalogSourceControl }"))
+        // Without the column the tools stand in "…", with it in the column; the
+        // source block is a line of its own above AirPlay, never a cell.
+        #expect(player.contains("if toolsAtSide {\n                    if tools.contains(.source) { catalogSourceControl }\n                } else {\n                    if tools.contains(.source) { catalogSourceControl }\n                    airPlayControl"))
+        #expect(player.contains("if !toolsAtSide {\n                moreMenu"), "the menu stands beside the column's tools")
         #expect(!player.contains("extrasItems"))
         // Without anything in it the row is absent, not an empty stack.
         #expect(player.contains("if !toolsAtSide || tools.contains(.source) {\n            VStack(spacing: 18) {"))
-        #expect(player.components(separatedBy: "if !toolsAtSide { sleepControl }").count - 1 == 2)
+        #expect(player.components(separatedBy: "if !toolsAtSide {\n                SleepTimerMenu(").count - 1 == 1)
         // The tools carry no type size of their own; the row and the cell give it.
         #expect(!player.contains("}\n        .font(.footnote)\n        .accessibilityIdentifier(\"player-"))
     }

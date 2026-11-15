@@ -2,13 +2,16 @@
 
 ## Next build (not yet cut)
 
-**The player's tools stand in one row on the iPhone.** Speed, effects,
-chapters, the skip interval and the sleep timer show as symbols in one
-even row instead of words in two uneven ones: the speed as its rate, the
-skip interval as its number in the arrow, and the sleep timer with its
-minutes while it runs. VoiceOver still says every name. On the iPad, and
-at the largest text sizes there, the sleep timer shows its symbol alone
-instead of breaking the word.
+**A tidier player.** Under the playback buttons there are now four:
+speed, sleep timer, sound and More; for music the queue stands where the
+speed is. More holds the parts, the queue, bookmarks, adding to a
+playlist and marking as heard. Tapping the line with the part, such as
+Part 2 of 3, opens the parts. The skip interval moved to Settings,
+Playback, where music has its own; what you chose stays. On the iPhone
+the buttons show their symbols, on the iPad symbol and word, and
+VoiceOver says every name. At the largest text sizes the line under the
+title shows only the time left in the part, the sleep timer no longer
+breaks its word, and AirPlay stays on screen.
 
 **A quick second tap on another title keeps it playing.** When you tap a
 title and then another one while the first is still checking the

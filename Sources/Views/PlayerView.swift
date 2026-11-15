@@ -48,9 +48,8 @@ struct PlayerView: View {
     @State private var showTranscript = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    /// At accessibility sizes the fixed-spacing control rows used to
-    /// overflow the screen horizontally. Spacing shrinks and the secondary/
-    /// tertiary rows fall back to icon-only (`MeasuredFits`, never ViewThatFits).
+    /// At accessibility sizes spacing shrinks, the row's symbols stop at the
+    /// first accessibility step, and the time line keeps only the time left.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
@@ -486,36 +485,65 @@ struct PlayerView: View {
             // Chapter / part line: a real chapter · author, the fallback
             // marker ("Teil 12 von 39" / "ab 3:15"), or the artist for music.
             if let subtitle = chapterSubtitle {
-                sourceTappable(target: subtitleTarget, a11yId: "player-source-subtitle") {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
+                // A fallback book's line is its part ("Teil 2 von 3"): it
+                // opens the parts. Any other line leads to its source.
+                if viewModel.chaptersAreFallback && hasChapterEntry {
+                    partsLine {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                    }
+                } else {
+                    sourceTappable(target: subtitleTarget, a11yId: "player-source-subtitle") {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                    }
                 }
             }
             // "N of M" only for REAL chapters. A fallback marker already carries
-            // its position in the line above.
+            // its position in the line above. It opens the chapters.
             if !viewModel.chaptersAreFallback, !viewModel.chapters.isEmpty {
-                Text(chapterCounterText)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                partsLine {
+                    Text(chapterCounterText)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
             }
             if let chapter = viewModel.currentChapter {
                 // Chapter remaining + when the whole title ends at the current
                 // speed, named by what the whole is (`RemainingLine`).
                 // The one line here that moves with the time: its own leaf.
                 let form = remainingLineForm
+                // At the accessibility sizes the line keeps only the time
+                // left in the part, in one line; VoiceOver still hears all of it.
+                let shortLine = isAccessibilitySize
                 PlaybackTimeReader(clock: viewModel.clock) { time in
-                    remainingLine(form, left: DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time)),
-                                  end: estimatedFinishTime(at: time))
+                    let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time))
+                    let whole = remainingLine(form, left: left, end: estimatedFinishTime(at: time))
+                    (shortLine ? Text(verbatim: left) : whole)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.55))
                         .monospacedDigit()
+                        .lineLimit(shortLine ? 1 : nil)
+                        .accessibilityLabel(whole)
                 }
             }
             }
         }
         .padding(.horizontal)
+    }
+
+    /// The line that names the part: a button that opens the parts, named
+    /// for VoiceOver by what it opens.
+    private func partsLine<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        Button { showChapters = true } label: { content() }
+            .buttonStyle(.plain)
+            .accessibilityHint(Text(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
+                                                               isFallback: viewModel.chaptersAreFallback)))
+            .accessibilityIdentifier("player-parts-line")
     }
 
     /// The line under the work title in the full player. For music the
@@ -868,160 +896,74 @@ struct PlayerView: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
-    /// One horizontal row while it fits; at accessibility sizes the four
-    /// controls fall back to a leading-aligned two-column grid instead of
-    /// clipping past the screen edge.
-    @ViewBuilder
+    /// Row 2: four buttons, each in an equal share of the width. Speed (for
+    /// music the queue instead), the sleep timer, the sound and "…" with
+    /// every other tool. The skip interval is a setting, not a button: its
+    /// symbol was the same as the skip forward above it. On an iPhone the
+    /// four are symbols, on the iPad symbol and word; every one keeps its
+    /// word for VoiceOver. Symbols grow no further than the first
+    /// accessibility step, as the transport row's. A live stream keeps the
+    /// sleep timer and the menu. With the tabs at the side the sleep timer
+    /// and the tools stand in the column.
     private var secondaryControls: some View {
-        if viewModel.isLiveStream {
-            // No speed, no chapters, no skip interval for live audio.
-            // The sleep timer stays (clock-based options only; the chapter/
-            // track-end options gate themselves out without chapters); with
-            // the tabs at the side it stands in the column.
-            if !toolsAtSide {
-                HStack(spacing: 32) {
-                    sleepControl
-                }
-                .font(.footnote)
-                .padding(.top, 4)
-            }
-        } else if toolsAsSymbols {
-            symbolRow
-        } else {
-            regularSecondaryControls
-        }
-    }
-
-    /// On an iPhone the tools stand as one even row of symbols, without
-    /// their words; the iPad keeps symbol and word.
-    private var toolsAsSymbols: Bool { horizontalSizeClass == .compact }
-
-    /// Speed (its rate), effects, chapters, the skip interval (its number
-    /// in the arrow) and the sleep timer (its minutes while it runs), each
-    /// in an equal share of the width. Every one keeps its word for
-    /// VoiceOver. The symbols grow no further than the first accessibility
-    /// step, as the transport row's, so five still fit a 375 pt screen.
-    private var symbolRow: some View {
         HStack(spacing: 0) {
-            SpeedMenu(viewModel: viewModel, valueOnly: true)
-                .frame(maxWidth: .infinity)
-            EffectsButton(viewModel: viewModel, iconOnly: true)
-                .frame(maxWidth: .infinity)
-            if hasChapterEntry {
-                Button { showChapters = true } label: {
-                    Image(systemName: "list.bullet")
-                        .accessibilityLabel(Text(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
-                                                                            isFallback: viewModel.chaptersAreFallback)))
+            if !viewModel.isLiveStream {
+                Group {
+                    if viewModel.isMusicItem {
+                        queueControl
+                    } else {
+                        SpeedMenu(viewModel: viewModel, valueOnly: toolsAsSymbols)
+                    }
                 }
                 .frame(maxWidth: .infinity)
             }
-            skipIntervalMenu(symbolOnly: true)
-                .frame(maxWidth: .infinity)
             if !toolsAtSide {
-                SleepTimerMenu(viewModel: viewModel, columnCell: true, onPlayer: true)
+                SleepTimerMenu(viewModel: viewModel, columnCell: toolsAsSymbols, onPlayer: true)
+                    .frame(maxWidth: .infinity)
+            }
+            if !viewModel.isLiveStream {
+                EffectsButton(viewModel: viewModel, iconOnly: toolsAsSymbols)
+                    .frame(maxWidth: .infinity)
+            }
+            if !toolsAtSide {
+                moreMenu
                     .frame(maxWidth: .infinity)
             }
         }
-        .font(.title3)
+        .labelStyle(PlayerRowLabelStyle(symbolsOnly: toolsAsSymbols))
+        .font(toolsAsSymbols ? .title3 : .footnote)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .padding(.top, 4)
     }
 
-    /// The arrow with the interval's number where the system has one
-    /// (`goforward.15`, `goforward.30`, …), else the plain arrow.
-    nonisolated static func skipSymbol(seconds: Double) -> String {
-        let whole = Int(seconds)
-        return [5, 10, 15, 30, 45, 60, 75, 90].contains(whole) ? "goforward.\(whole)" : "goforward"
-    }
+    /// On an iPhone the row's buttons are symbols, on the iPad symbol and word.
+    private var toolsAsSymbols: Bool { horizontalSizeClass == .compact }
 
-    /// Row 2 shows only what exists. No chapters/parts ⇒ NO chapters button
-    /// (a disabled ghost was a broken promise); the row closes up. Speed/
-    /// skip/sleep are universal and stay.
+    /// Whether the title has parts to choose from: the line that names the
+    /// part opens them, and the menu offers them.
     private var hasChapterEntry: Bool { !viewModel.chapters.isEmpty }
 
-    private var regularSecondaryControls: some View {
-        // MeasuredFits, not ViewThatFits. These controls
-        // carry live viewModel bindings, and ViewThatFits would evaluate
-        // their bodies on the AsyncRenderer (the tab-bar crash, same bomb).
-        MeasuredFits {
-            HStack(spacing: 32) {
-                speedControl
-                if hasChapterEntry { chaptersControl }
-                skipIntervalControl
-                // With the tabs at the side the timer stands in the column.
-                if !toolsAtSide { sleepControl }
-            }
-        } compact: {
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
-                GridRow {
-                    speedControl
-                    if hasChapterEntry { chaptersControl }
+    /// "…": every tool that is not one of the four, each a line with symbol
+    /// and word, in the order of `PlayerToolRule` (`moreTools`).
+    private var moreMenu: some View {
+        Menu {
+            if hasChapterEntry {
+                Button { showChapters = true } label: {
+                    Label(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
+                                                     isFallback: viewModel.chaptersAreFallback),
+                          systemImage: "list.bullet")
                 }
-                GridRow {
-                    skipIntervalControl
-                    if !toolsAtSide { sleepControl }
-                }
+                .accessibilityIdentifier("player-more-chapters")
             }
+            moreTools
+        } label: {
+            Label("More", systemImage: "ellipsis.circle")
         }
-        .font(.footnote)
-        .padding(.top, 4)
+        .accessibilityIdentifier("player-more")
     }
 
-    /// The speed, and the sound effects directly beside it. At the
-    /// accessibility sizes the two do not fit side by side in the narrow
-    /// cell (the rate breaks), so the effects stand under the speed there.
-    private var speedControl: some View {
-        let layout = isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-                                         : AnyLayout(HStackLayout(spacing: 16))
-        return layout {
-            SpeedMenu(viewModel: viewModel)
-            EffectsButton(viewModel: viewModel)
-        }
-    }
-
-    private var chaptersControl: some View {
-            Button { showChapters = true } label: {
-                // Shared selector label. Tracks for music, parts for a
-                // fallback book, chapters otherwise.
-                Label(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
-                                                 isFallback: viewModel.chaptersAreFallback),
-                      systemImage: "list.bullet")
-            }
-    }
-
-    private var skipIntervalControl: some View { skipIntervalMenu(symbolOnly: false) }
-
-    private func skipIntervalMenu(symbolOnly: Bool) -> some View {
-            Menu {
-                ForEach(PlaybackSkip.options(for: viewModel.skipContent), id: \.self) { seconds in
-                    Button("\(Int(seconds)) s") { viewModel.setSkipInterval(seconds) }
-                }
-            } label: {
-                if symbolOnly {
-                    Image(systemName: Self.skipSymbol(seconds: viewModel.skipInterval))
-                        .accessibilityLabel(Text("\(Int(viewModel.skipInterval)) s"))
-                } else {
-                    Label("\(Int(viewModel.skipInterval)) s", systemImage: "goforward")
-                }
-            }
-    }
-
-    private var sleepControl: some View {
-        SleepTimerMenu(viewModel: viewModel)
-    }
-
-    /// Variant A for ALL media types.
-    /// An extras row (Up Next · bookmarks · lyrics for music · transcript
-    /// for podcasts · a more menu with drive mode and mark as heard) with
-    /// AirPlay SOLO centred below it. Radio runs through the same structure
-    /// with fewer entries. At accessibility sizes the extras row falls into a
-    /// two-column grid.
-    /// Drive mode + mark-finished moved OUT of the "…" menu into
-    /// the row. The menu emptied and is GONE. Overflow (the German-labels
-    /// worst case with a full six-item row): `MeasuredFits` tries the labeled
-    /// row first; when it cannot fit, the SAME buttons render icon-only
-    /// (a11y labels intact). Never the jagged two-column grid again. With
-    /// gated entries missing (no lyrics/transcript), labels usually fit.
+    /// Under the two rows, for all media types: a catalogue title's source
+    /// line and AirPlay alone, centred. The tools stand in "…" (`moreMenu`).
     /// Absent when the column carries every tool: an empty stack would still
     /// take its spacing in the controls and leave the cover smaller.
     @ViewBuilder
@@ -1034,23 +976,9 @@ struct PlayerView: View {
                 if toolsAtSide {
                     if tools.contains(.source) { catalogSourceControl }
                 } else {
-                    // MeasuredFits, not ViewThatFits. Same bomb as
-                    // the secondary row, same cure.
-                    MeasuredFits {
-                        HStack(spacing: 36) {
-                            glyphTools
-                        }
-                    } compact: {
-                        HStack(spacing: 28) {
-                            glyphTools
-                        }
-                        .labelStyle(.iconOnly)
-                    }
-                    .font(.footnote)
-                    // The source block is text (licence and link): its own
-                    // line under the row, as beside the side column, never a
-                    // cell of the row, where icon-only its two labels would
-                    // stand as two glyphs.
+                    // The tools that were a row of their own stand in "…"
+                    // (`moreMenu`). The source block is text (licence and
+                    // link): its own line, as beside the side column.
                     if tools.contains(.source) { catalogSourceControl }
                     airPlayControl
                 }
@@ -1080,12 +1008,24 @@ struct PlayerView: View {
             isCatalogue: ItemNamespace.isCatalog(id)))
     }
 
-    /// The tools that are one glyph each: the row's, or in the side
-    /// column the capsule's cells.
+    /// The tools of "…": the queue (for music it is a button of the row),
+    /// then the rest of the glyph tools.
+    @ViewBuilder
+    private var moreTools: some View {
+        if !viewModel.isMusicItem && tools.contains(.queue) { queueControl }
+        restOfTools
+    }
+
+    /// The tools that are one glyph each: in the side column the capsule's cells.
     @ViewBuilder
     private var glyphTools: some View {
-        let tools = tools
         if tools.contains(.queue) { queueControl }
+        restOfTools
+    }
+
+    @ViewBuilder
+    private var restOfTools: some View {
+        let tools = tools
         if tools.contains(.bookmarks) { bookmarksControl }
         if tools.contains(.lyrics) { lyricsControl }
         if tools.contains(.transcript) { transcriptControl }
@@ -1291,6 +1231,21 @@ struct PlayerView: View {
 /// constant radius (a changing glass shape re-renders on every drag frame);
 /// this shape fills what it leaves open while the sheet rests.
 /// `nonisolated`: `Shape` is not main-actor bound, and the path is pure geometry.
+/// The player's row: the symbol alone on the iPhone, symbol and word on the
+/// iPad. Either way the word stays the button's name for VoiceOver.
+struct PlayerRowLabelStyle: LabelStyle {
+    let symbolsOnly: Bool
+
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> some View {
+        if symbolsOnly {
+            Label(configuration).labelStyle(.iconOnly)
+        } else {
+            Label(configuration).labelStyle(.titleAndIcon)
+        }
+    }
+}
+
 nonisolated struct SheetCorners: Shape {
     var radius: CGFloat
 

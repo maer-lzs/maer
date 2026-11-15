@@ -119,11 +119,12 @@ struct SoundSurfaceTests {
         let button = try #require(functionBody(of: "struct EffectsButton: View {", in: views))
         #expect(button.contains("if iconOnly || dynamicTypeSize.isAccessibilitySize {") && button.contains(".accessibilityLabel(Text(\"Effects\"))"),
                 "at the accessibility sizes the word breaks into letters beside the speed")
-        let speed = try #require(functionBody(of: "private var speedControl: some View {", in: player))
-        #expect(speed.contains("SpeedMenu(viewModel: viewModel)") && speed.contains("EffectsButton(viewModel: viewModel)"),
-                "the effects do not stand beside the speed")
-        #expect(speed.contains("isAccessibilitySize ? AnyLayout(VStackLayout("),
-                "at the accessibility sizes speed and effects share one line and the rate breaks")
+        let row = try #require(functionBody(of: "private var secondaryControls: some View {", in: player))
+        #expect(row.contains("SpeedMenu(viewModel: viewModel, valueOnly: toolsAsSymbols)")
+                && row.contains("EffectsButton(viewModel: viewModel, iconOnly: toolsAsSymbols)"),
+                "the sound does not stand in the player's row")
+        #expect(row.contains(".dynamicTypeSize(...DynamicTypeSize.accessibility1)"),
+                "at the accessibility sizes the row's symbols grow past the screen")
     }
 }
 #endif

@@ -120,6 +120,7 @@ struct SettingsView: View {
     }
 
     @State private var skipInterval: Double = AppStorageKeys.skipIntervalValue
+    @State private var musicSkipInterval: Double = AppStorageKeys.musicSkipIntervalValue
     @State private var defaultRate: Double = Double(AppStorageKeys.defaultPlaybackRateValue)
     @State private var smartRewind: Bool =
         AppStorageKeys.smartRewindValue
@@ -764,6 +765,21 @@ struct SettingsView: View {
                 AppStorageKeys.skipIntervalValue = newValue
                 if let vm = coordinator.viewModel, vm.skipContent == .spokenWord {
                     vm.setSkipInterval(newValue)   // also updates the lock-screen buttons
+                }
+            }
+
+            // The player has no skip interval button: both widths are set here.
+            Picker(selection: $musicSkipInterval) {
+                ForEach(PlaybackSkip.options(for: .music), id: \.self) { seconds in
+                    Text("\(Int(seconds)) seconds").tag(seconds)
+                }
+            } label: {
+                Label("Skip Interval for Music", systemImage: "goforward")
+            }
+            .onChange(of: musicSkipInterval) { _, newValue in
+                AppStorageKeys.musicSkipIntervalValue = newValue
+                if let vm = coordinator.viewModel, vm.skipContent == .music {
+                    vm.setSkipInterval(newValue)
                 }
             }
 

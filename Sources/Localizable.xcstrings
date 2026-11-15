@@ -6538,6 +6538,16 @@
         }
       }
     },
+    "More" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr"
+          }
+        }
+      }
+    },
     "Most Listened Shows" : {
       "localizations" : {
         "de" : {
@@ -10937,6 +10947,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sprung-Intervall"
+          }
+        }
+      }
+    },
+    "Skip Interval for Music" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprungweite für Musik"
           }
         }
       }
