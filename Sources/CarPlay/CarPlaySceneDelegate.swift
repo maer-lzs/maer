@@ -1045,11 +1045,28 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let spoken = CarPlayLayout.playerExtras(for: coordinator.activeItem?.id, markedForm: form)
         nowPlaying.isUpNextButtonEnabled = CarPlayLayout.offersUpNext(
             for: coordinator.activeItem?.id, markedForm: form, waiting: queue.ids.count + context.ids.count)
-        guard spoken, let rate = coordinator.viewModel?.playbackRate else {
-            nowPlaying.updateNowPlayingButtons([])
-            return
+        var buttons: [CPNowPlayingButton] = []
+        if spoken, let rate = coordinator.viewModel?.playbackRate {
+            buttons.append(rateButton(showing: Double(rate)))
         }
-        nowPlaying.updateNowPlayingButtons([rateButton(showing: Double(rate))])
+        if CarPlayLayout.offersShuffle(for: coordinator.activeItem?.id, markedForm: form,
+                                       waitingInContext: context.ids.count) {
+            buttons.append(shuffleButton())
+        }
+        nowPlaying.updateNowPlayingButtons(buttons)
+    }
+
+    /// Mixes the rest of what was started, or puts it back in order; the
+    /// button shows which. Nothing is kept: a new start runs in order.
+    private func shuffleButton() -> CPNowPlayingButton {
+        let button = CPNowPlayingShuffleButton { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.context.setShuffled(!self.context.isShuffled)
+            }
+        }
+        button.isSelected = context.isShuffled
+        return button
     }
 
     /// The speed button with the app's own label for the speed. The

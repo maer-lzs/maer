@@ -31,6 +31,12 @@ tab says it is loading until its content arrives. Before, the screen
 stayed empty until every tab had loaded. A tab whose area turns out to
 hold nothing leaves again a moment later.
 
+**Shuffle in the car.** While songs of an album or a playlist play, the
+car's player has a shuffle button. It mixes the rest of what you
+started, and a second tap puts it back in order; what you added to Up
+Next yourself stays where it is. The next album or playlist you start
+plays in order again.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

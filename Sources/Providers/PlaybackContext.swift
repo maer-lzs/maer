@@ -27,6 +27,11 @@ final class PlaybackContext: ObservableObject {
     @Published private(set) var ids: [String] = []
     /// What the rest continues FROM ("Weiter aus …" names its source).
     @Published private(set) var sourceTitle: String?
+    /// The rest's order before it was mixed; nil while it runs in order.
+    /// Held in memory only: a new start, an empty rest or a restart is in
+    /// order again.
+    @Published private(set) var orderBeforeShuffle: [String]?
+    var isShuffled: Bool { orderBeforeShuffle != nil }
 
     /// The context lives as ONE row (`context` in `playback_context`): it
     /// is one struct, replaced whole on every change.
@@ -75,6 +80,7 @@ final class PlaybackContext: ObservableObject {
     /// (play only replaces the active playback), and a routine's rule is
     /// never anything to play: same rule as the queue (`PlayQueue.canHold`).
     func replace(ids newIds: [String], source: String?) {
+        orderBeforeShuffle = nil
         ids = newIds.filter { PlayQueue.canHold($0) }
         sourceTitle = ids.isEmpty ? nil : source
         save()
@@ -83,9 +89,31 @@ final class PlaybackContext: ObservableObject {
     /// A single-item user start: the old context dies, nothing replaces it
     /// (the medium's own continuation is cascade step 3, not a context).
     func clear() {
+        orderBeforeShuffle = nil
         guard !ids.isEmpty || sourceTitle != nil else { return }
         ids = []
         sourceTitle = nil
+        save()
+    }
+
+    /// Mixes the rest, or puts it back in the order it had before
+    /// (`MediaShuffle.backInOrder`). The car's shuffle button.
+    func setShuffled(_ on: Bool) {
+        var generator = SystemRandomNumberGenerator()
+        setShuffled(on, using: &generator)
+    }
+
+    /// The seam with an injected generator, for a witness.
+    func setShuffled(_ on: Bool, using generator: inout some RandomNumberGenerator) {
+        if on {
+            guard orderBeforeShuffle == nil, ids.count > 1 else { return }
+            orderBeforeShuffle = ids
+            ids = MediaShuffle.shuffled(ids, using: &generator)
+        } else {
+            guard let before = orderBeforeShuffle else { return }
+            orderBeforeShuffle = nil
+            ids = MediaShuffle.backInOrder(now: ids, before: before)
+        }
         save()
     }
 
@@ -109,7 +137,10 @@ final class PlaybackContext: ObservableObject {
     func remove(_ id: String) {
         guard ids.contains(id) else { return }
         ids.removeAll { $0 == id }
-        if ids.isEmpty { sourceTitle = nil }
+        if ids.isEmpty {
+            sourceTitle = nil
+            orderBeforeShuffle = nil
+        }
         save()
     }
 

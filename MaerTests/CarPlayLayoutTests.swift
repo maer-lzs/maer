@@ -161,6 +161,72 @@ struct CarPlayLayoutTests {
         #expect(!car.contains("text: station.name"), "the car shows a station's raw name")
     }
 
+    @Test("shuffle in the player only for songs, and only while two titles of what was started wait")
+    func shuffleOnlyForSongs() {
+        let song = JellyfinProvider.itemId(songId: "s1")
+        #expect(CarPlayLayout.offersShuffle(for: song, waitingInContext: 2))
+        #expect(!CarPlayLayout.offersShuffle(for: song, waitingInContext: 1), "a mix of one changes nothing")
+        #expect(!CarPlayLayout.offersShuffle(for: "book-1", waitingInContext: 5), "a book got a shuffle")
+        #expect(!CarPlayLayout.offersShuffle(for: "rss:feed:episode-1", waitingInContext: 5), "an episode got a shuffle")
+        #expect(!CarPlayLayout.offersShuffle(for: "radio:rb:station", waitingInContext: 5))
+        #expect(!CarPlayLayout.offersShuffle(for: nil, waitingInContext: 5))
+    }
+
+    @Test("the shuffle mixes the rest of what was started and puts it back; a new start is in order")
+    @MainActor
+    func theShuffleMixesTheRestAndPutsItBack() {
+        let context = PlaybackContext()
+        let order = (1...12).map { "jf:song:\($0)" }
+        context.replace(ids: order, source: "Album")
+        var generator = SplitMix(state: 7)
+        context.setShuffled(true, using: &generator)
+        #expect(context.isShuffled)
+        #expect(context.ids != order && context.ids.sorted() == order.sorted(), "the mix is not a permutation of the rest")
+        // Titles leave while it runs mixed; back in order keeps the rest's order.
+        context.remove(order[0])
+        context.remove(order[5])
+        context.setShuffled(false)
+        #expect(!context.isShuffled)
+        #expect(context.ids == order.filter { $0 != order[0] && $0 != order[5] })
+        // Nothing is kept: a new start after a mix runs in order.
+        context.setShuffled(true, using: &generator)
+        context.replace(ids: ["a", "b", "c"], source: nil)
+        #expect(!context.isShuffled && context.ids == ["a", "b", "c"])
+        // A rest of one is not mixed.
+        context.replace(ids: ["only"], source: nil)
+        context.setShuffled(true, using: &generator)
+        #expect(!context.isShuffled)
+    }
+
+    @Test("back in order: the waiting titles in their former order, a title that came in since after them")
+    func backInOrderAsATable() {
+        #expect(MediaShuffle.backInOrder(now: ["c", "a", "b"], before: ["a", "b", "c"]) == ["a", "b", "c"])
+        #expect(MediaShuffle.backInOrder(now: ["c", "a"], before: ["a", "b", "c"]) == ["a", "c"], "a title that left stays gone")
+        #expect(MediaShuffle.backInOrder(now: ["c", "x1", "x2", "a"], before: ["a", "b", "c"]) == ["a", "c", "x1", "x2"])
+    }
+
+    @Test("the car's shuffle mixes the context through its one door and shows its state", .needsTheSources)
+    func theCarShufflesThroughTheContext() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        #expect(car.contains("CarPlayLayout.offersShuffle(for: coordinator.activeItem?.id, markedForm: form, waitingInContext: context.ids.count)"),
+                "the car offers the shuffle by a rule of its own")
+        #expect(car.contains("self.context.setShuffled(!self.context.isShuffled)"), "the button mixes past the context")
+        #expect(car.contains("button.isSelected = context.isShuffled"), "the button does not show the state")
+        #expect(!car.contains("queue.shuffle") && !car.contains("MediaShuffle."), "the car mixes by itself or mixes the orders")
+    }
+
+    /// A seeded generator, so the mix in the witness is the same each run.
+    nonisolated private struct SplitMix: RandomNumberGenerator {
+        var state: UInt64
+        mutating func next() -> UInt64 {
+            state = state &+ 0x9E3779B97F4A7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+            z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+            return z ^ (z >> 31)
+        }
+    }
+
     @Test("Up Next in the player as soon as something waits behind the title, never for a station")
     func upNextWheneverSomethingWaits() {
         #expect(CarPlayLayout.offersUpNext(for: "book-1", waiting: 1))

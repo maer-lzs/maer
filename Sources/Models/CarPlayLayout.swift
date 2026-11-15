@@ -132,6 +132,15 @@ nonisolated enum CarPlayLayout {
         return RemoteCommandRule.kind(forItem: itemId, markedForm: markedForm) != .live
     }
 
+    /// Shuffle in the car's player: songs only, and only while at least
+    /// two titles of what was started wait behind the title, so a mix
+    /// changes something. The orders are never mixed.
+    static func offersShuffle(for itemId: String?, markedForm: ProgressMark.StartedForm? = nil,
+                              waitingInContext: Int) -> Bool {
+        guard itemId != nil, waitingInContext > 1 else { return false }
+        return RemoteCommandRule.kind(forItem: itemId, markedForm: markedForm) == .songs
+    }
+
     /// The next speed after `rate` among `rates`, back to the first after
     /// the last; a speed between two steps goes to the next higher one.
     static func nextRate(after rate: Double, rates: [Double]) -> Double {
