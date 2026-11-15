@@ -415,9 +415,16 @@ struct LocalSubscribeDoorTests {
                 "the refusal is not shown beside the menu")
     }
 
-    /// Who may still call `subscribe(urlString:` past the door, and why.
+    /// Who may still call `subscribe(urlString:` or `follow(urlString:`
+    /// past the door, and why.
     static let stock: [String: (count: Int, reason: String)] = [
-        "PodcastSubscriptions.swift": (1, "the door itself"),
+        "PodcastSubscriptions.swift": (6, """
+            the door itself, `subscribe` over `follow`, and three ways that \
+            follow a feed without the door: the switch to a free twin, a new \
+            link for a refused feed, and the bulk follow of an import (two \
+            calls), which answers a show held on Audiobookshelf before it \
+            fetches
+            """),
     ]
 
     @Test("only the named places subscribe past the door", .needsTheSources)
@@ -434,14 +441,17 @@ struct LocalSubscribeDoorTests {
             func subscribe(urlString: String) async -> Bool {
             _ = await subs.subscribe(urlString: raw, notesCloud: true)
             _ = await subs.subscribeUnlessOnServer(urlString: raw)
-            """) == 1)
+            func follow(urlString: String) async -> FollowOutcome {
+            _ = await subs.follow(urlString: raw)
+            """) == 2)
     }
 
-    /// Calls of `subscribe(urlString:` in `code`, without its declaration.
+    /// Calls of `subscribe(urlString:` and `follow(urlString:` in `code`,
+    /// without their declarations.
     nonisolated static func directSubscribes(in code: String) -> Int {
         code.split(separator: "\n").reduce(0) { total, line in
-            guard !line.contains("func subscribe(urlString:") else { return total }
-            return total + line.matches(of: #/subscribe\(urlString:/#).count
+            guard !line.contains("func subscribe(urlString:"), !line.contains("func follow(urlString:") else { return total }
+            return total + line.matches(of: #/(?:subscribe|follow)\(urlString:/#).count
         }
     }
 }

@@ -33,6 +33,7 @@ enum SubscribeTap: Equatable {
         case .onServer: .heldOnServer
         case .setOut: .setOut
         case .notSubscribed: .failed(sentence: String(localized: "The feed could not be loaded."))
+        case .keptApart(let title): .failed(sentence: PodcastSubscriptions.keptApartSentence(title))
         }
     }
 

@@ -236,6 +236,9 @@ struct LibriVoxTakeoverSection: View {
                 localRefusal = String(localized: "Audiobookshelf could not be read, so shows that may be subscribed there were not added here. Try again when the server is reachable.")
             case .notSubscribed:
                 localSubscribed = false
+            case .keptApart(let title):
+                localSubscribed = false
+                localRefusal = PodcastSubscriptions.keptApartSentence(title)
             }
         }
     }

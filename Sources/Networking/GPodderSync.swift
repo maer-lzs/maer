@@ -207,7 +207,7 @@ final class GPodderSync {
             switch await subs.subscribeUnlessOnServer(urlString: raw, notesCloud: true, isSingleUserAct: false) {
             case .subscribed, .subscribedUnchecked: subscribed.insert(norm)
             case .setOut: setOut += 1
-            case .onServer, .notSubscribed: break
+            case .onServer, .notSubscribed, .keptApart: break
             }
         }
         // Audiobookshelf could not be read: those shows were not added here,

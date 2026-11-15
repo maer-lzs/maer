@@ -12899,6 +12899,16 @@
         }
       }
     },
+    "This address counts in Mär as the same feed as “%@”, which you already follow. No second subscription was made." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Adresse gilt in Mär als derselbe Feed wie „%@“, den du schon abonnierst. Es wurde kein zweites Abo angelegt."
+          }
+        }
+      }
+    },
     "This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key." : {
       "localizations" : {
         "de" : {

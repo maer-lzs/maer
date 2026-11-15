@@ -246,6 +246,56 @@ nonisolated enum PodcastIdentity {
         Logger.rss.notice("PREMIUM identity merge: \(loserMasked, privacy: .public) folded into \(survivorMasked, privacy: .public)")
     }
 
+    /// A feed address as written, for telling two feeds apart that share
+    /// a key: no scheme, no `www.`, the host in small letters, the path in
+    /// its own case without a closing slash, every query parameter but the
+    /// counting ones (`utm_…`, `fbclid`, `gclid`, `mc_cid`, `mc_eid`),
+    /// sorted; no fragment.
+    nonisolated static func strictAddress(_ raw: String) -> String {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let fragment = text.firstIndex(of: "#") { text = String(text[..<fragment]) }
+        if let scheme = text.range(of: "://") { text = String(text[scheme.upperBound...]) }
+        var query = ""
+        if let mark = text.firstIndex(of: "?") {
+            query = String(text[text.index(after: mark)...])
+            text = String(text[..<mark])
+        }
+        let slash = text.firstIndex(of: "/") ?? text.endIndex
+        var host = text[..<slash].lowercased()
+        if host.hasPrefix("www.") { host.removeFirst(4) }
+        var path = String(text[slash...])
+        while path.hasSuffix("/") { path.removeLast() }
+        let counting: Set<String> = ["fbclid", "gclid", "mc_cid", "mc_eid"]
+        let kept = query.split(separator: "&").map(String.init).filter { pair in
+            let name = (pair.split(separator: "=", maxSplits: 1).first.map(String.init) ?? "").lowercased()
+            return !name.isEmpty && !name.hasPrefix("utm_") && !counting.contains(name)
+        }.sorted()
+        return host + path + (kept.isEmpty ? "" : "?" + kept.joined(separator: "&"))
+    }
+
+    /// Whether a fresh parse under a held show's key is that show.
+    enum SameKey: Equatable {
+        /// The same feed: the address as written agrees, or an episode of
+        /// the parse is one of the show's own.
+        case same
+        /// Another feed: another address and no episode in common.
+        case other
+        /// Another address, and one of the two has no episodes to compare.
+        case unknown
+    }
+
+    /// The feed behind a key decides by its episodes, not by the address
+    /// alone: the same feed under `http`, with `www.` or a counting
+    /// parameter is the same; another address whose episodes share no
+    /// original guid with the held show is another feed. Without episodes
+    /// on one side nothing can be told.
+    nonisolated static func sameKey(stored: PodcastShow, fresh: PodcastShow) -> SameKey {
+        if strictAddress(stored.feedURL) == strictAddress(fresh.feedURL) { return .same }
+        guard !stored.episodes.isEmpty, !fresh.episodes.isEmpty else { return .unknown }
+        let held = Set(stored.episodes.map { originalGuid($0.guid) })
+        return fresh.episodes.contains { held.contains(originalGuid($0.guid)) } ? .same : .other
+    }
+
     /// Extract the original guid from `rss:<hash>:<original>` (which may itself
     /// contain colons → maxSplits 2).
     nonisolated static func originalGuid(_ guid: String) -> String {

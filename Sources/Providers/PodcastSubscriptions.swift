@@ -822,12 +822,17 @@ final class PodcastSubscriptions: ObservableObject {
         /// (`PodcastFeedAuth.Access.unknown`). Nothing is held or marked,
         /// and a later round asks again.
         case notAsked
+        /// The address shares its key with a held show that is another
+        /// feed, or cannot be told apart from it (`PodcastIdentity.sameKey`):
+        /// no second subscription, and the held show stays as it was.
+        /// `title` is the held show's.
+        case keptApart(title: String)
 
         /// What `subscribe` has always answered: yes for a held show and
         /// for a twin that was deliberately skipped.
         var isHeld: Bool {
             switch self {
-            case .notFollowed, .notAsked: return false
+            case .notFollowed, .notAsked, .keptApart: return false
             case .followed, .freeTwin, .onServer: return true
             }
         }
@@ -931,6 +936,10 @@ final class PodcastSubscriptions: ObservableObject {
             return .freeTwin(title: show.title, redirected: redirected)
         }
         let wasNew = !shows.contains { $0.id == show.id }
+        if let held = shows.first(where: { $0.id == show.id }),
+           let apart = keptApart(held: held, fresh: show, by: "follow") {
+            return apart
+        }
         if let idx = shows.firstIndex(where: { $0.id == show.id }) {
             // Re-subscribe must not blindly replace: a weak parse (valid title,
             // few/zero episodes) would drop the cached episodes. Union instead.
@@ -1168,6 +1177,7 @@ final class PodcastSubscriptions: ObservableObject {
                 case .onServer: outcome = "onServer"
                 case .setOut: outcome = "setOut"
                 case .subscribedUnchecked: outcome = "subscribedUnchecked"
+                case .keptApart: outcome = "keptApart"
                 case .subscribed, .notSubscribed:
                     outcome = FeedAdoptionPending.outcome(
                         ok: ok, held: self.shows.contains { PodcastIdentity.feedKey($0.feedURL) == key },
@@ -1265,7 +1275,7 @@ final class PodcastSubscriptions: ObservableObject {
                 // Held on Audiobookshelf: nothing was stated here, so the old
                 // address is not withdrawn either, and nothing waits.
                 break
-            case .notSubscribed, .setOut:
+            case .notSubscribed, .setOut, .keptApart:
                 self.markNotFollowed(feedURL: entry.feedURL, reason: entry.reason, status: entry.status,
                                      statementT: entry.statementT)
             }
@@ -1500,6 +1510,26 @@ final class PodcastSubscriptions: ObservableObject {
         defaults.set(Array(rest).sorted(), forKey: AppStorageKeys.gpodderUserRemovedFeeds)
     }
 
+    /// A fresh parse under a held show's key that is not that show
+    /// (`PodcastIdentity.sameKey`) leaves the show as it was: the merge
+    /// takes the fresh title and address, and the held feed would be
+    /// fetched no more. A line says why, the addresses as hashes; nil for
+    /// the same feed.
+    private func keptApart(held: PodcastShow, fresh: PodcastShow, by entry: String) -> FollowOutcome? {
+        let verdict = PodcastIdentity.sameKey(stored: held, fresh: fresh)
+        guard verdict != .same else { return nil }
+        // Hashes only (`addressLine`), never the address.
+        let heldLine = PodcastIdentity.addressLine(held.feedURL)
+        let freshLine = PodcastIdentity.addressLine(fresh.feedURL)
+        Logger.rss.notice("SUBSCRIBE kept apart by=\(entry, privacy: .public) verdict=\(String(describing: verdict), privacy: .public) held=\(heldLine, privacy: .public) fresh=\(freshLine, privacy: .public)")
+        return .keptApart(title: held.title)
+    }
+
+    /// What the person hears when an address counts as a show they follow.
+    static func keptApartSentence(_ title: String) -> String {
+        String(localized: "This address counts in Mär as the same feed as “\(title)”, which you already follow. No second subscription was made.")
+    }
+
     /// Folds a fresh parse of a followed show into its stock, the same merge
     /// a refresh does (a union, the store facts survive). For whoever fetched
     /// the feed for one episode: the episode is then in the stock the
@@ -1512,6 +1542,7 @@ final class PodcastSubscriptions: ObservableObject {
         await ensureLoaded()
         guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return nil }
         let stored = shows[idx]
+        guard keptApart(held: stored, fresh: fresh, by: "absorb") == nil else { return nil }
         shows[idx] = PodcastIdentity.merge(stored, fresh)
         save()
         // What arrived here would not arrive again at the next refresh.
@@ -1738,6 +1769,14 @@ final class PodcastSubscriptions: ObservableObject {
         for (index, feed) in feeds.enumerated() {
             let key = PodcastIdentity.feedKey(feed)
             if let held = shows.first(where: { PodcastIdentity.feedKey($0.feedURL) == key }) {
+                // A held key is not fetched and the show stays as it was;
+                // another address as written may be another feed.
+                if PodcastIdentity.strictAddress(held.feedURL) != PodcastIdentity.strictAddress(feed) {
+                    // Hashes only (`addressLine`), never the address.
+                    let heldLine = PodcastIdentity.addressLine(held.feedURL)
+                    let freshLine = PodcastIdentity.addressLine(feed)
+                    Logger.rss.notice("SUBSCRIBE kept apart by=import verdict=notFetched held=\(heldLine, privacy: .public) fresh=\(freshLine, privacy: .public)")
+                }
                 let outcome = FollowOutcome.followed(title: held.title, wasNew: false, episodes: held.episodes.count)
                 outcomes[index] = outcome
                 answered(index, outcome)
@@ -1856,6 +1895,10 @@ final class PodcastSubscriptions: ObservableObject {
         /// Audiobookshelf could not be read: nothing subscribed, a later
         /// attempt asks again. Only for a mechanism.
         case setOut
+        /// The address counts as a held show that is another feed
+        /// (`FollowOutcome.keptApart`): nothing subscribed, the show as it
+        /// was. `title` is the held show's.
+        case keptApart(title: String)
         /// Audiobookshelf could not be read and the person asked: subscribed
         /// here, noted, and settled against the server on its next read.
         case subscribedUnchecked
@@ -1868,6 +1911,7 @@ final class PodcastSubscriptions: ObservableObject {
             case .onServer: "onServer"
             case .setOut: "setOut"
             case .subscribedUnchecked: "subscribedUnchecked"
+            case .keptApart: "keptApart"
             }
         }
     }
@@ -1904,9 +1948,10 @@ final class PodcastSubscriptions: ObservableObject {
                 break
             }
         }
-        let held = await subscribe(urlString: urlString, notesCloud: notesCloud, adopting: adopting,
+        let outcome = await follow(urlString: urlString, notesCloud: notesCloud, adopting: adopting,
                                    isSingleUserAct: isSingleUserAct, statementT: statementT)
-        guard held else { return .notSubscribed }
+        if case .keptApart(let title) = outcome { return .keptApart(title: title) }
+        guard outcome.isHeld else { return .notSubscribed }
         guard noted else { return .subscribed }
         noteUnchecked(key, true)
         Logger.rss.notice("SUBSCRIBE here, Audiobookshelf unread, noted: \(key, privacy: .private(mask: .hash))")
@@ -2068,6 +2113,10 @@ final class PodcastSubscriptions: ObservableObject {
                 result.notAsked += 1
             case .freeTwin?:
                 result.freeTwinsSkipped += 1
+            case .keptApart?:
+                // `followAll` fetches no held key, so no import answers
+                // this; were it to, the show is held and stays as it was.
+                result.alreadySubscribed += 1
             case .onServer(let title)?:
                 result.onServer += 1
                 result.onServerTitles.append(title)
