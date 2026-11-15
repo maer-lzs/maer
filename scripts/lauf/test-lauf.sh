@@ -29,6 +29,12 @@ echo "nice $(ps -o nice= -p $$ | tr -d ' ')" >> "$log"
 if [ -n "${MAER_SERVER_ACCESS_FILE:-}" ]; then echo "access set" >> "$log"; else echo "access unset" >> "$log"; fi
 prev=""
 for arg in "$@"; do
+    if [ "$prev" = "-destination" ]; then
+        udid="${arg#id=}"
+        audio="$LAUF_SIM_DEVICES/$udid/data/var/run/com.apple.coresimulator.audio.plist"
+        if [ "$(plutil -extract sim_output_device_uid raw "$audio" 2>/dev/null)" = "$LAUF_STILLES_GERAET" ]; then
+            echo "silent yes $udid" >> "$log"; else echo "silent no $udid" >> "$log"; fi
+    fi
     if [ "$prev" = "-resultBundlePath" ]; then mkdir -p "$arg"; echo data > "$arg/Info.plist"; fi
     if [ "$prev" = "-derivedDataPath" ]; then mkdir -p "$arg/Build"; fi
     prev="$arg"
@@ -51,6 +57,7 @@ cat > "$STUB/simctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/simctl.log"
 case "$*" in
+    erase\ *) rm -rf "$LAUF_SIM_DEVICES/$2/data" ;;
     *"list devices"*)
         foreign=""
         if [ -f "$LAUF_STUB_DIR/booted-foreign" ]; then
@@ -65,6 +72,7 @@ chmod +x "$STUB/xcodebuild" "$STUB/simctl"
 export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_STUB_DIR="$STUB"
 export LAUF_ABLAGE="$DEV/ablage" LAUF_BAU="$DEV/bau" LAUF_TEMP_ROOTS="$TEMP/" LAUF_MIN_GB=0
 export LAUF_WARTE_S=4 LAUF_TICK_S=1
+export LAUF_SIM_DEVICES="$DEV/devices" LAUF_STILLES_GERAET=Witness_Silent_UID
 # The copied hooks read the list of names from the fence of the real tree.
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
@@ -423,6 +431,25 @@ out="$(plan)"
 git checkout -q scheibe
 if has "$out" "datei SoundCurveTests" && has "$out" "datei PlaybackSkipTests"; then
     ok "32 a brace or whitespace alone still selects"; else fail "32 a brace or whitespace alone still selects" "$out"; fi
+
+# 33. Every simulator of a run sends its sound and microphone to the silent
+# device, and the final run writes that after the erase, which clears it.
+clear_stub; rm -rf "$LAUF_SIM_DEVICES"
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+quiet=0
+for udid in AAAA2700-0000-0000-0000-000000000000 BBBB1860-0000-0000-0000-000000000000; do
+    f="$LAUF_SIM_DEVICES/$udid/data/var/run/com.apple.coresimulator.audio.plist"
+    [ -f "$f" ] && [ "$(plutil -extract sim_output_device_uid raw "$f" 2>/dev/null)" = "$LAUF_STILLES_GERAET" ] \
+        && [ "$(plutil -extract sim_input_device_uid raw "$f" 2>/dev/null)" = "$LAUF_STILLES_GERAET" ] \
+        && [ "$(plutil -extract useHostDefaultOutputDevice raw "$f" 2>/dev/null)" = false ] && quiet=$((quiet + 1))
+done
+# The erase of the stub clears the data of the device, as the real one does;
+# xcodebuild notes at its start whether the device it runs on is silent.
+if [ $quiet = 2 ] && [ "$(grep -c '^silent yes' "$STUB/xcodebuild.log")" = 2 ] && ! grep -q '^silent no' "$STUB/xcodebuild.log"; then
+    ok "33 the simulators are silent, written after the erase"; else fail "33 the simulators are silent, written after the erase" "quiet=$quiet $(grep '^silent' "$STUB/xcodebuild.log" 2>/dev/null)"; fi
+clear_stub
+bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+if grep -q '^silent yes' "$STUB/xcodebuild.log"; then ok "33b the selection runs on a silent simulator as well"; else fail "33b the selection runs on a silent simulator as well" "$(grep '^silent' "$STUB/xcodebuild.log")"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
