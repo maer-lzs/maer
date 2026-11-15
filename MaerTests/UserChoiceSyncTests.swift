@@ -378,6 +378,34 @@ struct UserChoiceCloudSyncTests {
         #expect(KnownServers.suggestions(for: .subsonic, defaults: b.defaults).isEmpty)
     }
 
+    /// A server removed on A reaches B through the choices; its headers,
+    /// which may carry an access secret, leave B's keychain with it, and
+    /// the header table does not bring the server back.
+    @Test("a server forgotten through the choices takes its headers along, and the table names it no more")
+    func forgottenServerTakesItsHeaders() throws {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        let base = try #require(URL(string: "https://headers-\(UUID().uuidString.prefix(6)).example/abs"))
+        let keys = ServerHeadersWayTests.MemoryKeys()
+        try ServerHeaders.$witness.withValue(keys.keys()) {
+            try #require(ServerHeaders.set([.init(name: "X-Maer-Gate", value: "secret")], for: base))
+            KnownServers.remember(base.absoluteString, service: .audiobookshelf, now: 1_700_000_000, defaults: a.defaults)
+            a.sync.noteKnownServers()
+            b.sync.reconcile()
+            #expect(KnownServers.suggestions(for: .audiobookshelf, defaults: b.defaults).map(\.url) == [base.absoluteString])
+            KnownServers.forget(KnownServer(url: base.absoluteString, service: .audiobookshelf, lastSuccessAt: 0),
+                                defaults: a.defaults)
+            a.sync.noteKnownServers(removed: "audiobookshelf|\(base.absoluteString)")
+            b.sync.reconcile()
+            #expect(KnownServers.suggestions(for: .audiobookshelf, defaults: b.defaults).isEmpty)
+            #expect(keys.state.withLock { $0.items }.isEmpty, "the headers stayed after the server was removed")
+            #expect(keys.state.withLock { $0.bases }.isEmpty, "the register still names the server")
+            #expect(ServerHeaders.entries()?.isEmpty == true, "the header table brings the server back")
+        }
+    }
+
     /// Subscriptions travel: A subscribes, B (without a server) gets the address to
     /// follow; A unsubscribes, B gets the tombstone. A device WITH a
     /// podcast server applies nothing (the server is its truth) and

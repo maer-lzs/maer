@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import Maer
 
 /// 🔴 Hammering play under a bad network must never produce two audio
@@ -78,6 +79,36 @@ struct OpenGateTests {
                 "the open does not hand its wish to the gate")
         #expect(code.contains("if autoplay || openGate.playWasAsked(generation) {"),
                 "the start plays only on its own wish")
+    }
+}
+
+/// The real open, overtaken while it asks the network: a newer open has
+/// drawn its generation and set its player meanwhile. The older open used to
+/// stop that player and begin its own session after the question.
+@MainActor
+struct OvertakenOpenTests {
+    @Test("an open overtaken during its network question leaves the newer open's player as it is")
+    func anOvertakenOpenTearsNothingDown() async {
+        let coordinator = PlayerCoordinator(provider: MockProvider())
+        let newer = "overtake-newer-\(UUID().uuidString)"
+        let older = "overtake-older-\(UUID().uuidString)"
+        let media = LibraryItemMedia(metadata: nil, duration: 100, chapters: nil, tracks: nil)
+        var newerPlayer: PlayerViewModel?
+        coordinator._testAfterNetworkQuestion = {
+            coordinator._testBeginNewerOpen(itemId: newer)
+            coordinator._seedActivePlayerForUITest(
+                item: LibraryItem(id: newer, media: media, addedAt: nil),
+                detail: LibraryItemDetail(id: newer, media: media, userMediaProgress: nil),
+                chapters: [], currentChapterIndex: 0, isFallback: false, openedHere: true)
+            newerPlayer = coordinator.viewModel
+        }
+        await Reachability.$assumed.withValue(true) {
+            await coordinator.open(item: LibraryItem(id: older, media: media, addedAt: nil))
+        }
+        #expect(newerPlayer != nil, "the precondition: the newer open set its player")
+        #expect(coordinator.viewModel === newerPlayer && coordinator.activeItem?.id == newer,
+                "the overtaken open tore down the newer open's player")
+        #expect(coordinator.loadError == nil, "the overtaken open said a failure over the newer one")
     }
 }
 #endif

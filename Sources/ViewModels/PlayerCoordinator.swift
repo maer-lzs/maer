@@ -291,6 +291,16 @@ final class PlayerCoordinator: ObservableObject {
         activeItem = item
         if openedHere { ownOpenedAtMs = Date().timeIntervalSince1970 * 1000 }
     }
+
+    /// Witness only: runs inside an open right after its network question,
+    /// where a newer open can overtake it in the app.
+    var _testAfterNetworkQuestion: (() async -> Void)?
+
+    /// Witness only: a newer open draws its generation, as a tap on another
+    /// title does.
+    func _testBeginNewerOpen(itemId: String) {
+        _ = openGate.begin(itemId: itemId, restart: true)
+    }
     #endif
 
     /// Opens a book. If it is already active, nothing happens except possibly
@@ -431,6 +441,17 @@ final class PlayerCoordinator: ObservableObject {
         active == opened && loaded == opened
     }
 
+    /// After each await before the teardown: an open that a newer one has
+    /// overtaken meanwhile returns here, before it stops the player or says
+    /// anything, and writes a line.
+    private func stillCurrent(_ generation: Int, item: LibraryItem, after step: String) -> Bool {
+        guard openGate.isCurrent(generation) else {
+            Logger.player.notice("OPEN overtaken after=\(step, privacy: .public) item=\(item.id, privacy: .private(mask: .hash)), nothing torn down")
+            return false
+        }
+        return true
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`
@@ -451,6 +472,7 @@ final class PlayerCoordinator: ObservableObject {
         // playing its local files. No-op once the scan has merged.
         let downloads = DownloadManager.shared
         await downloads.ensureScanned()
+        guard stillCurrent(generation, item: item, after: "scan") else { return }
 
         // Offline, a title that is not on the device cannot play. Say
         // so clearly, and BEFORE tearing anything down: the running session
@@ -460,6 +482,10 @@ final class PlayerCoordinator: ObservableObject {
         // The one question before the network (`Reachability`): in the app
         // the path monitor's answer, and a witness can ask the offline side.
         let connected = await Reachability.isConnected()
+        #if DEBUG
+        await _testAfterNetworkQuestion?()
+        #endif
+        guard stillCurrent(generation, item: item, after: "network") else { return }
         if MediaAvailability.offlineUnavailable(
             isConnected: connected,
             isDownloaded: downloads.isDownloaded(itemId: item.id)) {

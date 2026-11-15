@@ -809,7 +809,10 @@ final class UserChoiceCloudSync {
             if case .double(let at)? = entry.value {
                 KnownServers.remember(url, service: service, now: at, defaults: defaults)
             } else {
-                KnownServers.forget(KnownServer(url: url, service: service, lastSuccessAt: 0), defaults: defaults)
+                // The one forget of a removal by hand: the server's headers
+                // leave the keychain with it, so none stays behind and the
+                // header table does not bring the server back.
+                ServerHeaders.forget(KnownServer(url: url, service: service, lastSuccessAt: 0), defaults: defaults)
             }
             return true
         }

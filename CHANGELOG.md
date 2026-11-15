@@ -2,6 +2,18 @@
 
 ## Next build (not yet cut)
 
+**A quick second tap on another title keeps it playing.** When you tap a
+title and then another one while the first is still checking the
+network, the first no longer stops the second once its check returns.
+
+**A server you remove on one device takes its headers along everywhere.**
+Removing a known server by hand already removed its custom headers. When
+the removal reached another device through Mär's iCloud sync while that
+device's keychain did not follow, for example with iCloud Keychain off,
+the headers, which can hold an access secret, stayed there and brought
+the server back into the list of servers with headers. They now go with
+it.
+
 **A second feed at nearly the same address no longer replaces a show you
 follow.** Two feed addresses that differ only in the case of their path,
 or in a parameter Mär does not tell apart, count as one subscription.
