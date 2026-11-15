@@ -22,8 +22,17 @@ struct SoundChoiceSections: View {
         SoundSurface.gainPercent(draftPercent.map(SoundSurface.gain(percent:)) ?? setting.gain)
     }
 
+    /// The setting as it sounds while the finger still drags the boost.
+    private var shownSetting: SoundSetting {
+        var shown = setting
+        if let draftPercent { shown.gain = SoundSurface.gain(percent: draftPercent) }
+        return shown
+    }
+
     var body: some View {
         Section {
+            SoundCurveView(setting: shownSetting)
+                .opacity(locked ? 0.4 : 1)
             ForEach(SoundPresets.all) { preset in
                 Button {
                     setting = SoundSurface.choosing(preset: preset.id, in: setting)
@@ -43,6 +52,19 @@ struct SoundChoiceSections: View {
                 .accessibilityAddTraits(SoundPresets.preset(setting.presetID).id == preset.id ? .isSelected : [])
                 .accessibilityIdentifier("sound-preset-\(preset.id)")
             }
+            // How strongly the preset shapes the sound; Original has nothing
+            // to shape, only the boost below.
+            Picker(selection: Binding(get: { setting.strength },
+                                      set: { setting.strength = $0 })) {
+                ForEach(SoundSetting.strengths, id: \.self) { level in
+                    Text(verbatim: "\(level)").tag(level)
+                }
+            } label: {
+                Text("Strength")
+            }
+            .pickerStyle(.segmented)
+            .disabled(SoundPresets.preset(setting.presetID).isFlat)
+            .accessibilityIdentifier("sound-strength")
         } header: {
             Text("Sound")
         } footer: {
@@ -83,7 +105,7 @@ struct SoundChoiceSections: View {
             }
             .opacity(locked ? 0.4 : 1)
         } footer: {
-            Text("Raises quiet recordings up to twice the volume. A limiter keeps loud passages from distorting.")
+            Text("Raises the volume by up to 6 dB, about two steps of the volume buttons. A limiter keeps loud passages from distorting.")
         }
         .disabled(locked)
     }
@@ -96,8 +118,83 @@ enum SoundPresetName {
         case "speech": "Clearer Speech"
         case "oldRecordings": "Old Recordings"
         case "louder": "Louder"
-        default: "Off"
+        // The flat position: the sound as recorded, the boost still free.
+        default: "Original"
         }
+    }
+}
+
+/// What the setting does to the audio track: the curve of its bands from
+/// bass to treble (`SoundCurve`), above the line lifted, below lowered; the
+/// boost lifts the whole curve. VoiceOver hears the same in words.
+struct SoundCurveView: View {
+    let setting: SoundSetting
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private static let samples = 64
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Canvas { context, size in
+                let points = SoundCurve.curve(setting, count: Self.samples)
+                func y(_ db: Double) -> CGFloat {
+                    let span = SoundCurve.ceilingDB - SoundCurve.floorDB
+                    let clamped = min(max(db, SoundCurve.floorDB), SoundCurve.ceilingDB)
+                    return size.height * CGFloat((SoundCurve.ceilingDB - clamped) / span)
+                }
+                func x(_ index: Int) -> CGFloat { size.width * CGFloat(index) / CGFloat(Self.samples - 1) }
+                var zero = Path()
+                zero.move(to: CGPoint(x: 0, y: y(0)))
+                zero.addLine(to: CGPoint(x: size.width, y: y(0)))
+                context.stroke(zero, with: .color(.secondary.opacity(0.5)), lineWidth: 1)
+                var line = Path()
+                for (index, db) in points.enumerated() {
+                    let point = CGPoint(x: x(index), y: y(db))
+                    if index == 0 { line.move(to: point) } else { line.addLine(to: point) }
+                }
+                var area = line
+                area.addLine(to: CGPoint(x: size.width, y: y(0)))
+                area.addLine(to: CGPoint(x: 0, y: y(0)))
+                area.closeSubpath()
+                context.fill(area, with: .color(AppTheme.accent.opacity(0.15)))
+                context.stroke(line, with: .color(AppTheme.accent), style: StrokeStyle(lineWidth: 2.5, lineJoin: .round))
+            }
+            .frame(height: 72)
+            // The three words would break at the accessibility sizes; the
+            // curve's words for VoiceOver carry the same.
+            if !dynamicTypeSize.isAccessibilitySize {
+                HStack {
+                    Text("Bass")
+                    Spacer()
+                    Text("Voice")
+                    Spacer()
+                    Text("Treble")
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Effect on the sound"))
+        .accessibilityValue(Text(verbatim: Self.words(SoundCurve.changes(setting))))
+        .accessibilityIdentifier("sound-curve")
+    }
+
+    /// The changes in words, joined as a list; the unchanged sound says so.
+    static func words(_ changes: [SoundCurve.Change]) -> String {
+        guard !changes.isEmpty else { return String(localized: "Sound unchanged") }
+        return changes.map { change in
+            switch change {
+            case .raised(.bass): String(localized: "Bass raised")
+            case .lowered(.bass): String(localized: "Bass lowered")
+            case .raised(.voice): String(localized: "Voice raised")
+            case .lowered(.voice): String(localized: "Voice lowered")
+            case .raised(.treble): String(localized: "Treble raised")
+            case .lowered(.treble): String(localized: "Treble lowered")
+            case .louder(let percent): String(localized: "Volume raised to \(percent) %")
+            }
+        }.formatted(.list(type: .and))
     }
 }
 
@@ -134,10 +231,11 @@ struct SoundSummaryText: View {
     var body: some View {
         switch SoundSurface.summary(setting) {
         case .followsDefault: Text("Like other devices")
-        case .off: Text("Off")
-        case .preset(let id, nil): Text(SoundPresetName.name(id))
-        case .preset(let id, let percent?):
-            Text(SoundPresetName.name(id)) + Text(verbatim: " · \(percent) %")
+        case .off: Text("Original")
+        case .preset(let id, let strength, let percent):
+            Text(SoundPresetName.name(id))
+                + (strength.map { Text(verbatim: " · ") + Text("Strength \($0)") } ?? Text(verbatim: ""))
+                + (percent.map { Text(verbatim: " · \($0) %") } ?? Text(verbatim: ""))
         }
     }
 }

@@ -27,8 +27,8 @@ struct SoundSurfaceTests {
     func theSummaryAsATable() {
         #expect(SoundSurface.summary(nil) == .followsDefault)
         #expect(SoundSurface.summary(.off) == .off)
-        #expect(SoundSurface.summary(SoundSetting(presetID: "speech", gain: 1)) == .preset(id: "speech", gainPercent: nil))
-        #expect(SoundSurface.summary(SoundSetting(presetID: "off", gain: 1.5)) == .preset(id: "off", gainPercent: 150))
+        #expect(SoundSurface.summary(SoundSetting(presetID: "speech", gain: 1)) == .preset(id: "speech", strength: nil, gainPercent: nil))
+        #expect(SoundSurface.summary(SoundSetting(presetID: "off", gain: 1.5)) == .preset(id: "off", strength: nil, gainPercent: 150))
         #expect(SoundSurface.summary(SoundSetting(presetID: "unknown", gain: 1)) == .off, "an unknown preset reads as off")
     }
 
@@ -60,7 +60,7 @@ struct SoundSurfaceTests {
         #expect(SoundSurface.choosing(preset: "unknown", in: boosted) == .off, "an unknown preset reads as Off")
         // Off with a gain pushed up again stays, and its row says so.
         let offBoosted = SoundSetting(presetID: "off", gain: 1.4)
-        #expect(SoundSurface.summary(offBoosted) == .preset(id: "off", gainPercent: 140))
+        #expect(SoundSurface.summary(offBoosted) == .preset(id: "off", strength: nil, gainPercent: 140))
     }
 
     @Test("the gain runs from 100 to 200 percent, held at both ends")

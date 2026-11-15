@@ -40,14 +40,36 @@ nonisolated enum SoundPresets {
     }
 }
 
-/// What one output device plays with: a preset and a gain from 1 (as it
-/// comes) to `gainLimit`.
+/// What one output device plays with: a preset at a strength, and a gain
+/// from 1 (as it comes) to `gainLimit`.
 nonisolated struct SoundSetting: Codable, Hashable, Sendable {
     /// The one place the gain's ceiling is set.
     static let gainLimit: Double = 2.0
 
     var presetID: String
     var gain: Double
+    /// How strongly the preset shapes the sound, `strengths`; 1 is the
+    /// preset's own values.
+    var strength: Int = 1
+
+    /// The strengths a person chooses from, and what each multiplies the
+    /// preset's bands by.
+    static let strengths = 1...4
+    static func factor(_ strength: Int) -> Double {
+        switch min(max(strength, strengths.lowerBound), strengths.upperBound) {
+        case 1: 1
+        case 2: 1.5
+        case 3: 2
+        default: 2.5
+        }
+    }
+
+    /// The preset at this setting's strength: the bands the player and the
+    /// curve both run.
+    var shapedPreset: SoundPreset {
+        let preset = SoundPresets.preset(presetID)
+        return SoundPreset(id: preset.id, bandGainsDB: preset.bandGainsDB.map { $0 * Self.factor(strength) })
+    }
 
     static let off = SoundSetting(presetID: SoundPresets.off.id, gain: 1)
 
@@ -60,6 +82,19 @@ nonisolated struct SoundSetting: Codable, Hashable, Sendable {
     /// Nothing to do: a flat preset and no gain. The player hangs no filter
     /// in for such a setting.
     var isOff: Bool { SoundPresets.preset(presetID).isFlat && clampedGain == 1 }
+}
+
+extension SoundSetting {
+    private enum CodingKeys: String, CodingKey { case presetID, gain, strength }
+
+    /// A setting stored before the strength existed reads as strength 1,
+    /// so it sounds as it did.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        presetID = try container.decode(String.self, forKey: .presetID)
+        gain = try container.decode(Double.self, forKey: .gain)
+        strength = try container.decodeIfPresent(Int.self, forKey: .strength) ?? 1
+    }
 }
 
 /// An output of the audio route as the system names it.

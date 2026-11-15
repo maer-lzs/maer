@@ -29,15 +29,18 @@ nonisolated enum SoundSurface {
         case followsDefault
         /// The sound as it comes.
         case off
-        /// A preset, with the gain in percent when it is raised.
-        case preset(id: String, gainPercent: Int?)
+        /// A preset at a strength above 1 or nil, with the gain in percent
+        /// when it is raised.
+        case preset(id: String, strength: Int?, gainPercent: Int?)
     }
 
     static func summary(_ setting: SoundSetting?) -> Summary {
         guard let setting else { return .followsDefault }
         if setting.isOff { return .off }
         let percent = gainPercent(setting.clampedGain)
-        return .preset(id: SoundPresets.preset(setting.presetID).id, gainPercent: percent == 100 ? nil : percent)
+        let preset = SoundPresets.preset(setting.presetID)
+        let strength = preset.isFlat || setting.strength <= 1 ? nil : setting.strength
+        return .preset(id: preset.id, strength: strength, gainPercent: percent == 100 ? nil : percent)
     }
 
     /// Why the filter cannot work on what plays now, if it cannot.

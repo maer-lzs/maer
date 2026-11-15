@@ -2158,6 +2158,36 @@
         }
       }
     },
+    "Bass" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiefen"
+          }
+        }
+      }
+    },
+    "Bass lowered" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiefen abgesenkt"
+          }
+        }
+      }
+    },
+    "Bass raised" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiefen angehoben"
+          }
+        }
+      }
+    },
     "Because you listen to %@" : {
       "localizations" : {
         "de" : {
@@ -3982,6 +4012,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bildung"
+          }
+        }
+      }
+    },
+    "Effect on the sound" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wirkung auf den Klang"
           }
         }
       }
@@ -8347,6 +8387,16 @@
         }
       }
     },
+    "Original" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Original"
+          }
+        }
+      }
+    },
     "Other devices" : {
       "localizations" : {
         "de" : {
@@ -9476,12 +9526,12 @@
         }
       }
     },
-    "Raises quiet recordings up to twice the volume. A limiter keeps loud passages from distorting." : {
+    "Raises the volume by up to 6 dB, about two steps of the volume buttons. A limiter keeps loud passages from distorting." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hebt leise Aufnahmen bis auf die doppelte Lautstärke an. Ein Begrenzer hält laute Stellen unverzerrt."
+            "value" : "Hebt die Lautstärke um bis zu 6 dB an, etwa zwei Stufen der Lautstärketasten. Ein Begrenzer hält laute Stellen frei von Verzerrung."
           }
         }
       }
@@ -11093,6 +11143,16 @@
         }
       }
     },
+    "Sound unchanged" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klang unverändert"
+          }
+        }
+      }
+    },
     "Soundtrack" : {
       "localizations" : {
         "de" : {
@@ -11440,6 +11500,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Streams"
+          }
+        }
+      }
+    },
+    "Strength" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stärke"
+          }
+        }
+      }
+    },
+    "Strength %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stärke %lld"
           }
         }
       }
@@ -13497,6 +13577,36 @@
         }
       }
     },
+    "Treble" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Höhen"
+          }
+        }
+      }
+    },
+    "Treble lowered" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Höhen abgesenkt"
+          }
+        }
+      }
+    },
+    "Treble raised" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Höhen angehoben"
+          }
+        }
+      }
+    },
     "True Crime" : {
       "localizations" : {
         "de" : {
@@ -14000,6 +14110,36 @@
         }
       }
     },
+    "Voice" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stimme"
+          }
+        }
+      }
+    },
+    "Voice lowered" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stimme abgesenkt"
+          }
+        }
+      }
+    },
+    "Voice raised" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stimme angehoben"
+          }
+        }
+      }
+    },
     "Volume %lld of your series" : {
       "localizations" : {
         "de" : {
@@ -14016,6 +14156,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verstärkung"
+          }
+        }
+      }
+    },
+    "Volume raised to %lld %%" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lautstärke auf %lld %% angehoben"
           }
         }
       }

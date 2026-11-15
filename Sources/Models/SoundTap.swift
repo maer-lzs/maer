@@ -20,7 +20,7 @@ nonisolated final class SoundChain {
     let delays: UnsafeMutablePointer<Float>
 
     init(setting: SoundSetting, sampleRate: Double, channels: Int) {
-        let preset = SoundPresets.preset(setting.presetID)
+        let preset = setting.shapedPreset
         isOff = setting.isOff
         gain = Float(setting.clampedGain)
         self.channels = channels

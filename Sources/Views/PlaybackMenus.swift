@@ -56,6 +56,7 @@ struct SleepTimerMenu: View {
     /// A cell of the side column's capsule: the glyph, and while a timer
     /// runs the number of its remaining minutes small under it.
     var columnCell = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     static let options: [Double] = [5, 15, 30, 45, 60]
 
@@ -127,7 +128,10 @@ struct SleepTimerMenu: View {
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(Text(minutes.map { DurationText.length(minutes: $0) } ?? label))
-                } else if iconOnly {
+                } else if iconOnly || dynamicTypeSize.isAccessibilitySize {
+                    // At the accessibility sizes the word breaks inside the
+                    // player's narrow cell: the symbol stands alone, as the
+                    // effects' does, and the word stays for VoiceOver.
                     Image(systemName: symbol)
                         .accessibilityLabel(Text(label))
                 } else {
