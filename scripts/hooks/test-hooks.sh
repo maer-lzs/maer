@@ -54,6 +54,22 @@ expect pass   "line names a key without its value" Sources/E.swift 'let tokenKey
 expect refuse "new markdown line carries a dash" docs/d.md "The row – four buttons" "A line in the docs"
 expect pass   "new markdown line without a dash" docs/e.md "The row, four buttons" "A line in the docs"
 
+# What already stands in the code and must pass.
+expect pass   "message names the app with its umlaut" docs/i.md "one" "Mär shows the sheet"
+expect pass   "comment names the app with its umlaut" Sources/G.swift "// Mär keeps the row" "A comment in the source"
+expect pass   "new Swift file with the licence header" Sources/H.swift $'// Mär — an audio player for self-hosted open ecosystems\n// Copyright (C) 2026 Laurenz Schröder\n// SPDX-License-Identifier: GPL-3.0-or-later\n// Additional terms apply — see LICENSE-ADDITIONAL-TERMS' "A new file in the source"
+expect pass   "German text in a string literal" Sources/I.swift 'Text("Schon abonniert, die Taste wird nicht mehr gezeigt")' "A display text in the source"
+expect pass   "German text in the catalog"  Sources/Localizable.xcstrings '"value" : "Die Taste wird nicht mehr gezeigt"' "A display text in the catalog"
+expect pass   "German line in the inventory" docs/components.md "| Die Reihe zeigt vier Tasten und nicht mehr fuenf |" "A row of the inventory"
+
+# What would slip through otherwise.
+expect refuse "message names a channel hash" docs/j.md "one" "Follows the order as in a2caecfd"
+expect refuse "message names a role in capitals" docs/j.md "two" "The MOMO review adds a line"
+expect refuse "message names a role inside a word" docs/j.md "three" "A fable-built row"
+expect refuse "string holds 40 hex characters" Sources/J.swift 'let seed = "0123456789abcdef0123456789abcdef01234567"' "A constant in the source"
+expect refuse "line carries an authorization value" docs/k.md "Authorization: token ghp0123456789abcdefABCDEF" "A line in the docs"
+expect refuse "Swift comment carries a dash" Sources/K.swift "// The row — four buttons" "A comment in the source"
+
 # The author: another identity is refused.
 git config user.email someone@example.com
 expect refuse "another author"              docs/f.md "one" "A line by someone else"
