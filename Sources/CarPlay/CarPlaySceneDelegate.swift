@@ -102,13 +102,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// Podcast subscriptions load asynchronously at app start. On a CarPlay
     /// cold start (car scene only, no UI) wait for them, or the podcast tab
-    /// would silently be missing. Same for the download scan.
+    /// would silently be missing. Same for the download scan. The library
+    /// and the last session come by the app's own start path, paused, so
+    /// the player has a title to show.
     private func prepare() async {
         await PodcastSubscriptions.shared.ensureLoaded()
         await downloads.ensureScanned()
-        if session.libraryViewModel.entries.isEmpty {
-            await session.libraryViewModel.loadLibrary()
-        }
+        await session.playerCoordinator.restoreAtColdStart(library: session.libraryViewModel)
     }
 
     // MARK: - Following the app

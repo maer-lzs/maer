@@ -750,17 +750,10 @@ struct LibraryView: View {
             playerCoordinator.onItemRestarted = { [weak viewModel] itemId in
                 viewModel?.markUnfinishedLocally(itemId: itemId)
             }
-            if viewModel.entries.isEmpty {
-                // Render the cached library IMMEDIATELY and
-                // restore the mini-player from it. BEFORE the network load,
-                // which then replaces everything silently.
-                await viewModel.showCachedLibraryIfAvailable()
-                await playerCoordinator.restoreLastSession(from: viewModel.entries)
-                await viewModel.loadLibrary()
-            }
-            // Silently bring the last played book into the mini-player (no-op
-            // when the cache-first path above already restored it).
-            await playerCoordinator.restoreLastSession(from: viewModel.entries)
+            // The cached library IMMEDIATELY and the mini-player from it,
+            // BEFORE the network load, which then replaces everything
+            // silently. The car started alone takes the same path.
+            await playerCoordinator.restoreAtColdStart(library: viewModel)
             // Cold start via quick action / Siri: the request arrived before
             // the library was loaded. Execute it now.
             await handlePendingResumeRequest()

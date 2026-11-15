@@ -179,6 +179,21 @@ struct CarPlayLayoutTests {
         #expect(ids == ["rss:f:g"])
     }
 
+    @Test("a car started alone restores the last session paused, by the app's own start path", .needsTheSources)
+    func carColdStartRestoresLikeTheApp() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        let app = try FetchAnswerTests.squeezedSource("Sources/Views/LibraryView.swift")
+        #expect(car.contains("await session.playerCoordinator.restoreAtColdStart(library: session.libraryViewModel)"),
+                "the car's prepare skips the restore, the player has no title")
+        #expect(app.contains("await playerCoordinator.restoreAtColdStart(library: viewModel)"),
+                "the app starts by a path of its own")
+        // The restore itself stays inside the one start path.
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "PlayerCoordinator.swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            #expect(!text.contains("restoreLastSession("), "\(file.lastPathComponent) restores beside the start path")
+        }
+    }
+
     @Test("after an open in the car: the player when the title runs, a hint with the app's sentence when it started nothing")
     func afterAnOpenAsATable() {
         #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b1", failure: nil) == .player)

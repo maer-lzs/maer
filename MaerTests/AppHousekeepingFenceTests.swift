@@ -88,18 +88,17 @@ struct AppHousekeepingFenceTests {
     @Test("The housekeeping comes after Library and Continue Listening", .needsTheSources)
     func housekeepingStandsBehindTheContent() throws {
         let code = try codeOf("Sources/Views/LibraryView.swift")
-        guard let cachedLibrary = code.range(of: "showCachedLibraryIfAvailable"),
-              let restore = code.range(of: "restoreLastSession"),
+        // The cached library and the restore are one call, shared with the
+        // car (`restoreAtColdStart`).
+        guard let restore = code.range(of: "playerCoordinator.restoreAtColdStart(library:"),
               let maintenance = code.range(of: "AppHousekeeping.maintenance()"),
               let services = code.range(of: "AppHousekeeping.startServices()")
         else {
-            Issue.record("eine der vier Marken fehlt: die Startsequenz wurde umgebaut")
+            Issue.record("eine der drei Marken fehlt: die Startsequenz wurde umgebaut")
             return
         }
-        #expect(cachedLibrary.lowerBound < maintenance.lowerBound,
-                "die Wartung steht wieder VOR der zwischengespeicherten Bibliothek")
         #expect(restore.lowerBound < maintenance.lowerBound,
-                "die Wartung steht vor dem Weiterhoeren")
+                "die Wartung steht wieder VOR der Bibliothek und dem Weiterhoeren")
         #expect(services.lowerBound < maintenance.lowerBound,
                 "die Wartung ist nicht mehr der letzte Schritt")
     }

@@ -966,6 +966,19 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
+    /// The start of a launch, the same for the app's library and for the
+    /// car started alone: the stored library first and the last session
+    /// paused from it, then the network load and the restore again for a
+    /// title only the fresh list names. A session already open stays.
+    func restoreAtColdStart(library: LibraryViewModel) async {
+        if library.entries.isEmpty {
+            await library.showCachedLibraryIfAvailable()
+            await restoreLastSession(from: library.entries)
+            await library.loadLibrary()
+        }
+        await restoreLastSession(from: library.entries)
+    }
+
     /// The standby pointer's resolution chain, shared by the start restore,
     /// the live refresh, the play on a foreign claim and the door that
     /// continues listening (`resume`). Every exit writes one line: what was

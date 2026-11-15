@@ -21,6 +21,10 @@ when your music server last saw it played, also on another device, and
 fall back to when this device played it. Before, the car and the Music
 tab only knew this device, so the rows could differ.
 
+**The car remembers what you last heard.** When Mär starts in the car
+without being opened on the phone, it now loads your last title paused,
+as the app does at start, so the player has something to continue.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf
