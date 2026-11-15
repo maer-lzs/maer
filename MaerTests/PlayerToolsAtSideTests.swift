@@ -75,7 +75,9 @@ struct PlayerToolsAtSideTests {
     func theGroundFillsAndTheContentKeepsClear() throws {
         let player = try source("Sources/Views/PlayerView.swift")
         #expect(player.components(separatedBy: ".opacity(SheetCorners.opacity(dragProgress: dragProgress))\n                .ignoresSafeArea()").count - 1 == 1)
-        #expect(player.contains(".opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))\n                .ignoresSafeArea()"))
+        #expect(player.contains(".opacity(max(0.0, Self.groundOpacity - Double(dragProgress) * Self.groundOpacity))\n                .ignoresSafeArea()"))
+        // The sheet and its open corners fill with the one ground.
+        #expect(player.components(separatedBy: "Self.ground(colorLoader.accent)").count - 1 == 2)
         #expect(player.contains(".padding(columnPlacement?.edge ?? [], columnPlacement?.strip ?? 0)"))
     }
 

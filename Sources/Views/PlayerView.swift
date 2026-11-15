@@ -87,15 +87,9 @@ struct PlayerView: View {
             // full-screen geometry: identical top coverage (status bar) at rest
             // AND on the first drag frame, same rounded corners as the glassEffect.
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [colorLoader.accent, Color.black],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                // At rest ~0.9, fade out quickly while dragging → glass dominates.
-                .opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))
+                .fill(Self.ground(colorLoader.accent))
+                // At rest almost opaque, fading out quickly while dragging → glass dominates.
+                .opacity(max(0.0, Self.groundOpacity - Double(dragProgress) * Self.groundOpacity))
                 // Beside a side column the content keeps to the free area,
                 // the ground still reaches every edge.
                 .ignoresSafeArea()
@@ -104,9 +98,7 @@ struct PlayerView: View {
             // hinge side of a foldable, an iPad). Gone as soon as the drag
             // starts, so the moving sheet keeps its rounded corners.
             SheetCorners(radius: cornerRadius)
-                .fill(LinearGradient(colors: [colorLoader.accent, Color.black],
-                                     startPoint: .top, endPoint: .bottom),
-                      style: FillStyle(eoFill: true))
+                .fill(Self.ground(colorLoader.accent), style: FillStyle(eoFill: true))
                 .opacity(SheetCorners.opacity(dragProgress: dragProgress))
                 .ignoresSafeArea()
 
@@ -1231,6 +1223,20 @@ struct PlayerView: View {
 /// constant radius (a changing glass shape re-renders on every drag frame);
 /// this shape fills what it leaves open while the sheet rests.
 /// `nonisolated`: `Shape` is not main-actor bound, and the path is pure geometry.
+extension PlayerView {
+    /// The player's ground: the cover's colour holds undimmed through the
+    /// upper part (`groundHold`) and only then runs into black. The sheet
+    /// and its open corners both fill with it.
+    static let groundHold: Double = 0.45
+    static let groundOpacity: Double = 0.95
+
+    static func ground(_ accent: Color) -> LinearGradient {
+        LinearGradient(stops: [.init(color: accent, location: 0), .init(color: accent, location: groundHold),
+                               .init(color: .black, location: 1)],
+                       startPoint: .top, endPoint: .bottom)
+    }
+}
+
 /// The player's row: the symbol alone on the iPhone, symbol and word on the
 /// iPad. Either way the word stays the button's name for VoiceOver.
 struct PlayerRowLabelStyle: LabelStyle {
