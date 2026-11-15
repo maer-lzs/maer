@@ -15,6 +15,12 @@ the player with another title or none.
 Music tabs in CarPlay now have a Downloads page, like Audiobooks, as soon
 as something of that kind is downloaded.
 
+**Listen Again orders albums the same way everywhere.** Start, the
+Music tab, the full Listen Again page and the car now date an album by
+when your music server last saw it played, also on another device, and
+fall back to when this device played it. Before, the car and the Music
+tab only knew this device, so the rows could differ.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

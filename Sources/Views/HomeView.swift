@@ -350,7 +350,8 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// "Listen Again" with the moment of each entry, where known: the one
     /// reading for the row and for the widget's rows.
     private func listenAgain(limit: Int) -> (entries: [RecentlyPlayedRow.Entry], times: [String: Double]) {
-        let albumTimes = RecentlyPlayedRow.albumTimes(musicContinueProgress)
+        let albumTimes = RecentlyPlayedRow.albumMoments(recentMusicItems.map(\.id), server: musicContinueProgress,
+                                                        positions: ListeningStore.positions())
         let stationTimes = RadioStore.recentTimes()
         let catalogTimes = RecentlyPlayedRow.catalogTimes(catalogTracks)
         let entries = RecentlyPlayedRow.merged(

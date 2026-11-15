@@ -94,7 +94,8 @@ enum SharedRows {
                                                   hiddenMarkers: ContinueHiddenStore.markers())
         return RecentlyPlayedRow.merged(
             albums: albums,
-            albumTimes: RecentlyPlayedRow.deviceTimes(albums, positions: ListeningStore.positions()),
+            albumTimes: RecentlyPlayedRow.albumMoments(albums, server: LateMusicValues.shared.progress,
+                                                       positions: ListeningStore.positions()),
             continued: [], stations: [], stationTimes: [:],
             catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),
             limit: Int.max)
@@ -112,7 +113,7 @@ enum SharedRows {
                                                   hiddenMarkers: ContinueHiddenStore.markers())
         return RecentlyPlayedRow.merged(
             albums: albums,
-            albumTimes: RecentlyPlayedRow.deviceTimes(albums, positions: positions),
+            albumTimes: RecentlyPlayedRow.albumMoments(albums, server: LateMusicValues.shared.progress, positions: positions),
             continued: continued,
             stations: RadioStore.recents().map(\.id), stationTimes: RadioStore.recentTimes(),
             catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),

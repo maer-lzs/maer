@@ -109,6 +109,16 @@ nonisolated enum RecentlyPlayedRow {
         return times
     }
 
+    /// The `albumTimes` argument every surface passes (Start, the music
+    /// tab, the mixed page and the car): the server's moment of an album
+    /// where its progress names one, since it knows what other devices
+    /// heard; else the moment this device last heard it. An album neither
+    /// knows stays undated and keeps its source order.
+    static func albumMoments(_ ids: [String], server: [String: BookProgress],
+                             positions: [String: [Double]]) -> [String: Double] {
+        deviceTimes(ids, positions: positions).merging(albumTimes(server)) { _, served in served }
+    }
+
     /// The `catalogTimes` argument. The first entry per id decides, exactly
     /// as the hand-written mapping did; whether that entry carries a time is
     /// then the one question above.

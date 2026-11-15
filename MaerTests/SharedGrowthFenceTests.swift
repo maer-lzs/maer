@@ -141,7 +141,11 @@ struct SharedGrowthFenceTests {
     /// 757: the one place a server leaves the device forgets the sets the
     /// next first answer compares with, at the episode provider and the
     /// library (two, in `AuthViewModel.forgetFormerServer`, none in a view).
-    nonisolated static let sourcesStock = 757
+    /// 759: the music tab's and the car's Listen Again date albums by the
+    /// one rule, with the server's music progress the app holds
+    /// (`LateMusicValues`), as Start and the mixed page do (two, in
+    /// `SharedRows`, none in a view).
+    nonisolated static let sourcesStock = 759
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

@@ -157,6 +157,22 @@ struct RecentlyPlayedRowTests {
         #expect(merged == [.catalogTrack(id: "jam:1"), .album(id: "sub:album:a"), .album(id: "sub:album:d")])
     }
 
+    @Test("an album's moment as a table: the server's where known, else this device's, else none")
+    func albumMomentsAsATable() {
+        let server = ["sub:album:a": BookProgress(fraction: 0.2, isFinished: false, lastUpdate: 9_000_000),
+                      "sub:album:z": BookProgress(fraction: 0.2, isFinished: false, lastUpdate: 0)]
+        let positions: [String: [Double]] = ["sub:album:a": [0, 2_000_000], "sub:album:b": [0, 3_000_000],
+                                             "sub:album:z": [0, 4_000_000]]
+        let times = RecentlyPlayedRow.albumMoments(["sub:album:a", "sub:album:b", "sub:album:c", "sub:album:z"],
+                                                   server: server, positions: positions)
+        #expect(times == ["sub:album:a": 9000, "sub:album:b": 3000, "sub:album:z": 4000],
+                "the server wins where it knows a moment; a zero from it leaves the device's; none from either stays undated")
+        // The car and the app with the same inputs give the same row.
+        let car = RecentlyPlayedRow.merged(albums: ["sub:album:b", "sub:album:a"], albumTimes: times, continued: [],
+                                           stations: [], stationTimes: [:], catalog: [], catalogTimes: [:], limit: 10)
+        #expect(car == [.album(id: "sub:album:a"), .album(id: "sub:album:b")])
+    }
+
     /// The rule itself, in both directions. A negative time is as
     /// little a time as a zero.
     @Test("non-positive means unknown, positive stays unchanged")
@@ -182,10 +198,12 @@ struct RecentlyPlayedRowTests {
             seen.insert(leaf)
             #expect(surfaces.contains(leaf),
                     "eine dritte Flaeche baut die Reihe: \(leaf)")
-            // The music tab holds no server progress: its album times
-            // come from the device's stock, through the one door for that.
-            #expect(text.contains("RecentlyPlayedRow.albumTimes(") || text.contains("RecentlyPlayedRow.deviceTimes("),
-                    "\(leaf) baut die Album-Zeiten selbst")
+            // Every surface, the car among them, dates albums by the one
+            // rule: the server's moment where known, else this device's.
+            #expect(text.contains("RecentlyPlayedRow.albumMoments(")
+                    && !text.contains("albumTimes: RecentlyPlayedRow.albumTimes(")
+                    && !text.contains("albumTimes: RecentlyPlayedRow.deviceTimes("),
+                    "\(leaf) dates albums by a rule of its own")
             #expect(text.contains("RecentlyPlayedRow.catalogTimes("),
                     "\(leaf) baut die Katalog-Zeiten selbst")
             // Stations only where the row carries them; the music tab

@@ -127,7 +127,8 @@ struct MixedMediaPage: View {
     private var listenAgainEntries: [RecentlyPlayedRow.Entry] {
         RecentlyPlayedRow.merged(
             albums: listenAgainAlbums.map(\.id),
-            albumTimes: RecentlyPlayedRow.albumTimes(LateMusicValues.shared.progress),
+            albumTimes: RecentlyPlayedRow.albumMoments(listenAgainAlbums.map(\.id), server: LateMusicValues.shared.progress,
+                                                       positions: ListeningStore.positions()),
             continued: Set(continueIds),
             stations: listenAgainStations.map(\.id),
             stationTimes: RadioStore.recentTimes(),
