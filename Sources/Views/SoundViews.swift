@@ -242,7 +242,8 @@ struct SoundSummaryText: View {
     }
 }
 
-/// The player's button for the sound effects, beside the speed: coloured
+/// The player's button for the sound effects, one of the four cells of its
+/// second row: coloured
 /// while the connected device plays with a setting, as the speed is when
 /// it is not 1×.
 struct EffectsButton: View {
