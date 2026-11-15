@@ -11,6 +11,10 @@ episode, a list or an album you tap in CarPlay cannot start, for example
 offline and not downloaded, the car shows the reason with OK instead of
 the player with another title or none.
 
+**Downloads in the car for podcasts and music too.** The Podcasts and
+Music tabs in CarPlay now have a Downloads page, like Audiobooks, as soon
+as something of that kind is downloaded.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

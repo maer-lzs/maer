@@ -52,6 +52,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private let queue = PlayQueue.shared
     private let playlistStore = MaerPlaylists.shared
     private let context = PlaybackContext.shared
+    private let downloads = DownloadManager.shared
     private let nowPlaying = CPNowPlayingTemplate.shared
 
     func templateApplicationScene(
@@ -104,7 +105,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// would silently be missing. Same for the download scan.
     private func prepare() async {
         await PodcastSubscriptions.shared.ensureLoaded()
-        await DownloadManager.shared.ensureScanned()
+        await downloads.ensureScanned()
         if session.libraryViewModel.entries.isEmpty {
             await session.libraryViewModel.loadLibrary()
         }
@@ -122,6 +123,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             PodcastSubscriptions.shared.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
             session.libraryViewModel.$continueListening.map { _ in () }.eraseToAnyPublisher(),
             session.$sourcesVersion.map { _ in () }.eraseToAnyPublisher(),
+            // The downloads pages of Podcasts and Music come and go with them.
+            downloads.stock.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
         ]
         Publishers.MergeMany(changes)
             .debounce(for: .seconds(1.5), scheduler: RunLoop.main)
@@ -470,20 +473,35 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                 },
             ]
         case .podcasts:
-            return [Page(title: String(localized: "Shows"), symbol: "square.stack") { [weak self] in await self?.pushShows() }]
+            return downloadsPage(.podcasts)
+                + [Page(title: String(localized: "Shows"), symbol: "square.stack") { [weak self] in await self?.pushShows() }]
         case .music:
             let lists = CarPlayLayout.coversCarryNames ? [] : [
                 Page(title: String(localized: "Playlists"), symbol: "music.note.list") { [weak self] in
                     await self?.pushPlaylists()
                 },
             ]
-            return lists + [
+            return downloadsPage(.music) + lists + [
                 Page(title: String(localized: "Albums"), symbol: "square.stack") { [weak self] in await self?.pushAlbums() },
                 Page(title: String(localized: "Artists"), symbol: "music.mic") { [weak self] in await self?.pushArtists() },
             ]
         case .start, .radio:
             return []
         }
+    }
+
+    /// The downloads of a kind as a page, by the rule the storage settings
+    /// count them with (`DownloadKind.ids`); no page without downloads.
+    /// The titles stand sorted by name.
+    private func downloadsPage(_ kind: DownloadKind) -> [Page] {
+        let ids = kind.ids(in: downloads.downloadedItemIds, recorded: downloads.kinds, sole: downloads.soleKind(of:))
+        guard !ids.isEmpty else { return [] }
+        return [Page(title: String(localized: "Downloads list"), symbol: "arrow.down.circle") { [weak self] in
+            guard let self else { return }
+            let items = ids.compactMap { self.session.playableItem(forId: $0) }
+                .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            await self.pushList(String(localized: "Downloads list"), items)
+        }]
     }
 
     /// The pages as rows below a tab's content. The system's buttons on top

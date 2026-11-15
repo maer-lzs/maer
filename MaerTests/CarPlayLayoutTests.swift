@@ -160,9 +160,23 @@ struct CarPlayLayoutTests {
         for signal in ["ListeningRevision.shared.objectWillChange", "queue.$ids",
                        "playlistStore.$playlists", "PodcastSubscriptions.shared.objectWillChange",
                        "session.libraryViewModel.$continueListening", "session.$sourcesVersion",
+                       "downloads.stock.objectWillChange",
                        "template.updateSections(", "tabBar.updateTemplates("] {
             #expect(car.contains(signal), "the car does not follow \(signal)")
         }
+    }
+
+    @Test("Podcasts and Music carry a downloads page by the rule the storage settings count with, only with downloads", .needsTheSources)
+    func downloadsPagesForEveryKind() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        #expect(car.contains("return downloadsPage(.podcasts)"), "Podcasts carry no downloads page")
+        #expect(car.contains("return downloadsPage(.music) + lists"), "Music carries no downloads page")
+        #expect(car.contains("kind.ids(in: downloads.downloadedItemIds, recorded: downloads.kinds, sole: downloads.soleKind(of:))")
+                && car.contains("guard !ids.isEmpty else { return [] }"),
+                "the car counts downloads by a rule of its own, or shows an empty page")
+        // The rule itself: a podcast id counts as a podcast, music by its recorded kind.
+        let ids = DownloadKind.podcasts.ids(in: ["rss:f:g", "li_book"], recorded: [:], sole: { _ in nil })
+        #expect(ids == ["rss:f:g"])
     }
 
     @Test("after an open in the car: the player when the title runs, a hint with the app's sentence when it started nothing")
