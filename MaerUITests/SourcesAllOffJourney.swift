@@ -140,7 +140,12 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         let row = app.buttons["settings-music-source"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         row.tap()
-        flipAndWait(app.switches["music-tab-toggle"].firstMatch, "the toggle must flip")
+        // The switch stands below the server fields and the library
+        // section. iOS 27.1 builds a Form row only once it scrolls into
+        // view, so the switch is reached first, like the master switch.
+        let sourceToggle = app.switches["music-tab-toggle"].firstMatch
+        XCTAssertTrue(scrollTo(app, sourceToggle, hittable: true), "the source page must carry its switch")
+        flipAndWait(sourceToggle, "the toggle must flip")
         // Back to the settings root (Done lives on ITS toolbar), then out.
         backFromPage(app)   // source page to area page
         backFromPage(app)   // area page to the map
