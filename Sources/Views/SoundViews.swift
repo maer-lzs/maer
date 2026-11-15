@@ -245,6 +245,8 @@ struct SoundSummaryText: View {
 /// it is not 1×.
 struct EffectsButton: View {
     @ObservedObject var viewModel: PlayerViewModel
+    /// The player's row of symbols: the symbol at every size.
+    var iconOnly = false
     @State private var showsSheet = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -254,7 +256,7 @@ struct EffectsButton: View {
             // into single letters in the player's narrow cell: the symbol
             // stands alone there and the word stays for VoiceOver.
             Group {
-                if dynamicTypeSize.isAccessibilitySize {
+                if iconOnly || dynamicTypeSize.isAccessibilitySize {
                     Image(systemName: "slider.vertical.3")
                         .accessibilityLabel(Text("Effects"))
                 } else {

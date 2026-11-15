@@ -59,6 +59,15 @@ struct SoundCurveTests {
         #expect(SoundCurveView.words([]) == String(localized: "Sound unchanged"))
     }
 
+    @Test("the skip interval shows its number in the arrow where the system has one, else the plain arrow")
+    @MainActor
+    func theSkipSymbol() {
+        #expect(PlayerView.skipSymbol(seconds: 30) == "goforward.30")
+        #expect(PlayerView.skipSymbol(seconds: 15) == "goforward.15")
+        #expect(PlayerView.skipSymbol(seconds: 5) == "goforward.5")
+        #expect(PlayerView.skipSymbol(seconds: 20) == "goforward")
+    }
+
     @Test("the strength multiplies the preset's bands 1, 1.5, 2, 2.5; a setting stored without it reads as 1")
     func theStrength() throws {
         #expect(SoundSetting.strengths.map(SoundSetting.factor) == [1, 1.5, 2, 2.5])
@@ -104,7 +113,16 @@ struct SoundCurveTests {
         #expect(views.contains("SoundCurve.curve(setting, count: Self.samples)")
                 && views.contains(".accessibilityValue(Text(verbatim: Self.words(SoundCurve.changes(setting))))"),
                 "the drawing or its words do not come from the one curve")
+        let player = try read("Sources/Views/PlayerView.swift")
+        #expect(player.contains("private var toolsAsSymbols: Bool { horizontalSizeClass == .compact }")
+                && player.contains("} else if toolsAsSymbols {"), "the iPhone player still shows the tools with words")
+        for cell in ["SpeedMenu(viewModel: viewModel, valueOnly: true)", "EffectsButton(viewModel: viewModel, iconOnly: true)",
+                     "skipIntervalMenu(symbolOnly: true)", "SleepTimerMenu(viewModel: viewModel, columnCell: true, onPlayer: true)",
+                     ".dynamicTypeSize(...DynamicTypeSize.accessibility1)"] {
+            #expect(player.contains(cell), "the row of symbols lacks \(cell)")
+        }
         let menus = try read("Sources/Views/PlaybackMenus.swift")
+        #expect(menus.contains(".accessibilityLabel(Text(\"Speed \\(text)\"))"), "the rate alone has no word for VoiceOver")
         #expect(menus.contains("} else if iconOnly || dynamicTypeSize.isAccessibilitySize {"),
                 "at the accessibility sizes the sleep timer's word breaks in the player's cell")
     }

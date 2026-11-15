@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**The player's tools stand in one row on the iPhone.** Speed, effects,
+chapters, the skip interval and the sleep timer show as symbols in one
+even row instead of words in two uneven ones: the speed as its rate, the
+skip interval as its number in the arrow, and the sleep timer with its
+minutes while it runs. VoiceOver still says every name. On the iPad, and
+at the largest text sizes there, the sleep timer shows its symbol alone
+instead of breaking the word.
+
 **A quick second tap on another title keeps it playing.** When you tap a
 title and then another one while the first is still checking the
 network, the first no longer stops the second once its check returns.
@@ -97,10 +105,13 @@ longer says Subsonic has to be off: your Jellyfin albums, artists and
 playlists appear in the Music tab beside those of a Subsonic server.
 
 **Sound effects for each device.** Next to the speed in the player,
-Effects opens a sheet for the device the sound goes out on now: Off,
-Clearer Speech, Old Recordings or Louder, and a volume boost up to twice
-the volume with a limiter that keeps loud passages clean; Off also takes
-the boost back to 100 percent. The choice stays with that device, so
+Effects opens a sheet for the device the sound goes out on now: Original,
+Clearer Speech, Old Recordings or Louder, each but Original at a strength
+from 1 to 4, and a volume boost of up to 6 dB with a limiter that keeps
+loud passages clean; Original also takes the boost back to 100 percent.
+A curve at the top of the sheet shows what the setting does to the
+sound, from bass to treble, and VoiceOver says it in words. The choice
+stays with that device, so
 headphones, a hearing aid and the car each keep their own. Settings,
 Playback, Sound holds the default for other devices and every device Mär
 has played on; a car is listed as CarPlay with its name. Sound effects do

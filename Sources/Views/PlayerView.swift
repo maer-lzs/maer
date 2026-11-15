@@ -52,6 +52,7 @@ struct PlayerView: View {
     /// overflow the screen horizontally. Spacing shrinks and the secondary/
     /// tertiary rows fall back to icon-only (`MeasuredFits`, never ViewThatFits).
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
     /// The tabs stand at the side (`FullPlayerOverlay` hands it in): the
     /// glyph tools, the sleep timer and AirPlay stand in the player's own
@@ -884,9 +885,53 @@ struct PlayerView: View {
                 .font(.footnote)
                 .padding(.top, 4)
             }
+        } else if toolsAsSymbols {
+            symbolRow
         } else {
             regularSecondaryControls
         }
+    }
+
+    /// On an iPhone the tools stand as one even row of symbols, without
+    /// their words; the iPad keeps symbol and word.
+    private var toolsAsSymbols: Bool { horizontalSizeClass == .compact }
+
+    /// Speed (its rate), effects, chapters, the skip interval (its number
+    /// in the arrow) and the sleep timer (its minutes while it runs), each
+    /// in an equal share of the width. Every one keeps its word for
+    /// VoiceOver. The symbols grow no further than the first accessibility
+    /// step, as the transport row's, so five still fit a 375 pt screen.
+    private var symbolRow: some View {
+        HStack(spacing: 0) {
+            SpeedMenu(viewModel: viewModel, valueOnly: true)
+                .frame(maxWidth: .infinity)
+            EffectsButton(viewModel: viewModel, iconOnly: true)
+                .frame(maxWidth: .infinity)
+            if hasChapterEntry {
+                Button { showChapters = true } label: {
+                    Image(systemName: "list.bullet")
+                        .accessibilityLabel(Text(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
+                                                                            isFallback: viewModel.chaptersAreFallback)))
+                }
+                .frame(maxWidth: .infinity)
+            }
+            skipIntervalMenu(symbolOnly: true)
+                .frame(maxWidth: .infinity)
+            if !toolsAtSide {
+                SleepTimerMenu(viewModel: viewModel, columnCell: true, onPlayer: true)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .font(.title3)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .padding(.top, 4)
+    }
+
+    /// The arrow with the interval's number where the system has one
+    /// (`goforward.15`, `goforward.30`, …), else the plain arrow.
+    nonisolated static func skipSymbol(seconds: Double) -> String {
+        let whole = Int(seconds)
+        return [5, 10, 15, 30, 45, 60, 75, 90].contains(whole) ? "goforward.\(whole)" : "goforward"
     }
 
     /// Row 2 shows only what exists. No chapters/parts ⇒ NO chapters button
@@ -944,13 +989,20 @@ struct PlayerView: View {
             }
     }
 
-    private var skipIntervalControl: some View {
+    private var skipIntervalControl: some View { skipIntervalMenu(symbolOnly: false) }
+
+    private func skipIntervalMenu(symbolOnly: Bool) -> some View {
             Menu {
                 ForEach(PlaybackSkip.options(for: viewModel.skipContent), id: \.self) { seconds in
                     Button("\(Int(seconds)) s") { viewModel.setSkipInterval(seconds) }
                 }
             } label: {
-                Label("\(Int(viewModel.skipInterval)) s", systemImage: "goforward")
+                if symbolOnly {
+                    Image(systemName: Self.skipSymbol(seconds: viewModel.skipInterval))
+                        .accessibilityLabel(Text("\(Int(viewModel.skipInterval)) s"))
+                } else {
+                    Label("\(Int(viewModel.skipInterval)) s", systemImage: "goforward")
+                }
             }
     }
 

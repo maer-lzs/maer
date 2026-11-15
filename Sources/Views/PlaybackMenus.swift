@@ -10,6 +10,8 @@ import SwiftUI
 struct SpeedMenu: View {
     @ObservedObject var viewModel: PlayerViewModel
     var iconOnly = false
+    /// The player's row of symbols: the rate alone stands for the speed.
+    var valueOnly = false
 
     static let rates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
 
@@ -28,7 +30,11 @@ struct SpeedMenu: View {
             let changed = viewModel.playbackRate != 1.0
             let text = Self.label(Double(viewModel.playbackRate)) + "×"
             Group {
-                if iconOnly {
+                if valueOnly {
+                    Text(verbatim: text)
+                        .monospacedDigit()
+                        .accessibilityLabel(Text("Speed \(text)"))
+                } else if iconOnly {
                     Image(systemName: "speedometer")
                         .accessibilityLabel(Text("Speed \(text)"))
                 } else {
@@ -56,6 +62,8 @@ struct SleepTimerMenu: View {
     /// A cell of the side column's capsule: the glyph, and while a timer
     /// runs the number of its remaining minutes small under it.
     var columnCell = false
+    /// In the full player, whose ground is dark in every appearance.
+    var onPlayer = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     static let options: [Double] = [5, 15, 30, 45, 60]
@@ -139,7 +147,7 @@ struct SleepTimerMenu: View {
                 }
             }
             .foregroundStyle(running ? AnyShapeStyle(AppTheme.accent)
-                                     : (iconOnly || columnCell ? AnyShapeStyle(.primary) : AnyShapeStyle(.white)))
+                                     : (!onPlayer && (iconOnly || columnCell) ? AnyShapeStyle(.primary) : AnyShapeStyle(.white)))
         }
     }
 }
