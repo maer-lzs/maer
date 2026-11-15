@@ -113,13 +113,7 @@ struct SameKeyFeedTests {
         #expect(tap == .alreadyHeld(sentence: PodcastSubscriptions.keptApartSentence("Held")))
         #expect(SubscribeTap.failureTitle(alreadyHeld: true) == String(localized: "Already subscribed")
                 && SubscribeTap.failureTitle(alreadyHeld: false) == String(localized: "Subscribe failed"),
-                "an address that counts as a followed show is said as a failure")
-        // Both notices that say it ask the one headline.
-        for (path, flag) in [("Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift", "subs.tapFailureAlreadyHeld"),
-                             ("Sources/Views/PodcastSourceView.swift", "subscribeErrorAlreadyHeld")] {
-            let text = try FetchAnswerTests.squeezedSource(path)
-            #expect(text.contains("SubscribeTap.failureTitle(alreadyHeld: \(flag))"), "\(path) names its own headline")
-        }
+                "the headline does not tell an address that counts as a followed show from a failure")
         #expect(PodcastSubscriptions.keptApartSentence("Held").contains("Held"))
         let mechanism = await subs.subscribeUnlessOnServer(urlString: fresh.feedURL, notesCloud: false,
                                                            isSingleUserAct: false)
@@ -130,13 +124,22 @@ struct SameKeyFeedTests {
         // A new link for the show that counts as it, another feed, is said.
         #expect(await subs.replaceShowLink(showId: held.id, newURL: fresh.feedURL, notesCloud: false)
                 == .keptApart(title: "Held"))
+        // A fetch for one episode folds nothing of another feed in.
+        #expect(await subs.absorb(fresh, showId: held.id) == nil)
+        #expect(subs.shows == before, "an entry changed the held show")
+    }
+
+    @Test("every place that says a followed show asks the one headline", .needsTheSources)
+    func placesAskTheOneHeadline() throws {
+        for (path, flag) in [("Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift", "subs.tapFailureAlreadyHeld"),
+                             ("Sources/Views/PodcastSourceView.swift", "subscribeErrorAlreadyHeld")] {
+            let text = try FetchAnswerTests.squeezedSource(path)
+            #expect(text.contains("SubscribeTap.failureTitle(alreadyHeld: \(flag))"), "\(path) names its own headline")
+        }
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(page.contains("newLinkKeptApart = PodcastSubscriptions.keptApartSentence(title)")
                 && page.contains("SubscribeTap.failureTitle(alreadyHeld: true)"),
                 "the new link on the show page does not say the followed show under its headline")
-        // A fetch for one episode folds nothing of another feed in.
-        #expect(await subs.absorb(fresh, showId: held.id) == nil)
-        #expect(subs.shows == before, "an entry changed the held show")
     }
 
     @Test("the address as written: no scheme, no www, the host small, the path in its case, counting parameters gone, sorted")

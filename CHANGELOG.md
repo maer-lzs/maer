@@ -8,8 +8,9 @@ or in a parameter Mär does not tell apart, count as one subscription.
 Subscribing to the second one used to take over the show you already
 followed, with the new feed's title and address, and the first feed was
 no longer fetched. Now the show you follow stays as it is, and Mär says,
-under Already subscribed, that the address counts as that show. An address of the same feed, over
-http or with a tracking parameter, still just refreshes it.
+under Already subscribed, that the address counts as that show. An
+address of the same feed, over http or with a tracking parameter, still
+just refreshes it.
 
 **A private feed with its key in the path stays on your device.** A feed
 address whose path carries a part such as private, token or secret
@@ -63,10 +64,9 @@ every sheet takes it from there.
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf
-during playback, or stopping
-without a network, then sends exactly that position once the server is
-reachable again. Before, the next start sent the position from up to
-five seconds earlier and dropped the newer one.
+during playback, or stopping without a network, then sends exactly that
+position once the server is reachable again. Before, the next start sent
+the position from up to five seconds earlier and dropped the newer one.
 
 **New episodes of Audiobookshelf shows go into Up Next.** A show on your
 Audiobookshelf server that is set to add new episodes to Up Next now does
@@ -88,13 +88,14 @@ playlists appear in the Music tab beside those of a Subsonic server.
 Effects opens a sheet for the device the sound goes out on now: Off,
 Clearer Speech, Old Recordings or Louder, and a volume boost up to twice
 the volume with a limiter that keeps loud passages clean; Off also takes
-the boost back to 100 percent. The choice stays with that device, so headphones, a hearing aid and the car each
-keep their own. Settings, Playback, Sound holds the default for other
-devices and every device Mär has played on; a car is listed as CarPlay
-with its name. Sound effects do not work on stations, nor on a title the
-server converts while it streams; the sheet says so, and a downloaded
-title works. When the audio of a title cannot be read, the sheet says
-that instead, and the choice still applies from the next title.
+the boost back to 100 percent. The choice stays with that device, so
+headphones, a hearing aid and the car each keep their own. Settings,
+Playback, Sound holds the default for other devices and every device Mär
+has played on; a car is listed as CarPlay with its name. Sound effects do
+not work on stations, nor on a title the server converts while it
+streams; the sheet says so, and a downloaded title works. When the audio
+of a title cannot be read, the sheet says that instead, and the choice
+still applies from the next title.
 
 ## v3.7 (Build 65)
 
