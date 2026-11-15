@@ -281,5 +281,48 @@ struct ColdStartCacheTests {
         let ids = try #require(try await rows.loadAllCounted().cache).items.map(\.id).sorted()
         #expect(ids == ["fresh", "kept"], "rows: \(ids)")
     }
+
+    // MARK: - The first answer after a start and the cache of another account
+
+    /// A cold start with the disk cache of an earlier run in place, a book
+    /// in Up Next, and a first answer that names the book finished. `held`
+    /// is the book's place in the set kept across starts: there for the
+    /// same account, empty after a switch forgot it.
+    private func coldStart(heldBefore: Bool) async throws -> (queue: PlayQueue, book: String) {
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        let book = "held-cache-\(UUID().uuidString.prefix(8))"
+        try await writeCache(home.database, items: [item(book)],
+                             progress: [book: BookProgress(fraction: 0.4, isFinished: false, lastUpdate: 1)])
+        if heldBefore {
+            let earlier = HeldUnfinished(database: home.database, kind: .books)
+            _ = earlier.adopt(before: [:], after: [book: BookProgress(fraction: 0.4, isFinished: false, lastUpdate: 1)])
+            await earlier.awaitPendingWrites()
+        }
+        let queue = PlayQueue(isPlayable: { _ in true })
+        queue.playLast(book)
+        let provider = MockProvider()
+        provider.items = [item(book)]
+        provider.progress = [book: BookProgress(fraction: 1, isFinished: true, lastUpdate: 2)]
+        let vm = LibraryViewModel(provider: provider, database: home.database, upNext: queue,
+                                  heldUnfinished: HeldUnfinished(database: home.database, kind: .books))
+        await vm.showCachedLibraryIfAvailable()
+        try #require(vm.entries.map(\.id).contains(book), "the precondition: the cache was rendered")
+        await vm.loadLibrary()
+        return (queue, book)
+    }
+
+    @Test("after a switch of account and a cold start, the first answer does not compare with the cache of the former account")
+    func theCacheOfAnotherAccountIsNoBaseline() async throws {
+        let start = try await coldStart(heldBefore: false)
+        #expect(start.queue.contains(start.book),
+                "a book the new account finished left Up Next by the cache of the former one")
+    }
+
+    @Test("the same account after a cold start: the first answer takes out a book its kept set held unfinished")
+    func theSameAccountStillTakesOut() async throws {
+        let start = try await coldStart(heldBefore: true)
+        #expect(!start.queue.contains(start.book), "the kept set of the same account no longer decides")
+    }
 }
 #endif
