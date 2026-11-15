@@ -154,15 +154,25 @@ reset_base
 if [ $rc -ne 0 ] && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "NoSuchTests"; then
     ok "5 a map line without reason or with an unknown suite stops"; else fail "5 a map line without reason or with an unknown suite stops" "$out / $out2"; fi
 
-# 6. History: for ten commits of this week the selection from the source part
-# alone chooses at least the test files the commit itself changed.
-missing=""
+# 6. History: for ten commits of this week the selection of the whole commit
+# chooses at least the test files the commit itself changed.
+# 6b. The source part of each commit alone chooses them as well, except a
+# test file whose change is formatting only (equal once every space and line
+# break is removed): only the rule for a changed test file reaches that one.
+missing=""; missing_source=""
+squeeze() { git -C "$REAL" show "$1" 2>/dev/null | tr -d ' \t\n'; }
 while read -r commit expected; do
     case "$commit" in ''|'#'*) continue;; esac
-    got="$(cd "$REAL" && python3 -I scripts/lauf/auswahl.py --basis "$commit^" --kopf "$commit" --nur Sources/ 2>&1)"
-    for file in $expected; do has "$got" "datei $file" || missing="$missing $commit:$file"; done
+    got="$(cd "$REAL" && python3 -I scripts/lauf/auswahl.py --basis "$commit^" --kopf "$commit" 2>&1)"
+    from_source="$(cd "$REAL" && python3 -I scripts/lauf/auswahl.py --basis "$commit^" --kopf "$commit" --nur Sources/ 2>&1)"
+    for file in $expected; do
+        has "$got" "datei $file" || missing="$missing $commit:$file"
+        [ "$(squeeze "$commit^:MaerTests/$file.swift")" = "$(squeeze "$commit:MaerTests/$file.swift")" ] && continue
+        has "$from_source" "datei $file" || missing_source="$missing_source $commit:$file"
+    done
 done < "$REAL/scripts/lauf/geschichte.txt"
 if [ -z "$missing" ] && [ -s "$REAL/scripts/lauf/geschichte.txt" ]; then ok "6 ten commits of this week select their suites"; else fail "6 ten commits of this week select their suites" "missing:$missing"; fi
+if [ -z "$missing_source" ]; then ok "6b their source part alone selects them, formatting aside"; else fail "6b their source part alone selects them, formatting aside" "missing:$missing_source"; fi
 
 # 7. The measurements stay out of the selection and run in the full run.
 change Sources/Models/PlaybackSkip.swift "extension PlaybackSkip { }" "Change the skip again"
