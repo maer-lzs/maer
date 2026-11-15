@@ -172,5 +172,30 @@ struct DownloadKindTests {
         #expect(DownloadKind.deletableOnlyInGeneral(pillsShown: [], holdsDownloads: holds([.podcasts, .music]))
                 == [.podcasts, .music], "every tab off: each kind that holds downloads, in the order of the kinds")
     }
+
+    private static func item(_ id: String, _ title: String, added: Double?) -> LibraryItem {
+        LibraryItem(id: id, media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: title, authorName: nil, narratorName: nil, seriesName: nil,
+                                          genres: nil, publishedYear: nil, description: nil),
+            duration: 60, chapters: nil, tracks: nil), addedAt: added)
+    }
+
+    @Test("a downloads page orders episodes newest first and every other kind by title, in the app and in the car", .needsTheSources)
+    func theOrderOfADownloadsPage() throws {
+        let items = [Self.item("1", "beta", added: 10), Self.item("2", "Alpha", added: 30),
+                     Self.item("3", "Gamma", added: nil), Self.item("4", "Delta", added: 50)]
+        #expect(DownloadKind.podcasts.ordered(items).map(\.id) == ["4", "2", "1", "3"], "an episode without a date stands last")
+        #expect(DownloadKind.music.ordered(items).map(\.id) == ["2", "1", "4", "3"], "a title in lower case stands by its letter")
+        #expect(DownloadKind.audiobooks.ordered(items).map(\.id) == ["2", "1", "4", "3"])
+        let pages: [(String, String)] = [
+            ("Sources/Views/PodcastsView.swift", "DownloadKind.podcasts.ordered("),
+            ("Sources/Views/Music/MusicLibraryPages.swift", "DownloadKind.music.ordered("),
+            ("Sources/CarPlay/CarPlaySceneDelegate.swift", "kind.ordered(ids.compactMap"),
+        ]
+        for (path, asked) in pages {
+            let text = try FetchAnswerTests.squeezedSource(path)
+            #expect(text.contains(asked), "\(path) orders its downloads by a rule of its own")
+        }
+    }
 }
 #endif

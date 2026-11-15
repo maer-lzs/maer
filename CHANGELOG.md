@@ -13,7 +13,8 @@ the player with another title or none.
 
 **Downloads in the car for podcasts and music too.** The Podcasts and
 Music tabs in CarPlay now have a Downloads page, like Audiobooks, as soon
-as something of that kind is downloaded.
+as something of that kind is downloaded. It lists them in the order of
+the app's own Downloads page: episodes newest first, songs by title.
 
 **Listen Again orders albums the same way everywhere.** Start, the
 Music tab, the full Listen Again page and the car now date an album by

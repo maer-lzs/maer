@@ -251,7 +251,7 @@ struct CarPlayLayoutTests {
     func theCarFollowsEveryChange() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         for signal in ["ListeningRevision.shared.objectWillChange", "queue.$ids",
-                       "playlistStore.$playlists", "PodcastSubscriptions.shared.objectWillChange",
+                       "playlistStore.$playlists", "subscriptions.objectWillChange",
                        "session.libraryViewModel.$continueListening", "session.$sourcesVersion",
                        "downloads.stock.objectWillChange",
                        "template.updateSections(", "tabBar.updateTemplates("] {

@@ -270,14 +270,13 @@ struct MusicDownloadedPage: View {
         // Per DOWNLOAD, not per device: with two music servers set up, the
         // configured one answered `owns` with false for everything the other
         // holds, and those downloads were simply not on this page.
-        return downloadManager.downloadedItemIds
+        return DownloadKind.music.ordered(downloadManager.downloadedItemIds
             .compactMap { id -> LibraryItem? in
                 // Resolved once, asked twice: two resolutions per id would
                 // be the same answer a second time.
                 let music = AppSession.shared.musicProvider(for: id)
                 return music.owns(itemId: id) ? music.libraryItem(forId: id) : nil
-            }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            })
     }
 
     var body: some View {

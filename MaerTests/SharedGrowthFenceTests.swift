@@ -145,7 +145,9 @@ struct SharedGrowthFenceTests {
     /// one rule, with the server's music progress the app holds
     /// (`LateMusicValues`), as Start and the mixed page do (two, in
     /// `SharedRows`, none in a view).
-    nonisolated static let sourcesStock = 759
+    /// 758: the car holds the podcast subscriptions once for its first
+    /// build, its tabs and its signals (three grips are one).
+    nonisolated static let sourcesStock = 758
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

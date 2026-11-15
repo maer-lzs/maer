@@ -53,6 +53,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private let playlistStore = MaerPlaylists.shared
     private let context = PlaybackContext.shared
     private let downloads = DownloadManager.shared
+    private let subscriptions = PodcastSubscriptions.shared
     private let nowPlaying = CPNowPlayingTemplate.shared
 
     func templateApplicationScene(
@@ -107,7 +108,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// and the last session come by the app's own start path, paused, so
     /// the player has a title to show.
     private func prepare() async {
-        await PodcastSubscriptions.shared.ensureLoaded()
+        await subscriptions.ensureLoaded()
         await downloads.ensureScanned()
         await session.playerCoordinator.restoreAtColdStart(library: session.libraryViewModel)
     }
@@ -121,7 +122,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             ListeningRevision.shared.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
             queue.$ids.map { _ in () }.eraseToAnyPublisher(),
             playlistStore.$playlists.map { _ in () }.eraseToAnyPublisher(),
-            PodcastSubscriptions.shared.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+            subscriptions.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
             session.libraryViewModel.$continueListening.map { _ in () }.eraseToAnyPublisher(),
             session.$sourcesVersion.map { _ in () }.eraseToAnyPublisher(),
             // The downloads pages of Podcasts and Music come and go with them.
@@ -187,7 +188,6 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let musicSource = session.musicProvider
         let maximum = CPTabBarTemplate.maximumTabCount
         let signedIn = session.authViewModel.isLoggedIn
-        let subscriptions = PodcastSubscriptions.shared
         let layout = CarPlayLayout.tabs(
             audiobooks: CarPlayLayout.showsTab(enabled: MediaType.audiobooks.userMasterEnabled,
                                                holds: !session.libraryViewModel.entries.isEmpty,
@@ -523,14 +523,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// The downloads of a kind as a page, by the rule the storage settings
     /// count them with (`DownloadKind.ids`); no page without downloads.
-    /// The titles stand sorted by name.
+    /// The titles stand in the order of the app's page of that kind.
     private func downloadsPage(_ kind: DownloadKind) -> [Page] {
         let ids = kind.ids(in: downloads.downloadedItemIds, recorded: downloads.kinds, sole: downloads.soleKind(of:))
         guard !ids.isEmpty else { return [] }
         return [Page(title: String(localized: "Downloads list"), symbol: "arrow.down.circle") { [weak self] in
             guard let self else { return }
-            let items = ids.compactMap { self.session.playableItem(forId: $0) }
-                .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            let items = kind.ordered(ids.compactMap { self.session.playableItem(forId: $0) })
             await self.pushList(String(localized: "Downloads list"), items)
         }]
     }

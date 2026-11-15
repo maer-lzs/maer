@@ -981,11 +981,10 @@ struct PodcastDownloadsPage: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
 
     private var items: [LibraryItem] {
-        (PodcastShowSources.ownedShows())
+        DownloadKind.podcasts.ordered((PodcastShowSources.ownedShows())
             .flatMap(\.episodes)
             .compactMap { router.item($0.guid) }
-            .filter { downloadManager.isDownloaded(itemId: $0.id) }
-            .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+            .filter { downloadManager.isDownloaded(itemId: $0.id) })
     }
 
     var body: some View {

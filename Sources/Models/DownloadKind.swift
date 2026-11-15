@@ -65,4 +65,13 @@ nonisolated enum DownloadKind: String, CaseIterable, Sendable {
                                        holdsDownloads: (DownloadKind) -> Bool) -> [DownloadKind] {
         allCases.filter { !pillsShown.contains($0) && holdsDownloads($0) }
     }
+
+    /// The order a page of this kind's downloads shows them in, in the app
+    /// and in the car: episodes newest first, every other kind by title.
+    func ordered(_ items: [LibraryItem]) -> [LibraryItem] {
+        switch self {
+        case .podcasts: items.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+        case .audiobooks, .music: items.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        }
+    }
 }
