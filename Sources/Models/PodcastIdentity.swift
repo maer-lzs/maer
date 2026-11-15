@@ -280,18 +280,24 @@ nonisolated enum PodcastIdentity {
         case same
         /// Another feed: another address and no episode in common.
         case other
-        /// Another address, and one of the two has no episodes to compare.
+        /// Another address, the held show has no episodes and the parse
+        /// has: it takes the parse, as the held one has nothing to lose
+        /// (an expired token address that never read a feed).
+        case adopted
+        /// Another address, and the parse has no episodes to compare.
         case unknown
     }
 
     /// The feed behind a key decides by its episodes, not by the address
     /// alone: the same feed under `http`, with `www.` or a counting
     /// parameter is the same; another address whose episodes share no
-    /// original guid with the held show is another feed. Without episodes
-    /// on one side nothing can be told.
+    /// original guid with the held show is another feed. A held show
+    /// without episodes takes a parse with episodes; a parse without
+    /// episodes tells nothing.
     nonisolated static func sameKey(stored: PodcastShow, fresh: PodcastShow) -> SameKey {
         if strictAddress(stored.feedURL) == strictAddress(fresh.feedURL) { return .same }
-        guard !stored.episodes.isEmpty, !fresh.episodes.isEmpty else { return .unknown }
+        guard !fresh.episodes.isEmpty else { return .unknown }
+        guard !stored.episodes.isEmpty else { return .adopted }
         let held = Set(stored.episodes.map { originalGuid($0.guid) })
         return fresh.episodes.contains { held.contains(originalGuid($0.guid)) } ? .same : .other
     }

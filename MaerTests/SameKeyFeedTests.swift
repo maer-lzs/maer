@@ -60,6 +60,9 @@ struct SameKeyFeedTests {
         Case(name: "the same address twice", held: "https://same-key.example/\(run)/twice.xml",
              fresh: "https://same-key.example/\(run)/twice.xml", heldGuids: ["t1"], freshGuids: ["t1", "t2"],
              keptApart: false),
+        Case(name: "the held show has no episodes, the parse has: it takes the parse",
+             held: "https://same-key.example/\(run)/Expired.xml", fresh: "https://same-key.example/\(run)/expired.xml",
+             heldGuids: [], freshGuids: ["f1", "f2"], keptApart: false),
         Case(name: "the path in another case, an episode in common", held: "https://same-key.example/\(run)/Mixed.xml",
              fresh: "https://same-key.example/\(run)/mixed.xml", heldGuids: ["m1", "m2"], freshGuids: ["m2", "m3"],
              keptApart: false),
@@ -92,6 +95,8 @@ struct SameKeyFeedTests {
         let (subs, cleanup) = try await Self.store(holding: held, answering: fresh)
         defer { cleanup() }
         #expect(PodcastIdentity.sameKey(stored: held, fresh: fresh) == .unknown)
+        let emptyHeld = Self.show(held.feedURL, title: "Held", guids: [])
+        #expect(PodcastIdentity.sameKey(stored: emptyHeld, fresh: fresh) == .unknown, "two empty sides tell nothing")
         _ = await subs.follow(urlString: fresh.feedURL, notesCloud: false)
         let stored = try #require(subs.shows.first { $0.id == held.id })
         #expect(stored.title == "Held" && stored.feedURL == held.feedURL)

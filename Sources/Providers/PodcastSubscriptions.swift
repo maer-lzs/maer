@@ -1514,13 +1514,18 @@ final class PodcastSubscriptions: ObservableObject {
     /// (`PodcastIdentity.sameKey`) leaves the show as it was: the merge
     /// takes the fresh title and address, and the held feed would be
     /// fetched no more. A line says why, the addresses as hashes; nil for
-    /// the same feed.
+    /// the same feed, and for a held show without episodes that takes the
+    /// parse (said in its own line).
     private func keptApart(held: PodcastShow, fresh: PodcastShow, by entry: String) -> FollowOutcome? {
         let verdict = PodcastIdentity.sameKey(stored: held, fresh: fresh)
         guard verdict != .same else { return nil }
         // Hashes only (`addressLine`), never the address.
         let heldLine = PodcastIdentity.addressLine(held.feedURL)
         let freshLine = PodcastIdentity.addressLine(fresh.feedURL)
+        if verdict == .adopted {
+            Logger.rss.notice("SUBSCRIBE adopted by=\(entry, privacy: .public) verdict=adopted held=\(heldLine, privacy: .public) fresh=\(freshLine, privacy: .public)")
+            return nil
+        }
         Logger.rss.notice("SUBSCRIBE kept apart by=\(entry, privacy: .public) verdict=\(String(describing: verdict), privacy: .public) held=\(heldLine, privacy: .public) fresh=\(freshLine, privacy: .public)")
         return .keptApart(title: held.title)
     }
