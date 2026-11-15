@@ -84,7 +84,7 @@ nonisolated struct SoundSetting: Codable, Hashable, Sendable {
     var isOff: Bool { SoundPresets.preset(presetID).isFlat && clampedGain == 1 }
 }
 
-extension SoundSetting {
+nonisolated extension SoundSetting {
     private enum CodingKeys: String, CodingKey { case presetID, gain, strength }
 
     /// A setting stored before the strength existed reads as strength 1,
