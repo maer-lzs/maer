@@ -46,6 +46,7 @@ expect refuse "message cites a decision"    docs/b.md "three" "Entscheid A is bu
 expect refuse "message carries a dash"      docs/c.md "one" "The row — four buttons"
 expect refuse "message is German"           docs/c.md "two" "Die Taste wird nicht mehr gezeigt"
 expect pass   "message quotes one German word" docs/c.md "three" "The notice says Schon abonniert"
+expect pass   "message quotes a German sentence in quotation marks" docs/c.md "four" 'The line said "Wenn an, erscheinen Künstler und Alben" before'
 expect refuse "comment is German"           Sources/A.swift "// Die Zeile wird nicht mehr gezeigt" "A comment in the source"
 expect pass   "comment is English"          Sources/B.swift "// The row is shown once" "A comment in the source"
 expect refuse "comment names a role"        Sources/C.swift "// Momo asked for this" "A comment in the source"
