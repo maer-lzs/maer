@@ -25,6 +25,12 @@ tab only knew this device, so the rows could differ.
 without being opened on the phone, it now loads your last title paused,
 as the app does at start, so the player has something to continue.
 
+**The car shows its tabs right away.** When you connect, the tab bar
+appears at once with a tab for each area that is on and set up, and each
+tab says it is loading until its content arrives. Before, the screen
+stayed empty until every tab had loaded. A tab whose area turns out to
+hold nothing leaves again a moment later.
+
 **Signing out while a book plays keeps the last position.** Pausing,
 stopping, or a call that interrupts playback now saves the position on the
 device before it is sent to the server. Signing out of Audiobookshelf

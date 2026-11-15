@@ -28,6 +28,14 @@ nonisolated enum CarPlayLayout {
         return (Array(tabs.prefix(max(1, maximumTabCount))), radio && !radioTab)
     }
 
+    /// Whether an area carries a tab: it is on, and it holds something; or,
+    /// at connect before its store is read, a source for it is set up. The
+    /// build after the stores are read asks again and drops a tab whose
+    /// area holds nothing.
+    static func showsTab(enabled: Bool, holds: Bool, read: Bool, setUp: Bool) -> Bool {
+        enabled && (holds || (!read && setUp))
+    }
+
     /// How many entries a section shows on a tab before its page.
     static let sectionLimit = 6
 

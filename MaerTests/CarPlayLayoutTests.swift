@@ -34,6 +34,33 @@ struct CarPlayLayoutTests {
         #expect(tight.tabs.first == .start)
     }
 
+    @Test("the first tabs at connect come from the settings, the build after reading from what each area holds")
+    func theFirstTabsAsATable() {
+        // At connect, nothing read yet: on and set up is enough.
+        #expect(CarPlayLayout.showsTab(enabled: true, holds: false, read: false, setUp: true))
+        #expect(!CarPlayLayout.showsTab(enabled: true, holds: false, read: false, setUp: false), "a tab without a source")
+        #expect(!CarPlayLayout.showsTab(enabled: false, holds: true, read: false, setUp: true), "a tab for an area switched off")
+        // What the app already holds counts before the reading too.
+        #expect(CarPlayLayout.showsTab(enabled: true, holds: true, read: false, setUp: false))
+        // After the reading only what it holds: a set-up area without content drops its tab.
+        #expect(!CarPlayLayout.showsTab(enabled: true, holds: false, read: true, setUp: true), "an empty tab stays")
+        #expect(CarPlayLayout.showsTab(enabled: true, holds: true, read: true, setUp: false))
+    }
+
+    @Test("the tab bar stands at connect, each tab loading, and the build only changes its tabs", .needsTheSources)
+    func theTabBarStandsAtConnect() throws {
+        let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        #expect(car.contains("nowPlaying.upNextTitle = String(localized: \"Up Next\") showLoadingTabs() connectTask?.cancel()"),
+                "the car waits for every tab before it shows the bar")
+        #expect(car.contains("let layout = tabLayout(read: false)") && car.contains("let layout = tabLayout(read: true)"),
+                "connect and build choose their tabs by different rules")
+        #expect(car.contains("template.emptyViewTitleVariants = [String(localized: \"Loading…\")]"),
+                "a tab at connect does not say it loads")
+        #expect(car.contains("template.updateSections(filled) template.emptyViewTitleVariants = []"),
+                "a filled tab still says it loads")
+        #expect(car.components(separatedBy: "setRootTemplate(").count - 1 == 1, "the tab bar is set in a second place")
+    }
+
     @Test("Up Next and speed in the player only for audiobooks and episodes")
     func playerExtrasForSpokenTitles() {
         #expect(CarPlayLayout.playerExtras(for: "rss:feed:episode-1"))

@@ -62,6 +62,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         self.interfaceController = interfaceController
         nowPlaying.add(self)
         nowPlaying.upNextTitle = String(localized: "Up Next")
+        showLoadingTabs()
         connectTask?.cancel()
         connectTask = Task {
             await self.prepare()
@@ -158,16 +159,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func rebuild() async {
         guard interfaceController != nil else { return }
         recentAnswer = nil
-        let musicSource = session.musicProvider
-        let maximum = CPTabBarTemplate.maximumTabCount
-        let layout = CarPlayLayout.tabs(
-            audiobooks: MediaType.audiobooks.userMasterEnabled && !session.libraryViewModel.entries.isEmpty,
-            podcasts: MediaType.podcasts.userMasterEnabled && !PodcastShowSources.active().isEmpty,
-            music: MediaType.music.userMasterEnabled && musicSource.isAvailable && musicSource.mediaTypes.contains(.music),
-            radio: MediaType.radio.userMasterEnabled
-                && !(RadioStore.favorites().isEmpty && RadioStore.recents().isEmpty),
-            maximumTabCount: maximum)
-        Logger.player.notice("CARPLAY tabs max=\(maximum, privacy: .public) shown=\(layout.tabs.map(\.rawValue).joined(separator: ","), privacy: .public) radioOnStart=\(layout.radioOnStart, privacy: .public)")
+        let layout = tabLayout(read: true)
         radioOnStart = layout.radioOnStart
         for tab in layout.tabs {
             let template = roots[tab] ?? rootTemplate(tab)
@@ -175,18 +167,57 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             let filled = await sections(for: tab)
             guard !Task.isCancelled else { return }
             template.updateSections(filled)
+            template.emptyViewTitleVariants = []
         }
         // A disconnect while the sections were read leaves nothing to set.
         guard interfaceController != nil, !Task.isCancelled else { return }
         let templates = layout.tabs.compactMap { roots[$0] }
+        // The bar stands since the connect (`showLoadingTabs`); a build
+        // only changes its tabs.
         if let tabBar, shownTabs != layout.tabs {
             tabBar.updateTemplates(templates)
-        } else if tabBar == nil {
-            let bar = CPTabBarTemplate(templates: templates)
-            tabBar = bar
-            interfaceController?.setRootTemplate(bar, animated: true, completion: Self.settled("root"))
         }
         shownTabs = layout.tabs
+    }
+
+    /// The tabs for the sources set up now. Before the stores are read
+    /// (`read` false, at connect) an area counts by its settings: on, and a
+    /// source for it set up; afterwards by what it holds.
+    private func tabLayout(read: Bool) -> (tabs: [CarPlayLayout.Tab], radioOnStart: Bool) {
+        let musicSource = session.musicProvider
+        let maximum = CPTabBarTemplate.maximumTabCount
+        let signedIn = session.authViewModel.isLoggedIn
+        let subscriptions = PodcastSubscriptions.shared
+        let layout = CarPlayLayout.tabs(
+            audiobooks: CarPlayLayout.showsTab(enabled: MediaType.audiobooks.userMasterEnabled,
+                                               holds: !session.libraryViewModel.entries.isEmpty,
+                                               read: read, setUp: signedIn),
+            podcasts: CarPlayLayout.showsTab(enabled: MediaType.podcasts.userMasterEnabled,
+                                             holds: !PodcastShowSources.active().isEmpty, read: read,
+                                             setUp: (signedIn && AppStorageKeys.absPodcastsActive) || !subscriptions.isLoaded),
+            music: MediaType.music.userMasterEnabled && musicSource.isAvailable && musicSource.mediaTypes.contains(.music),
+            radio: MediaType.radio.userMasterEnabled
+                && !(RadioStore.favorites().isEmpty && RadioStore.recents().isEmpty),
+            maximumTabCount: maximum)
+        Logger.player.notice("CARPLAY tabs read=\(read, privacy: .public) max=\(maximum, privacy: .public) shown=\(layout.tabs.map(\.rawValue).joined(separator: ","), privacy: .public) radioOnStart=\(layout.radioOnStart, privacy: .public)")
+        return layout
+    }
+
+    /// The tab bar the moment the car connects, before anything is read:
+    /// the tabs the settings name, each saying it loads. The first build
+    /// fills them and drops a tab whose area holds nothing.
+    private func showLoadingTabs() {
+        let layout = tabLayout(read: false)
+        radioOnStart = layout.radioOnStart
+        for tab in layout.tabs {
+            let template = rootTemplate(tab)
+            template.emptyViewTitleVariants = [String(localized: "Loading…")]
+            roots[tab] = template
+        }
+        let bar = CPTabBarTemplate(templates: layout.tabs.compactMap { roots[$0] })
+        tabBar = bar
+        shownTabs = layout.tabs
+        interfaceController?.setRootTemplate(bar, animated: false, completion: Self.settled("root"))
     }
 
     private func rootTemplate(_ tab: CarPlayLayout.Tab) -> CPListTemplate {
