@@ -81,11 +81,13 @@
 
   // The question the app asks before it shares or opens a link
   // (PodcastFeedAddress.carriesAccess): an address with a user or password
-  // before its host, or a query name that says access, carries access. The
-  // three lists are the app's, word for word (fence in SharedLinkPageAccessTests).
+  // before its host, a query name that says access, or a path segment that
+  // says access with another segment behind it, carries access. The four
+  // lists are the app's, word for word (fence in SharedLinkPageAccessTests).
   var ACCESS_PARTS = ["token", "auth", "key", "secret", "pass", "password", "passwd", "sig", "signature", "session", "sid", "freebie", "apikey"];
   var ACCESS_HARD = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature", "pwd", "hmac"];
   var ACCESS_KEY_LEADS = ["api", "access", "auth", "secret", "private", "session", "client", "signing"];
+  var ACCESS_PATH = ["private", "token", "secret", "auth", "key"];
   var ALNUM = /[\p{L}\p{N}]/u;
 
   function isUpper(c) { return c !== c.toLowerCase() && c === c.toUpperCase(); }
@@ -125,9 +127,24 @@
     return joined.indexOf("session") === 0 || endsWith(joined, "pass") || endsWith(joined, "auth");
   }
 
+  function pathCarriesAccess(text) {
+    var scheme = text.indexOf("://");
+    var rest = scheme >= 0 ? text.slice(scheme + 3) : text;
+    var cut = rest.search(/[?#]/);
+    if (cut >= 0) { rest = rest.slice(0, cut); }
+    var slash = rest.indexOf("/");
+    if (slash < 0) { return false; }
+    var segments = rest.slice(slash + 1).split("/").filter(function (s) { return s.length > 0; });
+    for (var i = 0; i < segments.length - 1; i++) {
+      if (has(ACCESS_PATH, segments[i].toLowerCase())) { return true; }
+    }
+    return false;
+  }
+
   function carriesAccess(raw) {
     if (!raw) { return false; }
     var text = raw.trim();
+    if (pathCarriesAccess(text)) { return true; }
     var q = text.indexOf("?");
     if (q >= 0) {
       var pairs = text.slice(q + 1).split("&");

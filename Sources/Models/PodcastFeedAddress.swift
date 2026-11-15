@@ -108,13 +108,32 @@ nonisolated enum PodcastFeedAddress {
     /// Words that make a following `key` an access key.
     static let accessKeyLeads = ["api", "access", "auth", "secret", "private", "session", "client", "signing"]
 
+    /// Path segments that say access when another segment follows them.
+    static let accessPathSegments = ["private", "token", "secret", "auth", "key"]
+
+    /// Whether a path carries access: a whole segment from
+    /// `accessPathSegments` (any case) with a further segment behind it, as
+    /// in `…/podcast/123/private/<id>.rss`. A long id alone is no sign, open
+    /// feeds carry them (an Acast show is 24 hex characters), and a segment
+    /// that only contains such a word (`keynote`) is none either.
+    static func pathCarriesAccess(_ raw: String) -> Bool {
+        var rest = Substring(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+        if let scheme = rest.range(of: "://") { rest = rest[scheme.upperBound...] }
+        if let cut = rest.firstIndex(where: { $0 == "?" || $0 == "#" }) { rest = rest[..<cut] }
+        guard let slash = rest.firstIndex(of: "/") else { return false }
+        let segments = rest[rest.index(after: slash)...].split(separator: "/")
+        return segments.dropLast().contains { accessPathSegments.contains($0.lowercased()) }
+    }
+
     /// Whether an address carries access at all: a secret in its query, by
-    /// the premium names or a name with an access part, or a user or
-    /// password before its host (also written without a scheme). Such an
-    /// address stays home. The page on maer.fm (`site/l/l.js`) asks the same
-    /// question with the same three lists.
+    /// the premium names or a name with an access part, a segment of its
+    /// path that says access (`pathCarriesAccess`), or a user or password
+    /// before its host (also written without a scheme). Such an address
+    /// stays home. The page on maer.fm (`site/l/l.js`) asks the same
+    /// question with the same four lists.
     static func carriesAccess(_ raw: String) -> Bool {
         if isTokenFeedURL(raw) { return true }
+        if pathCarriesAccess(raw) { return true }
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if let q = text.firstIndex(of: "?"),
            text[text.index(after: q)...].split(separator: "&").contains(where: { pair in

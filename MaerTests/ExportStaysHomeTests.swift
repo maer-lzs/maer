@@ -18,6 +18,41 @@ struct ExportStaysHomeTests {
         UserDefaults(suiteName: "export-home-\(UUID().uuidString)")!
     }
 
+    /// Open feeds of the big hosts and paths that only look like access.
+    static let openPaths = [
+        "https://feeds.acast.com/public/shows/5e7b777ba085cbe7192b0607",
+        "https://feeds.simplecast.com/54nAGcIl",
+        "https://feeds.megaphone.fm/GLT1412515089",
+        "https://feeds.libsyn.com/12345/rss",
+        "https://example.com/keynote/feed.xml",
+        "https://example.com/podcast/key",
+        "https://example.com/private",
+        "https://example.com/feed.xml?q=/private/x",
+        "https://example.com/feed.xml#/token/x",
+    ]
+
+    /// Paths that carry access: a whole segment that says it, another behind.
+    static let secretPaths = [
+        "https://api.substack.com/feed/podcast/123/private/0f1e2d3c-aaaa-bbbb-cccc-1234567890ab.rss",
+        "https://example.com/token/abc123/feed.xml",
+        "example.com/Secret/xyz",
+        "https://example.com/feeds/AUTH/x?format=mp3",
+        "https://example.com//key//abc",
+    ]
+
+    @Test("a path carries access only by a whole segment that says it, with another behind; long ids alone do not")
+    func aPathCarriesAccessByAWholeSegment() {
+        for raw in Self.openPaths {
+            #expect(!PodcastFeedAddress.carriesAccess(raw), "\(raw) was held back")
+        }
+        for raw in Self.secretPaths {
+            #expect(PodcastFeedAddress.carriesAccess(raw), "\(raw) left the device")
+            #expect(!PodcastFeedAddress.isTokenFeedURL(raw), "a secret in the path made the feed premium")
+        }
+        #expect(PodcastSubscriptions.staysHome(Self.secretPaths[0], defaults: suite(), ownHosts: []),
+                "the directory and the export are asked past the path")
+    }
+
     @Test("secret in the address: other names, user and password without a scheme; an ordinary address does not")
     func anAddressCarriesAccessByAnyName() {
         for raw in ["https://feeds.example/show.xml?api_key=abc", "https://feeds.example/show.xml?access_token=abc",

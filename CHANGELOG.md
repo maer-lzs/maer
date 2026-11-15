@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A private feed with its key in the path stays on your device.** A feed
+address whose path carries a part such as private, token or secret
+followed by more, as some paid feeds do, is no longer sent to the
+podcast directory, left out of a shared OPML export, and not shown on a
+shared maer.fm link, like an address with a key in its query.
+
 **The hint to unlock the device names what you started.** When a title
 cannot start before the device has been unlocked once after a restart,
 the hint now says book, episode or title instead of always episode.

@@ -92,6 +92,7 @@ struct SharedLinkPageAccessTests {
         var addresses = names.map { "https://img.example/a.png?\($0)=v" }
         addresses += ["https://img.example/a.png?token=", "https://img.example/a.png?=x",
                       "https://u@img.example/a.png", "https://img.example/a@b.png", "https://img.example/a.png#x@y"]
+        addresses += ExportStaysHomeTests.openPaths + ExportStaysHomeTests.secretPaths
         for address in addresses {
             let shown = try Self.station(cover: address, audio: "https://s.example/a.mp3").cover == address
             #expect(shown == !PodcastFeedAddress.carriesAccess(address),
@@ -113,6 +114,7 @@ struct SharedLinkPageAccessTests {
         #expect(Set(try list("ACCESS_PARTS")) == PodcastFeedAddress.accessNameParts)
         #expect(try list("ACCESS_HARD") == PodcastFeedAddress.accessHardWords)
         #expect(try list("ACCESS_KEY_LEADS") == PodcastFeedAddress.accessKeyLeads)
+        #expect(try list("ACCESS_PATH") == PodcastFeedAddress.accessPathSegments)
     }
 }
 #endif
