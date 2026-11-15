@@ -10,8 +10,9 @@ import JavaScriptCore
 @testable import Maer
 
 /// The page on maer.fm asks the app's question before it shows a link: an
-/// address with a user or password before its host, or a query name that
-/// says access, carries access, and then the page loads no picture and no
+/// address with a user or password before its host, a query name that
+/// says access, or a path segment that says access with another segment
+/// behind it, carries access, and then the page loads no picture and no
 /// sound and says its one sentence. The witnesses run the page's own script
 /// in JavaScriptCore over a stand-in of the few page elements it touches.
 struct SharedLinkPageAccessTests {
@@ -100,7 +101,7 @@ struct SharedLinkPageAccessTests {
         }
     }
 
-    @Test("Fence: the page's three lists are the app's, word for word", .needsTheSite)
+    @Test("Fence: the page's four lists are the app's, word for word", .needsTheSite)
     func theListsAreTheApps() throws {
         let script = try String(contentsOf: SourceTree.root.appendingPathComponent("site/l/l.js"), encoding: .utf8)
         func list(_ name: String) throws -> [String] {
