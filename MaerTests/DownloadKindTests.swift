@@ -187,10 +187,16 @@ struct DownloadKindTests {
         #expect(DownloadKind.podcasts.ordered(items).map(\.id) == ["4", "2", "1", "3"], "an episode without a date stands last")
         #expect(DownloadKind.music.ordered(items).map(\.id) == ["2", "1", "4", "3"], "a title in lower case stands by its letter")
         #expect(DownloadKind.audiobooks.ordered(items).map(\.id) == ["2", "1", "4", "3"])
+        #expect(DownloadKind.podcasts.ordered(items.map { ($0, 0) }, item: \.0).map(\.0.id) == ["4", "2", "1", "3"],
+                "rows that carry an item stand in the same order")
         let pages: [(String, String)] = [
-            ("Sources/Views/PodcastsView.swift", "DownloadKind.podcasts.ordered("),
-            ("Sources/Views/Music/MusicLibraryPages.swift", "DownloadKind.music.ordered("),
-            ("Sources/CarPlay/CarPlaySceneDelegate.swift", "kind.ordered(ids.compactMap"),
+            ("Sources/ViewModels/SharedRows.swift", "DownloadKind.podcasts.ordered("),
+            ("Sources/ViewModels/SharedRows.swift", "DownloadKind.music.ordered("),
+            ("Sources/ViewModels/LibraryViewModel.swift", "DownloadKind.audiobooks.ordered("),
+            ("Sources/Views/PodcastsView.swift", "SharedRows.podcastDownloads("),
+            ("Sources/Views/Music/MusicLibraryPages.swift", "SharedRows.musicDownloads("),
+            ("Sources/CarPlay/CarPlaySceneDelegate.swift", "SharedRows.podcastDownloads("),
+            ("Sources/CarPlay/CarPlaySceneDelegate.swift", "SharedRows.musicDownloads("),
         ]
         for (path, asked) in pages {
             let text = try FetchAnswerTests.squeezedSource(path)

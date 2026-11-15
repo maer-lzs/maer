@@ -474,8 +474,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let picture = await mosaic(Array(covers.prefix(4)))
             ?? Self.square(symbol: list.isRoutine ? "repeat" : "music.note.list")
         return Tile(image: picture, title: list.name, subtitle: nil) { [weak self] in
-            await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
-            self?.showAfterOpen(nil)
+            await self?.openThenShow(nil) {
+                await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
+            }
         }
     }
 
@@ -495,7 +496,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             let library = session.libraryViewModel
             return [
                 Page(title: String(localized: "Downloads list"), symbol: "arrow.down.circle") { [weak self] in
-                    await self?.pushList(String(localized: "Downloads list"), library.downloadedEntries.map(\.item),
+                    await self?.pushList(String(localized: "Downloads list"), self?.downloadedItems(.audiobooks) ?? [],
                                          emptyTitle: String(localized: "No books here yet."))
                 },
                 Page(title: String(localized: "All Books"), symbol: "books.vertical") { [weak self] in
@@ -521,17 +522,29 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         }
     }
 
-    /// The downloads of a kind as a page, by the rule the storage settings
-    /// count them with (`DownloadKind.ids`); no page without downloads.
-    /// The titles stand in the order of the app's page of that kind.
+    /// The downloads of podcasts or music as a page, the titles and their
+    /// order those of the app's downloads page of that kind; no page
+    /// without downloads.
     private func downloadsPage(_ kind: DownloadKind) -> [Page] {
-        let ids = kind.ids(in: downloads.downloadedItemIds, recorded: downloads.kinds, sole: downloads.soleKind(of:))
-        guard !ids.isEmpty else { return [] }
+        guard !downloadedItems(kind).isEmpty else { return [] }
         return [Page(title: String(localized: "Downloads list"), symbol: "arrow.down.circle") { [weak self] in
             guard let self else { return }
-            let items = kind.ordered(ids.compactMap { self.session.playableItem(forId: $0) })
+            let items = self.downloadedItems(kind)
             await self.pushList(String(localized: "Downloads list"), items)
         }]
+    }
+
+    /// The downloads of a kind as the app's downloads page of that kind
+    /// shows them.
+    private func downloadedItems(_ kind: DownloadKind) -> [LibraryItem] {
+        switch kind {
+        case .podcasts:
+            SharedRows.podcastDownloads(item: ItemRouter.live.item, isDownloaded: downloads.isDownloaded(itemId:))
+        case .music:
+            SharedRows.musicDownloads(downloads.downloadedItemIds, source: session.musicProvider(for:))
+        case .audiobooks:
+            session.libraryViewModel.downloadedEntries.map(\.item)
+        }
     }
 
     /// The pages as rows below a tab's content. The system's buttons on top
@@ -728,14 +741,16 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             case .album(let item):
                 tiles.append(Tile(image: picture, title: source.title,
                                   subtitle: nil) { [weak self] in
-                    await SharedRows.playAlbum(item, fromTrackAt: 0, on: session.playerCoordinator)
-                    self?.showAfterOpen(nil)
+                    await self?.openThenShow(item.id) {
+                        await SharedRows.playAlbum(item, fromTrackAt: 0, on: session.playerCoordinator)
+                    }
                 })
             case .maerPlaylist(let id):
                 tiles.append(Tile(image: picture, title: source.title, subtitle: nil) { [weak self] in
                     guard let list = store.playlist(id: id) else { return }
-                    await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
-                    self?.showAfterOpen(nil)
+                    await self?.openThenShow(nil) {
+                        await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
+                    }
                 })
             default: break
             }
@@ -807,9 +822,10 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             let row = CPListItem(text: track.title, detailText: nil)
             row.handler = { [weak self] _, completion in
                 Task { @MainActor [weak self] in
-                    await SharedRows.playAlbum(item, fromTrackAt: track.start,
-                                               on: session.playerCoordinator)
-                    self?.showAfterOpen(nil)
+                    await self?.openThenShow(item.id) {
+                        await SharedRows.playAlbum(item, fromTrackAt: track.start,
+                                                   on: session.playerCoordinator)
+                    }
                     completion()
                 }
             }
@@ -898,8 +914,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let row = CPListItem(text: list.name, detailText: nil, image: UIImage(systemName: "music.note.list"))
         row.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
-                await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
-                self?.showAfterOpen(nil)
+                await self?.openThenShow(nil) {
+                    await RoutinePlayback.start(list, in: store, on: session.playerCoordinator)
+                }
                 completion()
             }
         }
@@ -1005,17 +1022,22 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     private func openTitle(_ item: LibraryItem) async {
-        await session.playerCoordinator.open(item: item)
-        showAfterOpen(item.id)
+        let coordinator = session.playerCoordinator
+        await openThenShow(item.id) {
+            await coordinator.open(item: item)
+        }
     }
 
-    /// After an open in the car: the player, or a hint when the open
+    /// Every open in the car: the open, then the player, or a hint when it
     /// started nothing (`CarPlayLayout.afterOpen`). `requested` is the
-    /// title asked for, nil for a list or an album.
-    private func showAfterOpen(_ requested: String?) {
+    /// title or album asked for, nil for a list, which is judged by the
+    /// title active before it.
+    private func openThenShow(_ requested: String?, _ open: () async -> Void) async {
         let coordinator = session.playerCoordinator
-        switch CarPlayLayout.afterOpen(requested: requested, active: coordinator.activeItem?.id,
-                                       failure: coordinator.loadError) {
+        let before = coordinator.activeItem?.id
+        await open()
+        switch CarPlayLayout.afterOpen(requested: requested, activeBefore: before,
+                                       active: coordinator.activeItem?.id, failure: coordinator.loadError) {
         case .player:
             showNowPlaying()
         case .hint(let sentence):

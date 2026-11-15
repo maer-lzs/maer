@@ -259,14 +259,16 @@ struct CarPlayLayoutTests {
         }
     }
 
-    @Test("Podcasts and Music carry a downloads page by the rule the storage settings count with, only with downloads", .needsTheSources)
+    @Test("Podcasts and Music carry a downloads page with the titles of the app's page, only with downloads", .needsTheSources)
     func downloadsPagesForEveryKind() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
         #expect(car.contains("return downloadsPage(.podcasts)"), "Podcasts carry no downloads page")
         #expect(car.contains("return downloadsPage(.music) + lists"), "Music carries no downloads page")
-        #expect(car.contains("kind.ids(in: downloads.downloadedItemIds, recorded: downloads.kinds, sole: downloads.soleKind(of:))")
-                && car.contains("guard !ids.isEmpty else { return [] }"),
-                "the car counts downloads by a rule of its own, or shows an empty page")
+        #expect(car.contains("SharedRows.podcastDownloads(item: ItemRouter.live.item, isDownloaded: downloads.isDownloaded(itemId:))")
+                && car.contains("SharedRows.musicDownloads(downloads.downloadedItemIds, source: session.musicProvider(for:))")
+                && car.contains("session.libraryViewModel.downloadedEntries.map(\\.item)"),
+                "the car shows other downloads than the app's page of the kind")
+        #expect(car.contains("guard !downloadedItems(kind).isEmpty else { return [] }"), "the car shows an empty downloads page")
         // The rule itself: a podcast id counts as a podcast, music by its recorded kind.
         let ids = DownloadKind.podcasts.ids(in: ["rss:f:g", "li_book"], recorded: [:], sole: { _ in nil })
         #expect(ids == ["rss:f:g"])
@@ -289,16 +291,25 @@ struct CarPlayLayoutTests {
 
     @Test("after an open in the car: the player when the title runs, a hint with the app's sentence when it started nothing")
     func afterAnOpenAsATable() {
-        #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b1", failure: nil) == .player)
-        #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b1", failure: "stale") == .player,
+        #expect(CarPlayLayout.afterOpen(requested: "b1", activeBefore: nil, active: "b1", failure: nil) == .player)
+        #expect(CarPlayLayout.afterOpen(requested: "b1", activeBefore: "b0", active: "b1", failure: "stale") == .player,
                 "a sentence left from before beats a title that plays")
-        #expect(CarPlayLayout.afterOpen(requested: "b1", active: "b0", failure: "Offline.") == .hint("Offline."),
+        #expect(CarPlayLayout.afterOpen(requested: "b1", activeBefore: "b0", active: "b0", failure: "Offline.") == .hint("Offline."),
                 "the player would show another title")
-        #expect(CarPlayLayout.afterOpen(requested: "b1", active: nil, failure: "Offline.") == .hint("Offline."))
-        #expect(CarPlayLayout.afterOpen(requested: "b1", active: nil, failure: nil) == .player,
+        #expect(CarPlayLayout.afterOpen(requested: "b1", activeBefore: nil, active: nil, failure: "Offline.") == .hint("Offline."))
+        #expect(CarPlayLayout.afterOpen(requested: "b1", activeBefore: "b0", active: nil, failure: nil) == .player,
                 "an open without a sentence (the title on its way) keeps the player")
-        #expect(CarPlayLayout.afterOpen(requested: nil, active: "s3", failure: "x") == .player, "a list runs some title")
-        #expect(CarPlayLayout.afterOpen(requested: nil, active: nil, failure: "Offline.") == .hint("Offline."))
+        // An album is asked for by its id, as it plays as itself.
+        #expect(CarPlayLayout.afterOpen(requested: "sub:album:a", activeBefore: "b0", active: "b0", failure: "Offline.")
+                == .hint("Offline."), "an album that started nothing showed the player of the title before")
+        // A list by the title active before it.
+        #expect(CarPlayLayout.afterOpen(requested: nil, activeBefore: "b0", active: "s3", failure: "x") == .player,
+                "a list runs its title")
+        #expect(CarPlayLayout.afterOpen(requested: nil, activeBefore: "b0", active: "b0", failure: "Offline.") == .hint("Offline."),
+                "a list that started nothing showed the player of the title before")
+        #expect(CarPlayLayout.afterOpen(requested: nil, activeBefore: "s3", active: "s3", failure: nil) == .player,
+                "a list whose first title already runs keeps the player")
+        #expect(CarPlayLayout.afterOpen(requested: nil, activeBefore: nil, active: nil, failure: "Offline.") == .hint("Offline."))
     }
 
     @Test("every open in the car goes through the one rule; only a station shows the player straight", .needsTheSources)
@@ -311,11 +322,24 @@ struct CarPlayLayoutTests {
             if index == 0 || !lines[index - 1].hasPrefix("RadioPlay.play(") { straight.append(lines[max(index - 1, 0)]) }
         }
         #expect(straight.isEmpty, "the player is shown straight after: \(straight)")
-        let opens = lines.filter { $0.hasPrefix("await RoutinePlayback.start(") || $0.hasPrefix("await SharedRows.playAlbum(") }
-        let asks = lines.filter { $0 == "self?.showAfterOpen(nil)" }
-        #expect(!opens.isEmpty && opens.count == asks.count, "\(opens.count) list or album starts, \(asks.count) asks")
-        let open = try #require(lines.firstIndex(of: "await session.playerCoordinator.open(item: item)"), "the open of a title")
-        #expect(lines[open + 1] == "showAfterOpen(item.id)", "the open of a title shows the player straight")
+        // Every open stands in the one door, which notes the title active
+        // before it; an album and a title are asked for by their id.
+        var outside: [String] = []
+        var opens = 0
+        for (index, line) in lines.enumerated() where index > 0 {
+            let door = lines[index - 1]
+            if line.hasPrefix("await RoutinePlayback.start(") {
+                opens += 1
+                if !door.hasSuffix("openThenShow(nil) {") { outside.append(line) }
+            } else if line.hasPrefix("await SharedRows.playAlbum(") || line == "await coordinator.open(item: item)" {
+                opens += 1
+                if !door.hasSuffix("openThenShow(item.id) {") { outside.append(line) }
+            }
+        }
+        #expect(opens == 6 && outside.isEmpty, "\(opens) opens, outside the door or without their id: \(outside)")
+        let door = try #require(functionBody(of: "private func openThenShow(_ requested: String?, _ open: () async -> Void) async {", in: car))
+        #expect(door.contains("let before = coordinator.activeItem?.id\n        await open()"), "the door does not note the title before the open")
+        #expect(door.contains("activeBefore: before,"), "the rule does not hear the title before the open")
     }
 }
 #endif

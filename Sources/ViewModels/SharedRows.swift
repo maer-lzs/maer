@@ -138,6 +138,28 @@ enum SharedRows {
         }
     }
 
+    /// The downloaded episodes the podcast downloads page shows, in the app
+    /// and in the car: the episodes of the shows held, in the order of a
+    /// downloads page.
+    static func podcastDownloads(item: (String) -> LibraryItem?, isDownloaded: (String) -> Bool) -> [LibraryItem] {
+        DownloadKind.podcasts.ordered(PodcastShowSources.ownedShows()
+            .flatMap(\.episodes)
+            .compactMap { item($0.guid) }
+            .filter { isDownloaded($0.id) })
+    }
+
+    /// The downloaded songs the music downloads page shows, in the app and
+    /// in the car: per download, the music source that owns it. With two
+    /// music servers set up, one source answered `owns` with false for
+    /// everything the other holds.
+    static func musicDownloads(_ downloaded: some Sequence<String>,
+                               source: (String) -> any MusicProvider) -> [LibraryItem] {
+        DownloadKind.music.ordered(downloaded.compactMap { id -> LibraryItem? in
+            let music = source(id)
+            return music.owns(itemId: id) ? music.libraryItem(forId: id) : nil
+        })
+    }
+
     /// Plays an album or a server list from the song at `start` (its
     /// chapter offset).
     static func playAlbum(_ item: LibraryItem, fromTrackAt start: Double, on coordinator: PlayerCoordinator) async {

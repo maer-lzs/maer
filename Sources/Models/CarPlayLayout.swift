@@ -81,16 +81,16 @@ nonisolated enum CarPlayLayout {
         case hint(String)
     }
 
-    /// The player when the title asked for is the one now active (for a
-    /// list or an album, `requested` nil: when any title is); when it is
-    /// not and the open said why, a hint with that sentence instead of a
-    /// player that would show another title or none. An open that went on
-    /// without a sentence (the same title already on its way) keeps the
-    /// player.
-    static func afterOpen(requested: String?, active: String?, failure: String?) -> AfterOpen {
+    /// The player when the title or album asked for is the one now
+    /// active; for a list (`requested` nil) when the open made another
+    /// title active than before it. Otherwise, when the open said why, a
+    /// hint with that sentence instead of a player that would show another
+    /// title or none. An open that went on without a sentence (the same
+    /// title already on its way) keeps the player.
+    static func afterOpen(requested: String?, activeBefore: String?, active: String?, failure: String?) -> AfterOpen {
         if let requested {
             if active == requested { return .player }
-        } else if active != nil {
+        } else if let active, active != activeBefore {
             return .player
         }
         if let failure, !failure.isEmpty { return .hint(failure) }

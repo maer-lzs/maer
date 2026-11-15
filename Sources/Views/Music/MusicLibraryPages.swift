@@ -267,16 +267,7 @@ struct MusicDownloadedPage: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     private var items: [LibraryItem] {
-        // Per DOWNLOAD, not per device: with two music servers set up, the
-        // configured one answered `owns` with false for everything the other
-        // holds, and those downloads were simply not on this page.
-        return DownloadKind.music.ordered(downloadManager.downloadedItemIds
-            .compactMap { id -> LibraryItem? in
-                // Resolved once, asked twice: two resolutions per id would
-                // be the same answer a second time.
-                let music = AppSession.shared.musicProvider(for: id)
-                return music.owns(itemId: id) ? music.libraryItem(forId: id) : nil
-            })
+        SharedRows.musicDownloads(downloadManager.downloadedItemIds, source: AppSession.shared.musicProvider(for:))
     }
 
     var body: some View {

@@ -657,9 +657,8 @@ final class LibraryViewModel: ObservableObject {
         // visible in Instruments. This is the main-thread work that used to run
         // on every section mount/render.
         let signpost = PerfSignpost.downloadedRecompute()
-        let value = entries
-            .filter { downloads.isDownloaded(itemId: $0.id) }
-            .sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
+        let value = DownloadKind.audiobooks.ordered(entries.filter { downloads.isDownloaded(itemId: $0.id) },
+                                                    item: \.item)
         signpost.end()
         downloadedCacheKey = key
         downloadedCache = value

@@ -69,9 +69,15 @@ nonisolated enum DownloadKind: String, CaseIterable, Sendable {
     /// The order a page of this kind's downloads shows them in, in the app
     /// and in the car: episodes newest first, every other kind by title.
     func ordered(_ items: [LibraryItem]) -> [LibraryItem] {
+        ordered(items, item: { $0 })
+    }
+
+    /// The same order for rows that carry an item.
+    func ordered<Row>(_ rows: [Row], item: (Row) -> LibraryItem) -> [Row] {
         switch self {
-        case .podcasts: items.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
-        case .audiobooks, .music: items.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .podcasts: rows.sorted { (item($0).addedAt ?? 0) > (item($1).addedAt ?? 0) }
+        case .audiobooks, .music:
+            rows.sorted { item($0).title.localizedCaseInsensitiveCompare(item($1).title) == .orderedAscending }
         }
     }
 }
