@@ -132,7 +132,8 @@ struct SoundCurveView: View {
     let setting: SoundSetting
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private static let samples = 64
+    // Read inside the Canvas closure, which runs off the main actor.
+    nonisolated private static let samples = 64
 
     var body: some View {
         VStack(spacing: 4) {
