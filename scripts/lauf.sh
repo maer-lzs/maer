@@ -123,12 +123,15 @@ APP_PREFIX=fm.maer.
 APP_ID=fm.maer.app
 APP_GROUP=group.fm.maer.app
 GROUP_META=.com.apple.mobile_container_manager.metadata.plist
-# The bundles of the app installed on a booted simulator.
+# The bundles of the app installed on a booted simulator. A list that cannot
+# be read fails; it is not an empty list.
 app_bundles() {
-    $SIMCTL listapps "$1" 2>/dev/null | plutil -convert json -o - - 2>/dev/null | python3 -c "
+    local list
+    list="$($SIMCTL listapps "$1" 2>/dev/null)" || return 1
+    printf '%s' "$list" | plutil -convert json -o - - 2>/dev/null | python3 -c "
 import json, sys
 try: apps = json.load(sys.stdin)
-except ValueError: apps = {}
+except ValueError: sys.exit(1)
 for key in sorted(apps):
     if key.startswith(sys.argv[1]): print(key)" "$APP_PREFIX"
 }
@@ -137,12 +140,13 @@ for key in sorted(apps):
 reset_app() {
     local udid="$1" name="$2" id dir ids round
     $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
-    ids="$(printf '%s\n' "$APP_ID" $(app_bundles "$udid") | sort -u)"
+    ids="$(app_bundles "$udid")" || stop "die Liste der Apps auf $name liess sich nicht lesen" 2
+    ids="$(printf '%s\n' "$APP_ID" $ids | sort -u)"
     for round in 1 2 3; do
         for id in $ids; do
             $SIMCTL uninstall "$udid" "$id" >/dev/null 2>&1 || stop "$id liess sich auf $name nicht entfernen" 2
         done
-        ids="$(app_bundles "$udid")"
+        ids="$(app_bundles "$udid")" || stop "die Liste der Apps auf $name liess sich nicht lesen" 2
         [ -z "$ids" ] && break
         sleep 1
     done
