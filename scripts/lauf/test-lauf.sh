@@ -68,15 +68,25 @@ case "$*" in
 esac
 exit 0
 EOF
-chmod +x "$STUB/xcodebuild" "$STUB/simctl"
-export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_STUB_DIR="$STUB"
+# sysctl answers the load over one minute from the file load (default 0.50,
+# quiet) and ten cores; every call is logged.
+cat > "$STUB/sysctl" <<'EOF'
+#!/bin/bash
+echo "$*" >> "$LAUF_STUB_DIR/sysctl.log"
+case "$*" in
+    *vm.loadavg*) echo "{ $(cat "$LAUF_STUB_DIR/load" 2>/dev/null || echo 0.50) 0.40 0.30 }" ;;
+    *hw.ncpu*) echo 10 ;;
+esac
+EOF
+chmod +x "$STUB/xcodebuild" "$STUB/simctl" "$STUB/sysctl"
+export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_SYSCTL="$STUB/sysctl" LAUF_STUB_DIR="$STUB"
 export LAUF_ABLAGE="$DEV/ablage" LAUF_BAU="$DEV/bau" LAUF_TEMP_ROOTS="$TEMP/" LAUF_MIN_GB=0
 export LAUF_WARTE_S=4 LAUF_TICK_S=1
 export LAUF_SIM_DEVICES="$DEV/devices" LAUF_STILLES_GERAET=Witness_Silent_UID
 # The copied hooks read the list of names from the fence of the real tree.
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
-clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/red" "$STUB/booted-foreign"; }
+clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load"; }
 
 # The throwaway repository: a few sources, their tests, a fence, a document
 # suite, a measurement, documents and a project file, and the scripts of this
@@ -477,12 +487,12 @@ WORK_SIM=C1F0240C-E988-41D2-9081-4CFF0B8EA34B
 SIM27=AAAA2700-0000-0000-0000-000000000000
 SIM18=BBBB1860-0000-0000-0000-000000000000
 
-# 34. While a selection runs, launchd_sim of its udid and its children go to nice 19.
+# 34. While a selection runs, launchd_sim of its udid and its children go to nice 10, as xcodebuild.
 clear_stub
 sim="$(fake_sim "$WORK_SIM")"; FAKES="$FAKES $sim"; procs="$(tree_of "$sim")"
 LAUF_STUB_SLEEP=3 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
-if [ "$(echo "$procs" | wc -l | tr -d ' ')" = 3 ] && all_at 19 $procs; then
-    ok "34 the simulator of the run is lowered to nice 19"; else fail "34 the simulator of the run is lowered to nice 19" "$(for p in $procs; do echo "$p $(nice_of "$p")"; done)"; fi
+if [ "$(echo "$procs" | wc -l | tr -d ' ')" = 3 ] && all_at 10 $procs; then
+    ok "34 the simulator of the run is lowered to nice 10"; else fail "34 the simulator of the run is lowered to nice 10" "$(for p in $procs; do echo "$p $(nice_of "$p")"; done)"; fi
 end_fakes
 
 # 35. The final run lowers both of its simulators.
@@ -490,7 +500,7 @@ clear_stub
 a="$(fake_sim "$SIM27")"; b="$(fake_sim "$SIM18")"; FAKES="$FAKES $a $b"
 procs="$(tree_of "$a"; tree_of "$b")"
 LAUF_STUB_SLEEP=3 bash scripts/lauf.sh abschluss >/dev/null 2>&1
-if all_at 19 $procs; then ok "35 the final run lowers both simulators"; else fail "35 the final run lowers both simulators" "$(for p in $procs; do echo "$p $(nice_of "$p")"; done)"; fi
+if all_at 10 $procs; then ok "35 the final run lowers both simulators"; else fail "35 the final run lowers both simulators" "$(for p in $procs; do echo "$p $(nice_of "$p")"; done)"; fi
 end_fakes
 
 # 36. A simulator that boots after the start is lowered at the next tick.
@@ -498,7 +508,7 @@ clear_stub; rm -f "$WORK/late"
 ( sleep 1; fake_sim "$WORK_SIM" > "$WORK/late" ) &
 LAUF_STUB_SLEEP=4 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
 late="$(cat "$WORK/late" 2>/dev/null)"; FAKES="$FAKES $late"
-if [ -n "$late" ] && all_at 19 $(tree_of "$late"); then
+if [ -n "$late" ] && all_at 10 $(tree_of "$late"); then
     ok "36 a simulator booting late is lowered"; else fail "36 a simulator booting late is lowered" "late=$late $(nice_of "$late")"; fi
 end_fakes
 
@@ -507,7 +517,7 @@ clear_stub
 own="$(fake_sim "$WORK_SIM")"; other="$(fake_sim FFFF0000-0000-0000-0000-000000000000)"; FAKES="$FAKES $own $other"
 before="$(nice_of "$other")"
 LAUF_STUB_SLEEP=3 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
-if [ "$(nice_of "$own")" = 19 ] && all_at "$before" $(tree_of "$other"); then
+if [ "$(nice_of "$own")" = 10 ] && all_at "$before" $(tree_of "$other"); then
     ok "37 a simulator of another udid stays"; else fail "37 a simulator of another udid stays" "own=$(nice_of "$own") other=$(nice_of "$other") before=$before"; fi
 end_fakes
 
@@ -542,10 +552,38 @@ bash -c 'exec -a "/Applications/Xcode.app/Contents/Developer/Applications/Simula
 window=$!; disown "$window"; FAKES="$FAKES $window"; sleep 0.3
 window_before="$(nice_of "$window")"
 LAUF_STUB_SLEEP=3 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
-if [ "$(nice_of "$kid")" = 20 ] && [ "$(nice_of "$sim")" = 19 ] && [ "$(nice_of "$window")" = "$window_before" ] \
+if [ "$(nice_of "$kid")" = 20 ] && [ "$(nice_of "$sim")" = 10 ] && [ "$(nice_of "$window")" = "$window_before" ] \
     && ! grep -qE "^nice (19|20)$" "$STUB/xcodebuild.log"; then
     ok "39 never raises, nothing outside the tree"; else fail "39 never raises, nothing outside the tree" "kid=$(nice_of "$kid") sim=$(nice_of "$sim") window=$(nice_of "$window")/$window_before $(grep '^nice' "$STUB/xcodebuild.log")"; fi
 end_fakes
+
+# 40. The full run and the final run start only while the load over one minute
+# stands below the number of cores; they wait, with a limit, and stop with the
+# load measured. The load at the start and at the end stands in the note. The
+# selection does not wait for the load.
+clear_stub; echo 30.00 > "$STUB/load"
+out_full="$(LAUF_WARTE_S=2 bash scripts/lauf.sh voll 2>&1)"; rc_full=$?
+full_ran=0; [ -s "$STUB/xcodebuild.log" ] && full_ran=1
+clear_stub; echo 30.00 > "$STUB/load"
+git notes --ref=lauf remove HEAD >/dev/null 2>&1
+out_final="$(LAUF_WARTE_S=2 bash scripts/lauf.sh abschluss 2>&1)"; rc_final=$?
+final_touched=0; { [ -s "$STUB/xcodebuild.log" ] || grep -q erase "$STUB/simctl.log" 2>/dev/null; } && final_touched=1
+final_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+clear_stub; echo 30.00 > "$STUB/load"
+( sleep 2; echo 1.50 > "$STUB/load" ) &
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc_wait=$?
+wait
+note="$(git notes --ref=lauf show HEAD 2>/dev/null | tail -1)"
+clear_stub; echo 30.00 > "$STUB/load"
+LAUF_WARTE_S=2 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1; rc_sel=$?
+if [ $rc_full -ne 0 ] && [ $full_ran = 0 ] && echo "$out_full" | grep -q "Last 30" \
+    && [ $rc_final -ne 0 ] && [ $final_touched = 0 ] && [ -z "$final_note" ] && echo "$out_final" | grep -q "Last 30" \
+    && [ $rc_wait = 0 ] && echo "$note" | grep -q "last_beginn=1.50" && echo "$note" | grep -q "last_ende=1.50" \
+    && [ $rc_sel = 0 ]; then
+    ok "40 full and final run wait for a quiet machine, the load in the note"
+else
+    fail "40 full and final run wait for a quiet machine, the load in the note" "full rc=$rc_full ran=$full_ran / final rc=$rc_final touched=$final_touched note=$final_note / wait rc=$rc_wait note=$note / sel rc=$rc_sel"
+fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
