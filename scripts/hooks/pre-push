@@ -4,14 +4,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 #
-# pre-push: every push goes through scripts/lauf.sh push. Refused always, also
-# through the script: another remote than origin, main, a tag, a deletion, and
-# anything that is no fast forward (force, force with lease, rewritten
-# history). dev needs the note of the final run at the pushed commit. Every
-# commit of the push keeps the rules of the commit message (rules.py).
-# The script is known by LAUF_PUSH=1; that can be set by hand (named limit).
+# pre-push: every push goes through scripts/lauf.sh push or release. Refused
+# always: another remote than origin, a deletion, and anything that is no fast
+# forward (force, force with lease, rewritten history). A tag and main only
+# through lauf.sh release (LAUF_RELEASE, the tag it pushes): the tag new, main
+# only to the commit of that tag. dev, main and a tag need the note of the
+# final run at the commit, unless the commit is from before the script. Every
+# commit new to the server keeps the rules of the commit message (rules.py).
+# The script is known by LAUF_PUSH and LAUF_RELEASE; both can be set by hand
+# (named limit).
 set -u
 HOOKS="$(cd "$(dirname "$0")" && pwd)"
+release="${LAUF_RELEASE:-}"
 remote_name="$1"
 zero=0000000000000000000000000000000000000000
 refuse() { echo "pre-push: $*" >&2; exit 1; }
@@ -22,21 +26,32 @@ refuse() { echo "pre-push: $*" >&2; exit 1; }
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ -n "${local_ref:-}" ] || continue
     [ "$local_sha" = "$zero" ] && refuse "kein Loeschen: $remote_ref"
+    noted=""
     case "$remote_ref" in
-        refs/tags/*) refuse "kein Tag: $remote_ref";;
-        refs/heads/main) refuse "main bewegt nur der Auftraggeber";;
+        refs/tags/*)
+            [ -n "$release" ] && [ "$remote_ref" = "refs/tags/$release" ] || refuse "ein Tag nur ueber lauf.sh release: $remote_ref"
+            [ "$remote_sha" = "$zero" ] || refuse "ein Tag wird nicht verschoben: $remote_ref"
+            noted="$(git rev-parse "$local_sha^{commit}")";;
+        refs/heads/main)
+            [ -n "$release" ] || refuse "main nur ueber lauf.sh release"
+            [ "$local_sha" = "$(git rev-parse -q --verify "refs/tags/$release^{commit}")" ] || refuse "main nur auf den Commit von $release"
+            noted="$local_sha";;
+        refs/heads/dev) noted="$local_sha";;
     esac
     if [ "$remote_sha" != "$zero" ]; then
         git cat-file -e "$remote_sha" 2>/dev/null && git merge-base --is-ancestor "$remote_sha" "$local_sha" \
             || refuse "kein Vorspulen auf $remote_ref: Geschichte wird nicht umgeschrieben"
     fi
     [ "$remote_ref" = refs/notes/lauf ] && continue
-    if [ "$remote_ref" = refs/heads/dev ]; then
-        tree="$(git rev-parse "$local_sha^{tree}")"
-        git notes --ref=lauf show "$local_sha" 2>/dev/null | grep "art=abschluss" | grep "laufzeiten=27,18.6" | grep "ergebnis=gruen" | grep -q "baum=$tree" \
-            || refuse "dev verlangt den Vermerk des vollen Laufs auf 27 und 18.6 an $(git rev-parse --short "$local_sha")"
+    if [ -n "$noted" ] && ! bash "$HOOKS/../lauf.sh" vor-dem-skript "$noted" >/dev/null 2>&1; then
+        tree="$(git rev-parse "$noted^{tree}")"
+        git notes --ref=lauf show "$noted" 2>/dev/null | grep "art=abschluss" | grep "laufzeiten=27,18.6" | grep "ergebnis=gruen" | grep -q "baum=$tree" \
+            || refuse "${remote_ref#refs/heads/} verlangt den Vermerk des vollen Laufs auf 27 und 18.6 an $(git rev-parse --short "$noted")"
     fi
-    if [ "$remote_sha" = "$zero" ]; then range=("$local_sha" --not --remotes=origin); else range=("$remote_sha..$local_sha"); fi
+    # Only commits new to the server: main and a tag point at commits that
+    # are on dev already.
+    range=("$local_sha" --not --remotes=origin)
+    [ "$remote_sha" = "$zero" ] || range+=("^$remote_sha")
     for commit in $(git rev-list "${range[@]}"); do
         message="$(mktemp)"
         git log -1 --format=%B "$commit" > "$message"

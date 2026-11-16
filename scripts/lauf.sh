@@ -12,6 +12,14 @@
 #                                         (erased only when new); green
 #                                         writes the note at the head
 #   push <zweig|dev|nachzug|doku>         checks the note and pushes
+#   release <tag> <build> [--sha S] [--main]
+#                                         the one way to a tag and to main:
+#                                         the commit is the GitSHA of the
+#                                         uploaded build, on origin/dev, with
+#                                         the note of the final run (a commit
+#                                         from before this script needs none),
+#                                         the tag new, main only forward to it;
+#                                         origin only, never another remote
 # Every run: at least LAUF_MIN_GB free (15), waits while a foreign simulator
 # is booted, no parallel testing, nice 10 for xcodebuild and the processes of
 # its simulator, no access file, the store of the run
@@ -40,6 +48,7 @@ SIM_27_NAME="${LAUF_SIM_27_NAME:-Maer-Abschluss-27}"
 SIM_18_NAME="${LAUF_SIM_18_NAME:-Maer-Abschluss-18}"
 SIM_DEVICES="${LAUF_SIM_DEVICES:-$HOME/Library/Developer/CoreSimulator/Devices}"
 SILENT_DEVICE="${LAUF_STILLES_GERAET:-BlackHole2ch_UID}"
+ARCHIVE_ROOT="${LAUF_ARCHIVE:-$HOME/Library/Developer/Xcode/Archives}"
 NOTES=refs/notes/lauf
 AUSWAHL="python3 -I $ROOT/scripts/lauf/auswahl.py"
 
@@ -274,6 +283,28 @@ note_ok() {
     return 1
 }
 
+# Whether a commit is from before this script: it does not hold
+# scripts/lauf.sh, and it lies at or before the commit of origin/dev the
+# script grew from. Such a commit had no final run to note.
+before_the_script() {
+    local commit="$1" added since
+    git cat-file -e "$commit:scripts/lauf.sh" 2>/dev/null && return 1
+    added="$(git log --diff-filter=A --format=%H HEAD -- scripts/lauf.sh | tail -1)"
+    [ -n "$added" ] || return 1
+    since="$(git merge-base "$added" origin/dev 2>/dev/null)" || return 1
+    git merge-base --is-ancestor "$commit" "$since"
+}
+
+# The GitSHA of the archives of one version and build in the organizer, one
+# per line.
+archive_shas() {
+    find "$ARCHIVE_ROOT" -maxdepth 2 -name '*.xcarchive' 2>/dev/null | while read -r a; do
+        [ "$(plutil -extract ApplicationProperties.CFBundleShortVersionString raw "$a/Info.plist" 2>/dev/null)" = "$1" ] || continue
+        [ "$(plutil -extract ApplicationProperties.CFBundleVersion raw "$a/Info.plist" 2>/dev/null)" = "$2" ] || continue
+        plutil -extract GitSHA raw "$a/Products/Applications/Maer.app/Info.plist" 2>/dev/null
+    done | sort -u
+}
+
 kind="${1:-}"; shift || true
 case "$kind" in
 auswahl|voll)
@@ -364,6 +395,50 @@ push)
     esac
     LAUF_PUSH=1 git push origin "HEAD:$remote" "$NOTES:$NOTES" || stop "der Push wurde abgelehnt"
     ;;
+vor-dem-skript)
+    # For the pre-push hook: exit 0 when the commit is from before this script.
+    before_the_script "$(git rev-parse --verify -q "${1:-}^{commit}")"
+    ;;
+release)
+    tag="${1:-}"; build="${2:-}"; shift 2 2>/dev/null || stop "release <tag> <build> [--sha S] [--main]" 2
+    sha=""; main=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --sha) sha="${2:-}"; shift;;
+            --main) main=1;;
+            *) stop "release nimmt nur --sha und --main: $1" 2;;
+        esac
+        shift
+    done
+    echo "$tag" | grep -Eq '^v[0-9]+\.[0-9]+(\.[0-9]+)?$' || stop "kein Tag der Form v3.8 oder v3.6.4: $tag" 2
+    echo "$build" | grep -Eq '^[0-9]+$' || stop "kein Build: $build" 2
+    version="${tag#v}"
+    git fetch -q origin 2>/dev/null
+    found="$(archive_shas "$version" "$build")"
+    [ "$(echo "$found" | grep -c .)" -le 1 ] || stop "mehrere Archive $version ($build) mit verschiedenem GitSHA: $(echo $found)"
+    [ -n "$found$sha" ] || stop "kein Archiv $version ($build) unter $ARCHIVE_ROOT und kein --sha"
+    commit="$(git rev-parse --verify -q "${found:-$sha}^{commit}")" || stop "der Commit ${found:-$sha} ist hier nicht bekannt"
+    if [ -n "$found" ] && [ -n "$sha" ]; then
+        [ "$(git rev-parse --verify -q "$sha^{commit}")" = "$commit" ] || stop "--sha $sha ist nicht der GitSHA $found des Archivs $version ($build)"
+    fi
+    git merge-base --is-ancestor "$commit" origin/dev || stop "$(git rev-parse --short "$commit") liegt nicht auf origin/dev"
+    if ! before_the_script "$commit"; then
+        why="$(note_ok "$commit" abschluss 27,18.6)" || stop "release verlangt den Vermerk des vollen Laufs auf 27 und 18.6: $why"
+    fi
+    git rev-parse -q --verify "refs/tags/$tag" >/dev/null && stop "der Tag $tag ist hier schon da"
+    [ -z "$(git ls-remote origin "refs/tags/$tag")" ] || stop "der Tag $tag ist am Server schon da"
+    refs=("refs/tags/$tag")
+    if [ -n "$main" ]; then
+        git merge-base --is-ancestor origin/main "$commit" || stop "main geht nur vorwaerts: kein Vorspulen von origin/main auf $(git rev-parse --short "$commit")"
+        refs+=("$commit:refs/heads/main")
+    fi
+    git tag -a "$tag" "$commit" -m "Mär $version" || stop "der Tag liess sich nicht anlegen"
+    if ! LAUF_PUSH=1 LAUF_RELEASE="$tag" git push origin "${refs[@]}"; then
+        git tag -d "$tag" >/dev/null
+        stop "der Push wurde abgelehnt; der Tag ist lokal wieder weg"
+    fi
+    say "$tag an $(git rev-parse --short "$commit")${main:+, main ebenso}, nur nach origin"
+    ;;
 *)
-    stop "lauf.sh auswahl | voll | abschluss | push <zweig|dev|nachzug|doku>" 2;;
+    stop "lauf.sh auswahl | voll | abschluss | push <zweig|dev|nachzug|doku> | release <tag> <build>" 2;;
 esac
