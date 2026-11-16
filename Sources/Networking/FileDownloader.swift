@@ -213,7 +213,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation,
                                                     statedBytes: statedBytes, claim: claim, host: host, task: task)
             let startWatch = watch.withLock { state -> Bool in
-                state.silence.began(host, at: Date())
+                state.silence.began(host, at: state.clock())
                 defer { state.running = true }
                 return !state.running
             }
@@ -239,7 +239,12 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
                 // bearable, because nothing cancels this task (no one holds it); a cancelled sleep would not end the loop but turn it without a pause
                 try? await Task.sleep(for: .seconds(tick))
                 let online = await Reachability.isConnected()
-                let silent = self.watch.withLock { $0.silence.tick(at: Date(), online: online) }
+                let silent = self.watch.withLock { state -> [String] in
+                    #if DEBUG
+                    state.passes += 1
+                    #endif
+                    return state.silence.tick(at: state.clock(), online: online)
+                }
                 for host in silent { self.endDownloads(of: host) }
                 // The stop reads the state its writers change under the same
                 // lock: a download that begins meanwhile either is counted
@@ -300,7 +305,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         let stalled = handlers[downloadTask.taskIdentifier]?.stall.written(bytesWritten, total: totalBytesWritten) ?? false
         let handler = handlers[downloadTask.taskIdentifier]
         lock.unlock()
-        if let host = handler?.host { watch.withLock { $0.silence.heard(host, at: Date()) } }
+        if let host = handler?.host { watch.withLock { $0.silence.heard(host, at: $0.clock()) } }
         // A server that states a length and closes early makes the session
         // start over without end (`DownloadStall`): the task ends here as a
         // track that arrived incomplete.
