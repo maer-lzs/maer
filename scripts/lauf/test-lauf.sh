@@ -40,6 +40,14 @@ for arg in "$@"; do
     prev="$arg"
 done
 sleep "${LAUF_STUB_SLEEP:-0}"
+if [ -f "$LAUF_STUB_DIR/flaky" ]; then
+    # A case that fails in some of its repetitions: four of them.
+    for i in 1 2 3 4; do echo "✘ Test \"the row keeps four buttons\" failed after 0.1 seconds with 1 issue."; done
+    echo "✘ Test run with 300 tests in 1 suite failed after 9.0 seconds with 4 issues."
+    echo "** TEST FAILED **"
+    echo "end $(now) 65" >> "$log"
+    exit 65
+fi
 if [ -f "$LAUF_STUB_DIR/red" ]; then
     echo "✘ Test \"the row keeps four buttons\" recorded an issue at RowTests.swift:12:5"
     echo "** TEST FAILED **"
@@ -871,6 +879,31 @@ out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?
 if [ $rc = 0 ] && [ -n "$(remote_ref refs/heads/form-farbe)" ]; then
     ok "61 a branch of form passes without a test commit"; else fail "61 a branch of form passes without a test commit" "rc=$rc $out"; fi
 git checkout -q scheibe
+
+# B8: "does it flake?" asks one case many times in one run, and a few cold
+# runs besides, because some failures show only at a start.
+# 62. wiederhole runs the case N times in one run, then three cold runs.
+clear_stub
+out="$(bash scripts/lauf.sh wiederhole PlannedQueueTests 300 2>&1)"; rc=$?
+runs="$(grep -c '^start' "$STUB/xcodebuild.log" 2>/dev/null)"
+first="$(grep '^start' "$STUB/xcodebuild.log" 2>/dev/null | head -1)"
+if [ $rc = 0 ] && [ "$runs" = 4 ] && echo "$first" | grep -q -- "-test-iterations 300" \
+    && echo "$first" | grep -q -- "-only-testing:MaerTests/PlannedQueueTests" && grep -q "^silent yes" "$STUB/xcodebuild.log"; then
+    ok "62 a case repeated in one run, then three cold runs"; else fail "62 a case repeated in one run, then three cold runs" "rc=$rc runs=$runs $first $out"; fi
+
+# 63. A flaking case is counted, not just called red: four of three hundred.
+clear_stub; touch "$STUB/flaky"
+out="$(bash scripts/lauf.sh wiederhole PlannedQueueTests 300 2>&1)"; rc=$?
+rm -f "$STUB/flaky"
+if [ $rc -ne 0 ] && echo "$out" | grep -q "rot 4 von 300"; then
+    ok "63 a flaking case is counted"; else fail "63 a flaking case is counted" "rc=$rc $out"; fi
+
+# 64. Without a case, or with a count of none, nothing runs.
+clear_stub
+bash scripts/lauf.sh wiederhole >/dev/null 2>&1; r1=$?
+bash scripts/lauf.sh wiederhole PlannedQueueTests 0 >/dev/null 2>&1; r2=$?
+if [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ]; then
+    ok "64 no case, no count: nothing runs"; else fail "64 no case, no count: nothing runs" "$r1 $r2"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
