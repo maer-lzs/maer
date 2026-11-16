@@ -102,6 +102,7 @@ export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_SYSCTL
 export LAUF_ABLAGE="$DEV/ablage" LAUF_BAU="$DEV/bau" LAUF_TEMP_ROOTS="$TEMP/" LAUF_MIN_GB=0
 export LAUF_WARTE_S=4 LAUF_TICK_S=1
 export LAUF_SIM_DEVICES="$DEV/devices" LAUF_STILLES_GERAET=Witness_Silent_UID
+export LAUF_ARCHIVE="$DEV/archives"
 # The copied hooks read the list of names from the fence of the real tree.
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
@@ -711,6 +712,124 @@ clear_stub; touch "$STUB/listapps-fails"; git notes --ref=lauf remove HEAD >/dev
 bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc=$?
 if [ $rc -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ] && ! git notes --ref=lauf show HEAD >/dev/null 2>&1; then
     ok "48 an unreadable list of apps stops the run"; else fail "48 an unreadable list of apps stops the run" "rc=$rc"; fi
+
+# The release: a tag, and main with it, only through lauf.sh release. An
+# archive of the organizer is a folder with the version and build of the app
+# and the GitSHA in the plist of the app.
+make_archive() {
+    local dir="$LAUF_ARCHIVE/2026-11-16/Maer $1 ($2).xcarchive"
+    mkdir -p "$dir/Products/Applications/Maer.app"
+    plutil -create xml1 "$dir/Info.plist"
+    plutil -insert ApplicationProperties -dictionary "$dir/Info.plist"
+    plutil -insert ApplicationProperties.CFBundleShortVersionString -string "$1" "$dir/Info.plist"
+    plutil -insert ApplicationProperties.CFBundleVersion -string "$2" "$dir/Info.plist"
+    plutil -create xml1 "$dir/Products/Applications/Maer.app/Info.plist"
+    plutil -insert GitSHA -string "$3" "$dir/Products/Applications/Maer.app/Info.plist"
+}
+remote_ref() { git ls-remote origin "$1" | cut -f1; }
+# A commit on dev with the note of the final run, pushed; and one without a note.
+clear_stub; forget_marks; rm -rf "$LAUF_ARCHIVE"
+git checkout -q -B dev origin/dev
+change Sources/Models/PlaybackSkip.swift "// release" "A change that goes out"
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+bash scripts/lauf.sh push dev >/dev/null 2>&1
+REL="$(git rev-parse HEAD)"; REL8="${REL:0:8}"
+change Sources/Models/PlaybackSkip.swift "// unnoted" "A change without a final run"
+git push -q --no-verify origin HEAD:refs/heads/dev >/dev/null 2>&1
+BARE="$(git rev-parse HEAD)"
+git checkout -q scheibe
+main_before="$(remote_ref refs/heads/main)"
+on_dev=0; [ "$(remote_ref refs/heads/dev)" = "$BARE" ] && git notes --ref=lauf show "$REL" >/dev/null 2>&1 && on_dev=1
+
+# 49. Without an archive and without --sha the release stops.
+out="$(bash scripts/lauf.sh release v9.1 91 2>&1)"; rc=$?
+if [ $on_dev = 1 ] && [ $rc -ne 0 ] && echo "$out" | grep -q "Archiv" && [ -z "$(remote_ref refs/tags/v9.1)" ] && ! git rev-parse -q --verify refs/tags/v9.1 >/dev/null; then
+    ok "49 no archive and no sha: no release"; else fail "49 no archive and no sha: no release" "on_dev=$on_dev rc=$rc $out"; fi
+
+# 50. A sha that differs from the archive's GitSHA stops the release.
+make_archive 9.1 91 "$REL8"
+out="$(bash scripts/lauf.sh release v9.1 91 --sha "${BARE:0:8}" 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q "GitSHA" && [ -z "$(remote_ref refs/tags/v9.1)" ]; then
+    ok "50 a sha other than the archive's stops"; else fail "50 a sha other than the archive's stops" "rc=$rc $out"; fi
+
+# 51. Without the note of the final run at the commit the release stops.
+make_archive 9.2 92 "${BARE:0:8}"
+out="$(bash scripts/lauf.sh release v9.2 92 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && [ -z "$(remote_ref refs/tags/v9.2)" ] && echo "$out" | grep -q "Vermerk"; then
+    ok "51 no note of the final run: no release"; else fail "51 no note of the final run: no release" "rc=$rc $out"; fi
+
+# 53. --main where main cannot move forward to the commit stops; nothing moves.
+git push -q --no-verify origin "$BARE:refs/heads/main" >/dev/null 2>&1
+out="$(bash scripts/lauf.sh release v9.1 91 --main 2>&1)"; rc=$?
+ff_main="$(remote_ref refs/heads/main)"
+git push -q --no-verify --force origin "$main_before:refs/heads/main" >/dev/null 2>&1
+if [ $rc -ne 0 ] && echo "$out" | grep -q "Vorspulen" && [ "$ff_main" = "$BARE" ] && [ -z "$(remote_ref refs/tags/v9.1)" ]; then
+    ok "53 main only forward"; else fail "53 main only forward" "rc=$rc main=$ff_main $out"; fi
+
+# 54. Green: the tag, annotated, at the commit on origin; main with it; codeberg untouched.
+out="$(bash scripts/lauf.sh release v9.1 91 --main 2>&1)"; rc=$?
+tag_commit="$(git rev-parse -q --verify "refs/tags/v9.1^{commit}" 2>/dev/null)"
+if [ $rc = 0 ] && [ "$tag_commit" = "$REL" ] && [ "$(git cat-file -t refs/tags/v9.1 2>/dev/null)" = tag ] \
+    && [ "$(git ls-remote origin 'refs/tags/v9.1^{}' | cut -f1)" = "$REL" ] && [ "$(remote_ref refs/heads/main)" = "$REL" ] \
+    && [ -z "$(git ls-remote codeberg)" ]; then
+    ok "54 the release sets the tag and main, on origin only"; else fail "54 the release sets the tag and main, on origin only" "rc=$rc tag=$tag_commit main=$(remote_ref refs/heads/main) $out"; fi
+
+# 52. A tag that is there already, locally or on origin, stops.
+out="$(bash scripts/lauf.sh release v9.1 91 2>&1)"; rc=$?
+git tag -a v9.3 "$REL" -m "Local only" 2>/dev/null; make_archive 9.3 93 "$REL8"
+out2="$(bash scripts/lauf.sh release v9.3 93 2>&1)"; rc2=$?
+git tag -d v9.3 >/dev/null 2>&1
+if [ $rc -ne 0 ] && [ $rc2 -ne 0 ] && echo "$out" | grep -q "Tag" && echo "$out2" | grep -q "Tag" && [ -z "$(remote_ref refs/tags/v9.3)" ]; then
+    ok "52 a tag that is there already stops"; else fail "52 a tag that is there already stops" "rc=$rc rc2=$rc2 $out / $out2"; fi
+
+# 55. The hook: a tag or main with LAUF_PUSH=1 but without LAUF_RELEASE, with the
+# LAUF_RELEASE of another tag, or main to another commit than the tag's: refused.
+git tag -a v9.4 "$REL" -m "Witness" 2>/dev/null
+o1="$(LAUF_PUSH=1 git push origin refs/tags/v9.4 2>&1)"; r1=$?
+o2="$(LAUF_PUSH=1 LAUF_RELEASE=v9.1 git push origin refs/tags/v9.4 2>&1)"; r2=$?
+o3="$(LAUF_PUSH=1 LAUF_RELEASE=v9.4 git push origin "$BARE:refs/heads/main" 2>&1)"; r3=$?
+o4="$(LAUF_PUSH=1 git push origin "$BARE:refs/heads/main" 2>&1)"; r4=$?
+git tag -d v9.4 >/dev/null 2>&1
+if [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ $r3 -ne 0 ] && [ $r4 -ne 0 ] && [ -z "$(remote_ref refs/tags/v9.4)" ] \
+    && [ "$(remote_ref refs/heads/main)" = "$REL" ]; then
+    ok "55 the hook lets a tag and main through only for the release"; else fail "55 the hook lets a tag and main through only for the release" "$r1 $r2 $r3 $r4"; fi
+
+# 56. A commit that is not on origin/dev stops.
+change Sources/Models/PlaybackSkip.swift "// local" "A local commit"
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+LOCAL="$(git rev-parse HEAD)"; make_archive 9.5 95 "${LOCAL:0:8}"
+out="$(bash scripts/lauf.sh release v9.5 95 2>&1)"; rc=$?
+git reset -q --hard HEAD~1
+if [ $rc -ne 0 ] && [ -z "$(remote_ref refs/tags/v9.5)" ] && echo "$out" | grep -q "origin/dev"; then
+    ok "56 a commit not on origin/dev: no release"; else fail "56 a commit not on origin/dev: no release" "rc=$rc $out"; fi
+
+# 57. A commit from before the script (it does not hold scripts/lauf.sh, and
+# it lies before the commit of dev the script grew from) needs no note; the
+# GitSHA of its archive is still the rule. A separate throwaway repository:
+# the old commit, then the script added on dev.
+OLDREPO="$DEV/old-repo"
+git init -q --bare "$WORK/old-origin.git"
+git init -q -b dev "$OLDREPO"
+(
+    cd "$OLDREPO" || exit 2
+    git config user.name lzs; git config user.email 352619651+maer-lzs@users.noreply.github.com
+    printf 'struct Old {}\n' > Old.swift
+    git add -A && git commit -q --no-verify -m "A commit from before the script"
+    git remote add origin "$WORK/old-origin.git"
+    git push -q --no-verify origin dev dev:main 2>/dev/null
+    mkdir -p scripts && cp -R "$REAL/scripts/." scripts/
+    git add -A && git commit -q --no-verify -m "The script arrives"
+    git push -q --no-verify origin dev 2>/dev/null
+    git config core.hooksPath "$OLDREPO/scripts/hooks"
+)
+OLD="$(git -C "$OLDREPO" rev-parse dev~1)"
+make_archive 9.6 96 "${OLD:0:8}"
+out="$(cd "$OLDREPO" && bash scripts/lauf.sh release v9.6 96 --main 2>&1)"; rc=$?
+make_archive 9.7 97 "$(git -C "$OLDREPO" rev-parse --short=8 dev)"
+out2="$(cd "$OLDREPO" && bash scripts/lauf.sh release v9.7 97 2>&1)"; rc2=$?
+if [ $rc = 0 ] && [ "$(git -C "$OLDREPO" ls-remote origin 'refs/tags/v9.6^{}' | cut -f1)" = "$OLD" ] \
+    && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "Vermerk" && [ -z "$(git -C "$OLDREPO" ls-remote origin refs/tags/v9.7)" ]; then
+    ok "57 a commit from before the script needs no note, the next one does"; else fail "57 a commit from before the script needs no note, the next one does" "rc=$rc $out / rc2=$rc2 $out2"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
