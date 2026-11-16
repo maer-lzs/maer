@@ -11,6 +11,8 @@
 # only to the commit of that tag. dev, main and a tag need the note of the
 # final run at the commit, unless the commit is from before the script. Every
 # commit new to the server keeps the rules of the commit message (rules.py).
+# A branch keeps the order of R8 (lauf.sh r8): a red test commit before the
+# first change of Sources/, unless its name says form-, nachzug- or sprache-.
 # The script is known by LAUF_PUSH and LAUF_RELEASE; both can be set by hand
 # (named limit).
 set -u
@@ -37,6 +39,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             [ "$local_sha" = "$(git rev-parse -q --verify "refs/tags/$release^{commit}")" ] || refuse "main nur auf den Commit von $release"
             noted="$local_sha";;
         refs/heads/dev) noted="$local_sha";;
+        refs/heads/*)
+            why="$(bash "$HOOKS/../lauf.sh" r8 "${remote_ref#refs/heads/}" "$local_sha" 2>&1)" || refuse "R8: $why";;
     esac
     if [ "$remote_sha" != "$zero" ]; then
         git cat-file -e "$remote_sha" 2>/dev/null && git merge-base --is-ancestor "$remote_sha" "$local_sha" \

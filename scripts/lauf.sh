@@ -12,6 +12,8 @@
 #                                         (erased only when new); green
 #                                         writes the note at the head
 #   push <zweig|dev|nachzug|doku>         checks the note and pushes
+#   wiederhole <Suite[/Fall]> [Anzahl]   one case many times in one run,
+#                                         then three cold runs; counts reds
 #   release <tag> <build> [--sha S] [--main]
 #                                         the one way to a tag and to main:
 #                                         the commit is the GitSHA of the
@@ -236,9 +238,48 @@ run_tests() {
     CHILD=""; LOWER=""
     grep -E 'Test run with|\*\* TEST' "$STORE/lauf.log" | tail -2
     [ $rc -ne 0 ] && grep -E '✘|error:' "$STORE/lauf.log" | head -40
+    # The red cases by name, and how often a case failed (once per
+    # repetition in a run that repeats).
+    RED_NAMES="$(grep -o '✘ Test "[^"]*"' "$STORE/lauf.log" | sed 's/^✘ Test "//; s/"$//' | sort -u | paste -sd ';' -)"
+    RED_COUNT="$(grep -c '✘ Test "[^"]*" failed after' "$STORE/lauf.log")"
     $SIMCTL --set "$HOME/Library/Developer/XCTestDevices" delete all >/dev/null 2>&1
     rm -rf -- "$STORE"; STORE=""
     return $rc
+}
+
+RED_NAMES=""
+RED_COUNT=0
+
+# R8: whether the commit changes only tests.
+tests_only() {
+    local files
+    files="$(git diff-tree --no-commit-id --name-only -r --root "$1")"
+    [ -n "$files" ] && ! echo "$files" | grep -qvE '^(MaerTests|MaerUITests)/'
+}
+
+# R8: before the first commit of the branch that changes Sources/ stands a
+# commit that changes only tests and carries the note of a red selection at
+# its content. A branch of form, a follow-up after the review and a pure
+# translation are named so and pass (form-, nachzug-, sprache-). The hook
+# checks order and red, not whether the tests test the right thing.
+r8_order() {
+    local branch="$1" head="$2" c unproven="" proven=""
+    case "$branch" in form-*|nachzug-*|sprache-*) return 0;; esac
+    for c in $(git rev-list --reverse "$head" --not origin/dev); do
+        if git diff-tree --no-commit-id --name-only -r --root "$c" | grep -q '^Sources/'; then
+            [ -n "$proven" ] && return 0
+            [ -n "$unproven" ] && { echo "kein roter Vermerk am Test-Commit $unproven vor dem Code $(git rev-parse --short "$c")"; return 1; }
+            echo "kein Test-Commit vor dem Code $(git rev-parse --short "$c")"; return 1
+        fi
+        if tests_only "$c"; then
+            if git notes --ref=lauf show "$c" 2>/dev/null | grep "art=rot" | grep -q "baum=$(git rev-parse "$c^{tree}")"; then
+                proven=1
+            else
+                unproven="${unproven:-$(git rev-parse --short "$c")}"
+            fi
+        fi
+    done
+    return 0
 }
 
 # The -only-testing arguments for the top-level types of the chosen files.
@@ -333,7 +374,15 @@ auswahl|voll)
     [ "$kind" = voll ] && wait_for_quiet
     wait_for_foreign "$SIM_ARBEIT"
     silence "$SIM_ARBEIT"
-    run_tests "$SIM_ARBEIT" "${args[@]+"${args[@]}"}" || stop "rot" 1
+    if ! run_tests "$SIM_ARBEIT" "${args[@]+"${args[@]}"}"; then
+        # A commit of only tests that is red at the selection notes its red
+        # cases: the proof of R8 that the witnesses were red before the code.
+        if [ "$kind" = auswahl ] && clean_tree && tests_only HEAD && [ -n "$RED_NAMES" ]; then
+            line="lauf art=rot baum=$(tree_of_head) datum=$(date +%Y-%m-%dT%H:%M:%S) faelle=$RED_NAMES"
+            git notes --ref=lauf append -m "$line" HEAD && say "Vermerk: $line"
+        fi
+        stop "rot" 1
+    fi
     if clean_tree; then write_note "$note_kind" 27; else say "der Baum ist offen: kein Vermerk"; fi
     if echo "$plan" | grep -qx "ui: ja" && [ "$kind" = auswahl ]; then
         say "UI beruehrt: die Journeys laufen"
@@ -380,6 +429,7 @@ push)
         zweig)
             case "$branch" in dev|main) stop "push zweig nicht auf $branch";; esac
             why="$(note_ok HEAD "abschluss" "27,18.6")" || stop "push zweig verlangt den Vermerk eines vollen Laufs auf 27 und 18.6 am Kopf: $why"
+            why="$(r8_order "$branch" HEAD)" || stop "R8: $why"
             remote="refs/heads/$branch";;
         dev)
             why="$(note_ok HEAD "abschluss" "27,18.6")" || stop "push dev verlangt den Vermerk am Commit: $why"
@@ -394,6 +444,29 @@ push)
         *) stop "push zweig | dev | nachzug | doku" 2;;
     esac
     LAUF_PUSH=1 git push origin "HEAD:$remote" "$NOTES:$NOTES" || stop "der Push wurde abgelehnt"
+    ;;
+r8)
+    # For the pre-push hook: the order of R8 on a branch.
+    r8_order "${1:-}" "${2:-HEAD}"
+    ;;
+wiederhole)
+    target="${1:-}"; count="${2:-100}"
+    [ -n "$target" ] || stop "wiederhole <Suite[/Fall]> [Anzahl]" 2
+    echo "$count" | grep -Eq '^[1-9][0-9]*$' || stop "keine Anzahl: $count" 2
+    space
+    wait_for_quiet
+    wait_for_foreign "$SIM_ARBEIT"
+    silence "$SIM_ARBEIT"
+    run_tests "$SIM_ARBEIT" "-only-testing:MaerTests/$target" -test-iterations "$count"; rc=$?
+    once="$RED_COUNT"
+    say "in einem Lauf: rot $once von $count"
+    cold=0
+    for i in 1 2 3; do
+        silence "$SIM_ARBEIT"
+        run_tests "$SIM_ARBEIT" "-only-testing:MaerTests/$target" >/dev/null || cold=$((cold + 1))
+    done
+    say "kalt: rot $cold von 3"
+    [ $rc = 0 ] && [ $cold = 0 ] || stop "wackelt: rot $once von $count in einem Lauf, $cold von 3 kalt" 1
     ;;
 vor-dem-skript)
     # For the pre-push hook: exit 0 when the commit is from before this script.
@@ -440,5 +513,5 @@ release)
     say "$tag an $(git rev-parse --short "$commit")${main:+, main ebenso}, nur nach origin"
     ;;
 *)
-    stop "lauf.sh auswahl | voll | abschluss | push <zweig|dev|nachzug|doku> | release <tag> <build>" 2;;
+    stop "lauf.sh auswahl | voll | abschluss | push <zweig|dev|nachzug|doku> | wiederhole <Suite> [Anzahl] | release <tag> <build>" 2;;
 esac
