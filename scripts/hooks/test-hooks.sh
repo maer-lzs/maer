@@ -98,6 +98,45 @@ else
     echo "FAIL changelog hint refused the commit"; failures=$((failures + 1))
 fi
 
+expect refuse "message names the branch push in German" docs/e.md "one" "Witnesses refused by push zweig"
+expect refuse "message names the repeat in German"      docs/e.md "two" "wiederhole runs one case many times"
+
+# The hooks read the index, never the working tree: a file changed after it
+# was staged does not change what the hook sees.
+printf 'clean\n' > Sources/F.swift && git add Sources/F.swift
+printf '// Die Zeile wird nicht mehr gezeigt\n' >> Sources/F.swift
+if git commit -q -m "A clean line staged, the working tree changed after" >/dev/null 2>"$WORK/err"; then
+    echo "ok   pass  the working tree changed after the staging does not count"
+else
+    echo "FAIL want pass: the working tree changed after the staging does not count"; failures=$((failures + 1))
+fi
+git reset -q --hard HEAD
+printf '// Die Zeile wird nicht mehr gezeigt\n' > Sources/G.swift && git add Sources/G.swift
+printf '// The row is shown once\n' > Sources/G.swift
+if git commit -q -m "A German comment staged, the working tree cleaned after" >/dev/null 2>"$WORK/err"; then
+    echo "FAIL want refuse: the staged German comment counts though the working tree is clean"; failures=$((failures + 1))
+else
+    echo "ok   refuse  the staged German comment counts though the working tree is clean"
+fi
+git reset -q --hard HEAD
+rm -f Sources/G.swift
+# The throwaway mark counts only in the index: an untracked .wegwerf in a
+# temporary tree is no mark.
+UNMARKED="$WORK/unmarked"
+git init -q "$UNMARKED"
+(
+    cd "$UNMARKED" || exit 2
+    git config core.hooksPath "$HOOKS"; git config user.name lzs; git config user.email 352619651+maer-lzs@users.noreply.github.com
+    echo "not staged" > .wegwerf
+    echo "a line" > a.md && git add a.md
+    git commit -q -m "A line in a temporary tree" >/dev/null 2>&1
+) && marked=pass || marked=refuse
+if [ "$marked" = refuse ]; then
+    echo "ok   refuse  an untracked throwaway mark is no mark"
+else
+    echo "FAIL want refuse: an untracked throwaway mark is no mark"; failures=$((failures + 1))
+fi
+
 # The time a commit takes with both hooks: under two seconds.
 printf 'speed\n' > docs/h.md && git add docs/h.md
 start=$(python3 -c 'import time; print(time.time())')

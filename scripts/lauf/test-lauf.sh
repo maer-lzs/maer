@@ -53,6 +53,9 @@ for arg in "$@"; do
     if [ "$prev" = "-derivedDataPath" ]; then mkdir -p "$arg/Build"; fi
     prev="$arg"
 done
+# With the file stubborn the stub ignores TERM, as the real xcodebuild did
+# while it ended its test session.
+[ -f "$LAUF_STUB_DIR/stubborn" ] && trap '' TERM
 sleep "${LAUF_STUB_SLEEP:-0}"
 if [ -f "$LAUF_STUB_DIR/flaky" ]; then
     # A case that fails in some of its repetitions: four of them.
@@ -121,10 +124,13 @@ esac
 EOF
 # nm and the demangler read the program as text: a stub program is its own
 # list of symbols.
-printf '#!/bin/bash\nfor a in "$@"; do [ -f "$a" ] && cat "$a"; done; exit 0\n' > "$STUB/nm"
+printf '#!/bin/bash\nfor a in "$@"; do [ -f "$a" ] && grep -E "^[0-9a-f]+ [A-Za-z-] " "$a"; done; exit 0\n' > "$STUB/nm"
+# strings reads every line of the program: a stripped program keeps the
+# names of its fields as text, not as symbols.
+printf '#!/bin/bash\nfor a in "$@"; do [ -f "$a" ] && cat "$a"; done; exit 0\n' > "$STUB/strings"
 printf '#!/bin/bash\ncat\n' > "$STUB/demangle"
-chmod +x "$STUB/xcodebuild" "$STUB/simctl" "$STUB/sysctl" "$STUB/nm" "$STUB/demangle"
-export LAUF_NM="$STUB/nm" LAUF_DEMANGLE="$STUB/demangle"
+chmod +x "$STUB/xcodebuild" "$STUB/simctl" "$STUB/sysctl" "$STUB/nm" "$STUB/demangle" "$STUB/strings"
+export LAUF_NM="$STUB/nm" LAUF_DEMANGLE="$STUB/demangle" LAUF_STRINGS="$STUB/strings"
 export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_SYSCTL="$STUB/sysctl" LAUF_STUB_DIR="$STUB"
 export LAUF_ABLAGE="$DEV/ablage" LAUF_BAU="$DEV/bau" LAUF_TEMP_ROOTS="$TEMP/" LAUF_MIN_GB=0
 export LAUF_WARTE_S=4 LAUF_TICK_S=1
@@ -960,6 +966,59 @@ bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc2=$?
 if [ $rc -ne 0 ] && [ -z "$hooked_note" ] && echo "$out" | grep -q "_test" && [ "$built" = 1 ] && [ $rc2 = 0 ] \
     && git notes --ref=lauf show HEAD 2>/dev/null | grep -q "art=abschluss"; then
     ok "67 the final run reads the symbols of the release program"; else fail "67 the final run reads the symbols of the release program" "rc=$rc built=$built rc2=$rc2 $out"; fi
+
+# 68. Without origin/dev the order of R8 is not measured: red, and said so.
+git checkout -q r8-recht
+kept_dev="$(git rev-parse origin/dev)"
+git update-ref -d refs/remotes/origin/dev
+out="$(bash scripts/lauf.sh r8 r8-recht HEAD 2>&1)"; rc=$?
+git update-ref refs/remotes/origin/dev "$kept_dev"
+git checkout -q scheibe
+if [ $rc -ne 0 ] && echo "$out" | grep -q "nicht gemessen"; then
+    ok "68 without origin/dev the order is not measured"; else fail "68 without origin/dev the order is not measured" "rc=$rc $out"; fi
+
+# 69. The hook refuses a push whose ref moved after git measured it: the
+# commit it checked is not the one that would land.
+git checkout -q -B gewandert scheibe
+measured="$(git rev-parse HEAD)"
+change Sources/Models/PlaybackSkip.swift "// moved on" "A commit during the push"
+out="$(printf 'refs/heads/gewandert %s refs/heads/gewandert %s\n' "$measured" 0000000000000000000000000000000000000000 \
+    | LAUF_PUSH=1 bash scripts/hooks/pre-push origin "$WORK/origin.git" 2>&1)"; rc=$?
+git checkout -q scheibe
+if [ $rc -ne 0 ] && echo "$out" | grep -q "gewandert"; then
+    ok "69 a ref that moved after the measure is refused"; else fail "69 a ref that moved after the measure is refused" "rc=$rc $out"; fi
+
+# 70. lauf.sh push pushes the commit it checked by its sha, not by a name
+# that can move: the hook sees the sha as the local ref.
+clear_stub
+git checkout -q r8-recht
+change MaerTests/PlaybackSkipTests.swift "// fixed" "A witness line for the fixed push"
+r8_green
+LAUF_HOOK_LOG="$WORK/hook.log" bash scripts/lauf.sh push zweig >/dev/null 2>&1; rc=$?
+line="$(grep "refs/heads/r8-recht" "$WORK/hook.log" 2>/dev/null | tail -1)"
+git checkout -q scheibe
+if [ $rc = 0 ] && [ "$(echo "$line" | cut -d' ' -f1)" = "$(echo "$line" | cut -d' ' -f2)" ] && [ -n "$line" ]; then
+    ok "70 the push names the checked commit by its sha"; else fail "70 the push names the checked commit by its sha" "rc=$rc line=$line"; fi
+
+# 71. A run ended by TERM ends its xcodebuild as well, also one that does not
+# end on TERM.
+clear_stub; touch "$STUB/stubborn"
+LAUF_STUB_SLEEP=30 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1 &
+run=$!
+sleep 3
+kill -TERM "$run"; wait "$run" 2>/dev/null
+sleep 1
+left="$(pgrep -f "$STUB/xcodebuild" | head -3)"
+[ -n "$left" ] && kill -KILL $left 2>/dev/null
+rm -f "$STUB/stubborn"
+if [ -z "$left" ]; then ok "71 TERM ends the xcodebuild of the run"; else fail "71 TERM ends the xcodebuild of the run" "left: $left"; fi
+
+# 72. A stripped program keeps the names of its fields as text: the release
+# reads the text as well as the symbols.
+make_archive 9.9 99 "$REL8" $'0000 T _main\n_testFeedFetcher'
+out="$(bash scripts/lauf.sh release v9.9 99 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q "_testFeedFetcher" && [ -z "$(remote_ref refs/tags/v9.9)" ]; then
+    ok "72 a test hook only in the text of the program stops the release"; else fail "72 a test hook only in the text of the program stops the release" "rc=$rc $out"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
