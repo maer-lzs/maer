@@ -23,6 +23,20 @@ fail() { echo "FAIL $1"; [ -n "${2:-}" ] && echo "$2" | sed 's/^/     /' | head 
 cat > "$STUB/xcodebuild" <<'EOF'
 #!/bin/bash
 log="$LAUF_STUB_DIR/xcodebuild.log"
+# The release build writes the program, its symbols from the file
+# release-symbols (none of a witness by default); it logs a line of its own.
+if [ "${1:-}" = build ]; then
+    echo "release-build $*" >> "$log"
+    prev=""; for arg in "$@"; do
+        if [ "$prev" = "-derivedDataPath" ]; then
+            mkdir -p "$arg/Build/Products/Release-iphoneos/Maer.app"
+            cat "$LAUF_STUB_DIR/release-symbols" 2>/dev/null > "$arg/Build/Products/Release-iphoneos/Maer.app/Maer" \
+                || echo "0000 T _main" > "$arg/Build/Products/Release-iphoneos/Maer.app/Maer"
+        fi
+        prev="$arg"
+    done
+    exit 0
+fi
 now() { python3 -c 'import time; print(int(time.time()*1000))'; }
 echo "start $(now) $*" >> "$log"
 echo "nice $(ps -o nice= -p $$ | tr -d ' ')" >> "$log"
@@ -105,7 +119,12 @@ case "$*" in
     *hw.ncpu*) echo 10 ;;
 esac
 EOF
-chmod +x "$STUB/xcodebuild" "$STUB/simctl" "$STUB/sysctl"
+# nm and the demangler read the program as text: a stub program is its own
+# list of symbols.
+printf '#!/bin/bash\nfor a in "$@"; do [ -f "$a" ] && cat "$a"; done; exit 0\n' > "$STUB/nm"
+printf '#!/bin/bash\ncat\n' > "$STUB/demangle"
+chmod +x "$STUB/xcodebuild" "$STUB/simctl" "$STUB/sysctl" "$STUB/nm" "$STUB/demangle"
+export LAUF_NM="$STUB/nm" LAUF_DEMANGLE="$STUB/demangle"
 export LAUF_XCODEBUILD="$STUB/xcodebuild" LAUF_SIMCTL="$STUB/simctl" LAUF_SYSCTL="$STUB/sysctl" LAUF_STUB_DIR="$STUB"
 export LAUF_ABLAGE="$DEV/ablage" LAUF_BAU="$DEV/bau" LAUF_TEMP_ROOTS="$TEMP/" LAUF_MIN_GB=0
 export LAUF_WARTE_S=4 LAUF_TICK_S=1
@@ -115,7 +134,7 @@ export LAUF_ARCHIVE="$DEV/archives"
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
-    "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
+    "$STUB/release-symbols" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
 # A simulator the script has not seen: its mark is gone, the next final run erases it.
 forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
@@ -736,6 +755,7 @@ make_archive() {
     plutil -insert ApplicationProperties.CFBundleVersion -string "$2" "$dir/Info.plist"
     plutil -create xml1 "$dir/Products/Applications/Maer.app/Info.plist"
     plutil -insert GitSHA -string "$3" "$dir/Products/Applications/Maer.app/Info.plist"
+    printf '%s\n' "${4:-0000 T _main}" > "$dir/Products/Applications/Maer.app/Maer"
 }
 remote_ref() { git ls-remote origin "$1" | cut -f1; }
 # A commit on dev with the note of the final run, pushed; and one without a note.
@@ -904,6 +924,42 @@ bash scripts/lauf.sh wiederhole >/dev/null 2>&1; r1=$?
 bash scripts/lauf.sh wiederhole PlannedQueueTests 0 >/dev/null 2>&1; r2=$?
 if [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ]; then
     ok "64 no case, no count: nothing runs"; else fail "64 no case, no count: nothing runs" "$r1 $r2"; fi
+
+# 65. R8 as agreed: a red commit may carry shells under Sources/ for a new
+# function; the note of its red selection proves it, and the code follows.
+r8_branch r8-huelle
+printf 'struct Shell { func work() -> Int { 0 } }\n' > Sources/Models/Shell.swift
+printf 'struct ShellTests { let s = Shell.self }\n' > MaerTests/ShellTests.swift
+git add -A && git commit -q --no-verify -m "A witness with an empty shell of the new function"
+clear_stub; touch "$STUB/red"; bash scripts/lauf.sh auswahl --basis "$(git rev-parse origin/dev)" >/dev/null 2>&1
+shell_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+printf 'struct Shell { func work() -> Int { 1 } }\n' > Sources/Models/Shell.swift
+git add -A && git commit -q --no-verify -m "The function works"
+r8_green
+out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?
+git checkout -q scheibe
+if echo "$shell_note" | grep -q "art=rot" && [ $rc = 0 ] && [ -n "$(remote_ref refs/heads/r8-huelle)" ]; then
+    ok "65 a red commit with shells under Sources proves the order"; else fail "65 a red commit with shells under Sources proves the order" "note=$shell_note rc=$rc $out"; fi
+
+# 66. The release reads the symbols of the uploaded program: a name of a test
+# hook stops it.
+make_archive 9.8 98 "$REL8" '0000 T $s4Maer15PlayerViewModelC17_testPlansSettledyyYaF'
+out="$(bash scripts/lauf.sh release v9.8 98 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q "_test" && [ -z "$(remote_ref refs/tags/v9.8)" ] && ! git rev-parse -q --verify refs/tags/v9.8 >/dev/null; then
+    ok "66 a test hook in the uploaded program stops the release"; else fail "66 a test hook in the uploaded program stops the release" "rc=$rc $out"; fi
+
+# 67. The final run builds the release program and reads its symbols: a name
+# of a test hook writes no note; a clean program lets the note be written.
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+echo '0000 T $s4Maer13StreamPlannerC12_testSettledyyYaF' > "$STUB/release-symbols"
+out="$(bash scripts/lauf.sh abschluss 2>&1)"; rc=$?
+hooked_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+built="$(grep -c '^release-build' "$STUB/xcodebuild.log")"
+clear_stub
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc2=$?
+if [ $rc -ne 0 ] && [ -z "$hooked_note" ] && echo "$out" | grep -q "_test" && [ "$built" = 1 ] && [ $rc2 = 0 ] \
+    && git notes --ref=lauf show HEAD 2>/dev/null | grep -q "art=abschluss"; then
+    ok "67 the final run reads the symbols of the release program"; else fail "67 the final run reads the symbols of the release program" "rc=$rc built=$built rc2=$rc2 $out"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
