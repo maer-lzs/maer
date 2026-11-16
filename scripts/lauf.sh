@@ -12,7 +12,8 @@
 #                                         writes the note at the head
 #   push <zweig|dev|nachzug|doku>         checks the note and pushes
 # Every run: at least LAUF_MIN_GB free (15), waits while a foreign simulator
-# is booted, no parallel testing, nice, no access file, the store of the run
+# is booted, no parallel testing, nice for xcodebuild and the processes of
+# its simulator, no access file, the store of the run
 # removed afterwards (green, red or aborted), the build state kept.
 #
 # Limits, named: the pre-push hook knows this script by LAUF_PUSH=1, and a
@@ -96,12 +97,35 @@ silence() {
         || stop "der Ton von $udid liess sich nicht stumm stellen" 2
 }
 
+# The processes of a simulator do not inherit nice from xcodebuild. While the
+# run watched by pid goes on, launchd_sim of the udid and every process below
+# it go to nice 19 each tick, so a simulator booting late is caught as well.
+# Only lowered, never raised, and nothing outside that tree.
+below() {
+    local p
+    for p in $(pgrep -P "$1"); do echo "$p"; below "$p"; done
+}
+lower_simulator() {
+    local udid="$1" watch="$2" root p n
+    while kill -0 "$watch" 2>/dev/null; do
+        for root in $(pgrep -f "launchd_sim .*$udid"); do
+            for p in $root $(below "$root"); do
+                n="$(ps -o ni= -p "$p" 2>/dev/null | tr -d ' ')"
+                [ -n "$n" ] && [ "$n" -lt 19 ] && renice 19 -p "$p" >/dev/null 2>&1
+            done
+        done
+        sleep "$TICK_S"
+    done
+}
+
 STORE=""
 CHILD=""
+LOWER=""
 cleanup() {
+    [ -n "$LOWER" ] && kill "$LOWER" 2>/dev/null
     [ -n "$CHILD" ] && kill "$CHILD" 2>/dev/null
     [ -n "$STORE" ] && rm -rf -- "$STORE"
-    STORE=""; CHILD=""
+    STORE=""; CHILD=""; LOWER=""
 }
 trap 'cleanup' EXIT
 trap 'cleanup; exit 143' TERM INT
@@ -115,8 +139,11 @@ run_tests() {
         $XB test -scheme MaerTests -destination "id=$udid" -derivedDataPath "$BAU_ROOT/${udid:0:8}" \
         -resultBundlePath "$STORE/lauf.xcresult" -parallel-testing-enabled NO "$@" > "$STORE/lauf.log" 2>&1 &
     CHILD=$!
+    lower_simulator "$udid" "$CHILD" &
+    LOWER=$!
     wait "$CHILD"; local rc=$?
-    CHILD=""
+    kill "$LOWER" 2>/dev/null; wait "$LOWER" 2>/dev/null
+    CHILD=""; LOWER=""
     grep -E 'Test run with|\*\* TEST' "$STORE/lauf.log" | tail -2
     [ $rc -ne 0 ] && grep -E '✘|error:' "$STORE/lauf.log" | head -40
     $SIMCTL --set "$HOME/Library/Developer/XCTestDevices" delete all >/dev/null 2>&1
