@@ -92,8 +92,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// removes them.
     @Published private(set) var feedsNotFollowed: [String: FeedAdoptionPending.Entry] = [:]
 
+    #if DEBUG
     /// Test seam: replaces the network fetch of the adoption path.
     var _testFeedFetcher: ((URL) async -> FeedFetchOutcome)?
+    #endif
 
     /// The Up Next a refresh's new episodes go into: the app's for the app's
     /// store, a test's own for a test, none for any other store.
@@ -134,8 +136,10 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// The app's choice sync; nil for a store a test builds.
     private var choiceSync: UserChoiceCloudSync?
+    #if DEBUG
     /// Test seam: the directory the free twin is searched in.
     var _testDirectory: (any PodcastDirectory)?
+    #endif
     /// Bumped when an offer appears or is answered, so the page reads again.
     @Published private(set) var freeTwinRevision = 0
     /// Directory searches in flight, so one refusal never asks twice at once.
@@ -181,7 +185,12 @@ final class PodcastSubscriptions: ObservableObject {
               !freeTwinSearching.contains(show.id) else { return }
         var searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]] ?? [:]
         guard searched[show.id] == nil else { return }
-        guard let directory = _testDirectory ?? (isTheApp ? PodcastDirectorySelection.directory() : nil) else {
+        #if DEBUG
+        let seamDirectory = _testDirectory
+        #else
+        let seamDirectory: (any PodcastDirectory)? = nil
+        #endif
+        guard let directory = seamDirectory ?? (isTheApp ? PodcastDirectorySelection.directory() : nil) else {
             Logger.rss.notice("PODCAST free twin show=\(show.id, privacy: .private(mask: .hash)) not searched: no directory")
             return
         }
@@ -851,11 +860,15 @@ final class PodcastSubscriptions: ObservableObject {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return .notFollowed(.unreadable, status: nil) }
         let outcome: FeedFetchOutcome
+        #if DEBUG
         if let fetcher = _testFeedFetcher {
             outcome = await fetcher(url)
         } else {
             outcome = await Self.fetchOutcome(feedURL: url, patience: patience)
         }
+        #else
+        outcome = await Self.fetchOutcome(feedURL: url, patience: patience)
+        #endif
         if case .accessUnknown = outcome {
             Logger.rss.notice("SUBSCRIBE not asked, the sign-in cannot be read now: \(PodcastIdentity.feedKey(url.absoluteString), privacy: .private(mask: .hash))")
             return .notAsked
@@ -2583,7 +2596,9 @@ final class PodcastSubscriptions: ObservableObject {
     /// `_testFeedFetcher`, the same seam `subscribe` uses, so a refresh can be
     /// driven and its publishes counted without a server.
     private func fetchForRefresh(_ url: URL) async -> FeedFetchOutcome {
+        #if DEBUG
         if let fetcher = _testFeedFetcher { return await fetcher(url) }
+        #endif
         return await Self.fetchOutcome(feedURL: url)
     }
 
