@@ -124,14 +124,17 @@ struct CadenceTests {
         defer { try? FileManager.default.removeItem(at: file) }
         let model = PlayerViewModel(provider: TrackFileSizeTests.SizedProvider(original: false),
                                     localTracks: { _ in [:] }, isOnline: { true })
-        await model.load(item: TrackFileSizeTests.book("cadence-\(UUID().uuidString)", path: file.path, size: 1, seconds: 12))
+        let id = "cadence-\(UUID().uuidString)"
+        await model.load(item: TrackFileSizeTests.book(id, path: file.path, size: 1, seconds: 12))
         model.play()
         await ticks.waitFor { model.currentTime >= 1 }
         let afterPlay = model.widgetWrites
         // The tick's local save comes every five seconds and carried the
-        // widget's write: six seconds of quiet playback hold at least one
-        // of them, and the widget must not be written there.
-        try await Task.sleep(nanoseconds: 6_000_000_000)
+        // widget's write: the witness waits for that save itself, not for
+        // a time, and the widget must not be written there.
+        let before = ListeningStore.backup(id)
+        await ticks.waitFor({ ListeningStore.backup(id) != before }, seconds: 12)
+        try #require(ListeningStore.backup(id) != before, "the precondition: the tick saved locally")
         #expect(model.widgetWrites == afterPlay, "the tick wrote the widget")
         await model.seek(to: 5)
         #expect(model.widgetWrites == afterPlay + 1, "a jump writes the widget")
