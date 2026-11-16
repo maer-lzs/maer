@@ -139,6 +139,13 @@ final class StreamPlanner {
     /// ask on its way keeps nothing, and no plan lands after it. The plans
     /// held stay with this planner, and the next title's planner starts
     /// without them.
+    #if DEBUG
+    /// For witnesses: returns once every plan asked ahead has landed (its
+    /// `landed` ran) or ended, and every ask on its way has ended, so a
+    /// witness reads the queue after the plans instead of after a time.
+    func _testSettled() async {}
+    #endif
+
     func stop() {
         stopped = true
         for task in ahead.values { task.cancel() }

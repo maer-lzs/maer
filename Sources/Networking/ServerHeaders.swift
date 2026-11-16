@@ -288,6 +288,12 @@ nonisolated enum ServerHeaders {
     /// longer (the request's own default is 60 s).
     nonisolated static let endAskLimit: TimeInterval = 10
 
+    #if DEBUG
+    /// For witnesses: a shorter limit of the ask, so a witness of the limit
+    /// does not wait the ten seconds of the product.
+    nonisolated(unsafe) static var _testEndAskLimit: TimeInterval?
+    #endif
+
     /// The address at the end of a request's redirects, or nil when it
     /// cannot be asked. Asked once over the HTTP door with
     /// `Range: bytes=0-0`; only the head of the answer is read, because a

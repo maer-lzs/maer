@@ -2087,6 +2087,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
     /// For witnesses: playback reached the track at `index`.
     func _testPlanWindow(from index: Int) { planWindow(from: index) }
+    /// For witnesses: every plan asked ahead has landed and joined, or ended.
+    func _testPlansSettled() async { await streamPlanner?._testSettled() }
     #endif
 
     /// Before a play: a queue whose current item failed to load is built

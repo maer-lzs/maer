@@ -79,24 +79,56 @@ struct PlannedQueueTests {
         return (quick, slow, title(addresses))
     }
 
+    @Test("the settling of the plans returns only after the plans at a slow host have landed and joined the queue")
+    func theSettlingWaitsForTheSlowPlans() async throws {
+        let (quick, slow, title) = try await sixTracks()
+        defer { quick.stop(); slow.stop() }
+        let model = model()
+        await model.load(item: title)
+        await model._testPlansSettled()
+        try #require(model._testQueuedTracks() == [0, 1, 2], "the precondition: the start queued its window")
+        let began = Date()
+        model._testPlanWindow(from: 2)
+        await model._testPlansSettled()
+        let waited = Date().timeIntervalSince(began)
+        // The slow host answers after a second.
+        #expect(waited >= 0.9, "the settling returned after \(waited) s, before the slow host answered")
+        #expect(model._testQueuedTracks() == [0, 1, 2, 3, 4], "the plans of 3 and 4 had not joined: \(model._testQueuedTracks())")
+        model.stop()
+    }
+
+    @Test("after a stop the settling of the plans returns at once, though plans were on their way")
+    func theSettlingAfterAStopReturnsAtOnce() async throws {
+        let (quick, slow, title) = try await sixTracks()
+        defer { quick.stop(); slow.stop() }
+        let model = model()
+        await model.load(item: title)
+        await model._testPlansSettled()
+        model._testPlanWindow(from: 2)
+        model.stop()
+        let began = Date()
+        await model._testPlansSettled()
+        let waited = Date().timeIntervalSince(began)
+        #expect(waited < 0.5, "the settling waited \(waited) s for plans a stop had ended")
+    }
+
     @Test("plan first: tracks behind a load error that were already in the queue go with it, and a plan landing later appends nothing behind it")
     func aPlanThatLandsBeforeTheHeldFailureLeavesNothingBehindIt() async throws {
         let (quick, slow, title) = try await sixTracks()
         defer { quick.stop(); slow.stop() }
         let model = model()
         await model.load(item: title)
-        await waitFor { model._testQueuedTracks() == [0, 1, 2] }
+        await model._testPlansSettled()
         try #require(model._testQueuedTracks() == [0, 1, 2], "the precondition: the start queued its window")
         model._testPlanWindow(from: 2)
-        await waitFor { model._testQueuedTracks() == [0, 1, 2, 3, 4] }
+        await model._testPlansSettled()
         try #require(model._testQueuedTracks() == [0, 1, 2, 3, 4], "the precondition: the plans of 3 and 4 landed and joined")
         model._testHoldAhead(at: 3, then: .none)
         #expect(model._testQueuedTracks() == [0, 1, 2], "the held failure left tracks behind it")
         // The plan of track 5 lands after the failure is held.
         model._testPlanWindow(from: 3)
-        await waitFor { Self.asks(slow, "/track-5.") == 1 }
+        await model._testPlansSettled()
         try #require(Self.asks(slow, "/track-5.") == 1, "the precondition: track 5 was asked")
-        try await Task.sleep(for: .milliseconds(1500))
         #expect(model._testQueuedTracks() == [0, 1, 2], "a plan that landed later joined behind the held failure: \(model._testQueuedTracks())")
         model.stop()
     }
@@ -108,15 +140,15 @@ struct PlannedQueueTests {
         defer { quick.stop(); slow.stop() }
         let model = model()
         await model.load(item: title)
-        await waitFor { model._testQueuedTracks() == [0, 1, 2] }
+        await model._testPlansSettled()
         try #require(model._testQueuedTracks() == [0, 1, 2], "the precondition: the start queued its window")
         model._testHoldAhead(at: 3, then: .none)
         // The plans of 3 and 4 are asked after the failure is held; they go
         // out side by side, so either may reach the host first.
         model._testPlanWindow(from: 2)
-        await waitFor { Self.asks(slow, "/track-3.") == 1 && Self.asks(slow, "/track-4.") == 1 }
-        try #require(Self.asks(slow, "/track-3.") == 1, "the precondition: track 3 was asked")
-        try await Task.sleep(for: .milliseconds(1500))
+        await model._testPlansSettled()
+        try #require(Self.asks(slow, "/track-3.") == 1 && Self.asks(slow, "/track-4.") == 1,
+                     "the precondition: tracks 3 and 4 were asked")
         #expect(model._testQueuedTracks() == [0, 1, 2], "a plan that landed after the held failure joined behind it: \(model._testQueuedTracks())")
         model.player?.volume = 0
         model.play()
@@ -175,9 +207,8 @@ struct PlannedQueueTests {
         await model.load(item: title(["http://127.0.0.1:\(quick.port)/track-0.caf",
                                       "http://127.0.0.1:\(origin.port)/start-1.caf"]))
         try #require(model.player != nil, "the precondition: the load built a player")
-        await waitFor { Self.asks(origin, "/start-1.") == 1 }
-        try #require(Self.asks(origin, "/start-1.") == 1, "the precondition: track 1 was asked")
-        try await Task.sleep(for: .milliseconds(300))
+        await model._testPlansSettled()
+        try #require(Self.asks(origin, "/start-1.") == 1, "the precondition: track 1 was asked and its plan landed")
         model.player?.volume = 0
         model.play()
         await waitFor { !model.isPlaying }
@@ -340,19 +371,21 @@ struct PlannedQueueTests {
     func aJumpToASilentHostShowsTheWaitAndEndsAtTheLimit() async throws {
         let quick = try await host()
         let silent = try await host(delay: 30)
-        defer { quick.stop(); silent.stop() }
+        // The limit of the product is 10 s; the witness asks with 1 s.
+        ServerHeaders._testEndAskLimit = 1
+        defer { quick.stop(); silent.stop(); ServerHeaders._testEndAskLimit = nil }
         let model = model()
         await model.load(item: title(["http://127.0.0.1:\(quick.port)/track-0.caf",
                                       "http://127.0.0.1:\(silent.port)/track-1.caf"]))
         try #require(model.player != nil, "the precondition: the load built a player")
         let began = Date()
         let jump = Task { await model.seek(to: 1.5, userInitiated: false) }
-        try await Task.sleep(for: .milliseconds(500))
+        await waitFor { model.waitsOnTheStream }
         #expect(model.waitsOnTheStream, "the jump waits for its plan and shows nothing")
         await jump.value
         let waited = Date().timeIntervalSince(began)
-        // The limit of the ask is 10 s; the host answers after 30.
-        #expect(waited < 14, "the jump waited \(waited) s, past the limit of the ask")
+        // The limit of the ask is 1 s here; the host answers after 30.
+        #expect(waited >= 1 && waited < 4, "the jump waited \(waited) s, not the limit of the ask")
         #expect(PlannedQueueTests.playing(model) != "track-1.caf",
                 "the jump built the track at an address whose end is unknown, with the headers")
         #expect(!model.waitsOnTheStream, "the wait still shows after the ask ended")
