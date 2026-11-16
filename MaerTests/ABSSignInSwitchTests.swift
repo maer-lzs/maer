@@ -28,6 +28,8 @@ struct ABSSignInSwitchTests {
         let switchedAt = UserDefaults.standard.object(forKey: AppStorageKeys.absServerSwitchedAt)
         let moreThanOne = UserDefaults.standard.object(forKey: AppStorageKeys.absMoreThanOneServer)
         let known = UserDefaults.standard.data(forKey: KnownServers.storeKey)
+        /// The index of the search a sign-in reaches while the stand holds.
+        let search = SpotlightRecorder()
         func restore() {
             if let url { KeychainStore.save(url, forKey: KeychainKey.serverURL) } else { KeychainStore.delete(forKey: KeychainKey.serverURL) }
             if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) } else { KeychainStore.delete(forKey: KeychainKey.apiToken) }
@@ -37,6 +39,36 @@ struct ABSSignInSwitchTests {
             UserDefaults.standard.set(moreThanOne, forKey: AppStorageKeys.absMoreThanOneServer)
             UserDefaults.standard.set(known, forKey: KnownServers.storeKey)
         }
+    }
+
+    /// A stand keeps every sign-in of the suite away from the real index of
+    /// the search: forgetting a server there waited for the system, far
+    /// over a minute under load.
+    @Test("within a stand the search the sign-in forgets is the recorder of the stand")
+    func aStandHoldsTheSearch() async {
+        guard #available(iOS 27, *) else { return }
+        let stand = Stand()
+        defer { stand.restore() }
+        await SpotlightIndex.forget()
+        #expect(stand.search.calls == ["remove"], "the sign-in reached another index: \(stand.search.calls)")
+    }
+
+    /// The loopback speaks plain HTTP. A TLS greeting is closed at once, so
+    /// an ask over https fails in a moment instead of at the limit of the
+    /// request (three times twenty seconds with its retries).
+    @Test("the loopback closes a TLS greeting at once")
+    func theLoopbackClosesATLSGreeting() async throws {
+        let server = try await ABSLoopback.start(login: .refuse, libraries: .refuse)
+        defer { server.stop() }
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 5
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+        let url = try #require(URL(string: server.address.replacingOccurrences(of: "http://", with: "https://") + "/api/me"))
+        let began = Date()
+        _ = try? await session.data(from: url)
+        let waited = Date().timeIntervalSince(began)
+        #expect(waited < 1, "the https ask waited \(waited) s")
     }
 
     /// Signed in to A: the shared client holds A's address and token.
