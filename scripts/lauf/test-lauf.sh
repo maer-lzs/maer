@@ -287,7 +287,10 @@ git worktree remove --force "$TEMP/wt"; git branch -q -D temp-tree
 if [ $rc -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ] && echo "$out" | grep -q "$TEMP/wt"; then ok "15 final run refuses a temporary tree"; else fail "15 final run refuses a temporary tree" "$out"; fi
 
 # 16. Green writes the note at the head; red writes nothing, pushes nothing, moves nothing.
+# The slice begins with its witness, red at the selection (R8).
 git checkout -q -b scheibe
+change MaerTests/PlaybackSkipTests.swift "// the witness of the slice" "The witness of the slice"
+clear_stub; touch "$STUB/red"; bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
 change Sources/Models/PlaybackSkip.swift "// slice" "A change of the slice"
 clear_stub; forget_marks; touch "$STUB/red"
 before="$(git for-each-ref --format='%(refname) %(objectname)' | sort)"
@@ -830,6 +833,44 @@ out2="$(cd "$OLDREPO" && bash scripts/lauf.sh release v9.7 97 2>&1)"; rc2=$?
 if [ $rc = 0 ] && [ "$(git -C "$OLDREPO" ls-remote origin 'refs/tags/v9.6^{}' | cut -f1)" = "$OLD" ] \
     && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "Vermerk" && [ -z "$(git -C "$OLDREPO" ls-remote origin refs/tags/v9.7)" ]; then
     ok "57 a commit from before the script needs no note, the next one does"; else fail "57 a commit from before the script needs no note, the next one does" "rc=$rc $out / rc2=$rc2 $out2"; fi
+
+# R8: before the first commit that changes Sources/ stands a commit that
+# changes only tests, red at the selection, with a note naming its red cases.
+r8_branch() { git checkout -q -B "$1" origin/dev; }
+r8_test() { change MaerTests/PlaybackSkipTests.swift "// $1" "A witness: $1"; }
+r8_code() { change Sources/Models/PlaybackSkip.swift "// $1" "A change: $1"; }
+r8_green() { clear_stub; bash scripts/lauf.sh abschluss >/dev/null 2>&1; }
+
+# 58. Code before any test commit: push zweig and the hook refuse, and say so.
+r8_branch r8-code; r8_code "first"; r8_test "after"; r8_green
+out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?
+out2="$(LAUF_PUSH=1 git push origin HEAD:refs/heads/r8-code 2>&1)"; rc2=$?
+if [ $rc -ne 0 ] && [ $rc2 -ne 0 ] && echo "$out" | grep -q "kein Test-Commit vor dem Code" && [ -z "$(remote_ref refs/heads/r8-code)" ]; then
+    ok "58 code before a test commit is refused"; else fail "58 code before a test commit is refused" "rc=$rc rc2=$rc2 $out / $out2"; fi
+
+# 59. A test commit without the note of a red selection: refused, and said so.
+r8_branch r8-ohne; r8_test "unproven"; r8_code "then"; r8_green
+out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?
+if [ $rc -ne 0 ] && echo "$out" | grep -q "kein roter Vermerk" && [ -z "$(remote_ref refs/heads/r8-ohne)" ]; then
+    ok "59 a test commit without a red note is refused"; else fail "59 a test commit without a red note is refused" "rc=$rc $out"; fi
+
+# 60. The right order: the selection at the test commit is red and notes the
+# red cases; the code follows; the head is green; the push goes through.
+r8_branch r8-recht; r8_test "proven"
+clear_stub; touch "$STUB/red"; bash scripts/lauf.sh auswahl --basis "$(git rev-parse origin/dev)" >/dev/null 2>&1; red_rc=$?
+red_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+r8_code "builds"; r8_green
+out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?
+if [ $red_rc -ne 0 ] && echo "$red_note" | grep -q "art=rot" && echo "$red_note" | grep -q "the row keeps four buttons" \
+    && [ $rc = 0 ] && [ -n "$(remote_ref refs/heads/r8-recht)" ]; then
+    ok "60 a red test commit before the code lets the push through"; else fail "60 a red test commit before the code lets the push through" "red_rc=$red_rc note=$red_note rc=$rc $out"; fi
+
+# 61. A branch of form (form-) needs no test commit before its code.
+r8_branch form-farbe; r8_code "a colour"; r8_green
+out="$(bash scripts/lauf.sh push zweig 2>&1)"; rc=$?
+if [ $rc = 0 ] && [ -n "$(remote_ref refs/heads/form-farbe)" ]; then
+    ok "61 a branch of form passes without a test commit"; else fail "61 a branch of form passes without a test commit" "rc=$rc $out"; fi
+git checkout -q scheibe
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
