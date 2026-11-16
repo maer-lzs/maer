@@ -1,0 +1,4 @@
+# Names of the product that begin with test and are no test hooks, read by
+# lauf.sh when it reads the symbols of a release program. One name per
+# line, then # and the reason; an entry without a reason stops the read.
+testConnection # the check of a server address the sign-in sheets offer, a function of the app

@@ -266,12 +266,22 @@ touches_tests() {
     git diff-tree --no-commit-id --name-only -r --root "$1" | grep -qE '^(MaerTests|MaerUITests)/'
 }
 
-# The names of test hooks (_test...) in a program, among its symbols and in
-# its text: a stripped program, as in an archive, keeps the names of its
-# fields as text only. A program that is not there fails.
+# The names of test hooks in a program, _testXxx and testXxx, among its
+# symbols and in its text: a stripped program, as in an archive, keeps the
+# names of its fields as text only. A name of the product that begins with
+# test stands in scripts/lauf/release-namen.txt with its reason; an entry
+# without a reason fails, as a program that is not there does.
 test_hooks_in() {
+    local list="$ROOT/scripts/lauf/release-namen.txt" allowed
     [ -f "$1" ] || { echo "kein Programm: $1"; return 2; }
-    { $NM -a "$1" 2>/dev/null | $DEMANGLE; $STRINGS -a "$1" 2>/dev/null; } | grep -E '(^|[^A-Za-z])_test[A-Z]' | sort -u | head -5
+    if [ -f "$list" ] && grep -vE '^[[:space:]]*(#|$)' "$list" | grep -vqE '^[A-Za-z0-9_]+[[:space:]]+#[[:space:]]*[^[:space:]]'; then
+        echo "ein Eintrag in release-namen.txt ohne Grund: $(grep -vE '^[[:space:]]*(#|$)' "$list" | grep -vE '#[[:space:]]*[^[:space:]]' | head -1)"
+        return 2
+    fi
+    allowed="$( [ -f "$list" ] && grep -vE '^[[:space:]]*(#|$)' "$list" | awk '{print $1}')"
+    { $NM -a "$1" 2>/dev/null | $DEMANGLE; $STRINGS -a "$1" 2>/dev/null; } \
+        | grep -oE '(^|[^A-Za-z])_?test[A-Z][A-Za-z0-9]*' | sed -E 's/^[^_t]//' | sort -u \
+        | grep -vxF -f <(printf '%s\n' $allowed "") | head -5
     return 0
 }
 
