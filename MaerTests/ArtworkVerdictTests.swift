@@ -418,7 +418,8 @@ struct ArtworkVerdictTests {
         let gone = try await BulkImportTests.Stand.start(.answer(status: 404, body: Data("{\"error\":\"none\"}".utf8)))
         defer { gone.stop() }
         #expect(Self.name(await Artwork.verdict(for: Self.url(gone, "gone"))) == "absent")
-        #expect(await gone.settledCount(expected: 1) == 1, "an absence was asked twice")
+        let goneAsks = await gone.settledCount(expected: 1)
+        #expect(goneAsks == 1, "an absence was asked \(goneAsks) times, connections counted by the stand")
 
         let refused = try await BulkImportTests.Stand.start(.answer(status: 403, body: Data()))
         defer { refused.stop() }

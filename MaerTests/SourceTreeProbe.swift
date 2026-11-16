@@ -94,11 +94,6 @@ nonisolated enum SourceTree {
         return file.dropFirst(root.count).joined(separator: "/")
     }
 
-    /// Every file below `folder`, recursively: the one way a test walks
-    /// the tree. A walk that finds nothing records an issue at the caller,
-    /// so a fence over a missing folder is red, never a pass over nothing;
-    /// only the condition in the case's head (`.needsTheSources` and its
-    /// neighbours) turns that into a skip.
     /// The text of a file of the repository, read once per run of the
     /// suite: the fences read the same sources hundreds of times. A file
     /// outside the repository (a witness's own temporary file) is read
@@ -122,6 +117,11 @@ nonisolated enum SourceTree {
     private static let resolvedRoot = root.resolvingSymlinksInPath().path
     private static let texts = OSAllocatedUnfairLock(initialState: (read: [String: String](), hits: 0))
 
+    /// Every file below `folder`, recursively: the one way a test walks
+    /// the tree. A walk that finds nothing records an issue at the caller,
+    /// so a fence over a missing folder is red, never a pass over nothing;
+    /// only the condition in the case's head (`.needsTheSources` and its
+    /// neighbours) turns that into a skip.
     static func files(under folder: URL, sourceLocation: SourceLocation = #_sourceLocation) -> [URL] {
         let found = (FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?
             .compactMap { $0 as? URL } ?? [])
