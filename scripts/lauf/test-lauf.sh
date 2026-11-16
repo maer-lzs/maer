@@ -1039,12 +1039,13 @@ if [ $rc -ne 0 ] && echo "$out" | grep -q "testSetClock" && [ -z "$(remote_ref r
 
 # 74. A name of the product that begins with test is on the list with its
 # reason and does not stop; an entry of the list without a reason does.
-make_archive 9.11 911 "$REL8" '0000 T $s4Maer9APIClientC14testConnectionyyYaKF'
+make_archive 9.11 911 "$REL8" '0000 T Maer.APIClient.testConnection() async throws'
 out="$(bash scripts/lauf.sh release v9.11 911 2>&1)"; rc=$?
 list="scripts/lauf/release-namen.txt"
 kept="$(cat "$list" 2>/dev/null)"
 printf 'testConnection\n' > "$list"
-out2="$(bash scripts/lauf.sh vor-dem-skript HEAD 2>&1; bash scripts/lauf.sh release v9.12 912 --sha "$REL8" 2>&1)"; rc2=$?
+make_archive 9.12 912 "$REL8" '0000 T Maer.APIClient.testConnection() async throws'
+out2="$(bash scripts/lauf.sh release v9.12 912 2>&1)"; rc2=$?
 printf '%s\n' "$kept" > "$list"
 if [ $rc = 0 ] && [ -n "$(remote_ref refs/tags/v9.11)" ] && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "ohne Grund"; then
     ok "74 a product name on the list passes, an entry without a reason stops"; else fail "74 a product name on the list passes, an entry without a reason stops" "rc=$rc rc2=$rc2 $out / $out2"; fi
