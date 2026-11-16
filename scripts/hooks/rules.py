@@ -44,6 +44,9 @@ def role_names():
 
 ROLES = re.compile(r"\b(" + "|".join(role_names()) + r")\b", re.I)
 TRAILER = re.compile(r"^(co-authored-by|generated with|signed-off-by: claude)", re.I | re.M)
+# Technical terms with a hyphen and digits that look like channel codes but
+# name a standard; they are taken out before the search for channel codes.
+TECH_TERMS = re.compile(r"\b(UTF-(8|16|32)|HTTP-[123]|SHA-(1|224|256|384|512)|AES-(GCM|CBC|128|256)|ISO-8601|ISO-639-[123]|X-25519|ChaCha20-Poly1305)\b")
 CHANNEL_CODE = re.compile(r"(^|[^A-Za-z])[A-Z]{1,4}[0-9]{0,3}-[A-Za-z0-9]{1,6}(-[A-Za-z0-9]{1,6})*([^A-Za-z0-9]|$)")
 # A hash of the channel or the repository: seven to forty hex characters with
 # at least one digit and one letter.
@@ -116,7 +119,7 @@ def check_message(text):
         found.append("the message names a role or a person")
     if TRAILER.search(body):
         found.append("the message carries an attribution trailer")
-    if CHANNEL_CODE.search(body) or HASH.search(body):
+    if CHANNEL_CODE.search(TECH_TERMS.sub(" ", body)) or HASH.search(body):
         found.append("the message carries a channel code or a hash")
     if DECISION.search(body):
         found.append("the message cites a decision")
@@ -138,16 +141,47 @@ def added_lines():
             yield path, line[1:]
 
 
-def comment_of(path, line):
-    """The comment part of a source line, or None."""
+def outside_strings(line, marker, quotes):
+    """The text from the first marker outside a string literal, or None."""
+    quote = None
+    i = 0
+    while i < len(line):
+        c = line[i]
+        if quote:
+            if c == "\\":
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+        elif c in quotes:
+            quote = c
+        elif line.startswith(marker, i):
+            return line[i:]
+        i += 1
+    return None
+
+
+def comment_of(path, line, doc):
+    """The comment part of a source line, or None: a whole comment line, a
+    comment after code, or a line of a Python docstring. `doc` carries per
+    file whether an added line lies inside a docstring."""
+    stripped = line.strip()
     if path.endswith((".swift", ".kt", ".js", ".ts")):
-        stripped = line.strip()
-        if stripped.startswith(("//", "/*", "*")):
+        if stripped.startswith(("/*", "*")):
             return stripped
-    if path.endswith((".py", ".sh")):
-        stripped = line.strip()
-        if stripped.startswith("#") and not stripped.startswith("#!"):
-            return stripped
+        return outside_strings(line, "//", "\"")
+    if path.endswith(".py"):
+        triple = stripped.count('"""') + stripped.count("'''")
+        if doc.get(path) or (triple and stripped.startswith(('"""', "'''"))):
+            if triple % 2 == 1:
+                doc[path] = not doc.get(path)
+            # The quotes of the docstring are no quotation of a display text.
+            return stripped.replace('"""', " ").replace("'''", " ")
+        return outside_strings(line, "#", "\"'")
+    if path.endswith(".sh"):
+        if stripped.startswith("#!"):
+            return None
+        return outside_strings(line, "#", "\"'")
     return None
 
 
@@ -166,6 +200,7 @@ def check_staged():
         if not marked:
             found.append(f"the working tree lies in a temporary path without .wegwerf: {top}")
     files = set()
+    doc = {}
     for path, line in added_lines():
         files.add(path)
         where = f"{path}: {line.strip()[:80]}"
@@ -173,7 +208,7 @@ def check_staged():
             found.append(f"an access value: {where}")
         if path.endswith(".md") and DASH.search(line):
             found.append(f"a dash in a new markdown line: {where}")
-        comment = comment_of(path, line)
+        comment = comment_of(path, line, doc)
         if comment is not None and not any(h.match(comment) for h in HEADER):
             if ROLES.search(comment):
                 found.append(f"a comment names a role or a person: {where}")
