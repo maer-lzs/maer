@@ -68,13 +68,14 @@ case "$*" in
 esac
 exit 0
 EOF
-# sysctl answers the load over one minute from the file load (default 0.50,
-# quiet) and ten cores; every call is logged.
+# sysctl answers the load over one minute from the file load (default 0,50,
+# quiet) and ten cores, with the decimal comma of the German locale as the
+# real one prints it; every call is logged.
 cat > "$STUB/sysctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/sysctl.log"
 case "$*" in
-    *vm.loadavg*) echo "{ $(cat "$LAUF_STUB_DIR/load" 2>/dev/null || echo 0.50) 0.40 0.30 }" ;;
+    *vm.loadavg*) echo "{ $(cat "$LAUF_STUB_DIR/load" 2>/dev/null || echo 0,50) 0,40 0,30 }" ;;
     *hw.ncpu*) echo 10 ;;
 esac
 EOF
@@ -561,24 +562,24 @@ end_fakes
 # stands below the number of cores; they wait, with a limit, and stop with the
 # load measured. The load at the start and at the end stands in the note. The
 # selection does not wait for the load.
-clear_stub; echo 30.00 > "$STUB/load"
+clear_stub; echo 30,00 > "$STUB/load"
 out_full="$(LAUF_WARTE_S=2 bash scripts/lauf.sh voll 2>&1)"; rc_full=$?
 full_ran=0; [ -s "$STUB/xcodebuild.log" ] && full_ran=1
-clear_stub; echo 30.00 > "$STUB/load"
+clear_stub; echo 30,00 > "$STUB/load"
 git notes --ref=lauf remove HEAD >/dev/null 2>&1
 out_final="$(LAUF_WARTE_S=2 bash scripts/lauf.sh abschluss 2>&1)"; rc_final=$?
 final_touched=0; { [ -s "$STUB/xcodebuild.log" ] || grep -q erase "$STUB/simctl.log" 2>/dev/null; } && final_touched=1
 final_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
-clear_stub; echo 30.00 > "$STUB/load"
-( sleep 2; echo 1.50 > "$STUB/load" ) &
+clear_stub; echo 30,00 > "$STUB/load"
+( sleep 2; echo 1,50 > "$STUB/load" ) &
 bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc_wait=$?
 wait
 note="$(git notes --ref=lauf show HEAD 2>/dev/null | tail -1)"
-clear_stub; echo 30.00 > "$STUB/load"
+clear_stub; echo 30,00 > "$STUB/load"
 LAUF_WARTE_S=2 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1; rc_sel=$?
 if [ $rc_full -ne 0 ] && [ $full_ran = 0 ] && echo "$out_full" | grep -q "Last 30" \
     && [ $rc_final -ne 0 ] && [ $final_touched = 0 ] && [ -z "$final_note" ] && echo "$out_final" | grep -q "Last 30" \
-    && [ $rc_wait = 0 ] && echo "$note" | grep -q "last_beginn=1.50" && echo "$note" | grep -q "last_ende=1.50" \
+    && [ $rc_wait = 0 ] && echo "$note" | grep -qF "last_beginn=1.50" && echo "$note" | grep -qF "last_ende=1.50" \
     && [ $rc_sel = 0 ]; then
     ok "40 full and final run wait for a quiet machine, the load in the note"
 else

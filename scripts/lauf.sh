@@ -12,9 +12,11 @@
 #                                         writes the note at the head
 #   push <zweig|dev|nachzug|doku>         checks the note and pushes
 # Every run: at least LAUF_MIN_GB free (15), waits while a foreign simulator
-# is booted, no parallel testing, nice for xcodebuild and the processes of
+# is booted, no parallel testing, nice 10 for xcodebuild and the processes of
 # its simulator, no access file, the store of the run
-# removed afterwards (green, red or aborted), the build state kept.
+# removed afterwards (green, red or aborted), the build state kept. The full
+# and the final run wait for a quiet machine: the load over one minute below
+# the number of cores.
 #
 # Limits, named: the pre-push hook knows this script by LAUF_PUSH=1, and a
 # note under refs/notes/lauf can be written by hand with git notes add. Both
@@ -25,6 +27,7 @@ ROOT="$(git rev-parse --show-toplevel)" || exit 2
 cd "$ROOT" || exit 2
 XB="${LAUF_XCODEBUILD:-xcodebuild}"
 SIMCTL="${LAUF_SIMCTL:-xcrun simctl}"
+SYSCTL="${LAUF_SYSCTL:-sysctl}"
 MIN_GB="${LAUF_MIN_GB:-15}"
 ABLAGE_ROOT="${LAUF_ABLAGE:-$HOME/Developer/maer-lauf/ablage}"
 BAU_ROOT="${LAUF_BAU:-$HOME/Developer/maer-lauf/bau}"
@@ -81,6 +84,25 @@ for devices in json.load(sys.stdin)['devices'].values():
     done
 }
 
+# The load over one minute, and whether it stands below the number of cores.
+# sysctl prints the decimal mark of the locale (16,83); the note keeps a dot.
+load_now() { $SYSCTL -n vm.loadavg | LC_ALL=C awk '{print $2}' | tr , .; }
+quiet() { LC_ALL=C awk -v l="$1" -v c="$($SYSCTL -n hw.ncpu)" 'BEGIN { exit !(l + 0 < c + 0) }'; }
+
+# Waits while the machine is loud; stops with the load measured once the wait
+# is over. A run under heavy load measures nothing, red or green.
+wait_for_quiet() {
+    local waited=0 load
+    while :; do
+        load="$(load_now)"
+        quiet "$load" && { LOAD_START="$load"; return 0; }
+        [ "$waited" -ge "$WARTE_S" ] && stop "die Maschine ist laut: Last $load ueber eine Minute, $($SYSCTL -n hw.ncpu) Kerne, Abbruch nach $waited s" 5
+        [ "$waited" = 0 ] && say "die Maschine ist laut: Last $load, ich warte"
+        sleep "$TICK_S"; waited=$((waited + TICK_S))
+    done
+}
+LOAD_START=""
+
 # Sound and microphone of a shut down simulator go to the silent device, so
 # no run plays through the Mac. An erase clears this; it is written after.
 silence() {
@@ -99,8 +121,9 @@ silence() {
 
 # The processes of a simulator do not inherit nice from xcodebuild. While the
 # run watched by pid goes on, launchd_sim of the udid and every process below
-# it go to nice 19 each tick, so a simulator booting late is caught as well.
-# Only lowered, never raised, and nothing outside that tree.
+# it go to nice 10 each tick, the priority of xcodebuild, so a simulator
+# booting late is caught as well. Only lowered, never raised, and nothing
+# outside that tree.
 below() {
     local p
     for p in $(pgrep -P "$1"); do echo "$p"; below "$p"; done
@@ -111,7 +134,7 @@ lower_simulator() {
         for root in $(pgrep -f "launchd_sim .*$udid"); do
             for p in $root $(below "$root"); do
                 n="$(ps -o ni= -p "$p" 2>/dev/null | tr -d ' ')"
-                [ -n "$n" ] && [ "$n" -lt 19 ] && renice 19 -p "$p" >/dev/null 2>&1
+                [ -n "$n" ] && [ "$n" -lt 10 ] && renice 10 -p "$p" >/dev/null 2>&1
             done
         done
         sleep "$TICK_S"
@@ -168,6 +191,7 @@ tree_of_head() { git rev-parse 'HEAD^{tree}'; }
 
 write_note() {
     local line="lauf art=$1 laufzeiten=$2 ergebnis=gruen baum=$(tree_of_head) datum=$(date +%Y-%m-%dT%H:%M:%S)"
+    [ -n "$LOAD_START" ] && line="$line last_beginn=$LOAD_START last_ende=$(load_now)"
     git notes --ref=lauf append -m "$line" HEAD && say "Vermerk: $line"
 }
 
@@ -217,6 +241,7 @@ auswahl|voll)
         args=($(echo "$plan" | sed -n 's/^datei //p' | types_of_files))
     fi
     echo "$plan" | grep -v '^datei ' | sed 's/^/lauf: /'
+    [ "$kind" = voll ] && wait_for_quiet
     wait_for_foreign "$SIM_ARBEIT"
     silence "$SIM_ARBEIT"
     run_tests "$SIM_ARBEIT" "${args[@]+"${args[@]}"}" || stop "rot" 1
@@ -234,6 +259,7 @@ abschluss)
         case "$ROOT/" in "$t"*) stop "der Baum liegt unter einem temporaeren Pfad: $ROOT";; esac
     done
     space
+    wait_for_quiet
     for pair in "27:$SIM_27_NAME" "18.6:$SIM_18_NAME"; do
         runtime="${pair%%:*}"; name="${pair#*:}"
         udid="$(sim_id "$name")" || stop "kein Simulator $name; einmal anlegen mit simctl create" 2
