@@ -54,8 +54,10 @@ EOF
 # simctl answers list with the run's own simulators and, while the file
 # booted-foreign exists, one foreign booted device; with the file moved, the
 # 18.6 simulator stands under another runtime. listapps names two bundles of
-# the app and one of the system; privacy and keychain fail while their file
-# exists. Every call is logged.
+# the app and one of the system, less those uninstalled; with the file sticky
+# the first uninstall of a bundle does not take (seen on iOS 18.6 right after
+# the boot), with the file stuck none does. privacy and keychain fail while
+# their file exists. Every call is logged.
 cat > "$STUB/simctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/simctl.log"
@@ -64,9 +66,12 @@ case "$*" in
     listapps\ *)
         printf '%s' '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>'
         for id in fm.maer.app fm.maer.app.uitests.xctrunner com.apple.mobilesafari; do
+            need=1; [ -f "$LAUF_STUB_DIR/sticky" ] && need=2; [ -f "$LAUF_STUB_DIR/stuck" ] && need=99
+            [ "$(grep -cx "$id" "$LAUF_STUB_DIR/uninstalled.$2" 2>/dev/null)" -ge "$need" ] && continue
             printf '<key>%s</key><dict><key>CFBundleIdentifier</key><string>%s</string></dict>' "$id" "$id"
         done
         echo '</dict></plist>' ;;
+    uninstall\ *) echo "$3" >> "$LAUF_STUB_DIR/uninstalled.$2" ;;
     privacy\ *) [ -f "$LAUF_STUB_DIR/privacy-fails" ] && exit 1 ;;
     keychain\ *) [ -f "$LAUF_STUB_DIR/keychain-fails" ] && exit 1 ;;
     *"list devices"*)
@@ -100,7 +105,7 @@ export LAUF_SIM_DEVICES="$DEV/devices" LAUF_STILLES_GERAET=Witness_Silent_UID
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
-    "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails"; }
+    "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB"/uninstalled.*; }
 # A simulator the script has not seen: its mark is gone, the next final run erases it.
 forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
@@ -685,6 +690,19 @@ for u in $S27 $S18; do
 done
 if [ $gone = 1 ] && ! grep -q "uninstall .* com.apple" "$STUB/simctl.log"; then
     ok "46 every bundle of the app goes, none of the system"; else fail "46 every bundle of the app goes, none of the system" "$(grep uninstall "$STUB/simctl.log")"; fi
+
+# 47. An uninstall that answers 0 but leaves the bundle is not believed: the
+# reset asks listapps again and uninstalls once more; a bundle that stays
+# stops the run without tests or note.
+clear_stub; touch "$STUB/sticky"
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc_sticky=$?
+twice="$(grep -cx "uninstall $S18 fm.maer.app" "$STUB/simctl.log")"
+ran="$(grep -c '^start' "$STUB/xcodebuild.log" 2>/dev/null)"
+clear_stub; touch "$STUB/stuck"; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+out="$(bash scripts/lauf.sh abschluss 2>&1)"; rc_stuck=$?
+if [ $rc_sticky = 0 ] && [ "$twice" = 2 ] && [ "$ran" = 2 ] && [ $rc_stuck -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ] \
+    && ! git notes --ref=lauf show HEAD >/dev/null 2>&1 && echo "$out" | grep -q "fm.maer.app"; then
+    ok "47 a bundle left after uninstall is caught"; else fail "47 a bundle left after uninstall is caught" "sticky rc=$rc_sticky twice=$twice ran=$ran / stuck rc=$rc_stuck $out"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
