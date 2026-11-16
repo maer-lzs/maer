@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import os
 import OSLog
 import Synchronization
 
@@ -290,8 +291,13 @@ nonisolated enum ServerHeaders {
 
     #if DEBUG
     /// For witnesses: a shorter limit of the ask, so a witness of the limit
-    /// does not wait the ten seconds of the product.
-    nonisolated(unsafe) static var _testEndAskLimit: TimeInterval?
+    /// does not wait the ten seconds of the product. Behind a lock, read by
+    /// any ask.
+    nonisolated static var _testEndAskLimit: TimeInterval? {
+        get { endAskLimitOfWitness.withLock { $0 } }
+        set { endAskLimitOfWitness.withLock { $0 = newValue } }
+    }
+    private nonisolated static let endAskLimitOfWitness = OSAllocatedUnfairLock<TimeInterval?>(initialState: nil)
     #endif
 
     /// The address at the end of a request's redirects, or nil when it

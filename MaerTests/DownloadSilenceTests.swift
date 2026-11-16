@@ -165,7 +165,7 @@ struct DownloadSilenceTests {
     }
 
     /// A clock of the witness: the watch reads it, the witness moves it.
-    final class Clock: @unchecked Sendable {
+    final class Clock: Sendable {
         private let now = OSAllocatedUnfairLock(initialState: Date(timeIntervalSince1970: 1_000_000))
         var read: @Sendable () -> Date { { [now] in now.withLock { $0 } } }
         func advance(_ seconds: TimeInterval) { now.withLock { $0 += seconds } }
