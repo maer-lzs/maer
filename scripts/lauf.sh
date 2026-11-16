@@ -51,6 +51,8 @@ SIM_18_NAME="${LAUF_SIM_18_NAME:-Maer-Abschluss-18}"
 SIM_DEVICES="${LAUF_SIM_DEVICES:-$HOME/Library/Developer/CoreSimulator/Devices}"
 SILENT_DEVICE="${LAUF_STILLES_GERAET:-BlackHole2ch_UID}"
 ARCHIVE_ROOT="${LAUF_ARCHIVE:-$HOME/Library/Developer/Xcode/Archives}"
+NM="${LAUF_NM:-xcrun nm}"
+DEMANGLE="${LAUF_DEMANGLE:-xcrun swift-demangle --simplified}"
 NOTES=refs/notes/lauf
 AUSWAHL="python3 -I $ROOT/scripts/lauf/auswahl.py"
 
@@ -250,33 +252,57 @@ run_tests() {
 RED_NAMES=""
 RED_COUNT=0
 
-# R8: whether the commit changes only tests.
-tests_only() {
-    local files
-    files="$(git diff-tree --no-commit-id --name-only -r --root "$1")"
-    [ -n "$files" ] && ! echo "$files" | grep -qvE '^(MaerTests|MaerUITests)/'
+# R8: whether the commit changes tests.
+touches_tests() {
+    git diff-tree --no-commit-id --name-only -r --root "$1" | grep -qE '^(MaerTests|MaerUITests)/'
 }
 
-# R8: before the first commit of the branch that changes Sources/ stands a
-# commit that changes only tests and carries the note of a red selection at
-# its content. A branch of form, a follow-up after the review and a pure
+# The names of test hooks (_test...) among the symbols of a program; a
+# program that is not there fails. A release program carries none.
+test_hooks_in() {
+    [ -f "$1" ] || { echo "kein Programm: $1"; return 2; }
+    $NM -a "$1" 2>/dev/null | $DEMANGLE | grep -E '(^|[^A-Za-z])_test[A-Z]' | head -5
+    return 0
+}
+
+# Builds the release program of the head and reads its symbols. On a branch
+# the stamp fence of the project ends the build after the link (HEAD is not
+# on origin/dev); that one line is expected, any other error is not.
+release_symbols() {
+    local dd="$BAU_ROOT/release" log began program hooks
+    mkdir -p "$dd"; log="$(mktemp "$ABLAGE_ROOT/release.XXXXXX")"; began="$(date +%s)"
+    nice -n 10 $XB build -scheme Maer -configuration Release -destination 'generic/platform=iOS' \
+        CODE_SIGNING_ALLOWED=NO -derivedDataPath "$dd" > "$log" 2>&1
+    if grep 'error:' "$log" | grep -qv 'HEAD is not on origin/dev'; then
+        grep 'error:' "$log" | head -5; rm -f "$log"; stop "der Release-Bau ist rot: kein Vermerk" 1
+    fi
+    rm -f "$log"
+    program="$dd/Build/Products/Release-iphoneos/Maer.app/Maer"
+    [ -f "$program" ] && [ "$(stat -f %m "$program")" -ge "$began" ] || stop "kein frisches Release-Programm: kein Vermerk" 1
+    hooks="$(test_hooks_in "$program")" || stop "$hooks" 1
+    [ -z "$hooks" ] || stop "Test-Haken im Release-Programm: $(echo "$hooks" | head -3 | tr '\n' ' '): kein Vermerk" 1
+    say "Release-Programm ohne Test-Haken"
+}
+
+# R8: the first commit of the branch that changes Sources/, or a commit
+# before it, carries the note of a red selection at its content; a red
+# commit may bring empty shells of a new function under Sources/, so its
+# witnesses fail at the behaviour, not at the build. A branch of form, a follow-up after the review and a pure
 # translation are named so and pass (form-, nachzug-, sprache-). The hook
 # checks order and red, not whether the tests test the right thing.
 r8_order() {
     local branch="$1" head="$2" c unproven="" proven=""
     case "$branch" in form-*|nachzug-*|sprache-*) return 0;; esac
     for c in $(git rev-list --reverse "$head" --not origin/dev); do
+        if git notes --ref=lauf show "$c" 2>/dev/null | grep "art=rot" | grep -q "baum=$(git rev-parse "$c^{tree}")"; then
+            proven=1
+        elif touches_tests "$c"; then
+            unproven="${unproven:-$(git rev-parse --short "$c")}"
+        fi
         if git diff-tree --no-commit-id --name-only -r --root "$c" | grep -q '^Sources/'; then
             [ -n "$proven" ] && return 0
             [ -n "$unproven" ] && { echo "kein roter Vermerk am Test-Commit $unproven vor dem Code $(git rev-parse --short "$c")"; return 1; }
             echo "kein Test-Commit vor dem Code $(git rev-parse --short "$c")"; return 1
-        fi
-        if tests_only "$c"; then
-            if git notes --ref=lauf show "$c" 2>/dev/null | grep "art=rot" | grep -q "baum=$(git rev-parse "$c^{tree}")"; then
-                proven=1
-            else
-                unproven="${unproven:-$(git rev-parse --short "$c")}"
-            fi
         fi
     done
     return 0
@@ -346,6 +372,15 @@ archive_shas() {
     done | sort -u
 }
 
+# The program inside the archive of one version and build.
+archive_program() {
+    find "$ARCHIVE_ROOT" -maxdepth 2 -name '*.xcarchive' 2>/dev/null | while read -r a; do
+        [ "$(plutil -extract ApplicationProperties.CFBundleShortVersionString raw "$a/Info.plist" 2>/dev/null)" = "$1" ] || continue
+        [ "$(plutil -extract ApplicationProperties.CFBundleVersion raw "$a/Info.plist" 2>/dev/null)" = "$2" ] || continue
+        echo "$a/Products/Applications/Maer.app/Maer"; break
+    done
+}
+
 kind="${1:-}"; shift || true
 case "$kind" in
 auswahl|voll)
@@ -377,7 +412,7 @@ auswahl|voll)
     if ! run_tests "$SIM_ARBEIT" "${args[@]+"${args[@]}"}"; then
         # A commit of only tests that is red at the selection notes its red
         # cases: the proof of R8 that the witnesses were red before the code.
-        if [ "$kind" = auswahl ] && clean_tree && tests_only HEAD && [ -n "$RED_NAMES" ]; then
+        if [ "$kind" = auswahl ] && clean_tree && touches_tests HEAD && [ -n "$RED_NAMES" ]; then
             line="lauf art=rot baum=$(tree_of_head) datum=$(date +%Y-%m-%dT%H:%M:%S) faelle=$RED_NAMES"
             git notes --ref=lauf append -m "$line" HEAD && say "Vermerk: $line"
         fi
@@ -416,6 +451,7 @@ abschluss)
         say "voller Lauf auf $runtime ($name)"
         run_tests "$udid" || stop "rot auf $runtime: kein Vermerk" 1
     done
+    release_symbols
     write_note abschluss 27,18.6
     ;;
 push)
@@ -491,6 +527,13 @@ release)
     [ "$(echo "$found" | grep -c .)" -le 1 ] || stop "mehrere Archive $version ($build) mit verschiedenem GitSHA: $(echo $found)"
     [ -n "$found$sha" ] || stop "kein Archiv $version ($build) unter $ARCHIVE_ROOT und kein --sha"
     commit="$(git rev-parse --verify -q "${found:-$sha}^{commit}")" || stop "der Commit ${found:-$sha} ist hier nicht bekannt"
+    if [ -n "$found" ]; then
+        program="$(archive_program "$version" "$build")"
+        hooks="$(test_hooks_in "$program")" || stop "$hooks"
+        [ -z "$hooks" ] || stop "Test-Haken im hochgeladenen Programm $version ($build): $(echo "$hooks" | head -3 | tr '\n' ' ')"
+    else
+        say "kein Archiv: die Symbole des hochgeladenen Programms sind nicht gelesen"
+    fi
     if [ -n "$found" ] && [ -n "$sha" ]; then
         [ "$(git rev-parse --verify -q "$sha^{commit}")" = "$commit" ] || stop "--sha $sha ist nicht der GitSHA $found des Archivs $version ($build)"
     fi
