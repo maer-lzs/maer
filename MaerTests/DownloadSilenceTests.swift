@@ -164,6 +164,50 @@ struct DownloadSilenceTests {
         }
     }
 
+    /// A clock of the witness: the watch reads it, the witness moves it.
+    final class Clock: @unchecked Sendable {
+        private let now = OSAllocatedUnfairLock(initialState: Date(timeIntervalSince1970: 1_000_000))
+        var read: @Sendable () -> Date { { [now] in now.withLock { $0 } } }
+        func advance(_ seconds: TimeInterval) { now.withLock { $0 += seconds } }
+        var date: Date { now.withLock { $0 } }
+    }
+
+    /// The download of a silent host on the clock of the witness: the clock
+    /// moves fifteen seconds after each look of the watch, as the app's
+    /// watch looks every fifteen. Ends the download after five real seconds
+    /// at the latest.
+    private static func downloadOnTheClock(_ url: URL, _ clock: Clock) async -> (error: Error?, real: TimeInterval) {
+        let began = Date()
+        let download = Task { await Self.download(url) }
+        let cap = Task { try await Task.sleep(for: .seconds(5)); download.cancel() }
+        let mover = Task {
+            var seen = FileDownloader.shared.testPasses
+            while !Task.isCancelled {
+                let now = FileDownloader.shared.testPasses
+                if now > seen { clock.advance(15); seen = now }
+                try await Task.sleep(for: .milliseconds(5))
+            }
+        }
+        let error = await download.value
+        cap.cancel(); mover.cancel()
+        return (error, Date().timeIntervalSince(began))
+    }
+
+    @Test("on the clock of the witness the app's limit of two minutes ends a silent host's download in a moment of real time")
+    func theAppsLimitEndsASilentHostOnTheClock() async throws {
+        let clock = Clock()
+        FileDownloader.shared.testSetClock(clock.read, tick: 0.02)
+        defer { FileDownloader.shared.testSetClock(nil) }
+        let host = try Host { _ in .silent }
+        try await host.start()
+        defer { host.stop() }
+        let start = clock.date
+        let (error, real) = await Self.downloadOnTheClock(host.url("uhr.mp3"), clock)
+        #expect(error is SilentHostError, "the download did not end as a silent host: \(String(describing: error))")
+        #expect(clock.date.timeIntervalSince(start) >= 120, "it ended before the limit on the clock: \(clock.date.timeIntervalSince(start)) s")
+        #expect(real < 3, "it took \(real) s of real time")
+    }
+
     @Test("a host that closes or stays silent ends its downloads after the limit with one line")
     func aDeadHostEndsItsDownloads() async throws {
         Self.shortSilence()

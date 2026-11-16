@@ -72,8 +72,12 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         var silence = DownloadSilence(limit: 120, maxGap: 45)
         var tick: TimeInterval = 15
         var running = false
+        /// The time the watch reads; a witness sets a clock of its own.
+        var clock: @Sendable () -> Date = { Date() }
         #if DEBUG
         var endAfterEntry = false
+        /// How many looks the watch took, for a witness that moves its clock.
+        var passes = 0
         #endif
     }
     private let watch = Mutex(Watch())
@@ -84,6 +88,18 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     func testSetSilence(limit: TimeInterval, tick: TimeInterval) {
         watch.withLock { $0 = Watch(silence: DownloadSilence(limit: limit, maxGap: tick * 3), tick: tick) }
     }
+
+    /// Test seam: the app's limit and gap on a clock of the witness, looked
+    /// at every `tick` real seconds; nil puts the real clock back.
+    func testSetClock(_ clock: (@Sendable () -> Date)?, tick: TimeInterval = 15) {
+        watch.withLock {
+            $0 = Watch(silence: DownloadSilence(limit: 120, maxGap: 45), tick: tick)
+            if let clock { $0.clock = clock }
+        }
+    }
+
+    /// How many looks the watch took since its seam was last set.
+    var testPasses: Int { watch.withLock { $0.passes } }
 
     /// Test seam: the downloads of a host end right after a download's
     /// entry, where the watch may come between a download and its run.
