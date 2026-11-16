@@ -143,7 +143,12 @@ final class StreamPlanner {
     /// For witnesses: returns once every plan asked ahead has landed (its
     /// `landed` ran) or ended, and every ask on its way has ended, so a
     /// witness reads the queue after the plans instead of after a time.
-    func _testSettled() async {}
+    func _testSettled() async {
+        while !ahead.isEmpty || !asking.isEmpty {
+            for task in Array(ahead.values) { await task.value }
+            for task in Array(asking.values) { _ = await task.value }
+        }
+    }
     #endif
 
     func stop() {

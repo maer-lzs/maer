@@ -304,7 +304,11 @@ nonisolated enum ServerHeaders {
         guard let url = request.url else { return nil }
         var probe = request
         probe.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        #if DEBUG
+        probe.timeoutInterval = _testEndAskLimit ?? endAskLimit
+        #else
         probe.timeoutInterval = endAskLimit
+        #endif
         do {
             let (bytes, response) = try await HTTP.bytes(for: probe)
             bytes.task.cancel()
