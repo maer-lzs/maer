@@ -284,7 +284,8 @@ release_symbols() {
     say "Release-Programm ohne Test-Haken"
 }
 
-# R8: the first commit of the branch that changes Sources/, or a commit
+# R8, rule 10 of the coding rules (tests before the code, kontext/
+# coding-regelwerk.md): the first commit of the branch that changes Sources/, or a commit
 # before it, carries the note of a red selection at its content; a red
 # commit may bring empty shells of a new function under Sources/, so its
 # witnesses fail at the behaviour, not at the build. A branch of form, a follow-up after the review and a pure

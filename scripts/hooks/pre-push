@@ -11,7 +11,7 @@
 # only to the commit of that tag. dev, main and a tag need the note of the
 # final run at the commit, unless the commit is from before the script. Every
 # commit new to the server keeps the rules of the commit message (rules.py).
-# A branch keeps the order of R8 (lauf.sh r8): a red test commit before the
+# A branch keeps the order of R8, rule 10 of the coding rules (lauf.sh r8): a red test commit before the
 # first change of Sources/, unless its name says form-, nachzug- or sprache-.
 # The script is known by LAUF_PUSH and LAUF_RELEASE; both can be set by hand
 # (named limit).
