@@ -30,7 +30,18 @@ struct ABSSignInSwitchTests {
         let known = UserDefaults.standard.data(forKey: KnownServers.storeKey)
         /// The index of the search a sign-in reaches while the stand holds.
         let search = SpotlightRecorder()
+        private let putBackSearch: () -> Void
+        init() {
+            if #available(iOS 27, *) {
+                let kept = SpotlightIndex.index
+                SpotlightIndex.index = search.index()
+                putBackSearch = { SpotlightIndex.index = kept }
+            } else {
+                putBackSearch = {}
+            }
+        }
         func restore() {
+            putBackSearch()
             if let url { KeychainStore.save(url, forKey: KeychainKey.serverURL) } else { KeychainStore.delete(forKey: KeychainKey.serverURL) }
             if let token { KeychainStore.save(token, forKey: KeychainKey.apiToken) } else { KeychainStore.delete(forKey: KeychainKey.apiToken) }
             AppStorageKeys.set(signedIn, for: AppStorageKeys.absSignedInServer)
@@ -146,16 +157,9 @@ struct ABSSignInSwitchTests {
     /// after the witness.
     @Test("a sign-in to another server forgets the titles of the widget and the books of the search, a repeated one to the same server does not")
     func aSignInToAnotherServerForgetsTheWidgetsTitles() async throws {
-        let recorder = SpotlightRecorder()
-        var restoreIndex: () -> Void = {}
-        if #available(iOS 27, *) {
-            let kept = SpotlightIndex.index
-            SpotlightIndex.index = recorder.index()
-            restoreIndex = { SpotlightIndex.index = kept }
-        }
-        defer { restoreIndex() }
         let stand = Stand()
         defer { stand.restore() }
+        let recorder = stand.search
         let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
         let rowsURL = try #require(ContinueRows.url)
         let keptSnapshot = try? Data(contentsOf: snapshotURL)
@@ -339,6 +343,14 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [self] data, _, done, error in
             var buffer = buffer
             if let data { buffer.append(data) }
+            // A TLS greeting (its first byte is a handshake record, 0x16):
+            // this server speaks plain HTTP, so it closes at once instead of
+            // waiting for a head that never comes.
+            if buffer.first == 0x16 {
+                lock.withLock { events.append("closed a TLS greeting") }
+                connection.cancel()
+                return
+            }
             if let end = buffer.range(of: Data("\r\n\r\n".utf8)) {
                 answer(connection, head: String(decoding: buffer[..<end.lowerBound], as: UTF8.self))
             } else if !done, error == nil {
