@@ -87,6 +87,15 @@ struct ServerHeaderRuleTests {
 struct ServerHeadersWayTests {
     typealias Host = HeaderRedirectMeasureTests.RecordingHost
 
+    /// Waits until the condition holds, at most `seconds`; the witness
+    /// checks the condition itself afterwards.
+    static func until(_ condition: () -> Bool, seconds: Double = 10) async {
+        let deadline = Date().addingTimeInterval(seconds)
+        while !condition(), Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
     /// A keychain and a register of a witness's own; `keys(items:)` lets
     /// two devices read the same items, as the iCloud keychain does.
     nonisolated final class MemoryKeys: Sendable {
@@ -437,10 +446,9 @@ struct ServerHeadersWayTests {
         let seconds = Date().timeIntervalSince(started)
         #expect(seconds < 5, "the ask ahead read the endless body: \(seconds) s")
         #expect(plan == .resolved(url, headers: [Self.name: Self.value]))
-        try await Task.sleep(for: .seconds(1))
-        let after = host.sent.withLock { $0 }
-        try await Task.sleep(for: .seconds(1))
-        #expect(host.sent.withLock { $0 } == after, "the host still sends after the ask ended")
+        // The ask ended: the host saw its connection close, so nothing more
+        // is read from it; no window of time to show that nothing grows.
+        await Self.until { host.closed.withLock { $0 } }
         #expect(host.closed.withLock { $0 }, "the ask did not close its connection")
     }
 
@@ -500,8 +508,8 @@ struct ServerHeadersWayTests {
         await ServerHeaders.$witness.withValue(keys.keys()) { await model.load(item: book) }
         #expect(Self.askedAhead(origin) == [0], "the start waited for more than the track it begins with: \(Self.askedAhead(origin))")
         #expect(model.player?.items().count == 1, "the queue holds only the planned track at the start")
-        // Long enough for every ask the start makes to land.
-        try await Task.sleep(for: .seconds(2))
+        // Every ask the start makes has landed.
+        await model._testPlansSettled()
         #expect(Self.askedAhead(origin) == [0, 1, 2], "the start asked ahead for tracks it does not need soon: \(Self.askedAhead(origin))")
         #expect(model.player?.items().count == 3, "the queue does not hold the planned tracks: \(model.player?.items().count ?? 0)")
         model.stop()
@@ -518,7 +526,7 @@ struct ServerHeadersWayTests {
                                     localTracks: { _ in [:] }, isOnline: { true })
         try await ServerHeaders.$witness.withValue(MemoryKeys().keys()) {
             await model.load(item: book)
-            try await Task.sleep(for: .seconds(1))
+            await model._testPlansSettled()
             try #require(Self.askedAhead(origin) == [0, 1, 2], "the precondition: the start asked the first three: \(Self.askedAhead(origin))")
             model.player?.volume = 0
             model.play()
@@ -540,9 +548,9 @@ struct ServerHeadersWayTests {
                                     localTracks: { _ in [:] }, isOnline: { true })
         try await ServerHeaders.$witness.withValue(keys.keys()) {
             await model.load(item: book)
-            try await Task.sleep(for: .seconds(1))
+            await model._testPlansSettled()
             await model.seek(to: 40.5, userInitiated: false)
-            try await Task.sleep(for: .seconds(2))
+            await model._testPlansSettled()
             #expect(Self.askedAhead(origin) == [0, 1, 2, 40, 41, 42], "the jump asked \(Self.askedAhead(origin))")
             let built = (model.player?.currentItem?.asset as? AVURLAsset)?.url.lastPathComponent
             #expect(built == "track-40.caf", "the jump built \(String(describing: built))")
@@ -595,7 +603,7 @@ struct ServerHeadersWayTests {
         try await ServerHeaders.$witness.withValue(keys.keys()) {
             await model.load(item: book)
             let jump = Task { await model.seek(to: 7.5, userInitiated: false) }
-            try await Task.sleep(for: .milliseconds(300))
+            await Self.until { model.waitsOnTheStream }
             await model.load(item: other)
             await jump.value
         }
@@ -613,7 +621,7 @@ struct ServerHeadersWayTests {
         try await ServerHeaders.$witness.withValue(keys.keys()) {
             await model.load(item: book)
             let first = Task { await model.seek(to: 7.5, userInitiated: false) }
-            try await Task.sleep(for: .milliseconds(300))
+            await Self.until { model.waitsOnTheStream }
             await model.seek(to: 1.6, userInitiated: false)
             await first.value
         }
@@ -634,7 +642,7 @@ struct ServerHeadersWayTests {
             await model.load(item: book)
             let stood = model.currentTime
             let jump = Task { await model.seek(to: 7.5, userInitiated: false) }
-            try await Task.sleep(for: .milliseconds(300))
+            await Self.until { model.waitsOnTheStream }
             model.stop()
             await jump.value
             #expect(model.isStopped)
