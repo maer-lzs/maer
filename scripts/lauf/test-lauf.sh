@@ -56,14 +56,15 @@ EOF
 # 18.6 simulator stands under another runtime. listapps names two bundles of
 # the app and one of the system, less those uninstalled; with the file sticky
 # the first uninstall of a bundle does not take (seen on iOS 18.6 right after
-# the boot), with the file stuck none does. privacy and keychain fail while
-# their file exists. Every call is logged.
+# the boot), with the file stuck none does; listapps fails while its file
+# exists, as privacy and keychain do. Every call is logged.
 cat > "$STUB/simctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/simctl.log"
 case "$*" in
     erase\ *) rm -rf "$LAUF_SIM_DEVICES/$2/data" ;;
     listapps\ *)
+        [ -f "$LAUF_STUB_DIR/listapps-fails" ] && exit 1
         printf '%s' '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>'
         for id in fm.maer.app fm.maer.app.uitests.xctrunner com.apple.mobilesafari; do
             need=1; [ -f "$LAUF_STUB_DIR/sticky" ] && need=2; [ -f "$LAUF_STUB_DIR/stuck" ] && need=99
@@ -105,7 +106,7 @@ export LAUF_SIM_DEVICES="$DEV/devices" LAUF_STILLES_GERAET=Witness_Silent_UID
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
-    "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB"/uninstalled.*; }
+    "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
 # A simulator the script has not seen: its mark is gone, the next final run erases it.
 forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
@@ -703,6 +704,13 @@ out="$(bash scripts/lauf.sh abschluss 2>&1)"; rc_stuck=$?
 if [ $rc_sticky = 0 ] && [ "$twice" = 2 ] && [ "$ran" = 2 ] && [ $rc_stuck -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ] \
     && ! git notes --ref=lauf show HEAD >/dev/null 2>&1 && echo "$out" | grep -q "fm.maer.app"; then
     ok "47 a bundle left after uninstall is caught"; else fail "47 a bundle left after uninstall is caught" "sticky rc=$rc_sticky twice=$twice ran=$ran / stuck rc=$rc_stuck $out"; fi
+
+# 48. A list of apps that cannot be read is not an empty list: the run stops
+# without tests or note.
+clear_stub; touch "$STUB/listapps-fails"; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc=$?
+if [ $rc -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ] && ! git notes --ref=lauf show HEAD >/dev/null 2>&1; then
+    ok "48 an unreadable list of apps stops the run"; else fail "48 an unreadable list of apps stops the run" "rc=$rc"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
