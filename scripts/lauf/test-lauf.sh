@@ -451,5 +451,101 @@ clear_stub
 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
 if grep -q '^silent yes' "$STUB/xcodebuild.log"; then ok "33b the selection runs on a silent simulator as well"; else fail "33b the selection runs on a silent simulator as well" "$(grep '^silent' "$STUB/xcodebuild.log")"; fi
 
+# The lowering of the simulator. A stand-in for launchd_sim of one udid is a
+# process named like it with two children; nice is read from the processes.
+FAKES=""
+fake_sim() {
+    bash -c 'exec -a "launchd_sim /devices/'"$1"'/data/var/run/launchd_bootstrap.plist" bash -c "sleep 120 & sleep 120 & wait"' >/dev/null 2>&1 &
+    local pid=$!
+    FAKES="$FAKES $pid"
+    sleep 0.3
+    echo "$pid"
+}
+tree_of() { echo "$1"; pgrep -P "$1"; }
+nice_of() { ps -o ni= -p "$1" 2>/dev/null | tr -d ' '; }
+all_at() {
+    local want="$1" p; shift
+    for p in "$@"; do [ "$(nice_of "$p")" = "$want" ] || return 1; done
+}
+end_fakes() {
+    local p
+    for p in $FAKES; do pkill -P "$p" 2>/dev/null; kill "$p" 2>/dev/null; done
+    FAKES=""
+}
+trap 'end_fakes; rm -rf "$WORK"' EXIT
+WORK_SIM=C1F0240C-E988-41D2-9081-4CFF0B8EA34B
+SIM27=AAAA2700-0000-0000-0000-000000000000
+SIM18=BBBB1860-0000-0000-0000-000000000000
+
+# 34. While a selection runs, launchd_sim of its udid and its children go to nice 19.
+clear_stub
+sim="$(fake_sim "$WORK_SIM")"; FAKES="$FAKES $sim"; procs="$(tree_of "$sim")"
+LAUF_STUB_SLEEP=3 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+if [ "$(echo "$procs" | wc -l | tr -d ' ')" = 3 ] && all_at 19 $procs; then
+    ok "34 the simulator of the run is lowered to nice 19"; else fail "34 the simulator of the run is lowered to nice 19" "$(for p in $procs; do echo "$p $(nice_of "$p")"; done)"; fi
+end_fakes
+
+# 35. The final run lowers both of its simulators.
+clear_stub
+a="$(fake_sim "$SIM27")"; b="$(fake_sim "$SIM18")"; FAKES="$FAKES $a $b"
+procs="$(tree_of "$a"; tree_of "$b")"
+LAUF_STUB_SLEEP=3 bash scripts/lauf.sh abschluss >/dev/null 2>&1
+if all_at 19 $procs; then ok "35 the final run lowers both simulators"; else fail "35 the final run lowers both simulators" "$(for p in $procs; do echo "$p $(nice_of "$p")"; done)"; fi
+end_fakes
+
+# 36. A simulator that boots after the start is lowered at the next tick.
+clear_stub; rm -f "$WORK/late"
+( sleep 1; fake_sim "$WORK_SIM" > "$WORK/late" ) &
+LAUF_STUB_SLEEP=4 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+late="$(cat "$WORK/late" 2>/dev/null)"; FAKES="$FAKES $late"
+if [ -n "$late" ] && all_at 19 $(tree_of "$late"); then
+    ok "36 a simulator booting late is lowered"; else fail "36 a simulator booting late is lowered" "late=$late $(nice_of "$late")"; fi
+end_fakes
+
+# 37. Only the run's own udid: launchd_sim of another udid keeps its nice.
+clear_stub
+own="$(fake_sim "$WORK_SIM")"; other="$(fake_sim FFFF0000-0000-0000-0000-000000000000)"; FAKES="$FAKES $own $other"
+before="$(nice_of "$other")"
+LAUF_STUB_SLEEP=3 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+if [ "$(nice_of "$own")" = 19 ] && all_at "$before" $(tree_of "$other"); then
+    ok "37 a simulator of another udid stays"; else fail "37 a simulator of another udid stays" "own=$(nice_of "$own") other=$(nice_of "$other") before=$before"; fi
+end_fakes
+
+# 38. After the run, green, red or ended by TERM, no lowering goes on: a
+# simulator booting afterwards keeps its nice.
+after_run() {
+    local late p before
+    late="$(fake_sim "$WORK_SIM")"; FAKES="$FAKES $late"; before="$(nice_of "$late")"
+    sleep 3
+    for p in $(tree_of "$late"); do [ "$(nice_of "$p")" = "$before" ] || return 1; done
+    return 0
+}
+clear_stub
+LAUF_STUB_SLEEP=1 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+green_ok=0; after_run && green_ok=1; end_fakes
+clear_stub; touch "$STUB/red"
+LAUF_STUB_SLEEP=1 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+red_ok=0; after_run && red_ok=1; end_fakes
+clear_stub
+LAUF_STUB_SLEEP=5 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1 &
+run=$!; sleep 2; kill -TERM "$run"; wait "$run" 2>/dev/null
+term_ok=0; after_run && term_ok=1; end_fakes
+if [ $green_ok = 1 ] && [ $red_ok = 1 ] && [ $term_ok = 1 ]; then
+    ok "38 no lowering after the run, green, red or ended"; else fail "38 no lowering after the run, green, red or ended" "green=$green_ok red=$red_ok term=$term_ok"; fi
+
+# 39. The lowering never raises and touches nothing outside the tree of
+# launchd_sim of that udid: a child already at 20 stays at 20, the window of
+# the simulator and xcodebuild keep theirs.
+clear_stub
+sim="$(fake_sim "$WORK_SIM")"; FAKES="$FAKES $sim"; kid="$(pgrep -P "$sim" | head -1)"; renice 20 -p "$kid" >/dev/null
+bash -c 'exec -a "/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app/Contents/MacOS/Simulator" sleep 120' >/dev/null 2>&1 &
+window=$!; disown "$window"; FAKES="$FAKES $window"; sleep 0.3
+window_before="$(nice_of "$window")"
+LAUF_STUB_SLEEP=3 bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+if [ "$(nice_of "$kid")" = 20 ] && [ "$(nice_of "$sim")" = 19 ] && [ "$(nice_of "$window")" = "$window_before" ] \
+    && ! grep -qE "^nice (19|20)$" "$STUB/xcodebuild.log"; then
+    ok "39 never raises, nothing outside the tree"; else fail "39 never raises, nothing outside the tree" "kid=$(nice_of "$kid") sim=$(nice_of "$sim") window=$(nice_of "$window")/$window_before $(grep '^nice' "$STUB/xcodebuild.log")"; fi
+end_fakes
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
