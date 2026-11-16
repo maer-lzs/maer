@@ -132,7 +132,8 @@ struct SoundCurveView: View {
     let setting: SoundSetting
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private static let samples = 64
+    // Read inside the Canvas closure, which runs off the main actor.
+    nonisolated private static let samples = 64
 
     var body: some View {
         VStack(spacing: 4) {
@@ -241,7 +242,8 @@ struct SoundSummaryText: View {
     }
 }
 
-/// The player's button for the sound effects, beside the speed: coloured
+/// The player's button for the sound effects, one of the four cells of its
+/// second row: coloured
 /// while the connected device plays with a setting, as the speed is when
 /// it is not 1×.
 struct EffectsButton: View {

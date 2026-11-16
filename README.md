@@ -80,6 +80,7 @@ One app, one player and one design for four kinds of audio. Every feature in det
 
 - One search across all sources, a Home tab that mixes all media, and Mär playlists across sources
 - Progress that never jumps back to the start, across devices and offline
+- Sound effects for each output device (Original, Spoken Word, Old Recordings, Fuller) at four strengths, with a volume boost and a curve that shows what they do
 - CarPlay, widgets, Siri and Shortcuts, lock screen and Dynamic Island
 - Share a podcast, episode, station, free audiobook or Jamendo track as a link
 - iPhone, iPad and the iPhone Duo, Dynamic Type and VoiceOver

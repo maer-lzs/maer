@@ -29,7 +29,7 @@ nonisolated enum PlaybackSkip {
         }
     }
 
-    /// The choices the player offers; each has an SF Symbol of its own.
+    /// The choices the settings offer; each has an SF Symbol of its own.
     static func options(for content: Content) -> [Double] {
         switch content {
         case .spokenWord: return [15, 30, 60]
