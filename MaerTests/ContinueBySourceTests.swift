@@ -164,7 +164,7 @@ struct ContinueBySourceTests {
                 "a pass with the same rows that leaves the snapshot's title out no longer reloads the widget")
         var writers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if text.contains("ContinueRows(rows:") { writers.append(file.lastPathComponent) }
         }
         #expect(writers == ["ContinueRowsWriter.swift"], "the rows have another writer: \(writers)")

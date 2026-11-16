@@ -844,7 +844,7 @@ struct MaerSyncCarrierTests {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift")
-        let source = try String(contentsOf: file, encoding: .utf8)
+        let source = try SourceTree.text(file)
         let branches = source.components(separatedBy: "case .stale").dropFirst()
         try #require(branches.count >= 4, "der Sucher findet die Schreibwege nicht mehr (\(branches.count))")
         for branch in branches {

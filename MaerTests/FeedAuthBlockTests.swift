@@ -369,7 +369,7 @@ struct FeedAuthBlockTests {
     private func settingsPage() throws -> String {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "MaerSyncSettingsView.swift" })
-        return try String(contentsOf: file, encoding: .utf8)
+        return try SourceTree.text(file)
     }
 
     @Test("the page asks the rule instead of deciding itself", .needsTheSources)
@@ -419,7 +419,7 @@ struct FeedAuthBlockTests {
         #expect(!code.contains("@StateprivatevarfeedAuthBlock"), "the page still mirrors the block")
         #expect(code.contains("block:feedAuth.block)"), "the standing does not read the runner's block")
         let runner = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "FeedAuthSync.swift" })
-        let text = try String(contentsOf: runner, encoding: .utf8)
+        let text = try SourceTree.text(runner)
         #expect(text.contains("final class FeedAuthSync: ObservableObject"))
         #expect(text.contains("@Published private(set) var block"))
     }
@@ -471,7 +471,7 @@ struct FeedAuthBlockTests {
     func credentialTitlesStandAboveAtLargeText() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "CredentialFields.swift" })
-        let text = try String(contentsOf: file, encoding: .utf8)
+        let text = try SourceTree.text(file)
         #expect(text.components(separatedBy: "TitledCredential(title: title) { large in").count - 1 == 3,
                 "server, account and secret each go through the one wrapper")
         #expect(text.components(separatedBy: "if large {").count - 1 == 3)

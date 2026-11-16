@@ -38,7 +38,7 @@ struct ModelsLayerFenceTests {
         try #require(files.count > 50, "der Zeuge hat Models nicht gelesen")
         var found: [String] = []
         for file in files {
-            let names = Self.upwardNames(in: try String(contentsOf: file, encoding: .utf8))
+            let names = Self.upwardNames(in: try SourceTree.text(file))
             found += names.map { "\(file.lastPathComponent): \($0)" }
         }
         #expect(found.isEmpty, "eine Regel in Models greift nach oben: \(found)")
@@ -132,7 +132,7 @@ struct ModelsLayerFenceTests {
         var upper: Set<String> = []
         for name in Self.upperLayers {
             for file in layer(name) {
-                upper.formUnion(Self.declaredNames(in: try String(contentsOf: file, encoding: .utf8), topLevelOnly: true))
+                upper.formUnion(Self.declaredNames(in: try SourceTree.text(file), topLevelOnly: true))
             }
         }
         let models = layer("Models")
@@ -140,12 +140,12 @@ struct ModelsLayerFenceTests {
                      "the fence did not read the layers")
         var own: Set<String> = []
         for file in models {
-            own.formUnion(Self.declaredNames(in: try String(contentsOf: file, encoding: .utf8), topLevelOnly: false))
+            own.formUnion(Self.declaredNames(in: try SourceTree.text(file), topLevelOnly: false))
         }
         let names = upper.subtracting(own)
         var measured: [String: Int] = [:]
         for file in models {
-            let count = Self.reachingLines(in: try String(contentsOf: file, encoding: .utf8), names: names)
+            let count = Self.reachingLines(in: try SourceTree.text(file), names: names)
             if count > 0 { measured[SourceTree.relativePath(of: file)] = count }
         }
         let drift = StockDrift.findings(counts: measured, stock: Self.upwardStock)

@@ -205,7 +205,7 @@ struct PlaylistDeviceNameTests {
         var exceptions: [String] = []
         var direct: [String] = []
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for line in text.components(separatedBy: "\n") {
                 let code = line.trimmingCharacters(in: .whitespaces)
                 guard !code.hasPrefix("//"), code.contains("DeviceIdentity.name") else { continue }

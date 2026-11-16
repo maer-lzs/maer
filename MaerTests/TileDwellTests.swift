@@ -157,7 +157,7 @@ struct TileDwellTests {
     private static func sites(of token: String) throws -> [String: Int] {
         var seen: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "TileDwell.swift" {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let sites = text.components(separatedBy: token).count - 1
             if sites > 0 { seen[file.lastPathComponent, default: 0] += sites }
         }

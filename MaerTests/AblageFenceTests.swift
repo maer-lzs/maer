@@ -65,7 +65,7 @@ struct AblageFenceTests {
         for folder in ["Sources", "LiveActivityWidget"] {
             for file in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder)) where file.pathExtension == "swift" && !Self.isAHome(file.path) {
                 seen.insert(file.lastPathComponent)
-                counts[file.lastPathComponent, default: 0] += Self.fileSites(in: try String(contentsOf: file, encoding: .utf8))
+                counts[file.lastPathComponent, default: 0] += Self.fileSites(in: try SourceTree.text(file))
             }
         }
         #expect(seen.isSuperset(of: ["WidgetShared.swift", "ContinueListeningWidget.swift"]), "the fence read the app and the widget")

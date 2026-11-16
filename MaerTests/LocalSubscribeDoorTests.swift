@@ -431,7 +431,7 @@ struct LocalSubscribeDoorTests {
     func onlyTheNamedPlacesPassTheDoor() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.directSubscribes(in: SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8)))
+            let count = Self.directSubscribes(in: SyncContractFenceTests.stripped(try SourceTree.text(file)))
             if count > 0 { found[file.lastPathComponent] = count }
         }
         #expect(found["PodcastSubscriptions.swift"] != nil, "the fence read the sources")

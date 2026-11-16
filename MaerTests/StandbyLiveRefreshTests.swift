@@ -293,7 +293,7 @@ struct StandbyLiveRefreshTests {
         // source text, and so it is at least noticed when it disappears.
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "PlayerCoordinator.swift" })
-        let calls = try String(contentsOf: file, encoding: .utf8)
+        let calls = try SourceTree.text(file)
             .split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)

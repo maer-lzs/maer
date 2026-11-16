@@ -58,7 +58,7 @@ import UIKit
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
         for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
-            let text = try String(contentsOf: url, encoding: .utf8)
+            let text = try SourceTree.text(url)
             #expect(!text.contains("ViewThatFits("),
                     "\(url.lastPathComponent): ViewThatFits ist nach vier Geraete-Crashes verboten (e111072) — MeasuredFits/MeasuredLadder nehmen")
         }

@@ -93,7 +93,7 @@ struct SharedCasesFenceTests {
         let tests = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         var named: Set<String> = []
         for url in SourceTree.files(under: tests) where url.pathExtension == "swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(url))
             for match in code.matches(of: #/SharedCases\.cases\("([^"]+)"(?:, area: "([^"]+)")?\)/#) {
                 named.insert("\(match.output.2.map(String.init) ?? "abos")/\(match.output.1).json")
             }

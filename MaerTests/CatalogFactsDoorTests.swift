@@ -62,7 +62,7 @@ struct CatalogFactsDoorTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String: Int] = [:]
         for file in files where file.lastPathComponent != "CatalogFactsEnvironment.swift" {
-            found.merge(Self.registerReads(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+            found.merge(Self.registerReads(in: try SourceTree.text(file))) { $0 + $1 }
         }
         #expect(found == Self.stock, "Registerfragen in Ansichten: \(found.sorted { $0.key < $1.key })")
         #expect(Self.registerReads(in: "struct T: View {\n var x: Bool { FreeCatalogProvider.shared\n  .hasPartsList(itemId: i) }\n}")
@@ -93,7 +93,7 @@ struct CatalogFactsDoorTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String: Int] = [:]
         for file in files {
-            found.merge(Self.registerWrites(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+            found.merge(Self.registerWrites(in: try SourceTree.text(file))) { $0 + $1 }
         }
         #expect(found == Self.writeStock, "Eintraege aus Ansichten: \(found.sorted { $0.key < $1.key })")
         #expect(Self.registerWrites(in: "struct T: View {\n func f() { let p = FreeCatalogProvider.shared\n  let k = docs.compactMap { p\n   .remember(popular: $0) } }\n}")
@@ -130,7 +130,7 @@ struct CatalogFactsDoorTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String: Int] = [:]
         for file in files {
-            found.merge(Self.providerAwaits(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+            found.merge(Self.providerAwaits(in: try SourceTree.text(file))) { $0 + $1 }
         }
         #expect(found == Self.awaitStock, "Warten auf den Provider in Ansichten: \(found.sorted { $0.key < $1.key })")
         #expect(Self.providerAwaits(in: "struct T: View {\n func f() async { _ = await FreeCatalogProvider.shared\n  .item(id: i) }\n}")

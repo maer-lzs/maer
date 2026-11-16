@@ -130,7 +130,7 @@ struct StockDriftTests {
         var declared = 0
         var oneWay: [String] = []
         for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("MaerTests")) where file.pathExtension == "swift" && file.lastPathComponent != "StockDrift.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let stocks = Self.numericStocks(in: text)
             declared += stocks.count
             oneWay += Self.unchecked(stocks, in: text).map { "\(file.lastPathComponent): \($0)" }

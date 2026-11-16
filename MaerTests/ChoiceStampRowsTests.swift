@@ -235,7 +235,7 @@ struct ChoiceStampRowsTests {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var named: [String: Int] = [:]
         for file in SourceTree.files(under: sources) where file.pathExtension == "swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             #expect(!code.contains("forKey: Self.stampsKey") && !code.contains("forKey: UserChoiceCloudSync.stampsKey"),
                     "\(file.lastPathComponent) reads or writes the stamps in the defaults")
             // The stamps of the feed logins have a key of the same name there.

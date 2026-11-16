@@ -25,7 +25,7 @@ struct RetiredDocumentsFenceTests {
     func noStoreReadsARetiredDocument() throws {
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             for name in Self.retired where code.contains(name) {
                 found.append("\(file.lastPathComponent): \(name)")
             }
@@ -77,7 +77,7 @@ struct RetiredDocumentsFenceTests {
     func theSharedClaimKeyIsGone() throws {
         var texts: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try SourceTree.text(file))
         }
         #expect(texts["ClaimCarrier.swift"] != nil, "the precondition: the fence read the sources")
         #expect(Self.sharedClaimKeyLines(in: texts) == [], "the shared claim key is back")
@@ -104,7 +104,7 @@ struct RetiredDocumentsFenceTests {
     func noRetiredStepComesBack() throws {
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             for name in Self.retiredSteps where code.contains(name) {
                 found.append("\(file.lastPathComponent): \(name)")
             }

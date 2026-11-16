@@ -59,7 +59,7 @@ struct MediaAvailabilityTests {
             .deletingLastPathComponent().appendingPathComponent("Sources")
         var found: Set<String> = []
         for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
-            let text = try String(contentsOf: url, encoding: .utf8)
+            let text = try SourceTree.text(url)
             // Comments gone (an explanation is not a call), then all
             // whitespace to one, so that a multi-line expression is
             // read as ONE text.

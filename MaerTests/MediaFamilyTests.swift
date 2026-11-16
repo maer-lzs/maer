@@ -205,7 +205,7 @@ struct MediaFamilyTests {
     func noPlaceholderByExclusion() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let found = Self.exclusionPicks(in: try String(contentsOf: file, encoding: .utf8))
+            let found = Self.exclusionPicks(in: try SourceTree.text(file))
             if !found.isEmpty { offenders.append("\(file.lastPathComponent): \(found)") }
         }
         #expect(offenders.isEmpty, "a placeholder picked past MediaFamily.placeholderSymbol: \(offenders)")

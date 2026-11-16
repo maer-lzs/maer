@@ -27,7 +27,7 @@ import Foundation
         var scanned = 0
         for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
             guard url.lastPathComponent != "AppSwitch.swift",
-                  let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                  let text = try? SourceTree.text(url) else { continue }
             scanned += 1
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 // Word boundary: `sourceToggle(` is a helper NAME that happens

@@ -112,7 +112,7 @@ struct StatusMeaningFenceTests {
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != Self.ruleHome {
             let name = file.lastPathComponent
             seen.insert(name)
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if Self.callers[name] != nil {
                 if !Self.callsTheRule(text) { offenders.append("\(name): in the callers, but does not call the rule") }
             } else if Self.ownSentence[name] != nil {

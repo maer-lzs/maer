@@ -109,7 +109,7 @@ struct StockReasonFenceTests {
         // more than it should.
         let own = URL(fileURLWithPath: #filePath).lastPathComponent
         for file in files where file.lastPathComponent != own {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let stocks = Self.fileStocks(in: text)
             guard !stocks.isEmpty else { continue }
             candidates += stocks.count

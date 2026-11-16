@@ -50,7 +50,7 @@ struct SharedLinkPreviewTests {
     @Test("Fence: the preview reads only through Artwork.thumbnail, no way to the network", .needsTheSources)
     func thePreviewReadsOnlyTheStore() throws {
         let root = SourceTree.root.appendingPathComponent("Sources/Views/SharedLinkButton.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: root, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(root))
         #expect(code.contains("Artwork.thumbnail(for:"), "the preview does not read the store")
         let network = ["Artwork.image(", "Artwork.loaded(", "Artwork.preload(", "Artwork.verdict(", "Artwork.file(",
                        "HTTP.", "URLSession", "AsyncImage", "Data(contentsOf"]

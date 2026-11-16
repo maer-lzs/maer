@@ -23,7 +23,7 @@ struct ProjectFileIntegrityTests {
         let testsDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         let url = testsDir.deletingLastPathComponent()
             .appendingPathComponent("Maer.xcodeproj/project.pbxproj")
-        return try? String(contentsOf: url, encoding: .utf8)
+        return try? SourceTree.text(url)
     }
 
     /// Zero, not one: the last remaining `wrapper.pb-project` entry was the
@@ -75,7 +75,7 @@ struct ProjectFileIntegrityTests {
     func viewBodiesDoNotDrivePlayerOrSync() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for line in Self.bodyLevelPlayerOrSyncCalls(in: text) {
                 offenders.append("\(file.lastPathComponent):\(line)")
             }
@@ -132,7 +132,7 @@ struct ProjectFileIntegrityTests {
         for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
             let dir = root.appendingPathComponent(folder)
             for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
-                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                guard let text = try? SourceTree.text(url) else { continue }
                 checked += 1
                 let head = text.prefix(400)
                 if !head.contains("Copyright (C)")
@@ -177,7 +177,7 @@ struct ProjectFileIntegrityTests {
         for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
             let dir = root.appendingPathComponent(folder)
             for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
-                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                guard let text = try? SourceTree.text(url) else { continue }
                 checked += 1
                 // A JWT in the source text: "eyJ" followed by base64 and a dot.
                 if text.range(of: #""eyJ[A-Za-z0-9_-]{8,}\."#, options: .regularExpression) != nil {
@@ -205,7 +205,7 @@ struct ProjectFileIntegrityTests {
         var definitions = 0
         var checked = 0
         for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(url) else { continue }
             checked += 1
             if url.lastPathComponent == "AppUserAgent.swift" {
                 definitions += text.components(separatedBy: "\"Maer/\\(").count - 1
@@ -235,7 +235,7 @@ struct ProjectFileIntegrityTests {
         var offenders: [String] = []
         var checked = 0
         for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(url) else { continue }
             checked += 1
             let lines = text.components(separatedBy: "\n")
             for (index, line) in lines.enumerated()
@@ -290,7 +290,7 @@ struct ProjectFileIntegrityTests {
         var checked = 0
         for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
             if url.lastPathComponent == "AppStorageKeys.swift" { continue }
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(url) else { continue }
             checked += 1
             if text.contains("as? Bool ?? true") { offenders.append(url.lastPathComponent) }
         }
@@ -334,7 +334,7 @@ struct ProjectFileIntegrityTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files {
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(file) else { continue }
             let lines = text.components(separatedBy: "\n")
             for (index, line) in lines.enumerated() where line.contains("localPosition") {
                 // Read and shape check often sit on consecutive lines (a
@@ -402,7 +402,7 @@ struct ProjectFileIntegrityTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files {
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(file) else { continue }
             for line in Self.rawPositionWriters(in: text) {
                 offenders.append("\(file.lastPathComponent):\(line)")
             }
@@ -515,7 +515,7 @@ struct ProjectFileIntegrityTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var offenders: [String] = []
         for file in files where file.lastPathComponent != "ProgressMark.swift" {
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(file) else { continue }
             for (index, line) in text.components(separatedBy: "\n").enumerated() {
                 for kind in Self.playedReimplementations(inLine: line) {
                     offenders.append("\(file.lastPathComponent):\(index + 1) (\(kind))")
@@ -605,7 +605,7 @@ extension ProjectFileIntegrityTests {
         for file in files {
             // The one sanctioned home carries the rule itself.
             guard file.lastPathComponent != "GPodderVisibleSubscriptions.swift" else { continue }
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(file) else { continue }
             for line in Self.handRolledGPodderFilters(in: text) {
                 offenders.append("\(file.lastPathComponent):\(line)")
             }
@@ -940,7 +940,7 @@ extension ProjectFileIntegrityTests {
         #expect(!sources.isEmpty)
         var offenders: [String] = []
         for file in sources where file.lastPathComponent != "TabContentLayout.swift" {
-            if Self.ownSlotSites(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.ownSlotSites(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -989,7 +989,7 @@ extension ProjectFileIntegrityTests {
     func playlistRoutesAreShared() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            if Self.ownPlaylistRoutes(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.ownPlaylistRoutes(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1025,7 +1025,7 @@ extension ProjectFileIntegrityTests {
     func creatingHappensInOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "AddToPlaylistSheet.swift" {
-            if Self.directListCreations(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.directListCreations(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1061,7 +1061,7 @@ extension ProjectFileIntegrityTests {
     func feedRequestsAskTheSharedAddress() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "PodcastFeedAddress.swift" {
-            if Self.rawFeedRequestSites(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.rawFeedRequestSites(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1154,7 +1154,7 @@ extension ProjectFileIntegrityTests {
         var offenders: [String] = []
         for file in Self.sourceFiles()
         where !["ListeningStore.swift", "AppStorageKeys.swift"].contains(file.lastPathComponent) {
-            if Self.progressKeyBuilders(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.progressKeyBuilders(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1180,7 +1180,7 @@ extension ProjectFileIntegrityTests {
         var offenders: [String] = []
         for file in Self.sourceFiles()
         where !["ListeningStore.swift", "AppStorageKeys.swift"].contains(file.lastPathComponent) {
-            if Self.rawProgressAccesses(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.rawProgressAccesses(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1237,7 +1237,7 @@ extension ProjectFileIntegrityTests {
     func noPathRemovesAListeningState() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
-            if Self.rawProgressRemovals(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.rawProgressRemovals(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1291,7 +1291,7 @@ extension ProjectFileIntegrityTests {
     func fixedFormatsCarryAFixedLocale() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            if Self.localeLessFixedFormats(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.localeLessFixedFormats(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1339,7 +1339,7 @@ extension ProjectFileIntegrityTests {
     func storageKeysComeFromTheOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            if Self.rawStorageKeyLiterals(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.rawStorageKeyLiterals(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1392,7 +1392,7 @@ extension ProjectFileIntegrityTests {
     func persistedTypesAreKnown() throws {
         var found: Set<String> = []
         for file in Self.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for hit in Self.persistedDecodes(in: text) { found.insert(hit.type) }
         }
         // A RATCHET at the measured count of distinct TYPES. Not of call
@@ -1484,7 +1484,7 @@ extension ProjectFileIntegrityTests {
     func resolvingNeverCounts() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            if Self.bookingsInsideDetailFetch(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.bookingsInsideDetailFetch(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1541,7 +1541,7 @@ extension ProjectFileIntegrityTests {
             // every stored key by name. Naming a key is not asking it.
             if ["AppStorageKeys.swift", "UserChoiceSync.swift"]
                 .contains(file.lastPathComponent) { continue }
-            if Self.legacyContentTypeReads(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.legacyContentTypeReads(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1581,7 +1581,7 @@ extension ProjectFileIntegrityTests {
     func mediaTypeNameIsNotAmbiguous() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            if Self.ambiguousMediaTypeNames(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.ambiguousMediaTypeNames(in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -1607,7 +1607,7 @@ extension ProjectFileIntegrityTests {
     func providersAnswerWithASet() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if text.contains("var mediaType: MediaType {") { offenders.append(file.lastPathComponent) }
         }
         #expect(offenders.isEmpty,
@@ -1627,7 +1627,7 @@ extension ProjectFileIntegrityTests {
         for folder in folders {
             let dir = root.appendingPathComponent(folder)
             for url in SourceTree.files(under: dir) where url.pathExtension == "swift" {
-                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                guard let text = try? SourceTree.text(url) else { continue }
                 found.append((url.lastPathComponent, text))
             }
         }
@@ -2341,7 +2341,7 @@ extension ProjectFileIntegrityTests {
                                     "LyricsLine", "SongLyrics"]
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let frameworks = ["import Combine", "import SwiftUI", "import UIKit"]
             guard frameworks.contains(where: { text.contains($0) }) else { continue }
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
@@ -2454,7 +2454,7 @@ extension ProjectFileIntegrityTests {
     func coverBytesPassTheOneDoor() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "URLSession+Maer.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let squeezed = line.split(separator: " ").joined()
                 if squeezed.contains("coverImage.data(from:") {
@@ -2475,7 +2475,7 @@ extension ProjectFileIntegrityTests {
     func archiveIdentifierIsCutInOnePlace() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.lastPathComponent != "FreeCatalog.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let squeezed = line.split(separator: " ").joined()
                 if squeezed.contains("dropFirst(FreeCatalog.archivePrefix.count)") {
@@ -2491,7 +2491,7 @@ extension ProjectFileIntegrityTests {
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.hasPrefix("//"), !trimmed.hasPrefix("///") else { continue }
@@ -2525,7 +2525,7 @@ extension ProjectFileIntegrityTests {
         var fundstellen: [String] = []
         var ausnahmen: Set<String> = []
         for file in Self.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for number in Self.gearLines(in: text) {
                 if Self.gearExceptions[file.lastPathComponent] != nil {
                     ausnahmen.insert(file.lastPathComponent)
@@ -2566,7 +2566,7 @@ extension ProjectFileIntegrityTests {
         let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if stems.contains(where: { text.contains($0) }) { offenders.append(file.lastPathComponent) }
         }
         #expect(offenders.isEmpty,
@@ -2617,7 +2617,7 @@ extension ProjectFileIntegrityTests {
         var offenders: [String] = []
         for file in files {
             // A file that is not text (an image, a font) carries no prose.
-            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(file) else { continue }
             let lines = Self.oldStemLines(in: text, fileName: file.lastPathComponent)
             if !lines.isEmpty { offenders.append("\(file.lastPathComponent): \(lines)") }
         }
@@ -2657,7 +2657,7 @@ extension ProjectFileIntegrityTests {
         var checked = 0
         var found: [String: Int] = [:]
         for url in SourceTree.files(under: directory) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            guard let text = try? SourceTree.text(url) else { continue }
             checked += 1
             let hits = text.split(separator: "\n", omittingEmptySubsequences: false).filter {
                 let line = $0.trimmingCharacters(in: .whitespaces)

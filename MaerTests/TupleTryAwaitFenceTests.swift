@@ -83,7 +83,7 @@ struct TupleTryAwaitFenceTests {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             // Comment lines are emptied, not dropped, so a finding names its real line.
-            let code = try String(contentsOf: file, encoding: .utf8)
+            let code = try SourceTree.text(file)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map { $0.trimmingCharacters(in: .whitespaces).hasPrefix("//") ? "" : String($0) }
                 .joined(separator: "\n")

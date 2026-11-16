@@ -66,7 +66,7 @@ struct ScrollCalmFenceTests {
     func onlyTheDoorAsksTheQueue() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            counts[file.lastPathComponent, default: 0] += Self.calls(of: "runWhenCalm", in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.calls(of: "runWhenCalm", in: try SourceTree.text(file))
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.queueStock.mapValues(\.count))
         #expect(drift.isEmpty, "a caller asks the bar itself again, or a stock above the count: \(drift)")
@@ -114,7 +114,7 @@ struct ScrollCalmFenceTests {
     func storesThatScheduleUIWorkOnlyShrink() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            for (type, count) in Self.schedulingNonViews(in: try String(contentsOf: file, encoding: .utf8)) {
+            for (type, count) in Self.schedulingNonViews(in: try SourceTree.text(file)) {
                 counts[type, default: 0] += count
             }
         }

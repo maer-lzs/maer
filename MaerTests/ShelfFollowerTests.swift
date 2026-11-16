@@ -124,7 +124,7 @@ struct ShelfFollowerTests {
     func handOverIsCalledFromTheMantleAlone() throws {
         var callers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if text.contains(".handOver(") { callers.append(file.lastPathComponent) }
         }
         #expect(callers == ["ShelfFollower.swift"], "\(callers)")

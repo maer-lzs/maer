@@ -167,7 +167,7 @@ struct SharedGrowthFenceTests {
         var total = 0
         var perFile: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let count = Self.sharedLines(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.sharedLines(in: try SourceTree.text(file))
             total += count
             if count > 0 { perFile[file.lastPathComponent] = count }
         }
@@ -185,7 +185,7 @@ struct SharedGrowthFenceTests {
         var total = 0
         var perFile: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.sharedLines(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.sharedLines(in: try SourceTree.text(file))
             total += count
             if count > 0 { perFile[file.lastPathComponent] = count }
         }

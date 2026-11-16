@@ -196,7 +196,7 @@ struct FreeCatalogTests {
     func shuffleSaysWhy() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Providers/CatalogShuffle.swift") })
-        let source = try String(contentsOf: file, encoding: .utf8)
+        let source = try SourceTree.text(file)
         // The three catch blocks, both empty draws and a Jamendo draw without
         // a key reach the notice channel; the book draw through its handed-in
         // end, which the live draw ties to it.
@@ -890,7 +890,7 @@ struct CatalogGenreAxisTests {
     func anArchiveTitlesBoundIsChosenOnce() throws {
         var askers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = try String(contentsOf: file, encoding: .utf8)
+            let code = try SourceTree.text(file)
             if code.contains("isCuratedSeriesCollection(") { askers.append(file.lastPathComponent) }
         }
         #expect(askers.sorted() == ["ArchiveItemForm.swift", "FreeCatalog.swift"],

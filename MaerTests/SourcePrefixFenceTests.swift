@@ -49,7 +49,7 @@ struct SourcePrefixFenceTests {
         for folder in ["Views", "ViewModels", "CarPlay", "Models", "Networking"] { files += Self.files(under: folder) }
         try #require(files.count > 100, "the finder must still find the sources: \(files.count)")
         for file in files where !Self.namedExceptions.contains(file.lastPathComponent) {
-            let spelled = Self.spelledPrefixes(in: try String(contentsOf: file, encoding: .utf8))
+            let spelled = Self.spelledPrefixes(in: try SourceTree.text(file))
             if !spelled.isEmpty { offenders.append("\(file.lastPathComponent): \(spelled)") }
         }
         #expect(offenders.isEmpty, "these surfaces spell a namespace themselves: \(offenders)")
@@ -76,7 +76,7 @@ struct SourcePrefixFenceTests {
     func providersSpellOnlyTheirOwnSource() throws {
         var offenders: [String] = []
         for file in Self.files(under: "Providers") {
-            let spelled = Set(Self.spelledPrefixes(in: try String(contentsOf: file, encoding: .utf8)))
+            let spelled = Set(Self.spelledPrefixes(in: try SourceTree.text(file)))
             let allowed = Self.ownNamespaces[file.lastPathComponent] ?? []
             let foreign = spelled.subtracting(allowed)
             if !foreign.isEmpty { offenders.append("\(file.lastPathComponent): \(foreign.sorted())") }

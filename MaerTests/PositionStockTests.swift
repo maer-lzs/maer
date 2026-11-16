@@ -470,14 +470,14 @@ struct PositionStockTests {
                          "\"localPosition.", "\"flushedPosition."]
         var outside: [String: Int] = [:]
         for file in files where file.lastPathComponent != "ListeningStore.swift" {
-            let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let source = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let hits = spellings.reduce(0) { $0 + source.components(separatedBy: $1).count - 1 }
             if hits > 0 { outside[file.lastPathComponent] = hits }
         }
         #expect(Set(outside.keys) == Set(Self.namedOnly.keys), "named only where defined or classified: \(outside)")
 
         let storeFile = try #require(files.first { $0.lastPathComponent == "ListeningStore.swift" })
-        let store = SyncContractFenceTests.stripped(try String(contentsOf: storeFile, encoding: .utf8))
+        let store = SyncContractFenceTests.stripped(try SourceTree.text(storeFile))
         for read in ["array(forKey:", "object(forKey:", "string(forKey:", "data(forKey:"] {
             #expect(!store.contains(read), "the store reads no single key: \(read)")
         }

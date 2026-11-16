@@ -163,7 +163,7 @@ struct UITestSeedTests {
         let literal = try NSRegularExpression(pattern: #"(UITestSeed\.shown\()?"((?:Seed|Filler) [^"]*)""#)
         var found = 0
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for match in literal.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
                 let range = try #require(Range(match.range(at: 2), in: text))
                 let name = String(text[range])

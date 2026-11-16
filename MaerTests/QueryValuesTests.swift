@@ -50,7 +50,7 @@ struct QueryValuesTests {
         var offenders: [String] = []
         var seen = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let sites = Self.setters.reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
             guard sites > 0 else { continue }
             if file.lastPathComponent == "QueryValues.swift" { seen = sites } else {

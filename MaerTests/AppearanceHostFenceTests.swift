@@ -28,7 +28,7 @@ struct AppearanceHostFenceTests {
         // exceptions are that count, both ways.
         var uncarried: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let code = text.split(separator: "\n")
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: "\n")
@@ -75,7 +75,7 @@ struct AppearanceHostFenceTests {
         // Nobody else sets a scheme or a style; only drive mode keeps its own.
         var readers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/") {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let schemes = code.components(separatedBy: "preferredColorScheme(").count - 1
             let styles = code.components(separatedBy: "overrideUserInterfaceStyle = ").count - 1
             if schemes + styles > 0 { readers.append("\(file.lastPathComponent): \(schemes)/\(styles)") }

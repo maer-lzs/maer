@@ -42,7 +42,7 @@ import Foundation
             .appendingPathComponent("Sources/Views")
         var found: [String: Int] = [:]
         for url in SourceTree.files(under: views) where url.pathExtension == "swift" {
-            let count = Self.orangeSites(in: try String(contentsOf: url, encoding: .utf8))
+            let count = Self.orangeSites(in: try SourceTree.text(url))
             if count > 0 { found[url.lastPathComponent, default: 0] += count }
         }
         #expect(found["HintLine.swift"] == 1, "the fence read the views")

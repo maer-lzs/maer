@@ -123,7 +123,7 @@ struct SharedLinkOpenerTests {
     @Test("Fence: a link shows and starts no playback", .needsTheSources)
     func aLinkNeverStartsPlayback() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/SharedLinkOpener.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
         #expect(code.contains("PlayerSourceRouter.shared.open(target)"), "the precondition: the opener navigates")
         let playing = ["playerCoordinator", "PlayerCoordinator", "PlayerViewModel", ".play(", "playItem", "startPlayback"]
             .filter { code.contains($0) }

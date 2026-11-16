@@ -137,7 +137,7 @@ struct MaerSyncPasswordChangeTests {
         #expect(signIn[out.upperBound...].prefix(400).contains("FeedKeyStore.forget("))
         var holders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if text.contains("maerSyncFeed:") { holders.append(file.lastPathComponent) }
             if file.lastPathComponent == "FeedKeyStore.swift" {
                 #expect(!text.contains("synchronizable"), "the feed store names the travel parameter")

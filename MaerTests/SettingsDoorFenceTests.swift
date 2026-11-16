@@ -66,7 +66,7 @@ struct SettingsDoorFenceTests {
     func theSeamDefaultIsCounted() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
-            let count = Self.seamSites(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.seamSites(in: try SourceTree.text(file))
             guard count > 0 else { continue }
             counts[file.lastPathComponent, default: 0] += count
         }
@@ -90,7 +90,7 @@ struct SettingsDoorFenceTests {
     func onlyTheDoorsTouchTheStore() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
-            let count = Self.sites(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.sites(in: try SourceTree.text(file))
             guard count > 0 else { continue }
             counts[file.lastPathComponent, default: 0] += count
         }

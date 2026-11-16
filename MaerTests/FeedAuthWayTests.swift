@@ -165,7 +165,7 @@ struct FeedAuthWayTests {
     func allThreeOccasionsCallTheRewrite() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         func code(_ file: URL) throws -> String {
-            try String(contentsOf: file, encoding: .utf8)
+            try SourceTree.text(file)
                 .split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
         }
         let signIn = try code(root.appendingPathComponent("Sources/Networking/MaerSyncSignIn.swift"))

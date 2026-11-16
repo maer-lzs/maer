@@ -213,7 +213,7 @@ struct MarkGestureAtTrueEndTests {
         var asked = 0
         var offenders: [String] = []
         for file in views {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let sites = Self.labelSites(in: text)
             asked += sites.asked
             if sites.unasked > 0 || Self.displayReads(in: text) > 0 { offenders.append(file.lastPathComponent) }

@@ -59,7 +59,7 @@ struct ReleaseDiagnosticsFenceTests {
         var open: [String] = []
         var reached = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for entry in Self.entries where text.contains(entry.call) { reached += 1 }
             // The diagnostics page lists its own sub pages; it is reached
             // only through its own entry, which stands in DEBUG.

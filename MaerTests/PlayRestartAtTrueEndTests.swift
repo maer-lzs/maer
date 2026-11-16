@@ -105,7 +105,7 @@ struct PlayRestartAtTrueEndTests {
         var asked = 0
         var offenders: [String] = []
         for file in views {
-            let sites = Self.restartSites(in: try String(contentsOf: file, encoding: .utf8))
+            let sites = Self.restartSites(in: try SourceTree.text(file))
             asked += sites.asked
             if sites.unasked > 0 { offenders.append(file.lastPathComponent) }
         }

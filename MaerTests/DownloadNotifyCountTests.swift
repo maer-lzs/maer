@@ -207,7 +207,7 @@ struct DownloadNotifyCountTests {
         var observers: [(type: String, reads: Bool)] = []
         var diskReads: [String] = []
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
-            let text = try String(contentsOf: url, encoding: .utf8)
+            let text = try SourceTree.text(url)
             observers += Self.progressObservers(in: text)
             let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             if code.contains(where: { $0.contains("downloadSize(forItemId") }) { diskReads.append(url.lastPathComponent) }

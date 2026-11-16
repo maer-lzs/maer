@@ -289,7 +289,7 @@ struct CarrierStandRowsTests {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var codes: [(name: String, code: String)] = []
         for file in SourceTree.files(under: sources) where file.pathExtension == "swift" {
-            codes.append((file.lastPathComponent, SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))))
+            codes.append((file.lastPathComponent, SyncContractFenceTests.stripped(try SourceTree.text(file))))
         }
         var byType: [String: Set<String>] = [:]
         for (_, code) in codes {

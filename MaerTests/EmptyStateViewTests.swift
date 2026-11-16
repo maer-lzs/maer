@@ -132,7 +132,7 @@ struct EmptyStateViewTests {
         var direct: [String] = []
         for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources"))
         where file.pathExtension == "swift" && file.lastPathComponent != "EmptyStateView.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if SearchDoorFenceTests.code(in: text).contains("ContentUnavailableView") {
                 direct.append(SourceTree.relativePath(of: file))
             }

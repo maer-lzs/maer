@@ -94,7 +94,7 @@ struct SyncHistoryTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var named: Set<String> = []
         for file in files {
-            named.formUnion(Self.stampedServices(in: SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))))
+            named.formUnion(Self.stampedServices(in: SyncContractFenceTests.stripped(try SourceTree.text(file))))
         }
         #expect(named.contains("maerSync") && named.contains("absProgress"), "the fence read the writers: \(named.sorted())")
         for name in named.sorted() {

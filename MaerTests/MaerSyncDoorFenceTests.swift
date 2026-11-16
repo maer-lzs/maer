@@ -50,7 +50,7 @@ struct MaerSyncDoorFenceTests {
         var pathFiles: Set<String> = []
         var tokenFiles: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for word in Self.pathWords where Self.lines(naming: word, in: text) > 0 {
                 pathFiles.insert(file.lastPathComponent)
             }
@@ -70,7 +70,7 @@ struct MaerSyncDoorFenceTests {
         var seen = 0
         for file in ProjectFileIntegrityTests.sourceFiles() where Self.blind.contains(file.lastPathComponent) {
             seen += 1
-            if Self.lines(naming: "MaerSync", in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+            if Self.lines(naming: "MaerSync", in: try SourceTree.text(file)) > 0 {
                 offenders.append(file.lastPathComponent)
             }
         }
@@ -82,7 +82,7 @@ struct MaerSyncDoorFenceTests {
     func theSessionIsNamedOnlyBehindTheSeam() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.lines(naming: "MaerSyncSession", in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.lines(naming: "MaerSyncSession", in: try SourceTree.text(file))
             guard count > 0 else { continue }
             found[file.lastPathComponent, default: 0] += count
         }

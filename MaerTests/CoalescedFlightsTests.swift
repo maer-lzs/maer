@@ -144,7 +144,7 @@ struct CoalescedFlightsTests {
             "Sources/Networking/FreeCatalogClients.swift"), encoding: .utf8)
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let source = try String(contentsOf: file, encoding: .utf8)
+            let source = try SourceTree.text(file)
             let hits = source.components(separatedBy: "archive.org/metadata/").count - 1
             if hits > 0 { found.append("\(file.lastPathComponent):\(hits)") }
         }

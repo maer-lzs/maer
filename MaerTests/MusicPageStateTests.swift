@@ -219,7 +219,7 @@ struct MusicPageStateTests {
         var all: [String] = []
         var offenders: [String] = []
         for file in files {
-            for surface in Self.surfaces(in: try String(contentsOf: file, encoding: .utf8)) {
+            for surface in Self.surfaces(in: try SourceTree.text(file)) {
                 all.append(surface.name)
                 if Self.stock[surface.name] == nil, !(surface.drawsBody && surface.listens) {
                     offenders.append("\(file.lastPathComponent) \(surface.name) body=\(surface.drawsBody) listens=\(surface.listens)")
@@ -242,7 +242,7 @@ struct MusicPageStateTests {
     @Test("every load path of a music page asks the provider's reachability and names its run", .needsTheSources)
     func everyPageLoadAsksTheProvider() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let calls = code.components(separatedBy: "MusicPageLoad.run(").dropFirst()
         #expect(calls.count == 5, "songs, genres, both halves of a genre, the shelf: \(calls.count)")
         let unasked = calls.filter { call in
@@ -291,7 +291,7 @@ struct MusicPageStateTests {
         let files = SourceTree.files(under: views).filter { $0.pathExtension == "swift" }
         var drawing: Set<String> = []
         for file in files {
-            for view in Self.musicViews(in: try String(contentsOf: file, encoding: .utf8))
+            for view in Self.musicViews(in: try SourceTree.text(file))
             where view.body.contains("MusicPageBody(") {
                 drawing.insert(view.name)
                 let flat = view.body.split(whereSeparator: \.isWhitespace).joined(separator: " ")

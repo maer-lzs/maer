@@ -66,7 +66,7 @@ struct ConcurrencyFenceTests {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
             seen.insert(file.lastPathComponent)
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             counts[file.lastPathComponent, default: 0] += Self.sites(of: token, in: text)
             if let marker, Self.unreasoned(token: token, marker: marker, in: text) > 0 {
                 out.append("\(file.lastPathComponent): without \"\(marker)\"")
@@ -186,7 +186,7 @@ struct ConcurrencyFenceTests {
         var read = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
             read += 1
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for flag in try Self.flagChecksAcrossAwait(in: text) {
                 offenders.append("\(file.lastPathComponent): \(flag)")
             }

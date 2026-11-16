@@ -76,7 +76,7 @@ struct PodcastICloudSwitchFenceTests {
     func onlyAppleCarriersReadTheAppleName() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.lines(naming: "podcastICloudSyncEnabled", in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.lines(naming: "podcastICloudSyncEnabled", in: try SourceTree.text(file))
             guard count > 0 else { continue }
             counts[file.lastPathComponent, default: 0] += count
         }
@@ -91,7 +91,7 @@ struct PodcastICloudSwitchFenceTests {
         var seen = 0
         for file in ProjectFileIntegrityTests.sourceFiles() where Self.aboveTheCarriers.contains(file.lastPathComponent) {
             seen += 1
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if Self.lines(naming: "syncAcrossDevicesEnabled", in: text) == 0 {
                 offenders.append("\(file.lastPathComponent): fragt die Tuer nicht")
             }
@@ -107,7 +107,7 @@ struct PodcastICloudSwitchFenceTests {
     func theKeyIsNamedOnlyWhereItIsBound() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.linesNamingTheKey(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.linesNamingTheKey(in: try SourceTree.text(file))
             guard count > 0 else { continue }
             counts[file.lastPathComponent, default: 0] += count
         }
@@ -130,7 +130,7 @@ struct PodcastICloudSwitchFenceTests {
         #expect(AppStorageKeys.syncAcrossDevicesEnabled == AppStorageKeys.podcastICloudSyncEnabled)
         let keys = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "AppStorageKeys.swift" })
-        let declaration = try String(contentsOf: keys, encoding: .utf8)
+        let declaration = try SourceTree.text(keys)
             .split(separator: "\n", omittingEmptySubsequences: false)
             .first { $0.contains("static var syncAcrossDevicesEnabled") }
         let line = try #require(declaration.map(String.init), "die Tuer steht in AppStorageKeys")

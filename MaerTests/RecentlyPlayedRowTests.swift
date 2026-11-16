@@ -192,7 +192,7 @@ struct RecentlyPlayedRowTests {
         let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "SharedRows.swift"]
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             guard text.contains("RecentlyPlayedRow.merged(") else { continue }
             let leaf = file.lastPathComponent
             seen.insert(leaf)

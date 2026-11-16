@@ -148,7 +148,7 @@ struct MusicSourceRuleTests {
         for url in SourceTree.files(under: root) where url.pathExtension == "swift"
             && !url.path.contains("/Sources/Providers/") {
             read += 1
-            let count = Self.rawIdBuilds(in: try String(contentsOf: url, encoding: .utf8))
+            let count = Self.rawIdBuilds(in: try SourceTree.text(url))
             if count > 0 { found.append("\(url.lastPathComponent): \(count)") }
         }
         #expect(read > 100, "der Zaun hat die Quellen gelesen")

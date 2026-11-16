@@ -98,7 +98,7 @@ struct PrivacyManifestFenceTests {
     nonisolated static func called(by files: [URL]) throws -> [String: [String]] {
         var out: [String: [String]] = [:]
         for file in files where file.pathExtension == "swift" {
-            for category in categoriesCalled(in: try String(contentsOf: file, encoding: .utf8)) {
+            for category in categoriesCalled(in: try SourceTree.text(file)) {
                 out[category, default: []].append(file.lastPathComponent)
             }
         }

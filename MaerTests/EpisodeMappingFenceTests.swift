@@ -40,7 +40,7 @@ struct EpisodeMappingFenceTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String] = []
         for file in files {
-            let count = Self.mappings(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.mappings(in: try SourceTree.text(file))
             let place = file.path.components(separatedBy: "/Sources/").last ?? file.lastPathComponent
             found += Array(repeating: place, count: count)
         }

@@ -52,7 +52,7 @@ struct PodcastShowLookupTests {
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
         var callers: [String] = []
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
             where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
                 && (line.contains("rssProvider.show(forEpisodeId") || line.contains("rssProvider.showItems(")) {

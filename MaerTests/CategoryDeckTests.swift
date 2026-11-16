@@ -76,7 +76,7 @@ struct CategoryDeckTests {
         // Every file that builds a tile, found rather than named: a fourth
         // file with a grid of its own would stand outside a named list.
         let tileFiles = try ProjectFileIntegrityTests.sourceFiles()
-            .filter { try String(contentsOf: $0, encoding: .utf8).contains("CategoryTile(") }
+            .filter { try SourceTree.text($0).contains("CategoryTile(") }
             .map { $0.path.components(separatedBy: "/Sources/").last.map { "Sources/" + $0 } ?? $0.path }
             .sorted()
         #expect(tileFiles == ["Sources/Views/CategoryTile.swift", "Sources/Views/Music/MusicLibraryPages.swift",

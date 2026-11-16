@@ -14,7 +14,7 @@ import Foundation
 /// paths to the outside set it, and only `AppUserAgent` names the header.
 struct UserAgentFenceTests {
     private static func code(_ file: URL) throws -> String {
-        SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        SyncContractFenceTests.stripped(try SourceTree.text(file))
     }
 
     @Test("Identity: set when none is there; an existing one stays")

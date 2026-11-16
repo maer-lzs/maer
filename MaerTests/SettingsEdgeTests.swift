@@ -46,7 +46,7 @@ struct SettingsEdgeTests {
         let folder = SourceTree.root.appendingPathComponent("Sources")
         var code: [String: String] = [:]
         for url in SourceTree.files(under: folder) where url.pathExtension == "swift" {
-            code[SourceTree.relativePath(of: url)] = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            code[SourceTree.relativePath(of: url)] = SyncContractFenceTests.stripped(try SourceTree.text(url))
         }
         return code
     }

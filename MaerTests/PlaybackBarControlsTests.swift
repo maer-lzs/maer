@@ -87,7 +87,7 @@ struct PlaybackBarControlsTests {
     func oneSpeedAndOneSleepMenu() throws {
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             // The menu's own forms: a show's start rate (its own picker) and
             // the view model's functions are no second menu.
             if text.contains("Picker(\"Speed\", selection: Binding(")

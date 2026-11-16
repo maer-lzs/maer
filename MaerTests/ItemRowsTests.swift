@@ -94,7 +94,7 @@ struct ItemRowsTests {
         let sources = SourceTree.root.appendingPathComponent("Sources")
         var named: [String] = []
         for file in SourceTree.files(under: sources) where file.pathExtension == "swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("AppStorageKeys.jumpRing(") || code.contains("\"bookmarkCache.\"") || code.contains("\"jumpRing.\"") {
                 named.append(file.lastPathComponent)
             }

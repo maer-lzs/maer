@@ -517,7 +517,7 @@ struct AccessFollowersTests {
                      "startCarrier(by: caller)"]
         var texts: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try SourceTree.text(file))
         }
         let askers = Self.askersOfTheRule(in: texts)
         #expect(Set(askers.keys) == ["ListeningStats.swift", "MaerPlaylistCloudSync.swift", "PlaybackClaimSync.swift",
@@ -564,7 +564,7 @@ struct AccessFollowersTests {
         let sources = root.appendingPathComponent("Sources")
         var found: [String: Int] = [:]
         for url in SourceTree.files(under: sources) where url.pathExtension == "swift" && url.lastPathComponent != "AppStorageKeys.swift" {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(url))
             let count = text.split(separator: "\n").filter {
                 $0.contains("AppStorageKeys.setMaerSyncToken(") || $0.contains("AppStorageKeys.maerSyncURLValue =")
                     || $0.contains("KeychainKey.maerSyncToken") || $0.contains("AppStorageKeys.maerSyncURL)")

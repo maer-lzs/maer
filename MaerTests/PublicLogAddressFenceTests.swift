@@ -55,7 +55,7 @@ struct PublicLogAddressFenceTests {
         var counts: [String: Int] = [:]
         var found: [String: [String]] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let sites = Self.addressInterpolations(in: try String(contentsOf: file, encoding: .utf8))
+            let sites = Self.addressInterpolations(in: try SourceTree.text(file))
             counts[file.lastPathComponent, default: 0] += sites.count
             if !sites.isEmpty { found[file.lastPathComponent, default: []] += sites }
         }

@@ -66,7 +66,7 @@ struct SocketLaneTimeoutTests {
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         var stellen: [String] = []
         for datei in dateien {
-            let text = try String(contentsOf: datei, encoding: .utf8)
+            let text = try SourceTree.text(datei)
             for zeile in text.components(separatedBy: "\n") {
                 let blank = zeile.trimmingCharacters(in: .whitespaces)
                 if blank.hasPrefix("//") { continue }

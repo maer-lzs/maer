@@ -708,7 +708,7 @@ struct StandOwnerTests {
         #expect(store.contains("One named exception, the second removal beside the user's deletion"))
         var callers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/ListeningStore.swift") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if text.contains("ListeningStore.replaceForNewOwner(") { callers.append(file.lastPathComponent) }
         }
         #expect(callers == ["PodcastCloudSync.swift"], "the change of account removes elsewhere: \(callers)")

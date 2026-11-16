@@ -573,7 +573,7 @@ struct PublicReadmeFenceTests {
                       // two of those files are not even UTF-8.
                       ["swift", "py", "sh", "md", "json", "txt", "plist", "html"]
                           .contains(url.pathExtension),
-                      let text = try? String(contentsOf: url, encoding: .utf8)
+                      let text = try? SourceTree.text(url)
                 else { continue }
                 found.append((SourceTree.relativePath(of: url), text))
             }
@@ -711,7 +711,7 @@ struct PublicReadmeFenceTests {
         for folder in ["Sources", "docs", "site"] {
             for file in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
             where ["swift", "md", "xcstrings", "plist", "html", "js", "css", "json", "svg"].contains(file.pathExtension) {
-                texts.append((SourceTree.relativePath(of: file), try String(contentsOf: file, encoding: .utf8)))
+                texts.append((SourceTree.relativePath(of: file), try SourceTree.text(file)))
             }
         }
         #expect(texts.count > 10, "the precondition: the fence read the files")

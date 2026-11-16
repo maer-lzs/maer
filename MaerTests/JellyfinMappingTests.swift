@@ -105,7 +105,7 @@ struct JellyfinMappingTests {
     func noLegacyTokenHeaderRemains() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.hasPrefix("//") else { continue }
@@ -152,7 +152,7 @@ struct JellyfinMappingTests {
     func noLegacyApiKeyQueryRemains() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.hasPrefix("//") else { continue }

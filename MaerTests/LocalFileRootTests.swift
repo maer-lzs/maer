@@ -121,7 +121,7 @@ struct LocalFileRootTests {
         var namesTheContainer: [String] = []
         var library = ""
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if text.contains("appendingPathComponent(\"LocalAudio\"") { namesTheContainer.append(file.lastPathComponent) }
             if file.lastPathComponent == "LocalLibrary.swift" { library = text }
         }

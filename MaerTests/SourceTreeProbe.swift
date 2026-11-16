@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import os
 
 /// Whether the sources of this copy lie beside it at all, and what follows.
 ///
@@ -103,12 +104,23 @@ nonisolated enum SourceTree {
     /// outside the repository (a witness's own temporary file) is read
     /// fresh every time, because it may change.
     static func text(_ url: URL) throws -> String {
-        try String(contentsOf: url, encoding: .utf8)
+        let path = url.resolvingSymlinksInPath().path
+        guard path.hasPrefix(resolvedRoot + "/") else { return try String(contentsOf: url, encoding: .utf8) }
+        if let known = texts.withLock({ $0.read[path] }) {
+            texts.withLock { $0.hits += 1 }
+            return known
+        }
+        let read = try String(contentsOf: url, encoding: .utf8)
+        texts.withLock { $0.read[path] = read }
+        return read
     }
 
     /// How often `text` answered from what it had read before, for the
     /// witness of the cache.
-    static var textHits: Int { 0 }
+    static var textHits: Int { texts.withLock { $0.hits } }
+
+    private static let resolvedRoot = root.resolvingSymlinksInPath().path
+    private static let texts = OSAllocatedUnfairLock(initialState: (read: [String: String](), hits: 0))
 
     static func files(under folder: URL, sourceLocation: SourceLocation = #_sourceLocation) -> [URL] {
         let found = (FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?

@@ -106,7 +106,7 @@ struct FailureReasonTests {
             // Comment lines are cut away first: a sentence ABOUT the fallback
             // is not the fallback, and this very file's neighbours explain it
             // in their comments.
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: datei, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(datei))
             let treffer = ausdruck.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
             if treffer > 0 { gefunden[datei.lastPathComponent] = treffer }
         }

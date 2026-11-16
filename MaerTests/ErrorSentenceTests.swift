@@ -68,7 +68,7 @@ struct ErrorSentenceTests {
                 .filter { $0.pathExtension == "swift" }
             read += files.count
             for file in files {
-                let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+                let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
                 let hits = text.components(separatedBy: ".localizedDescription").count - 1
                 if hits > 0 { found[file.lastPathComponent] = hits }
             }

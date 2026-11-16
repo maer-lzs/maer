@@ -320,7 +320,7 @@ struct HostCourtesyTests {
         var refusalDefinitions: Set<String> = []
         var read = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             read += 1
             let name = file.lastPathComponent
             if text.contains("is FetchHeldBack") || text.contains("as? FetchHeldBack") { byName.append(name) }

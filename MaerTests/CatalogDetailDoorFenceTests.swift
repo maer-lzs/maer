@@ -39,7 +39,7 @@ struct CatalogDetailDoorFenceTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String] = []
         for file in files where file.lastPathComponent != "FreeCatalogProvider.swift" {
-            let count = Self.namedFetches(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.namedFetches(in: try SourceTree.text(file))
             if count > 0 { found.append("\(file.lastPathComponent): \(count)") }
         }
         #expect(found.isEmpty, "ein Detail wird wieder beim Namen des Katalogs geholt: \(found)")

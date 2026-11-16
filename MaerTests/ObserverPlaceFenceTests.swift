@@ -159,7 +159,7 @@ struct ObserverPlaceFenceTests {
         var unresolved: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles()
         where file.path.contains("/Sources/Views/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let blocks = declarations(in: text)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)

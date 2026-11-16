@@ -48,7 +48,7 @@ struct PlayerToolRuleTests {
         // The mode is entered only through `enter()`.
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "DriveMode.swift" {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if text.contains("isActive = true") && text.contains("DriveMode") { setters.append(file.lastPathComponent) }
         }
         #expect(setters.isEmpty, "drive mode is switched on past its gate: \(setters)")
@@ -110,7 +110,7 @@ struct PlayerToolRuleTests {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Models/PlayerToolRule.swift")
-        let text = try String(contentsOf: file, encoding: .utf8)
+        let text = try SourceTree.text(file)
         #expect(Self.negatedKindForms(in: text).isEmpty)
         // Red probes on the CHECKER: the form in code is caught, the same
         // form in a comment is not.

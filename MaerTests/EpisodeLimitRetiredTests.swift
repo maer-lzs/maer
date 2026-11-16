@@ -199,7 +199,7 @@ struct EpisodeLimitRetiredTests {
         try #require(files.count > 100, "the fence did not read the source tree")
         var found: [String: [String]] = [:]
         for file in files {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             for word in ["applyLimit", "trimEpisodes", "keepLatest", "podcastEpisodeLimit"] where text.contains(word) {
                 found[file.lastPathComponent, default: []].append(word)
             }

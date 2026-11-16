@@ -407,7 +407,7 @@ struct ArtworkVerdictTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var skipping: Set<String> = []
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("allowKept: false") { skipping.insert(file.lastPathComponent) }
         }
         #expect(skipping == ["Artwork.swift", "ImageCache.swift"], "a reader skips the kept copy: \(skipping.sorted())")

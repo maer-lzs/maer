@@ -196,7 +196,7 @@ struct ImageCachePersistentTests {
     @Test("clearing the covers of a kind clears their colors too", .needsTheSources)
     func forgettingTheCoversOfAKindForgetsTheirColors() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "ImageCache.swift" })
-        let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let source = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let start = try #require(source.range(of: "func forgetCovers(of kind: ServerImageKind)"))
         let end = try #require(source.range(of: "\n    }\n", range: start.upperBound..<source.endIndex))
         #expect(source[start.upperBound..<end.lowerBound].contains("CoverColorLoader.forgetColors(of: kind)"),
@@ -459,7 +459,7 @@ struct ImageCachePersistentTests {
         // The name is joined here so this line does not count itself.
         let call = "ImageCache.shared." + "performMaintenance("
         for url in SourceTree.files(under: tests) where url.pathExtension == "swift" {
-            let lines = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            let lines = SyncContractFenceTests.stripped(try SourceTree.text(url))
                 .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
             for (index, line) in lines.enumerated() {
                 let code = line.trimmingCharacters(in: .whitespaces)
@@ -877,7 +877,7 @@ struct ImageCachePersistentTests {
         var moveNamers: [String] = []
         var askers: [String] = []
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("ActiveCovers(urls:") { builders.append(file.lastPathComponent) }
             if code.contains("idMovePending:") { moveNamers.append(file.lastPathComponent) }
             if code.contains(".activeCovers(") { askers.append(file.lastPathComponent) }

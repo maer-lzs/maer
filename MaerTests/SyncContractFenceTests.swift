@@ -47,7 +47,7 @@ struct SyncContractFenceTests {
     @MainActor
     static func sources() throws -> String {
         try ProjectFileIntegrityTests.sourceFiles()
-            .map { try String(contentsOf: $0, encoding: .utf8) }
+            .map { try SourceTree.text($0) }
             .joined(separator: "\n")
     }
 

@@ -46,7 +46,7 @@ struct ImportFolderTests {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
         var callers: [String] = []
-        for file in files where Self.clientCalls(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+        for file in files where Self.clientCalls(in: try SourceTree.text(file)) > 0 {
             callers.append(file.lastPathComponent)
         }
         #expect(callers.isEmpty, "eine Ansicht ruft den Server-Client: \(callers)")
@@ -70,7 +70,7 @@ struct ImportFolderTests {
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
         var readers: [String] = []
         for file in files {
-            let code = try String(contentsOf: file, encoding: .utf8)
+            let code = try SourceTree.text(file)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map(IdQuestionDoorFenceTests.withoutComment)
                 .joined(separator: "\n")

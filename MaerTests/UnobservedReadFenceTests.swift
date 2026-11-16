@@ -219,7 +219,7 @@ struct UnobservedReadFenceTests {
         try #require(files.count > 100, "der Zaun hat den Ansichtsbaum nicht gelesen")
         var counts: [String: [Int]] = [:]
         for file in files {
-            let lines = try Self.reads(in: String(contentsOf: file, encoding: .utf8),
+            let lines = try Self.reads(in: SourceTree.text(file),
                                        matching: Self.premiumPattern,
                                        unlessObserving: "PodcastSubscriptions.shared")
             if !lines.isEmpty { counts[file.lastPathComponent] = lines }
@@ -248,7 +248,7 @@ struct UnobservedReadFenceTests {
         var exemptionsSeen = Set<String>()
         for file in files {
             let name = file.lastPathComponent
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let lines = try Self.unobservedReads(in: text, members: members).filter { line in
                 let function = Self.enclosingFunction(ofLine: line, in: text)
                 guard let exemption = Self.callTimeReads.first(where: {

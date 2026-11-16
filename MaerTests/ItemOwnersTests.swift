@@ -67,7 +67,7 @@ struct ItemOwnersTests {
     func theRegisterNeverTravels() throws {
         var namers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = try String(contentsOf: file, encoding: .utf8)
+            let code = try SourceTree.text(file)
             if code.contains("ItemOwner") || code.contains("item-owners") { namers.append(file.lastPathComponent) }
         }
         #expect(namers.sorted() == ["ABSServerScope.swift", "ItemOwnerShelf.swift", "ItemOwners.swift",

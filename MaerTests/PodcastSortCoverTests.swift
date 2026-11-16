@@ -47,7 +47,7 @@ struct PodcastSortCoverTests {
     func everyReaderAsksTheRule() throws {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            all += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8)) + "\n"
+            all += SyncContractFenceTests.stripped(try SourceTree.text(file)) + "\n"
         }
         #expect(all.contains("PodcastCover.source("), "the precondition: the sources were read")
         #expect(all.components(separatedBy: "imageURL ?? ").count - 1 == 0,

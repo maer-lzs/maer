@@ -46,7 +46,7 @@ import Foundation
         var offenders: [String] = []
         var seen = 0
         for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8),
+            guard let text = try? SourceTree.text(url),
                   text.contains("didChangeExternallyNotification") else { continue }
             seen += 1
             // The watch itself IS the answer. It may name the constant.
@@ -67,7 +67,7 @@ import Foundation
         var offenders: [String] = []
         for url in SourceTree.files(under: sources) where url.pathExtension == "swift" {
             guard url.lastPathComponent != "CloudQuotaWatch.swift",
-                  let text = try? String(contentsOf: url, encoding: .utf8),
+                  let text = try? SourceTree.text(url),
                   text.contains("NSUbiquitousKeyValueStoreQuotaViolationChange") else { continue }
             offenders.append(url.lastPathComponent)
         }

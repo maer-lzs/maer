@@ -23,7 +23,7 @@ struct FreeCatalogDecodersFenceTests {
     func decodersStayPure() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Models/FreeCatalogDecoders.swift") })
-        let text = try String(contentsOf: file, encoding: .utf8)
+        let text = try SourceTree.text(file)
         #expect(Self.offenders(in: text).isEmpty, "the decoders reach past the pure layer: \(Self.offenders(in: text))")
         #expect(Self.offenders(in: "let stock = CatalogStockService.shared") == ["CatalogStock"])
         #expect(Self.offenders(in: "try JSONDecoder().decode(Response.self, from: data)").isEmpty)
@@ -33,7 +33,7 @@ struct FreeCatalogDecodersFenceTests {
     func clientsDoNotDecode() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Networking/FreeCatalogClients.swift") })
-        let text = try String(contentsOf: file, encoding: .utf8)
+        let text = try SourceTree.text(file)
         #expect(!text.contains("JSONDecoder"), "a client decodes on its own; the decoders live in FreeCatalogDecoders")
     }
 }

@@ -176,7 +176,7 @@ struct DetailHeaderTests {
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views")) where url.pathExtension == "swift" {
             let file = SourceTree.relativePath(of: url)
             guard !Self.menuModifiers.contains(file) else { continue }
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(url))
             let menus = Self.menusBuilt(in: text)
             guard menus > 0 else { continue }
             found[file] = menus

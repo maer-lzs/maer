@@ -217,7 +217,7 @@ struct JellyfinBookFoldTests {
     func theProviderSetsTheMarkAfterTheNeighbours() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "JellyfinProvider.swift" })
-        let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
         #expect(text.contains("JellyfinBookFold.markAfterNeighbours(planned: plan.index, failed: failed)"))
         #expect(text.contains("JellyfinBookFold.shouldReconcileNeighbours(mark: lastWrittenTrackIndex[itemId]"))
         #expect(!text.contains("lastWrittenTrackIndex[itemId] = plan.index"), "the mark is set before the neighbours again")

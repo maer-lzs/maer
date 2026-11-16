@@ -74,7 +74,7 @@ struct RowStoreFenceTests {
         var replaces: [String: Int] = [:]
         var keyed: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isStorage(file.path) {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let name = file.lastPathComponent
             if Self.sites(of: ["import SQLite3"], in: text) > 0 {
                 importers.insert(name)
@@ -110,7 +110,7 @@ struct RowStoreFenceTests {
         let files = ProjectFileIntegrityTests.sourceFiles()
         #expect(files.contains { Self.isStorage($0.path) }, "the fence read no file in Storage, so it measures nothing")
         var replacers: [String] = []
-        for file in files where Self.sites(of: ["func replaceAll("], in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+        for file in files where Self.sites(of: ["func replaceAll("], in: try SourceTree.text(file)) > 0 {
             replacers.append(file.lastPathComponent)
         }
         #expect(replacers.isEmpty, "a store replaces its whole stock: \(replacers)")

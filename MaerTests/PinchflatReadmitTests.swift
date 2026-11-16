@@ -78,7 +78,7 @@ struct PinchflatReadmitTests {
         #expect(!PinchflatClient.isConfigured(nil))
         var found: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("serverURL != nil") {
                 found.append(file.lastPathComponent)
             }

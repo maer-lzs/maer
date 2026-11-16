@@ -175,7 +175,7 @@ struct FeedAccessUnknownTests {
     @Test("the mark of the queue is dropped before its first exit", .needsTheSources)
     func theQueueMarkFallsBeforeItsFirstWayOut() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PlayerViewModel.swift" })
-        let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let source = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let start = try #require(source.range(of: "private func buildQueue(startingAtTrackIndex"))
         let reset = try #require(source.range(of: "queueWaitedForSignIn = false", range: start.upperBound..<source.endIndex))
         let firstGuard = try #require(source.range(of: "guard ", range: start.upperBound..<source.endIndex))
@@ -289,7 +289,7 @@ struct FeedAccessUnknownTests {
         for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources"))
         where file.pathExtension == "swift" && file.lastPathComponent != "PodcastFeedAuth.swift" {
             seen.insert(file.lastPathComponent)
-            if try String(contentsOf: file, encoding: .utf8).contains("\"feedAuth.") { namers.append(file.lastPathComponent) }
+            if try SourceTree.text(file).contains("\"feedAuth.") { namers.append(file.lastPathComponent) }
         }
         #expect(seen.contains("PodcastSubscriptions.swift") && seen.contains("FeedAuthSync.swift"),
                 "the readers of the access were among the files read")

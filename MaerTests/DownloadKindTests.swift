@@ -116,7 +116,7 @@ struct DownloadKindTests {
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
         var callers: [String] = []
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             var owner = "?"
             for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
                 if let declared = line.firstMatch(of: #/^(?:private |fileprivate )?struct (\w+)/#) {

@@ -48,7 +48,7 @@ struct UploadLaneTests {
         var wrong: [String] = []
         let root = SourceTree.root.appendingPathComponent("Sources")
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(url))
             for call in Self.uploadCalls(in: code) {
                 callers.append(url.lastPathComponent)
                 if call.contains("lane:") && !call.contains("lane: .upload") { wrong.append(call) }

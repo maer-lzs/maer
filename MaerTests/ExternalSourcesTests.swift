@@ -50,7 +50,7 @@ struct ExternalSourcesTests {
         var hosts: Set<String> = []
         for url in SourceTree.files(under: root) {
             guard url.pathExtension == "swift" else { continue }
-            let text = try String(contentsOf: url, encoding: .utf8)
+            let text = try SourceTree.text(url)
             var rest = Substring(text)
             while let range = rest.range(of: "https://") {
                 let after = rest[range.upperBound...]

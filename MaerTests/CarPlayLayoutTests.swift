@@ -299,7 +299,7 @@ struct CarPlayLayoutTests {
                 "the app starts by a path of its own")
         // The restore itself stays inside the one start path.
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "PlayerCoordinator.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             #expect(!text.contains("restoreLastSession("), "\(file.lastPathComponent) restores beside the start path")
         }
     }

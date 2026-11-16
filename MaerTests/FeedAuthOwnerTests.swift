@@ -426,7 +426,7 @@ struct FeedAuthOwnerTests {
         #expect(found == Set(Self.removalStock.keys), "a removal outside the named ones: \(found)")
         var callers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/PodcastFeedAuth.swift") {
-            if try String(contentsOf: file, encoding: .utf8).contains("PodcastFeedAuth.replaceForNewOwner(") {
+            if try SourceTree.text(file).contains("PodcastFeedAuth.replaceForNewOwner(") {
                 callers.append(file.lastPathComponent)
             }
         }

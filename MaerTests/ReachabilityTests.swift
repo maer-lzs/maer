@@ -84,7 +84,7 @@ struct ReachabilityTests {
         #expect(files.contains { $0.lastPathComponent == "ProviderSearch.swift" }, "the fence read Providers")
         var naming: Set<String> = []
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("NetworkMonitor.shared") { naming.insert(file.lastPathComponent) }
         }
         #expect(naming == Set(Self.monitorStock.keys), "names the monitor outside the stock or left it: \(naming.sorted())")
@@ -114,7 +114,7 @@ struct ReachabilityTests {
         var read = 0
         for file in ProjectFileIntegrityTests.sourceFiles() where !fenced.contains(where: { file.path.contains($0) }) {
             read += 1
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("NetworkMonitor.shared") { naming.insert(file.lastPathComponent) }
         }
         #expect(read > 0, "the fence read no source outside the two folders")
@@ -130,7 +130,7 @@ struct ReachabilityTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         var reading: [String] = []
         for file in files where file.lastPathComponent != "TestProcess.swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("XCTestConfigurationFilePath") { reading.append(file.lastPathComponent) }
         }
         #expect(!files.isEmpty, "the fence read the sources")

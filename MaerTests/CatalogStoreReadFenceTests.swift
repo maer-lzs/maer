@@ -22,7 +22,7 @@ struct CatalogStoreReadFenceTests {
         let files = SourceTree.files(under: root).filter { $0.pathExtension == "swift" }
         #expect(files.count > 50, "the sweep must see the tree, not an empty folder")
         return try files.map { (name: $0.lastPathComponent,
-                                text: try String(contentsOf: $0, encoding: .utf8)) }
+                                text: try SourceTree.text($0)) }
     }
 
     @Test("no surface reads the STORED rows — reading goes through the loading getter", .needsTheSources)

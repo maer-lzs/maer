@@ -120,7 +120,7 @@ struct ArtworkMemoTests {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let name = file.lastPathComponent
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let namesDirectory = text.contains("\"artworkMemo\"")
             // The old keys are fenced in `RetiredDocumentsFenceTests`; the
             // door alone names its own.

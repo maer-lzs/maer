@@ -60,7 +60,7 @@ struct OnlineValueFenceTests {
     func viewsAskTheMonitorOnlyWhereTheStockSaysSo() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            counts[file.lastPathComponent, default: 0] += Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.reaches(in: try SourceTree.text(file))
         }
         // Per file both ways, so the total is the stock's total as well.
         let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
@@ -75,7 +75,7 @@ struct OnlineValueFenceTests {
     func exactlyOnePlaceHandsTheValueDown() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let count = text.split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { line in
                     let trimmed = line.trimmingCharacters(in: .whitespaces)

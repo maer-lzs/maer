@@ -38,7 +38,7 @@ struct RowEmptyingFenceTests {
         #expect(files.contains { $0.lastPathComponent == "RowKeeper.swift" }, "the fence read the sources")
         var found: [String: Int] = [:]
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let n = Self.allowedWrites(in: code)
             if n > 0 { found[file.lastPathComponent] = n }
         }
@@ -65,7 +65,7 @@ struct RowEmptyingFenceTests {
         var asking: Set<String> = []
         var byHand: [String] = []
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains(".previous(for:"), code.contains(".refuses(") { asking.insert(file.lastPathComponent) }
             if Self.diffsAgainstNothing(code) { byHand.append(file.lastPathComponent) }
         }

@@ -712,7 +712,7 @@ struct RadioStateQueryTests {
         #expect(files.count > 100, "the fence read the sources")
         var drawings: [(file: String, line: String)] = []
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             drawings += Self.variantLists(in: code).map { (SourceTree.relativePath(of: file), $0) }
         }
         #expect(drawings.contains { $0.file == "Sources/Views/PlayerView.swift" }

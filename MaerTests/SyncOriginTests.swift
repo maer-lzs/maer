@@ -59,7 +59,7 @@ struct SyncOriginTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String: Int] = [:]
         for file in files {
-            found.merge(Self.origins(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+            found.merge(Self.origins(in: try SourceTree.text(file))) { $0 + $1 }
         }
         let expected = Dictionary(uniqueKeysWithValues: SyncOrigin.allCases.map { ($0.rawValue, 1) })
             .merging(["forwarded": Self.forwarders.count]) { $1 }

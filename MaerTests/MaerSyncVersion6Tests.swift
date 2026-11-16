@@ -146,7 +146,7 @@ struct MaerSyncVersion6Tests {
 
     /// The source of the way back, counted without comments.
     nonisolated static func stripped(_ file: URL) throws -> String {
-        SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        SyncContractFenceTests.stripped(try SourceTree.text(file))
     }
 
     /// Every line that BUILDS a `.secret(...)`, whatever it is assigned to.

@@ -50,7 +50,7 @@ struct ItemRouterFenceTests {
     func theRouterLeafIsAskedForNotBuilt() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            counts[file.lastPathComponent, default: 0] += Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.reaches(in: try SourceTree.text(file))
         }
         // Per file both ways, so the total is the stock's total as well.
         let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
@@ -80,7 +80,7 @@ struct ItemRouterFenceTests {
     func nobodyHandsTheRouterDownInTheApp() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let count = Self.setters(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.setters(in: try SourceTree.text(file))
             if count > 0 { setters.append("\(file.lastPathComponent): \(count)") }
         }
         // The fence sees only `Sources`. A preview or a witness sets

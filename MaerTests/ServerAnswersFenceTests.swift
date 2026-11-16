@@ -52,7 +52,7 @@ struct ServerAnswersFenceTests {
         var read: Set<String> = []
         for folder in ["MaerTests", "MaerUITests"] {
             for url in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder)) where url.pathExtension == "swift" {
-                read.formUnion(Self.readFiles(in: SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))))
+                read.formUnion(Self.readFiles(in: SyncContractFenceTests.stripped(try SourceTree.text(url))))
             }
         }
         #expect(files.subtracting(read).isEmpty, "an answer no witness reads: \(files.subtracting(read).sorted())")

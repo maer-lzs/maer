@@ -21,7 +21,7 @@ struct DeviceIdentityTests {
     func oneQuestionForTheMac() throws {
         var askers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "PlatformScrubber.swift" {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if text.contains("isiOSAppOnMac") || text.contains("isMacCatalystApp") { askers.append(file.lastPathComponent) }
         }
         #expect(askers.isEmpty, "a second place asks the system whether it runs on a Mac: \(askers)")

@@ -416,7 +416,7 @@ struct MusicUnionTests {
         var calls: [String] = []
         let root = SourceTree.root.appendingPathComponent("Sources")
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
-            let code = Self.code(try String(contentsOf: url, encoding: .utf8))
+            let code = Self.code(try SourceTree.text(url))
             // A CALL has a receiver; the declaration `func portraitURL(` has none.
             for match in code.matches(of: try Regex(#"\.portraitURL\(\s*artistKey:\s*([^,]+),"#)) {
                 calls.append(String(match.output[1].substring ?? ""))
@@ -470,7 +470,7 @@ struct MusicUnionTests {
         var found: [String] = []
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             read += 1
-            let count = Self.rawToDevice(in: try String(contentsOf: url, encoding: .utf8))
+            let count = Self.rawToDevice(in: try SourceTree.text(url))
             if count > 0 { found.append("\(url.lastPathComponent): \(count)") }
         }
         #expect(read > 100, "der Zaun hat die Quellen gelesen")

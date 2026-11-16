@@ -67,7 +67,7 @@ struct GPodderPushRulesTests {
     func theRunnerUsesTheRule() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "GPodderSync.swift" })
-        let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
         #expect(text.contains("GPodderPushRules.Throttle"), "the throttle is the rule's")
         #expect(text.contains("cursorAfterPush(gatheredAtSeconds:"), "the cursor is the rule's")
         #expect(!text.contains("try? await GPodderClient(config: config).uploadEpisodeActions"),

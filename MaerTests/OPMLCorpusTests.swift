@@ -85,7 +85,7 @@ struct CorpusFixtureTests {
         for folder in ["MaerTests", "MaerUITests"] {
             for url in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
             where url.pathExtension == "swift" {
-                let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+                let code = SyncContractFenceTests.stripped(try SourceTree.text(url))
                 for call in Self.loaderCalls(in: code) {
                     // A folder built at run time (`Shared/\(area)`) is the
                     // shared cases' own fence.

@@ -263,7 +263,7 @@ struct QueueTrackEndTests {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/ItemNamespace.swift")
             && !file.path.hasSuffix("/MusicSourceRule.swift") {
-            all += FetchAnswerTests.squeezed(try String(contentsOf: file, encoding: .utf8)) + "\n"
+            all += FetchAnswerTests.squeezed(try SourceTree.text(file)) + "\n"
         }
         #expect(all.contains("MusicSourceRule.isServerMusic("), "the precondition: the sources were read")
         #expect(all.components(separatedBy: "ItemNamespace.isSubsonic(").count - 1 == 0)

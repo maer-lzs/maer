@@ -39,7 +39,7 @@ struct WindowSizeFenceTests {
         var found: [String] = []
         let files = ProjectFileIntegrityTests.sourceFiles()
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             found += Self.asks(text).map { "\(file.lastPathComponent): \($0)" }
         }
         #expect(files.count > 100, "the fence read the sources")

@@ -47,7 +47,7 @@ struct CloudKeyValueTests {
     func onlyTheDoorNamesTheRealStore() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CloudKeyValue.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if text.contains("NSUbiquitousKeyValueStore.default") { offenders.append(file.lastPathComponent) }
         }
         #expect(offenders.isEmpty, "these files reach the real store past the door: \(offenders)")
@@ -76,7 +76,7 @@ struct CloudKeyValueTests {
         #expect(!files.isEmpty)
         var offenders: [String] = []
         for file in files {
-            let bare = Self.launchesWithoutHarnessMarker(in: try String(contentsOf: file, encoding: .utf8))
+            let bare = Self.launchesWithoutHarnessMarker(in: try SourceTree.text(file))
             if bare > 0 { offenders.append("\(file.lastPathComponent): \(bare)") }
         }
         #expect(offenders.isEmpty, "UI tests that start the app without a harness argument: \(offenders)")

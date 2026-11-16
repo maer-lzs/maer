@@ -56,7 +56,7 @@ struct CoverSweepCostFenceTests {
     func onlyTheSurfaceThatShowsItAsks() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            counts[file.lastPathComponent, default: 0] += Self.asks(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.asks(in: try SourceTree.text(file))
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.stock.mapValues(\.count))
         #expect(drift.isEmpty, "a surface asks for the size again, or a stock above the count: \(drift)")

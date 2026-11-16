@@ -150,7 +150,7 @@ struct StringCatalogOrderTests {
             let files = SourceTree.files(under: SourceTree.root.appendingPathComponent(folder))
                 .filter { $0.pathExtension == "swift" }
             #expect(!files.isEmpty, "the fence read \(folder)")
-            for file in files { source += try String(contentsOf: file, encoding: .utf8) + "\n" }
+            for file in files { source += try SourceTree.text(file) + "\n" }
         }
         source = try Self.unescaped(source)
         let range = NSRange(source.startIndex..., in: source)
@@ -198,7 +198,7 @@ struct StringCatalogOrderTests {
                 .filter { $0.pathExtension == "swift" }
             #expect(!files.isEmpty, "the fence read \(folder)")
             for file in files {
-                found += try Self.literalTupleBranches(String(contentsOf: file, encoding: .utf8))
+                found += try Self.literalTupleBranches(SourceTree.text(file))
                     .map { "\(file.lastPathComponent): \($0.trimmingCharacters(in: .whitespaces))" }
             }
         }

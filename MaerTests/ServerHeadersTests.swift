@@ -849,7 +849,7 @@ struct ServerHeadersFenceTests {
         var setters: Set<String> = []
         var read = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             read += 1
             if text.contains("ServerHeaders.apply(") { setters.insert(file.lastPathComponent) }
         }
@@ -983,7 +983,7 @@ struct ServerHeadersFenceTests {
         var bodies = 0
         var names: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             var rest = Substring(text)
             while let start = rest.range(of: "var streamAuthHeaders: [String: String] {") {
                 let after = rest[start.upperBound...]

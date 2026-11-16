@@ -58,7 +58,7 @@ struct ExternalSourcesWitnessFenceTests {
     /// Without pulling it together the finder checks the line length instead of the
     /// statement and breaks at the next formatter.
     private func code(of url: URL) throws -> String {
-        try String(contentsOf: url, encoding: .utf8)
+        try SourceTree.text(url)
             .split(separator: "\n", omittingEmptySubsequences: false)
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             .joined(separator: " ")

@@ -26,7 +26,7 @@ struct CarrierUnreadRuleTests {
     static func sites(of token: String) throws -> [String: Int] {
         var found: [String: Int] = [:]
         for file in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources")) where file.pathExtension == "swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let count = code.components(separatedBy: token).count - 1
             if count > 0 { found[file.lastPathComponent, default: 0] += count }
         }

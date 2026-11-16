@@ -50,7 +50,7 @@ struct PodcastSubscribeNoticeTests {
         var setters: [String: Int] = [:]
         for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
             let path = SourceTree.relativePath(of: url)
-            let lines = try String(contentsOf: url, encoding: .utf8)
+            let lines = try SourceTree.text(url)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             // The DECLARATION is neither reading nor setting. My first
@@ -104,7 +104,7 @@ struct PodcastSubscribeNoticeTests {
             .deletingLastPathComponent().appendingPathComponent("Sources")
         for url in SourceTree.files(under: root) where url.lastPathComponent.hasSuffix(".swift") {
             let path = SourceTree.relativePath(of: url)
-            let flat = try String(contentsOf: url, encoding: .utf8)
+            let flat = try SourceTree.text(url)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("///") }
                 .joined(separator: " ")

@@ -187,7 +187,7 @@ struct NavidromeDoorTests {
     static func subSpellers() throws -> Set<String> {
         var found: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if Self.spellsSub(text) { found.insert(file.lastPathComponent) }
         }
         return found

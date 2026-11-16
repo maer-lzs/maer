@@ -115,7 +115,7 @@ struct TickWorkTests {
     @Test("the drive page draws progress, remaining time and live time from the clock, every second", .needsTheSources)
     func theDrivePageDrawsTheTimeFromTheClock() throws {
         let url = SourceTree.root.appendingPathComponent("Sources/Views/DriveModeView.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(url))
         #expect(code.components(separatedBy: "PlaybackTimeReader(clock: vm.clock)").count - 1 == 2,
                 "the progress or the live time is no longer a leaf of the clock")
         #expect(!code.contains(".currentTime"), "the drive page reads the model's time past the clock")
@@ -148,7 +148,7 @@ struct TickWorkTests {
     func viewsReadTheTimeThroughTheClock() {
         var counts: [String: Int] = [:]
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views")) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            guard let text = try? SourceTree.text(url) else {
                 Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
                 continue
             }

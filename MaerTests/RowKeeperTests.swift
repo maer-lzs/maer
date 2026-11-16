@@ -100,7 +100,7 @@ struct RowKeeperTests {
         var found: Set<String> = []
         var codeOf: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             codeOf[file.lastPathComponent] = code
             if code.contains(".connection()") { found.insert(file.lastPathComponent) }
         }
@@ -229,7 +229,7 @@ struct RowKeeperTests {
         var codeOf: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles()
         where ["PodcastSubscriptions.swift", "LibraryViewModel.swift"].contains(file.lastPathComponent) {
-            codeOf[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            codeOf[file.lastPathComponent] = SyncContractFenceTests.stripped(try SourceTree.text(file))
         }
         #expect(codeOf.count == 2, "the precondition: the fence read both stores")
         for (name, code) in codeOf {
@@ -245,7 +245,7 @@ struct RowKeeperTests {
     func everyChainHasItsOwnLabel() throws {
         var labels: [String: [String]] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             for match in code.matches(of: #/(?:RowKeeper\(|RowChain<[^>\n]*>\()[^\n]*?label: "([^"]+)"/#) {
                 labels[String(match.output.1), default: []].append(file.lastPathComponent)
             }
@@ -311,7 +311,7 @@ struct RowKeeperTests {
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         #expect(files.contains { $0.lastPathComponent == "RowChain.swift" }, "the fence read the sources")
         let keepers = try files.filter { $0.lastPathComponent != "RowChain.swift" }.filter {
-            SyncContractFenceTests.stripped(try String(contentsOf: $0, encoding: .utf8)).contains(Self.storedNarrowing)
+            SyncContractFenceTests.stripped(try SourceTree.text($0)).contains(Self.storedNarrowing)
         }.map(\.lastPathComponent)
         #expect(keepers.isEmpty, "a narrowing kept outside the chain: \(keepers.sorted())")
         // Calibration: the form as it stood, and the chain's call is no state.
@@ -560,7 +560,7 @@ struct RowKeeperTests {
             .filter { $0.pathExtension == "swift" && !["RowKeeper.swift", "RowChain.swift"].contains($0.lastPathComponent) }
         var built = 0
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let here = ConcurrencyFenceTests.sites(of: "RowKeeper(database:", in: code)
                 + code.matches(of: #/RowChain(<[^\n(]*>)?\(label:/#).count
             let adopted = ConcurrencyFenceTests.sites(of: ".adopt = {", in: code)
@@ -591,7 +591,7 @@ struct RowKeeperTests {
         var statsCode = ""
         var chainCode = ""
         for file in files {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("RowBase.afterLoad(") { reckoning.append(file.lastPathComponent) }
             if !file.path.contains("/Sources/Storage/"),
                code.contains(#/pending\w*Write = Task/#) { ownChains.append(file.lastPathComponent) }

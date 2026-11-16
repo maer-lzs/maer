@@ -20,7 +20,7 @@ struct GlassFollowsSystemTests {
         #expect(!glass.contains(".regular.tint("), "the glass lays its own tint again")
         var accents: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if text.contains("glassAccent") || text.contains("lightAccent:") { accents.append(file.lastPathComponent) }
         }
         #expect(accents.isEmpty, "a surface hands the glass an accent: \(accents)")

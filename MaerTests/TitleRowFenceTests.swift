@@ -19,7 +19,7 @@ struct TitleRowFenceTests {
     func theTabRootsNameInlineLargeOnly() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "LibraryView.swift" })
-        let code = try String(contentsOf: file, encoding: .utf8)
+        let code = try SourceTree.text(file)
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map(IdQuestionDoorFenceTests.withoutComment)
             .joined(separator: "\n")

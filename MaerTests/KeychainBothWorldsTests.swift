@@ -74,7 +74,7 @@ struct KeychainBothWorldsTests {
     func everyCallSaysWhichWorldsAndReadsItsStatus() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "KeychainStore.swift" })
-        let text = try String(contentsOf: door, encoding: .utf8)
+        let text = try SourceTree.text(door)
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
 
         // Every SecItem call belongs to a query that names the worlds.

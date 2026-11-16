@@ -102,7 +102,7 @@ struct ShuffleEmptyPoolTests {
         let files = SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Views"))
             .filter { $0.pathExtension == "swift" }
         for file in files {
-            for form in Self.entryForms(in: try String(contentsOf: file, encoding: .utf8)) {
+            for form in Self.entryForms(in: try SourceTree.text(file)) {
                 counts["\(file.lastPathComponent):\(form)", default: 0] += 1
             }
         }

@@ -100,12 +100,12 @@ struct JamendoTrackByIdTests {
     func theAddressNameIsNeverAskedForAJamendoTrack() throws {
         var callers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if code.contains("trackDisplayTitle(") { callers.append(file.lastPathComponent) }
         }
         #expect(callers == ["FreeCatalog.swift"], "the name from the address is asked elsewhere: \(callers)")
         let catalog = SourceTree.root.appendingPathComponent("Sources/Models/FreeCatalog.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: catalog, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(catalog))
         let rule = try #require(code.range(of: "static func trackRowTitle("), "the precondition: the rule stands")
         let body = code[rule.upperBound...]
         let jamendo = try #require(body.range(of: "itemId.hasPrefix(jamendoPrefix)"))

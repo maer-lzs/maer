@@ -133,7 +133,7 @@ struct OfflineDetailTests {
         // Everywhere: no log line takes the page's sentence as its reason.
         var logLinesWithSentence: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let lines = try String(contentsOf: file, encoding: .utf8).split(separator: "\n")
+            let lines = try SourceTree.text(file).split(separator: "\n")
             for line in lines where line.contains("Logger.") && line.contains("failureReason(") {
                 logLinesWithSentence.append(file.lastPathComponent)
             }

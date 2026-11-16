@@ -119,14 +119,14 @@ struct ServiceKeyTrustTests {
         // Without comment lines: the file's own comment says why the word is
         // absent, and a fence that counts the talk about a thing tore at the
         // first run on a correct build.
-        let text = SyncContractFenceTests.stripped(try String(contentsOf: door, encoding: .utf8))
+        let text = SyncContractFenceTests.stripped(try SourceTree.text(door))
         #expect(!text.contains("synchronizable"), "the pin store names the travel parameter")
         #expect(text.contains("ThisDeviceOnly"), "the pin store does not hold on this device only")
         #expect(text.contains("KeychainStore.save("), "it writes to the keychain at all")
 
         var holders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let body = try String(contentsOf: file, encoding: .utf8)
+            let body = try SourceTree.text(file)
             if body.contains("serviceKeyPin:") { holders.append(file.lastPathComponent) }
         }
         #expect(holders == ["ServiceKeyPin.swift"], "holders: \(holders.sorted())")

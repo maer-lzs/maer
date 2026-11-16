@@ -117,7 +117,7 @@ struct PerfSignpostFenceTests {
         var seen = Set<String>()
         for file in files {
             let name = file.lastPathComponent
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if name == "PerfSignpost.swift" { continue }
             if Self.directUse(text) > 0 { direct.append(name) }
             let balance = Self.intervalBalance(text)
@@ -136,7 +136,7 @@ struct PerfSignpostFenceTests {
     @Test("a measuring point takes only truth values, numbers, family and carrier", .needsTheSources)
     func theParametersCarryNoIdentifier() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
-        let types = Self.parameterTypes(try String(contentsOf: file, encoding: .utf8))
+        let types = Self.parameterTypes(try SourceTree.text(file))
         try #require(!types.isEmpty, "no parameter read")
         let allowed: Set<String> = ["Bool", "Int", "Family", "Carrier"]
         #expect(Set(types).isSubset(of: allowed), "\(Set(types).subtracting(allowed))")
@@ -149,7 +149,7 @@ struct PerfSignpostFenceTests {
     @Test("the measuring points write to logs of MetricKit, the snapshot only at the rare intervals", .needsTheSources)
     func theSignpostsReachMetricKit() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
-        let text = try String(contentsOf: file, encoding: .utf8)
+        let text = try SourceTree.text(file)
         let lines = Self.code(text)
         func count(_ form: String) -> Int { lines.filter { $0.contains(form) }.count }
         #expect(count("OSSignposter(subsystem:") == 1 && count("OSSignposter(logHandle:") == 1 && count("OSSignposter(") == 2,
@@ -183,7 +183,7 @@ struct PerfSignpostFenceTests {
         #expect(gate.upperBound <= open.lowerBound, "the measuring points open before the gate")
         var opens = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            opens += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            opens += SyncContractFenceTests.stripped(try SourceTree.text(file))
                 .components(separatedBy: "PerfSignpost.measure()").count - 1
         }
         #expect(opens == 1, "one place opens the measuring points")
@@ -194,7 +194,7 @@ struct PerfSignpostFenceTests {
     @Test("the list of names is every written name, each once", .needsTheSources)
     func theNamesListIsEveryWrittenName() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "PerfSignpost.swift" })
-        let written = Self.writtenNames(try String(contentsOf: file, encoding: .utf8))
+        let written = Self.writtenNames(try SourceTree.text(file))
         try #require(!written.isEmpty, "no name read")
         #expect(Set(written) == Set(PerfSignpost.names), "\(Set(written).symmetricDifference(PerfSignpost.names))")
         #expect(Set(PerfSignpost.names).count == PerfSignpost.names.count, "a name stands twice in the list")

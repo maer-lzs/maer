@@ -28,7 +28,7 @@ struct CoListenedTests {
     func everySurfaceListens() throws {
         var deaf: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             guard text.contains("CoListenedShows.shows()") else { continue }
             if !text.contains(".coListenedChanged") { deaf.append(file.lastPathComponent) }
         }
@@ -218,7 +218,7 @@ struct CoListenedTests {
     func theOwnedFeedsHaveOneName() throws {
         var texts: [String: String] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            texts[file.lastPathComponent] = SyncContractFenceTests.stripped(try SourceTree.text(file))
         }
         #expect(texts["PodcastsView.swift"] != nil, "the precondition: the fence read the sources")
         #expect(Self.calls(of: "normalizedFeeds", in: texts) == ["PodcastShowSources.swift": 1],

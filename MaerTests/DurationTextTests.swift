@@ -94,7 +94,7 @@ struct DurationTextTests {
         ]
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let count = Self.handWritten(in: code)
             if count > 0 { found[file.lastPathComponent] = count }
         }

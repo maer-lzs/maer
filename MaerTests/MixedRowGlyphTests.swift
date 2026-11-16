@@ -64,7 +64,7 @@ struct MixedRowGlyphTests {
             // The one way to name a walked file (`SourceTree.relativePath`):
             // the walker hands out /private/tmp where the root says /tmp.
             let path = SourceTree.relativePath(of: url)
-            files[path] = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+            files[path] = SyncContractFenceTests.stripped(try SourceTree.text(url))
         }
         return files
     }

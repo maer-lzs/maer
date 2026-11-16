@@ -122,7 +122,7 @@ struct AppTextDashFenceTests {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles()
         where !Self.namedExceptions.contains(where: file.path.hasSuffix) {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let found = Self.offendingLiterals(in: String(line))
                 if !found.isEmpty { offenders.append("\(file.lastPathComponent):\(index + 1) \(found.first!.prefix(50))") }

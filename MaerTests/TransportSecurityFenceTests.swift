@@ -53,7 +53,7 @@ struct TransportSecurityFenceTests {
         try #require(files.count > 100, "the source tree was not read")
         var oldHits: [String] = []
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if text.contains("the token in every request does not") || text.contains("the token in the header of every request does not") {
                 oldHits.append(file.lastPathComponent)
             }

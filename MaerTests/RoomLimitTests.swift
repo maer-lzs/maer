@@ -126,7 +126,7 @@ struct RoomLimitTests {
         var counts: [String: Int] = [:]
         var reckoningFiles = 0
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources")) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            guard let text = try? SourceTree.text(url) else {
                 Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
                 continue
             }

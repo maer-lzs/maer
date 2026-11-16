@@ -526,7 +526,7 @@ struct MetricGateTests {
         #expect(ask.upperBound <= page.lowerBound, "the entry asks the gate")
         var entries = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            entries += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            entries += SyncContractFenceTests.stripped(try SourceTree.text(file))
                 .components(separatedBy: "MetricRecordsView()").count - 1
         }
         #expect(entries == 1, "one way to the page")
@@ -561,7 +561,7 @@ struct MetricGateTests {
         #expect(MetricGate.Decision.allCases.map(\.rawValue) == ["undecided", "open", "closed"], "the words the line names")
         var calls = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            calls += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            calls += SyncContractFenceTests.stripped(try SourceTree.text(file))
                 .components(separatedBy: "RadioDiagnostics.compareICYName(").count - 1
         }
         #expect(calls == 1, "one place starts the check")
@@ -583,7 +583,7 @@ struct MetricGateTests {
         var adds = 0
         var refreshes: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             adds += text.components(separatedBy: "MXMetricManager.shared.add(").count - 1
             if text.contains("AppTransaction.refresh") { refreshes.append(file.lastPathComponent) }
         }

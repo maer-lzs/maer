@@ -116,7 +116,7 @@ struct FetchHoldbackTests {
     func theAutomaticMarkStandsOnlyWhereNamed() throws {
         var found: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoalescedFlights.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let hits = text.components(separatedBy: "LookupOccasion.automatic").count - 1
             if hits > 0 { found[file.lastPathComponent] = hits }
         }

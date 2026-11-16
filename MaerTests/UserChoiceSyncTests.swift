@@ -965,7 +965,7 @@ struct UserChoiceGateTests {
         try #require(files.count > 100, "the fence did not read the source tree")
         var families: Set<String> = []
         for file in files {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             families.formUnion(try captures(#""([A-Za-z]+\.)\\\("#, in: text))
         }
         let unclassified = families.filter { UserChoiceCatalog.prefixes[$0] == nil && notKeys[$0] == nil }

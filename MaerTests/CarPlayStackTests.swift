@@ -68,7 +68,7 @@ struct CarPlayStackTests {
         var seen = 0
         var bare: [String] = []
         for file in SourceTree.files(under: root) where file.pathExtension == "swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
                 let code = line.trimmingCharacters(in: .whitespaces)
                 guard !code.hasPrefix("//"), changes.contains(where: { code.contains("." + $0) }) else { continue }

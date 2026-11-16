@@ -34,7 +34,7 @@ struct RelativePathFenceTests {
             for url in SourceTree.files(under: SourceTree.root.appendingPathComponent(folder)) where url.pathExtension == "swift"
                 && url.lastPathComponent != "RelativePathFenceTests.swift" {
                 read += 1
-                let code = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+                let code = SyncContractFenceTests.stripped(try SourceTree.text(url))
                 offenders += Self.textCuts(in: code).map { "\(url.lastPathComponent): \($0)" }
             }
         }

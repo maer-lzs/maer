@@ -91,7 +91,7 @@ struct IdQuestionDoorFenceTests {
         var callers: [String] = []
         var doorAsks = 0
         for file in files {
-            let found = Self.sessionQuestions(in: try String(contentsOf: file, encoding: .utf8))
+            let found = Self.sessionQuestions(in: try SourceTree.text(file))
             if file.lastPathComponent == Self.door { doorAsks = found.count; continue }
             callers += found.map { "\(file.lastPathComponent): \($0)" }
         }

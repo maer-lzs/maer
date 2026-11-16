@@ -144,7 +144,7 @@ struct CatalogCoverAddressTests {
     func onlyTheLargeViewsAskTheLargeCover() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let count = code.components(separatedBy: "largeCoverURL").count - 1
             if count > 0 { counts[file.lastPathComponent] = count }
         }

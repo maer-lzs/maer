@@ -180,7 +180,7 @@ struct ForeignMarksTests {
                      "the finder sees the file whose held lists this protects")
         var hits: [String] = []
         for file in files {
-            let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let source = SyncContractFenceTests.stripped(try SourceTree.text(file))
             for form in ["removePersistentDomain", "setPersistentDomain", "resetStandardUserDefaults"]
             where source.contains(form) {
                 hits.append("\(file.lastPathComponent): \(form)")

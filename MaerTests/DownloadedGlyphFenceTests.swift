@@ -43,7 +43,7 @@ struct DownloadedGlyphFenceTests {
     func noCheckForStored() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let found = Self.checksAfterDownloadQuestions(in: try String(contentsOf: file, encoding: .utf8))
+            let found = Self.checksAfterDownloadQuestions(in: try SourceTree.text(file))
             if !found.isEmpty { offenders.append("\(file.lastPathComponent): \(found)") }
         }
         #expect(offenders.isEmpty, "a check glyph shows a stored title: \(offenders)")
@@ -89,7 +89,7 @@ struct DownloadedGlyphFenceTests {
         var literal: [String] = []
         var marks: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let code = text.split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
             for line in code where line.contains("\"arrow.down.circle.fill\"") {
@@ -107,7 +107,7 @@ struct DownloadedGlyphFenceTests {
                 "the places draw the one mark: \(marks)")
         let badge = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "CoverBadge.swift" })
         let mark = try #require(functionBody(of: "struct DownloadedMark: View {",
-                                             in: try String(contentsOf: badge, encoding: .utf8)))
+                                             in: try SourceTree.text(badge)))
         #expect(mark.contains(".foregroundStyle(.white, .clear)") && mark.contains(".glyphDisc()"),
                 "white on the disc of the tone")
         #expect(!mark.contains(".secondary"), "never a grey glyph (GT-17)")
@@ -117,7 +117,7 @@ struct DownloadedGlyphFenceTests {
 
     static func view(_ name: String) throws -> String {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == name })
-        return try String(contentsOf: file, encoding: .utf8)
+        return try SourceTree.text(file)
     }
 
     @Test("GT-11, GT-10: no download arrow as a glyph; loading and deleting on the long press of the covers and the playlist card", .needsTheSources)
@@ -126,7 +126,7 @@ struct DownloadedGlyphFenceTests {
         // Audiobookshelf show's "keep on the server", which saves nothing here.
         var arrows: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for line in text.split(separator: "\n") where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
                 && (line.contains("Image(systemName: \"arrow.down.circle\")") || line.contains("Image(systemName: \"arrow.down\")")) {
                 arrows.append(file.lastPathComponent)

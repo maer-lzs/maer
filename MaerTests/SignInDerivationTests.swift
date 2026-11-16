@@ -138,7 +138,7 @@ struct SignInDerivationTests {
         // two clocks apart, so the source is read.
         let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Networking/SignInDerivation.swift")
-        let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let source = SyncContractFenceTests.stripped(try SourceTree.text(file))
         #expect(source.contains("ContinuousClock()"))
         #expect(!source.contains("Date()") && !source.contains("CFAbsoluteTimeGetCurrent"), "no wall clock")
     }

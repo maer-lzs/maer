@@ -59,11 +59,11 @@ struct DebugOnlySeedFenceTests {
             let name = file.deletingPathExtension().lastPathComponent
             if Self.debugOnlyTypes.contains(name) {
                 homes += 1
-                let text = try String(contentsOf: file, encoding: .utf8)
+                let text = try SourceTree.text(file)
                 if !Self.isWhollyDebug(text) { offenders.append("\(file.lastPathComponent): not wholly #if DEBUG") }
                 continue
             }
-            let lines = Self.unguardedLines(in: try String(contentsOf: file, encoding: .utf8))
+            let lines = Self.unguardedLines(in: try SourceTree.text(file))
             if !lines.isEmpty { offenders.append("\(file.lastPathComponent): \(lines)") }
         }
         #expect(homes == Self.debugOnlyTypes.count, "every debug-only type has its own file: \(homes) of \(Self.debugOnlyTypes.count)")

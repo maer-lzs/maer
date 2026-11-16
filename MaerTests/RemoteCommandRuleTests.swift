@@ -228,7 +228,7 @@ struct RemoteCommandRuleTests {
         var turns: [String: Int] = [:]
         var steps = 0
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let count = Self.chapterTurns(in: text)
             if count > 0 { turns[file.lastPathComponent] = count }
             steps += SyncContractFenceTests.stripped(text).components(separatedBy: "stepTitle(forward:").count - 1

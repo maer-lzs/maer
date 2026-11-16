@@ -72,7 +72,7 @@ struct ExpectationFormFenceTests {
             let folder = SourceTree.root.appendingPathComponent(folderName)
             for url in SourceTree.files(under: folder) where url.pathExtension == "swift" && url.lastPathComponent != "ExpectationFormFenceTests.swift" {
                 read += 1
-                let text = SyncContractFenceTests.stripped(try String(contentsOf: url, encoding: .utf8))
+                let text = SyncContractFenceTests.stripped(try SourceTree.text(url))
                 for condition in Self.conditions(in: text) where Self.isSilent(condition) {
                     offenders.append("\(url.lastPathComponent): \(condition)")
                 }

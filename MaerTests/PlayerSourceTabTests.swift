@@ -45,7 +45,7 @@ struct PlayerSourceTabTests {
     func theHandlerSetsTheTabOnce() throws {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "LibraryView.swift" })
-        let code = try String(contentsOf: file, encoding: .utf8)
+        let code = try SourceTree.text(file)
         let start = try #require(code.range(of: "func registerPlayerSourceRouter()"))
         let end = try #require(code.range(of: "\n    }\n", range: start.upperBound..<code.endIndex))
         let body = code[start.upperBound..<end.lowerBound]

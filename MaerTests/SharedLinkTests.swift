@@ -278,7 +278,7 @@ struct SharedLinkTests {
         var systemShareLink: Set<String> = []
         var usesTheButton: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let name = file.lastPathComponent
             if code.contains("maer.fm/l") || code.contains("\"/l\"") || code.contains("\"/l/\"") || code.contains("/l#")
                 || code.contains("/l/#") { writesTheLink.insert(name) }
@@ -294,7 +294,7 @@ struct SharedLinkTests {
         // The catalog page shares a music track by its id alone; the stream
         // address of a Jamendo track never reaches the link from there.
         let catalog = SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift")
-        let catalogCode = SyncContractFenceTests.stripped(try String(contentsOf: catalog, encoding: .utf8))
+        let catalogCode = SyncContractFenceTests.stripped(try SourceTree.text(catalog))
         #expect(catalogCode.contains("SharedLink.content(trackId: itemId, title: title, artist: metadata.authorName, audioURL: nil)"),
                 "the catalog page builds its link otherwise")
     }

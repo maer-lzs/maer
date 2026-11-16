@@ -37,7 +37,7 @@ struct FinishedDownloadControlTests {
 
     static func source(_ path: String) throws -> String {
         let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.path.hasSuffix(path) })
-        return try String(contentsOf: file, encoding: .utf8)
+        return try SourceTree.text(file)
     }
 
     @Test("a finished download button deletes nothing", .needsTheSources)

@@ -41,7 +41,7 @@ struct PlaylistActionOnceFenceTests {
     func onePlaylistActionPerMenu() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             for menu in Self.playlistActionsPerMenu(in: text) where menu.count > 1 {
                 offenders.append("\(file.lastPathComponent):\(menu.line) carries \(menu.count) playlist actions")
             }

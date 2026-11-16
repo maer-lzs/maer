@@ -82,7 +82,7 @@ struct SharedLinkStationTests {
     @Test("Fence: the page offers Retry only when the catalog did not answer", .needsTheSources)
     func thePageOffersRetryOnlyWithoutAnAnswer() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/Views/Radio/SharedStationLinkPage.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let body = try #require(code.components(separatedBy: "var body: some View {").dropFirst().first?
             .components(separatedBy: "private func askAgain").first, "the precondition: the page has a body")
         let branches = body.components(separatedBy: "case .")
@@ -98,7 +98,7 @@ struct SharedLinkStationTests {
     @Test("Fence: the app asks the Radio Browser switch before it asks the catalog", .needsTheSources)
     func theOpenerAsksTheSwitchBeforeTheCatalog() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/SharedLinkOpener.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let live = try #require(code.components(separatedBy: "static func lookUpStation(").dropFirst().first,
                                 "the precondition: the app looks up stations in one place")
         let gate = try #require(live.range(of: "guard ExternalSources.isAllowed(ExternalSources.radioBrowser) else { return .sourceOff }"),
@@ -121,7 +121,7 @@ struct SharedLinkStationTests {
     @Test("Fence: the station from a link reads neither name nor stream from the link", .needsTheSources)
     func theStationNeverReadsTheLinksFacts() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/SharedLinkOpener.swift")
-        let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let station = try #require(code.components(separatedBy: "case .station(let uuid, _):").dropFirst().first,
                                    "the precondition: the station case ignores the link's facts")
         let body = try #require(station.components(separatedBy: "case .book(").first)

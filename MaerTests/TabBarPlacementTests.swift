@@ -91,7 +91,7 @@ struct TabBarPlacementTests {
         var bare: [String] = []
         var rows = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             rows += text.components(separatedBy: ".rowReachesUnderSideColumn()").count - 1
             guard file.lastPathComponent != "VerticalBarSideReader.swift" else { continue }
             if text.contains(".scrollClipDisabled()") { bare.append(file.lastPathComponent) }
@@ -104,7 +104,7 @@ struct TabBarPlacementTests {
     func oneTabBar() throws {
         var builds: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let count = text.components(separatedBy: "MediaTabBar(").count - 1
             if count > 0 { builds.append("\(file.lastPathComponent): \(count)") }
         }
@@ -135,7 +135,7 @@ struct TabBarPlacementTests {
         var readers: [String] = []
         var touchable: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             guard text.contains(": UIViewRepresentable"), !controls.contains(file.lastPathComponent) else { continue }
             readers.append(file.lastPathComponent)
             let representables = text.components(separatedBy: ": UIViewRepresentable").count - 1

@@ -48,7 +48,7 @@ struct CoordinatorGripFenceTests {
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
         var found: [String: Int] = [:]
         for file in files {
-            let count = Self.grips(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.grips(in: try SourceTree.text(file))
             if count > 0 { found[file.lastPathComponent] = count }
         }
         #expect(found == Self.stock, "Griffe nach dem Koordinator der Sitzung: \(found.sorted { $0.key < $1.key })")

@@ -89,7 +89,7 @@ struct HTTPDoorFenceTests {
     func onlyTheDoorNamesTheSession() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
-            let count = Self.sessionSites(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.sessionSites(in: try SourceTree.text(file))
             if count > 0 { offenders.append("\(file.lastPathComponent): \(count)") }
         }
         #expect(offenders.isEmpty, "these files reach the session past the door: \(offenders)")
@@ -112,7 +112,7 @@ struct HTTPDoorFenceTests {
         for file in ProjectFileIntegrityTests.sourceFiles()
         where file.path.contains("/Sources/Networking/") || file.path.contains("/Sources/Providers/") {
             seen.insert(file.lastPathComponent)
-            counts[file.lastPathComponent, default: 0] += Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.unreasonedTryLines(in: try SourceTree.text(file))
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.tryStock)
         #expect(drift.isEmpty, "these files swallow more errors than the stock allows, or the stock is above the count: \(drift)")
@@ -147,7 +147,7 @@ struct HTTPDoorFenceTests {
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
             seen.insert(file.lastPathComponent)
-            counts[file.lastPathComponent, default: 0] += Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.unreasonedTryLines(in: try SourceTree.text(file))
         }
         #expect(seen.contains("LibraryView.swift"), "the finder does not see the views")
         let drift = StockDrift.findings(counts: counts, stock: Self.viewTryStock)

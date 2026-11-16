@@ -137,7 +137,7 @@ struct MusicSourceNameTests {
                      ".background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: radius"]
         var own: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoverCapsule.swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             if looks.contains(where: text.contains) { own.append(file.lastPathComponent) }
         }
         #expect(own.isEmpty, "eine eigene Kopie der Cover-Kapsel: \(own)")

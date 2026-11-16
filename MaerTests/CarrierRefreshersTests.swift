@@ -135,7 +135,7 @@ struct CarrierRefreshersTests {
             .filter { $0.lastPathComponent.hasPrefix("CloudKit") && $0.lastPathComponent.hasSuffix("Carrier.swift") }
         try #require(carriers.count >= 4, "the finder must still find the four carriers")
         for file in carriers {
-            let code = try String(contentsOf: file, encoding: .utf8)
+            let code = try SourceTree.text(file)
             #expect(code.contains("CarrierRefreshers.register("),
                     "\(file.lastPathComponent) does not sign in: push and scene would miss it")
         }

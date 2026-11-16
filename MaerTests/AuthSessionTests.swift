@@ -54,7 +54,7 @@ struct AuthSessionTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let file = root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift")
-        let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        let text = (try? SourceTree.text(file)) ?? ""
         guard let range = text.range(of: "isLoggedIn = true") else {
             Issue.record("der Erfolgspfad wurde umgebaut — Zaun pruefen")
             return
@@ -72,7 +72,7 @@ struct AuthSessionTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let file = root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift")
-        let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        let text = (try? SourceTree.text(file)) ?? ""
         guard let range = text.range(of: "onUnauthorized = {") else {
             Issue.record("der 401-Rueckruf wurde umbenannt — Zaun pruefen")
             return

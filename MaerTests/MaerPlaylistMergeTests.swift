@@ -301,7 +301,7 @@ struct MaerPlaylistMergeTests {
         var offenders: [String] = []
         let files = SourceTree.files(under: sources).filter { $0.pathExtension == "swift" }
         for file in files where file.lastPathComponent != "MaerPlaylistMerge.swift" {
-            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let code = SyncContractFenceTests.stripped(try SourceTree.text(file))
             if Self.comparesRemovalMarks(code) { offenders.append(file.lastPathComponent) }
         }
         #expect(!files.isEmpty, "the fence found no sources")

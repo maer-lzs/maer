@@ -104,7 +104,7 @@ struct SourceReadinessTests {
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         var stellen: [String] = []
         for datei in dateien {
-            let text = try String(contentsOf: datei, encoding: .utf8)
+            let text = try SourceTree.text(datei)
             if text.contains("Enter server, username and password") {
                 stellen.append(datei.lastPathComponent)
             }
@@ -125,7 +125,7 @@ struct SourceReadinessTests {
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
         var stellen: [String] = []
         for datei in dateien {
-            let text = try String(contentsOf: datei, encoding: .utf8)
+            let text = try SourceTree.text(datei)
             // The whitespace is COLLAPSED and the argument ends at the
             // comma: a character window would have read the next line here
             // and reported my own correct call as a violation

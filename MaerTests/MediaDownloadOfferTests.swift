@@ -69,7 +69,7 @@ struct MediaDownloadOfferTests {
             .deletingLastPathComponent().appendingPathComponent("Sources")
         for url in SourceTree.files(under: root) where url.pathExtension == "swift" {
             let relative = SourceTree.relativePath(of: url)
-            let code = try String(contentsOf: url, encoding: .utf8)
+            let code = try SourceTree.text(url)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
                 .joined(separator: "\n")

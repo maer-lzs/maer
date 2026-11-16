@@ -86,7 +86,7 @@ struct FeedAddressStaysHomeTests {
         var callers: [String] = []
         var senders: [String] = []
         for file in SourceTree.files(under: root) where file.pathExtension == "swift" {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            let text = try SourceTree.text(file)
             let code = text.split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
             if code.contains(".episodes(feedURL:") { callers.append(file.lastPathComponent) }

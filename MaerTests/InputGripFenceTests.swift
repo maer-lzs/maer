@@ -47,7 +47,7 @@ struct InputGripFenceTests {
         var offenders: [String] = []
         for file in files {
             let name = file.lastPathComponent
-            let lines = Self.hitTestingLines(in: try String(contentsOf: file, encoding: .utf8), file: name)
+            let lines = Self.hitTestingLines(in: try SourceTree.text(file), file: name)
             guard !lines.isEmpty else { continue }
             found[name, default: 0] += lines.count
             if Self.fingerOnly[name] == nil { offenders += lines.map { "\(name): \($0.trimmingCharacters(in: .whitespaces))" } }

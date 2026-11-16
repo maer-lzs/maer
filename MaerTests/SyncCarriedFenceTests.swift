@@ -38,7 +38,7 @@ struct SyncCarriedFenceTests {
     func stubOnlyInTheSeam() throws {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/SyncCarried.swift") {
-            let count = Self.stubSites(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.stubSites(in: try SourceTree.text(file))
             if count > 0 { offenders.append("\(file.lastPathComponent): \(count)") }
         }
         #expect(offenders.isEmpty, "catalogue stubs built past the seam: \(offenders)")
@@ -51,7 +51,7 @@ struct SyncCarriedFenceTests {
         var offenders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles()
         where file.path.contains("/Sources/Views/") || file.path.contains("/Sources/ViewModels/") {
-            let count = Self.prefixQuestions(in: try String(contentsOf: file, encoding: .utf8))
+            let count = Self.prefixQuestions(in: try SourceTree.text(file))
             if count > 0 { offenders.append("\(file.lastPathComponent): \(count)") }
         }
         #expect(offenders.isEmpty, "views spell the catalogue prefixes: \(offenders)")

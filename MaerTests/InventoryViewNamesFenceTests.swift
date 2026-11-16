@@ -57,7 +57,7 @@ struct InventoryViewNamesFenceTests {
         let named = Self.namedInInventory(inventory)
         var views: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            views += Self.declaredViews(in: try String(contentsOf: file, encoding: .utf8))
+            views += Self.declaredViews(in: try SourceTree.text(file))
         }
         #expect(views.contains("AppSwitch") && views.count > 100, "the finder sees the views: \(views.count)")
         let unnamed = views.filter { !named.contains($0) }.sorted()

@@ -97,7 +97,7 @@ struct CoverMemoryTests {
         var calls = 0
         var offenders: [String] = []
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources/Networking")) where url.pathExtension == "swift" {
-            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+            guard let text = try? SourceTree.text(url) else {
                 Issue.record("unreadable: \(SourceTree.relativePath(of: url))")
                 continue
             }

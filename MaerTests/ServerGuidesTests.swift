@@ -100,7 +100,7 @@ struct ServerGuidesTests {
         // other file that opens one itself. The guides' own file names the
         // hosts for the browser and is the one exception.
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "ServerGuides.swift" {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             guard Self.isClient(path: file.path, text: text) else { continue }
             clients.insert(file.lastPathComponent)
             for host in Self.projectHosts where text.contains("https://" + host) {

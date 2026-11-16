@@ -141,7 +141,7 @@ struct ItemNotHereTests {
         try #require(files.count > 100, "the fence did not read the source tree")
         var found: [String: Int] = [:]
         for file in files {
-            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
             let hits = text.components(separatedBy: "NSError(domain:").count - 1
             if hits > 0 { found[file.lastPathComponent] = hits }
         }
@@ -151,7 +151,7 @@ struct ItemNotHereTests {
     @Test("the coordinator sets loadError only through the one exit door, and the ladder files what it found", .needsTheSources)
     func theCoordinatorSpeaksThroughOneExit() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift")
-        let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
         let flat = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         let writes = flat.components(separatedBy: "loadError = ").dropFirst().map { String($0.prefix(8)) }
         #expect(writes.filter { !$0.hasPrefix("nil") } == ["sentence"],

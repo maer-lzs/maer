@@ -98,7 +98,7 @@ struct CatalogClientViewFenceTests {
         try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
         var found: [String: Int] = [:]
         for file in files {
-            found.merge(Self.viewCalls(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+            found.merge(Self.viewCalls(in: try SourceTree.text(file))) { $0 + $1 }
         }
         #expect(found == Self.stock, "Katalog-Klienten in Ansichten: \(found.sorted { $0.key < $1.key })")
     }

@@ -52,7 +52,7 @@ struct ArtworkDoorFenceTests {
     func markersLiveBehindTheDoor() throws {
         var counts: [String: Int] = [:]
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            counts[file.lastPathComponent, default: 0] += Self.markerSites(in: try String(contentsOf: file, encoding: .utf8))
+            counts[file.lastPathComponent, default: 0] += Self.markerSites(in: try SourceTree.text(file))
         }
         let drift = StockDrift.findings(counts: counts, stock: Self.stock)
         #expect(drift.isEmpty, "picture markers outside the door, or a stock above the count: \(drift)")
@@ -69,7 +69,7 @@ struct ArtworkDoorFenceTests {
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let name = file.lastPathComponent
             guard name != "Artwork.swift", name != "ImageCache.swift" else { continue }
-            let found = Self.cacheSites(in: try String(contentsOf: file, encoding: .utf8))
+            let found = Self.cacheSites(in: try SourceTree.text(file))
             if found > 0 { offenders.append("\(name): \(found)") }
         }
         #expect(offenders.isEmpty, "ImageCache.shared outside the door: \(offenders)")

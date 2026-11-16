@@ -311,7 +311,7 @@ struct IdFormHoldTests {
         var seen = 0
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("MaerTests"))
         where url.pathExtension == "swift" {
-            let code = try String(contentsOf: url, encoding: .utf8)
+            let code = try SourceTree.text(url)
             seen += code.components(separatedBy: "UserChoice" + "CloudSync(").count - 1
             let missing = Self.constructionsWithoutTheForm(in: code)
             if missing > 0 { offenders.append("\(url.lastPathComponent): \(missing)") }

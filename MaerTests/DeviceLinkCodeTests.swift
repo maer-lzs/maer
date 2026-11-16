@@ -150,7 +150,7 @@ struct DeviceLinkCodeTests {
     func theRecoveryKeyNeverTravelsThroughApple() throws {
         let door = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.lastPathComponent == "DeviceLinkCodeStore.swift" })
-        let text = try String(contentsOf: door, encoding: .utf8)
+        let text = try SourceTree.text(door)
         // The door writes with the default, so device-local. It
         // passes the travel parameter nowhere, not even with false:
         // if it stood there, it would be an adjusting screw, and an adjusting screw
@@ -166,7 +166,7 @@ struct DeviceLinkCodeTests {
         // nobody writes it elsewhere with other conditions.
         var holders: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let body = try String(contentsOf: file, encoding: .utf8)
+            let body = try SourceTree.text(file)
             if body.contains("deviceLinkCode") { holders.append(file.lastPathComponent) }
         }
         #expect(holders == ["DeviceLinkCodeStore.swift"], "Halter: \(holders.sorted())")
