@@ -123,18 +123,30 @@ APP_PREFIX=fm.maer.
 APP_ID=fm.maer.app
 APP_GROUP=group.fm.maer.app
 GROUP_META=.com.apple.mobile_container_manager.metadata.plist
-reset_app() {
-    local udid="$1" name="$2" id dir ids
-    $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
-    ids="$($SIMCTL listapps "$udid" 2>/dev/null | plutil -convert json -o - - 2>/dev/null | python3 -c "
+# The bundles of the app installed on a booted simulator.
+app_bundles() {
+    $SIMCTL listapps "$1" 2>/dev/null | plutil -convert json -o - - 2>/dev/null | python3 -c "
 import json, sys
 try: apps = json.load(sys.stdin)
 except ValueError: apps = {}
 for key in sorted(apps):
-    if key.startswith(sys.argv[1]): print(key)" "$APP_PREFIX")"
-    for id in $(printf '%s\n' "$APP_ID" $ids | sort -u); do
-        $SIMCTL uninstall "$udid" "$id" >/dev/null 2>&1 || stop "$id liess sich auf $name nicht entfernen" 2
+    if key.startswith(sys.argv[1]): print(key)" "$APP_PREFIX"
+}
+# An uninstall can answer 0 and leave the bundle (iOS 18.6 right after the
+# boot), so the list is asked again after each round.
+reset_app() {
+    local udid="$1" name="$2" id dir ids round
+    $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
+    ids="$(printf '%s\n' "$APP_ID" $(app_bundles "$udid") | sort -u)"
+    for round in 1 2 3; do
+        for id in $ids; do
+            $SIMCTL uninstall "$udid" "$id" >/dev/null 2>&1 || stop "$id liess sich auf $name nicht entfernen" 2
+        done
+        ids="$(app_bundles "$udid")"
+        [ -z "$ids" ] && break
+        sleep 1
     done
+    [ -z "$ids" ] || stop "auf $name bleibt installiert: $(echo $ids)" 2
     $SIMCTL privacy "$udid" reset all "$APP_ID" >/dev/null 2>&1 || stop "die Rechte auf $name liessen sich nicht zuruecksetzen" 2
     $SIMCTL keychain "$udid" reset >/dev/null 2>&1 || stop "der Schluesselbund auf $name liess sich nicht zuruecksetzen" 2
     $SIMCTL shutdown "$udid" >/dev/null 2>&1
