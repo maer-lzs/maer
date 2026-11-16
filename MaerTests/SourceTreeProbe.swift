@@ -98,6 +98,18 @@ nonisolated enum SourceTree {
     /// so a fence over a missing folder is red, never a pass over nothing;
     /// only the condition in the case's head (`.needsTheSources` and its
     /// neighbours) turns that into a skip.
+    /// The text of a file of the repository, read once per run of the
+    /// suite: the fences read the same sources hundreds of times. A file
+    /// outside the repository (a witness's own temporary file) is read
+    /// fresh every time, because it may change.
+    static func text(_ url: URL) throws -> String {
+        try String(contentsOf: url, encoding: .utf8)
+    }
+
+    /// How often `text` answered from what it had read before, for the
+    /// witness of the cache.
+    static var textHits: Int { 0 }
+
     static func files(under folder: URL, sourceLocation: SourceLocation = #_sourceLocation) -> [URL] {
         let found = (FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?
             .compactMap { $0 as? URL } ?? [])
@@ -113,6 +125,22 @@ nonisolated enum SourceTree {
 /// says nothing and returns each. Neither of these two reads the tree, so
 /// neither carries a condition; the count of walks reads the tests.
 struct SourceTreeWalkTests {
+    @Test("a source of the repository is read once per run, a file outside it every time")
+    func theSourcesAreReadOnce() throws {
+        let file = SourceTree.root.appendingPathComponent("Sources/MaerApp.swift")
+        let hits = SourceTree.textHits
+        let first = try SourceTree.text(file)
+        let second = try SourceTree.text(file)
+        #expect(first == second)
+        #expect(SourceTree.textHits > hits, "the second read of a source went to the disk")
+        let outside = FileManager.default.temporaryDirectory.appendingPathComponent("tree-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: outside) }
+        try "one".write(to: outside, atomically: true, encoding: .utf8)
+        #expect(try SourceTree.text(outside) == "one")
+        try "two".write(to: outside, atomically: true, encoding: .utf8)
+        #expect(try SourceTree.text(outside) == "two", "a file outside the repository came from the cache")
+    }
+
     @Test("a walk over a folder that does not exist reports an issue")
     func aWalkOverNothingSaysSo() {
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("no-tree-\(UUID().uuidString)")
