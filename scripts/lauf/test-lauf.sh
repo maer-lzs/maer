@@ -52,18 +52,30 @@ echo "end $(now) 0" >> "$log"
 exit 0
 EOF
 # simctl answers list with the run's own simulators and, while the file
-# booted-foreign exists, one foreign booted device; every call is logged.
+# booted-foreign exists, one foreign booted device; with the file moved, the
+# 18.6 simulator stands under another runtime. listapps names two bundles of
+# the app and one of the system; privacy and keychain fail while their file
+# exists. Every call is logged.
 cat > "$STUB/simctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/simctl.log"
 case "$*" in
     erase\ *) rm -rf "$LAUF_SIM_DEVICES/$2/data" ;;
+    listapps\ *)
+        printf '%s' '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>'
+        for id in fm.maer.app fm.maer.app.uitests.xctrunner com.apple.mobilesafari; do
+            printf '<key>%s</key><dict><key>CFBundleIdentifier</key><string>%s</string></dict>' "$id" "$id"
+        done
+        echo '</dict></plist>' ;;
+    privacy\ *) [ -f "$LAUF_STUB_DIR/privacy-fails" ] && exit 1 ;;
+    keychain\ *) [ -f "$LAUF_STUB_DIR/keychain-fails" ] && exit 1 ;;
     *"list devices"*)
+        r18=iOS-18-6; [ -f "$LAUF_STUB_DIR/moved" ] && r18=iOS-26-0
         foreign=""
         if [ -f "$LAUF_STUB_DIR/booted-foreign" ]; then
             foreign=',{"name":"Fremder Sim","udid":"FFFF0000-0000-0000-0000-000000000000","state":"Booted"}'
         fi
-        echo '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-27-0":[{"name":"Maer-Abschluss-27","udid":"AAAA2700-0000-0000-0000-000000000000","state":"Shutdown"},{"name":"Maer-Test-Bau","udid":"C1F0240C-E988-41D2-9081-4CFF0B8EA34B","state":"Shutdown"}'"$foreign"'],"com.apple.CoreSimulator.SimRuntime.iOS-18-6":[{"name":"Maer-Abschluss-18","udid":"BBBB1860-0000-0000-0000-000000000000","state":"Shutdown"}]}}'
+        echo '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-27-0":[{"name":"Maer-Abschluss-27","udid":"AAAA2700-0000-0000-0000-000000000000","state":"Shutdown"},{"name":"Maer-Test-Bau","udid":"C1F0240C-E988-41D2-9081-4CFF0B8EA34B","state":"Shutdown"}'"$foreign"'],"com.apple.CoreSimulator.SimRuntime.'"$r18"'":[{"name":"Maer-Abschluss-18","udid":"BBBB1860-0000-0000-0000-000000000000","state":"Shutdown"}]}}'
         ;;
 esac
 exit 0
@@ -87,7 +99,10 @@ export LAUF_SIM_DEVICES="$DEV/devices" LAUF_STILLES_GERAET=Witness_Silent_UID
 # The copied hooks read the list of names from the fence of the real tree.
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
-clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load"; }
+clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
+    "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails"; }
+# A simulator the script has not seen: its mark is gone, the next final run erases it.
+forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
 # The throwaway repository: a few sources, their tests, a fence, a document
 # suite, a measurement, documents and a project file, and the scripts of this
@@ -267,14 +282,14 @@ if [ $rc -ne 0 ] && [ ! -s "$STUB/xcodebuild.log" ] && echo "$out" | grep -q "$T
 # 16. Green writes the note at the head; red writes nothing, pushes nothing, moves nothing.
 git checkout -q -b scheibe
 change Sources/Models/PlaybackSkip.swift "// slice" "A change of the slice"
-clear_stub; touch "$STUB/red"
+clear_stub; forget_marks; touch "$STUB/red"
 before="$(git for-each-ref --format='%(refname) %(objectname)' | sort)"
 remote_before="$(git ls-remote origin | sort)"
 bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc=$?
 red_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
 after="$(git for-each-ref --format='%(refname) %(objectname)' | sort)"
 remote_after="$(git ls-remote origin | sort)"
-clear_stub
+clear_stub; forget_marks
 bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc2=$?
 green_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
 if [ $rc -ne 0 ] && [ -z "$red_note" ] && [ "$before" = "$after" ] && [ "$remote_before" = "$remote_after" ] \
@@ -445,7 +460,7 @@ if has "$out" "datei SoundCurveTests" && has "$out" "datei PlaybackSkipTests"; t
 
 # 33. Every simulator of a run sends its sound and microphone to the silent
 # device, and the final run writes that after the erase, which clears it.
-clear_stub; rm -rf "$LAUF_SIM_DEVICES"
+clear_stub; rm -rf "$LAUF_SIM_DEVICES"; forget_marks
 bash scripts/lauf.sh abschluss >/dev/null 2>&1
 quiet=0
 for udid in AAAA2700-0000-0000-0000-000000000000 BBBB1860-0000-0000-0000-000000000000; do
@@ -585,6 +600,91 @@ if [ $rc_full -ne 0 ] && [ $full_ran = 0 ] && echo "$out_full" | grep -q "Last 3
 else
     fail "40 full and final run wait for a quiet machine, the load in the note" "full rc=$rc_full ran=$full_ran / final rc=$rc_final touched=$final_touched note=$final_note / wait rc=$rc_wait note=$note / sel rc=$rc_sel"
 fi
+
+# The final run resets the app instead of erasing the simulator.
+S27=AAAA2700-0000-0000-0000-000000000000; S18=BBBB1860-0000-0000-0000-000000000000
+group_dir() { echo "$LAUF_SIM_DEVICES/$1/data/Containers/Shared/AppGroup/$2"; }
+make_group() {
+    local dir; dir="$(group_dir "$1" "$2")"; mkdir -p "$dir/Library/Preferences"
+    plutil -create xml1 "$dir/.com.apple.mobile_container_manager.metadata.plist"
+    plutil -replace MCMMetadataIdentifier -string "$3" "$dir/.com.apple.mobile_container_manager.metadata.plist"
+    echo data > "$dir/Library/Preferences/$3.plist"; echo data > "$dir/shared.json"
+}
+in_order() { python3 -c "
+import sys
+log = open(sys.argv[1]).read().splitlines()
+pos = 0
+for want in sys.argv[2:]:
+    while pos < len(log) and want not in log[pos]: pos += 1
+    if pos == len(log): sys.exit(1)
+    pos += 1" "$@"; }
+
+# 41. A simulator the script knows: no erase; uninstall, privacy reset and
+# keychain reset in that order, then silent, then the tests; on 27 and on 18.6.
+clear_stub; forget_marks
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+clear_stub
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc=$?
+order=1
+for u in $S27 $S18; do
+    in_order "$STUB/simctl.log" "uninstall $u fm.maer.app" "privacy $u reset all fm.maer.app" "keychain $u reset" || order=0
+done
+if [ $rc = 0 ] && ! grep -q "^erase" "$STUB/simctl.log" && [ $order = 1 ] \
+    && [ "$(grep -c '^silent yes' "$STUB/xcodebuild.log")" = 2 ]; then
+    ok "41 a known simulator is reset, not erased"; else fail "41 a known simulator is reset, not erased" "rc=$rc order=$order $(cat "$STUB/simctl.log")"; fi
+
+# 42. Erased only when the mark is missing or names another runtime; the mark
+# is written after the erase, and the sound is silent after it.
+clear_stub; forget_marks
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+new_erased="$(grep -c '^erase' "$STUB/simctl.log")"
+marks="$(ls "$DEV"/bau/*/stand 2>/dev/null | wc -l | tr -d ' ')"
+clear_stub; touch "$STUB/moved"
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+moved_27="$(grep -c "^erase $S27" "$STUB/simctl.log")"; moved_18="$(grep -c "^erase $S18" "$STUB/simctl.log")"
+silent="$(grep -c '^silent yes' "$STUB/xcodebuild.log")"
+if [ "$new_erased" = 2 ] && [ "$marks" = 2 ] && [ "$moved_27" = 0 ] && [ "$moved_18" = 1 ] && [ "$silent" = 2 ]; then
+    ok "42 erased only when new or moved to another runtime"; else fail "42 erased only when new or moved to another runtime" "new=$new_erased marks=$marks moved27=$moved_27 moved18=$moved_18 silent=$silent"; fi
+
+# 43. The container of the app group is emptied, its metadata stays, and the
+# container of another group stays as it is.
+clear_stub
+make_group $S27 G1 group.fm.maer.app; make_group $S27 G2 group.other.app
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+mine="$(group_dir $S27 G1)"; other="$(group_dir $S27 G2)"
+if [ -f "$mine/.com.apple.mobile_container_manager.metadata.plist" ] \
+    && [ -z "$(find "$mine" -mindepth 1 ! -name .com.apple.mobile_container_manager.metadata.plist | head -1)" ] \
+    && [ -f "$other/shared.json" ] && [ -f "$other/Library/Preferences/group.other.app.plist" ]; then
+    ok "43 the app group is emptied, another group stays"; else fail "43 the app group is emptied, another group stays" "$(find "$mine" "$other" -type f)"; fi
+
+# 44. A failing reset stops the run: no tests, no note.
+fails=0
+for f in privacy-fails keychain-fails; do
+    clear_stub; touch "$STUB/$f"; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+    bash scripts/lauf.sh abschluss >/dev/null 2>&1 && fails=$((fails + 1))
+    [ -s "$STUB/xcodebuild.log" ] && fails=$((fails + 1))
+    git notes --ref=lauf show HEAD >/dev/null 2>&1 && fails=$((fails + 1))
+done
+if [ $fails = 0 ]; then ok "44 a failing reset stops the run"; else fail "44 a failing reset stops the run" "fails=$fails"; fi
+
+# 45. The selection and the full run neither uninstall nor erase nor reset.
+clear_stub
+bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+bash scripts/lauf.sh voll >/dev/null 2>&1
+if ! grep -qE "^(uninstall|erase|keychain|privacy)" "$STUB/simctl.log"; then
+    ok "45 selection and full run reset nothing"; else fail "45 selection and full run reset nothing" "$(cat "$STUB/simctl.log")"; fi
+
+# 46. Every bundle of the app goes, the runner of the UI tests as well; a
+# bundle of the system stays.
+clear_stub
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+gone=1
+for u in $S27 $S18; do
+    grep -qx "uninstall $u fm.maer.app" "$STUB/simctl.log" || gone=0
+    grep -qx "uninstall $u fm.maer.app.uitests.xctrunner" "$STUB/simctl.log" || gone=0
+done
+if [ $gone = 1 ] && ! grep -q "uninstall .* com.apple" "$STUB/simctl.log"; then
+    ok "46 every bundle of the app goes, none of the system"; else fail "46 every bundle of the app goes, none of the system" "$(grep uninstall "$STUB/simctl.log")"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
