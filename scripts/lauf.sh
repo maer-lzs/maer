@@ -8,7 +8,8 @@
 #   auswahl [--basis REV] [--nur-zeigen]  the selection after the change
 #   voll [--nur-zeigen]                   the whole suite on iOS 27
 #   abschluss                             the whole suite on 27, then 18.6,
-#                                         on throwaway simulators; green
+#                                         on own simulators, the app reset
+#                                         (erased only when new); green
 #                                         writes the note at the head
 #   push <zweig|dev|nachzug|doku>         checks the note and pushes
 # Every run: at least LAUF_MIN_GB free (15), waits while a foreign simulator
@@ -102,6 +103,47 @@ wait_for_quiet() {
     done
 }
 LOAD_START=""
+
+# The runtime of a simulator, as its key in the list of devices.
+sim_runtime() {
+    sim_json | python3 -c "
+import json, sys
+for runtime, devices in json.load(sys.stdin)['devices'].items():
+    if any(d['udid'] == sys.argv[1] for d in devices):
+        print(runtime); sys.exit(0)
+sys.exit(1)" "$1"
+}
+
+# The final run resets the app instead of erasing the simulator: the first
+# boot after an erase drives the load of the Mac far over a hundred for some
+# minutes. Every bundle of the app goes (the runner of the UI tests as well),
+# its permissions and the keychain are reset, and the container of the app
+# group is emptied while the simulator is shut down. Any failing step stops.
+APP_PREFIX=fm.maer.
+APP_ID=fm.maer.app
+APP_GROUP=group.fm.maer.app
+GROUP_META=.com.apple.mobile_container_manager.metadata.plist
+reset_app() {
+    local udid="$1" name="$2" id dir ids
+    $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
+    ids="$($SIMCTL listapps "$udid" 2>/dev/null | plutil -convert json -o - - 2>/dev/null | python3 -c "
+import json, sys
+try: apps = json.load(sys.stdin)
+except ValueError: apps = {}
+for key in sorted(apps):
+    if key.startswith(sys.argv[1]): print(key)" "$APP_PREFIX")"
+    for id in $(printf '%s\n' "$APP_ID" $ids | sort -u); do
+        $SIMCTL uninstall "$udid" "$id" >/dev/null 2>&1 || stop "$id liess sich auf $name nicht entfernen" 2
+    done
+    $SIMCTL privacy "$udid" reset all "$APP_ID" >/dev/null 2>&1 || stop "die Rechte auf $name liessen sich nicht zuruecksetzen" 2
+    $SIMCTL keychain "$udid" reset >/dev/null 2>&1 || stop "der Schluesselbund auf $name liess sich nicht zuruecksetzen" 2
+    $SIMCTL shutdown "$udid" >/dev/null 2>&1
+    for dir in "$SIM_DEVICES/$udid/data/Containers/Shared/AppGroup"/*/; do
+        [ "$(plutil -extract MCMMetadataIdentifier raw "$dir$GROUP_META" 2>/dev/null)" = "$APP_GROUP" ] || continue
+        find "$dir" -mindepth 1 -maxdepth 1 ! -name "$GROUP_META" -exec rm -rf {} + \
+            || stop "die App-Gruppe auf $name liess sich nicht leeren" 2
+    done
+}
 
 # Sound and microphone of a shut down simulator go to the silent device, so
 # no run plays through the Mac. An erase clears this; it is written after.
@@ -264,8 +306,16 @@ abschluss)
         runtime="${pair%%:*}"; name="${pair#*:}"
         udid="$(sim_id "$name")" || stop "kein Simulator $name; einmal anlegen mit simctl create" 2
         wait_for_foreign "$udid"
-        $SIMCTL shutdown "$udid" >/dev/null 2>&1
-        $SIMCTL erase "$udid" >/dev/null 2>&1 || stop "$name liess sich nicht loeschen" 2
+        mark="$BAU_ROOT/${udid:0:8}/stand"
+        want="udid=$udid laufzeit=$(sim_runtime "$udid")"
+        if [ "$(cat "$mark" 2>/dev/null)" = "$want" ]; then
+            reset_app "$udid" "$name"
+        else
+            say "$name ist neu oder hat eine andere Laufzeit: ganz geloescht"
+            $SIMCTL shutdown "$udid" >/dev/null 2>&1
+            $SIMCTL erase "$udid" >/dev/null 2>&1 || stop "$name liess sich nicht loeschen" 2
+            mkdir -p "${mark%/*}" && echo "$want" > "$mark"
+        fi
         silence "$udid"
         say "voller Lauf auf $runtime ($name)"
         run_tests "$udid" || stop "rot auf $runtime: kein Vermerk" 1
