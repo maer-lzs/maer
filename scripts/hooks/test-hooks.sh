@@ -101,6 +101,16 @@ fi
 expect refuse "message names the branch push in German" docs/e.md "one" "Witnesses refused by push zweig"
 expect refuse "message names the repeat in German"      docs/e.md "two" "wiederhole runs one case many times"
 
+expect refuse "trailing comment in Swift is German" Sources/H.swift 'let a = 1 // Die Zeile wird nicht mehr gezeigt' "A constant in the source"
+expect refuse "Python docstring on one line is German" tools/a.py '"""Die Zeile wird nicht mehr gezeigt."""' "A tool in Python"
+expect refuse "Python docstring over lines is German" tools/b.py $'def f():\n    """Reads the file.\n\n    Die Zeile wird nicht mehr gezeigt.\n    """' "A tool in Python"
+expect refuse "trailing comment in Python is German" tools/c.py 'x = 1  # Die Zeile wird nicht mehr gezeigt' "A tool in Python"
+expect refuse "trailing comment in bash is German" tools/d.sh 'x=1  # Die Zeile wird nicht mehr gezeigt' "A tool in bash"
+expect pass   "an address in a Swift string is no comment" Sources/I.swift 'let u = "https://example.org/die/zeile/wird/nicht/mehr/gezeigt"' "A constant in the source"
+expect pass   "a hash sign in a bash string is no comment" tools/e.sh 'echo "# Die Zeile wird nicht mehr gezeigt"' "A tool in bash"
+expect pass   "technical terms are no channel codes" docs/f.md "one" "Reads UTF-8 names, HTTP-2 and SHA-256 sums with AES-GCM"
+expect refuse "a channel code stays refused beside them" docs/f.md "two" "Reads UTF-8 names for K-EQ-13"
+
 # The hooks read the index, never the working tree: a file changed after it
 # was staged does not change what the hook sees.
 printf 'clean\n' > Sources/F.swift && git add Sources/F.swift

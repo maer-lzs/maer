@@ -1024,5 +1024,30 @@ out="$(bash scripts/lauf.sh release v9.9 99 2>&1)"; rc=$?
 if [ $rc -ne 0 ] && echo "$out" | grep -q "_testFeedFetcher" && [ -z "$(remote_ref refs/tags/v9.9)" ]; then
     ok "72 a test hook only in the text of the program stops the release"; else fail "72 a test hook only in the text of the program stops the release" "rc=$rc $out"; fi
 
+# 73. A seam named testXxx, without the underscore, is a test hook as well:
+# release and the final run stop on it.
+make_archive 9.10 910 "$REL8" '0000 T $s4Maer14FileDownloaderC12testSetClockyyF'
+out="$(bash scripts/lauf.sh release v9.10 910 2>&1)"; rc=$?
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+echo '0000 T $s4Maer14FileDownloaderC10testPassesSivg' > "$STUB/release-symbols"
+out2="$(bash scripts/lauf.sh abschluss 2>&1)"; rc2=$?
+noted="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+clear_stub
+if [ $rc -ne 0 ] && echo "$out" | grep -q "testSetClock" && [ -z "$(remote_ref refs/tags/v9.10)" ] \
+    && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "testPasses" && [ -z "$noted" ]; then
+    ok "73 a seam without the underscore stops release and final run"; else fail "73 a seam without the underscore stops release and final run" "rc=$rc rc2=$rc2 $out / $out2"; fi
+
+# 74. A name of the product that begins with test is on the list with its
+# reason and does not stop; an entry of the list without a reason does.
+make_archive 9.11 911 "$REL8" '0000 T $s4Maer9APIClientC14testConnectionyyYaKF'
+out="$(bash scripts/lauf.sh release v9.11 911 2>&1)"; rc=$?
+list="scripts/lauf/release-namen.txt"
+kept="$(cat "$list" 2>/dev/null)"
+printf 'testConnection\n' > "$list"
+out2="$(bash scripts/lauf.sh vor-dem-skript HEAD 2>&1; bash scripts/lauf.sh release v9.12 912 --sha "$REL8" 2>&1)"; rc2=$?
+printf '%s\n' "$kept" > "$list"
+if [ $rc = 0 ] && [ -n "$(remote_ref refs/tags/v9.11)" ] && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "ohne Grund"; then
+    ok "74 a product name on the list passes, an entry without a reason stops"; else fail "74 a product name on the list passes, an entry without a reason stops" "rc=$rc rc2=$rc2 $out / $out2"; fi
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
