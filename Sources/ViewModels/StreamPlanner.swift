@@ -135,10 +135,6 @@ final class StreamPlanner {
         }
     }
 
-    /// Ends the asking ahead: an ask waiting for its turn asks nothing, an
-    /// ask on its way keeps nothing, and no plan lands after it. The plans
-    /// held stay with this planner, and the next title's planner starts
-    /// without them.
     #if DEBUG
     /// For witnesses: returns once every plan asked ahead has landed (its
     /// `landed` ran) or ended, and every ask on its way has ended, so a
@@ -151,6 +147,10 @@ final class StreamPlanner {
     }
     #endif
 
+    /// Ends the asking ahead: an ask waiting for its turn asks nothing, an
+    /// ask on its way keeps nothing, and no plan lands after it. The plans
+    /// held stay with this planner, and the next title's planner starts
+    /// without them.
     func stop() {
         stopped = true
         for task in ahead.values { task.cancel() }

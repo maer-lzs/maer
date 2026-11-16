@@ -4,7 +4,6 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
-import os
 import OSLog
 import Synchronization
 
@@ -297,7 +296,7 @@ nonisolated enum ServerHeaders {
         get { endAskLimitOfWitness.withLock { $0 } }
         set { endAskLimitOfWitness.withLock { $0 = newValue } }
     }
-    private nonisolated static let endAskLimitOfWitness = OSAllocatedUnfairLock<TimeInterval?>(initialState: nil)
+    private nonisolated static let endAskLimitOfWitness = Mutex<TimeInterval?>(nil)
     #endif
 
     /// The address at the end of a request's redirects, or nil when it

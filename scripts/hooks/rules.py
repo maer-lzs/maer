@@ -58,6 +58,9 @@ GERMAN_WORDS = {
     "hier", "dort", "immer", "der", "das", "zeile", "taste", "gezeigt", "steht", "geht",
 }
 WORD = re.compile(r"[A-Za-zÄÖÜäöüß]+")
+# German names of commands of the run script that slipped through as single
+# words in English messages; one of them alone makes the message German.
+GERMAN_COMMANDS = {"zweig", "wiederhole"}
 UMLAUT = re.compile(r"[ÄÖÜäöüß]")
 
 # The licence header every source file opens with: a dash and a name stand in
@@ -119,7 +122,8 @@ def check_message(text):
         found.append("the message cites a decision")
     if DASH.search(body):
         found.append("the message carries a dash")
-    if any(is_german(line, allowed) for line in body.split("\n")):
+    command_words = {w.lower() for w in WORD.findall(QUOTED.sub(" ", body))} & GERMAN_COMMANDS
+    if command_words or any(is_german(line, allowed) for line in body.split("\n")):
         found.append("the message is not English")
     return found
 
@@ -157,7 +161,9 @@ def check_staged():
     top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
     real = os.path.realpath(top) + "/"
     if real.startswith(TEMP_ROOTS) or "/scratchpad/" in real:
-        if not os.path.exists(os.path.join(top, ".wegwerf")):
+        # The mark counts in the index, as everything the hook reads.
+        marked = subprocess.run(["git", "cat-file", "-e", ":.wegwerf"], capture_output=True).returncode == 0
+        if not marked:
             found.append(f"the working tree lies in a temporary path without .wegwerf: {top}")
     files = set()
     for path, line in added_lines():

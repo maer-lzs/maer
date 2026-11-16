@@ -53,6 +53,7 @@ SILENT_DEVICE="${LAUF_STILLES_GERAET:-BlackHole2ch_UID}"
 ARCHIVE_ROOT="${LAUF_ARCHIVE:-$HOME/Library/Developer/Xcode/Archives}"
 NM="${LAUF_NM:-xcrun nm}"
 DEMANGLE="${LAUF_DEMANGLE:-xcrun swift-demangle --simplified}"
+STRINGS="${LAUF_STRINGS:-strings}"
 NOTES=refs/notes/lauf
 AUSWAHL="python3 -I $ROOT/scripts/lauf/auswahl.py"
 
@@ -215,9 +216,17 @@ lower_simulator() {
 STORE=""
 CHILD=""
 LOWER=""
+# Ends the run's xcodebuild: TERM, ten seconds to end its test session,
+# then KILL; xcodebuild can go on after TERM.
+end_child() {
+    local i
+    kill -TERM "$1" 2>/dev/null || return 0
+    for i in $(seq 1 20); do kill -0 "$1" 2>/dev/null || return 0; sleep 0.5; done
+    kill -KILL "$1" 2>/dev/null
+}
 cleanup() {
     [ -n "$LOWER" ] && kill "$LOWER" 2>/dev/null
-    [ -n "$CHILD" ] && kill "$CHILD" 2>/dev/null
+    [ -n "$CHILD" ] && end_child "$CHILD"
     [ -n "$STORE" ] && rm -rf -- "$STORE"
     STORE=""; CHILD=""; LOWER=""
 }
@@ -257,11 +266,12 @@ touches_tests() {
     git diff-tree --no-commit-id --name-only -r --root "$1" | grep -qE '^(MaerTests|MaerUITests)/'
 }
 
-# The names of test hooks (_test...) among the symbols of a program; a
-# program that is not there fails. A release program carries none.
+# The names of test hooks (_test...) in a program, among its symbols and in
+# its text: a stripped program, as in an archive, keeps the names of its
+# fields as text only. A program that is not there fails.
 test_hooks_in() {
     [ -f "$1" ] || { echo "kein Programm: $1"; return 2; }
-    $NM -a "$1" 2>/dev/null | $DEMANGLE | grep -E '(^|[^A-Za-z])_test[A-Z]' | head -5
+    { $NM -a "$1" 2>/dev/null | $DEMANGLE; $STRINGS -a "$1" 2>/dev/null; } | grep -E '(^|[^A-Za-z])_test[A-Z]' | sort -u | head -5
     return 0
 }
 
@@ -294,6 +304,7 @@ release_symbols() {
 r8_order() {
     local branch="$1" head="$2" c unproven="" proven=""
     case "$branch" in form-*|nachzug-*|sprache-*) return 0;; esac
+    git rev-parse -q --verify origin/dev >/dev/null || { echo "origin/dev fehlt hier: die Reihenfolge ist nicht gemessen"; return 1; }
     for c in $(git rev-list --reverse "$head" --not origin/dev); do
         if git notes --ref=lauf show "$c" 2>/dev/null | grep "art=rot" | grep -q "baum=$(git rev-parse "$c^{tree}")"; then
             proven=1
@@ -462,25 +473,28 @@ push)
     [ -n "$branch" ] || stop "kein Zweig ausgecheckt" 2
     clean_tree || stop "der Baum ist nicht sauber"
     git fetch -q origin 2>/dev/null
+    # The commit checked is the commit pushed: by its sha, not by a name
+    # that a commit during the push could move.
+    sha="$(git rev-parse HEAD)"
     case "$target" in
         zweig)
             case "$branch" in dev|main) stop "push zweig nicht auf $branch";; esac
-            why="$(note_ok HEAD "abschluss" "27,18.6")" || stop "push zweig verlangt den Vermerk eines vollen Laufs auf 27 und 18.6 am Kopf: $why"
-            why="$(r8_order "$branch" HEAD)" || stop "R8: $why"
+            why="$(note_ok "$sha" "abschluss" "27,18.6")" || stop "push zweig verlangt den Vermerk eines vollen Laufs auf 27 und 18.6 am Kopf: $why"
+            why="$(r8_order "$branch" "$sha")" || stop "R8: $why"
             remote="refs/heads/$branch";;
         dev)
-            why="$(note_ok HEAD "abschluss" "27,18.6")" || stop "push dev verlangt den Vermerk am Commit: $why"
-            git merge-base --is-ancestor origin/dev HEAD || stop "push dev ist kein Vorspulen von origin/dev"
+            why="$(note_ok "$sha" "abschluss" "27,18.6")" || stop "push dev verlangt den Vermerk am Commit: $why"
+            git merge-base --is-ancestor origin/dev "$sha" || stop "push dev ist kein Vorspulen von origin/dev"
             remote="refs/heads/dev";;
         nachzug)
-            why="$(note_ok HEAD "auswahl doku voll abschluss")" || stop "push nachzug verlangt den Vermerk der Auswahl: $why"
+            why="$(note_ok "$sha" "auswahl doku voll abschluss")" || stop "push nachzug verlangt den Vermerk der Auswahl: $why"
             remote="refs/heads/$branch";;
         doku)
-            why="$(note_ok HEAD "doku auswahl voll abschluss")" || stop "push doku verlangt den Vermerk der Dokument-Suiten: $why"
+            why="$(note_ok "$sha" "doku auswahl voll abschluss")" || stop "push doku verlangt den Vermerk der Dokument-Suiten: $why"
             remote="refs/heads/$branch";;
         *) stop "push zweig | dev | nachzug | doku" 2;;
     esac
-    LAUF_PUSH=1 git push origin "HEAD:$remote" "$NOTES:$NOTES" || stop "der Push wurde abgelehnt"
+    LAUF_PUSH=1 git push origin "$sha:$remote" "$NOTES:$NOTES" || stop "der Push wurde abgelehnt"
     ;;
 r8)
     # For the pre-push hook: the order of R8 on a branch.

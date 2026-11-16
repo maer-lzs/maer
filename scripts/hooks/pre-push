@@ -27,6 +27,7 @@ refuse() { echo "pre-push: $*" >&2; exit 1; }
 
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ -n "${local_ref:-}" ] || continue
+    [ -n "${LAUF_HOOK_LOG:-}" ] && echo "$local_ref $local_sha $remote_ref" >> "$LAUF_HOOK_LOG"
     [ "$local_sha" = "$zero" ] && refuse "kein Loeschen: $remote_ref"
     noted=""
     case "$remote_ref" in
@@ -63,5 +64,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         rm -f "$message"
         [ $rc -eq 0 ] || refuse "Commit $(git rev-parse --short "$commit") bricht die Regeln der Meldung: $why"
     done
+    # The ref still points where git measured it: a commit during the push
+    # moves the ref, and the server would get another commit than this one.
+    now="$(git rev-parse -q --verify "$local_ref" 2>/dev/null)"
+    [ -z "$now" ] || [ "$now" = "$local_sha" ] || refuse "$local_ref ist gewandert: geprueft $(git rev-parse --short "$local_sha"), jetzt $(git rev-parse --short "$now")"
 done
 exit 0
