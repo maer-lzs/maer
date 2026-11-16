@@ -56,8 +56,8 @@ struct ABSSignInSwitchTests {
     /// the search: forgetting a server there waited for the system, far
     /// over a minute under load.
     @Test("within a stand the search the sign-in forgets is the recorder of the stand")
+    @available(iOS 27, *)
     func aStandHoldsTheSearch() async {
-        guard #available(iOS 27, *) else { return }
         let stand = Stand()
         defer { stand.restore() }
         await SpotlightIndex.forget()
