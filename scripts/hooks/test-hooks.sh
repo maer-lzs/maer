@@ -197,6 +197,33 @@ expect pass   "a here string opens no heredoc" tools/o.sh $'cat <<< word\n# A co
 expect pass   "a shift in arithmetic opens no heredoc" tools/p.sh $'x=$(( a << b ))\n# A comment after it' "A tool in bash"
 expect pass   "a string inside a Kotlin template is a string" app/T.kt 'val t = "${ "Die Zeile//wird nicht mehr gezeigt" }"' "A constant in Kotlin"
 
+# A rename is read by its added lines only: a file with an old German comment
+# moves through, a new German line in the moved file is refused, and a change
+# of type from a link to a file is read as new content.
+judge() {
+    local want="$1" name="$2"
+    if git commit -q -m "$3" >/dev/null 2>"$WORK/err"; then got=pass; else got=refuse; fi
+    if [ "$got" = "$want" ]; then echo "ok   $want  $name"; else
+        echo "FAIL want $want, got $got: $name"; sed 's/^/     /' "$WORK/err" | head -3; failures=$((failures + 1)); fi
+    git reset -q --hard HEAD
+}
+# The hook finds renames itself, whatever the configuration of the machine.
+git config diff.renames false
+mkdir -p Sources/alt
+printf 'let a = 1\n// Die Zeile wird nicht mehr gezeigt\nlet b = 2\n' > Sources/alt/Old.swift
+git add Sources/alt/Old.swift && git commit -q --no-verify -m "A source with an old comment"
+git mv Sources/alt/Old.swift Sources/alt/Moved.swift
+judge pass "a pure rename of a file with an old German comment" "Move a source"
+printf 'let c = 3\n// Die Zeile wird nicht mehr gezeigt\nlet d = 4\n' > Sources/alt/Second.swift
+git add Sources/alt/Second.swift && git commit -q --no-verify -m "A second source with an old comment"
+git mv Sources/alt/Second.swift Sources/alt/Again.swift
+printf '// Die Zeile wird nicht mehr gezeigt, wieder\n' >> Sources/alt/Again.swift && git add Sources/alt/Again.swift
+judge refuse "a rename with a new German line" "Move a source and add a line"
+git config --unset diff.renames
+ln -s Old.swift Sources/alt/Link.swift && git add Sources/alt/Link.swift && git commit -q --no-verify -m "A link to a source"
+rm Sources/alt/Link.swift && printf '// Die Zeile wird nicht mehr gezeigt\n' > Sources/alt/Link.swift && git add Sources/alt/Link.swift
+judge refuse "a change of type from a link to a file is read" "Replace a link with a source"
+
 # The hooks leave no bytecode beside them: the folder of the hooks holds no
 # cache after the commits above.
 cache="$(find "$HOOKS" -name __pycache__ 2>/dev/null | head -1)"
