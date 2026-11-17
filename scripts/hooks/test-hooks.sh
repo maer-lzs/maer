@@ -136,6 +136,9 @@ expect refuse "a German line inside a nested block comment" Sources/L.swift $'/*
 expect refuse "an open quote before a hash sign leaves the shell file unread" tools/f.sh "echo don't # Die Zeile wird nicht mehr gezeigt" "A tool in bash"
 expect pass   "a hash sign inside a heredoc is its content" tools/g.sh $'cat <<EOF\n# Die Zeile wird nicht mehr gezeigt\nEOF' "A tool in bash"
 expect pass   "a length of a variable is no comment" tools/h.sh 'n=${#list}' "A tool in bash"
+expect pass   "an extended Swift regex with quotes is a literal" Sources/N.swift 'let r = #/static let (\w+) = "([^"]+)"/#' "A pattern in the source"
+expect pass   "a bare Swift regex with a quote is a literal" Sources/O.swift 'let r = /label: "([^"]+)"/' "A pattern in the source"
+expect refuse "a division before a German comment is code" Sources/P.swift 'let q = a / b // Die Zeile wird nicht mehr gezeigt' "A constant in the source"
 expect refuse "a Python file that does not parse is not read" tools/i.py 'def f(:' "A tool in Python"
 expect refuse "a Swift file with an open string is not read" Sources/M.swift 'let s = "open' "A text in the source"
 
