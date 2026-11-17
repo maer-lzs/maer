@@ -452,8 +452,54 @@ final class PlayerCoordinator: ObservableObject {
         return true
     }
 
+    /// A chapter entry: the book opens, the entry leaves both lists, playback
+    /// starts in the chapter (`ChapterEntryRules.startPoint`) and runs to the
+    /// chapter's end, where the next entry starts and the book stays unheard.
+    /// The book's one position moves with it, through the backward guard. An
+    /// open that does not stand, or a book without that chapter any more,
+    /// leaves the entry where it was and plays nothing.
+    private func openChapter(entryId: String, bookId: String, startMs: Int,
+                             autoplay: Bool, preservesContext: Bool, origin: OpenOrigin) async {
+        guard let book = await AppSession.shared.resolveItem(forId: bookId) else {
+            Logger.player.notice("CHAPTER entry not opened, its book does not resolve: entry=\(entryId, privacy: .private(mask: .hash))")
+            return
+        }
+        await open(item: book, autoplay: false, preservesContext: preservesContext, origin: origin)
+        guard Self.jumpStands(opened: bookId, active: activeItem?.id, loaded: viewModel?.item?.id),
+              let model = viewModel else {
+            Logger.player.notice("CHAPTER entry not opened, the book does not stand: entry=\(entryId, privacy: .private(mask: .hash))")
+            return
+        }
+        guard let chapter = ChapterEntryRules.chapter(startMs: startMs, in: model.chapters) else {
+            Logger.player.notice("CHAPTER entry names no chapter of the book, it stays: entry=\(entryId, privacy: .private(mask: .hash)) chapters=\(model.chapters.count)")
+            return
+        }
+        leaveBothLists(entryId)
+        await model.startChapterEntry(chapter)
+        model.watchChapterRange(chapter) { [weak self, weak model] in
+            guard let self, let model, model === self.viewModel else { return }
+            self.chapterRangeEnded(entryId, model: model)
+        }
+        if autoplay { await model.playWithServerCheck() }
+    }
+
+    /// The end of a chapter entry's range: the book pauses at the chapter's
+    /// end, which writes its position like any pause, and what follows in
+    /// Up Next starts, as at the end of a title. The book is not heard.
+    private func chapterRangeEnded(_ entryId: String, model: PlayerViewModel) {
+        Logger.player.notice("CHAPTER entry ends at the chapter's end, the next entry starts")
+        if model.isPlaying { model.pause(caller: "chapter entry ends") }
+        advanceAfterFinish(finishedItemId: entryId)
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
+        // A chapter entry of Up Next opens its book at the chapter.
+        if let entry = ItemNamespace.chapterEntry(item.id) {
+            await openChapter(entryId: item.id, bookId: entry.bookId, startMs: entry.startMs,
+                              autoplay: autoplay, preservesContext: preservesContext, origin: origin)
+            return
+        }
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`
         // (pure, tested): the same title already on its way answers nil.
         guard let generation = openGate.begin(itemId: item.id, restart: restart, autoplay: autoplay) else { return }
@@ -461,6 +507,8 @@ final class PlayerCoordinator: ObservableObject {
         // A restart must reload (start at 0) even if it's the active item. Don't
         // take the "already open, just resume" shortcut.
         if !restart, activeItem?.id == item.id, viewModel != nil {
+            // The book opened as a book: a chapter's range no longer holds it.
+            viewModel?.endChapterEntry()
             takeOver(item.id, preservesContext: preservesContext)
             if autoplay { await viewModel?.playWithServerCheck() }
             return
@@ -880,7 +928,7 @@ final class PlayerCoordinator: ObservableObject {
                 memo[item.id] = item
                 return item.id
             },
-            seriesEnabled: AppStorageKeys.autoPlayNextInSeriesValue,
+            seriesEnabled: ChapterEntryRules.seriesMayFollow(finishedId, enabled: AppStorageKeys.autoPlayNextInSeriesValue),
             seriesNext: { [weak self] id in
                 guard let item = self?.nextInSeriesProvider?(id) else { return nil }
                 memo[item.id] = item
@@ -912,7 +960,12 @@ final class PlayerCoordinator: ObservableObject {
                 // Resolution on demand: a catalogue id and a music server song
                 // are self-describing (`SyncCarried.resolvesOnDemand`), the
                 // session cache is only a shortcut; `open` fetches the detail.
-                { session.playableItem(forId: $0) != nil },
+                // A chapter entry resolves through its book and its chapter.
+                { id in
+                    let book = session.playableItem(forId: ItemNamespace.bookOrSelf(id))
+                    return book != nil
+                        && ChapterEntryRules.resolves(id, bookChapters: book.map { $0.media?.chapters ?? [] })
+                },
                 { session.playableItem(forId: $0) })
     }
 

@@ -13785,6 +13785,16 @@
         }
       }
     },
+    "Unknown Chapter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbekanntes Kapitel"
+          }
+        }
+      }
+    },
     "Unknown on this device: follow the show so the routine finds it" : {
       "localizations" : {
         "de" : {

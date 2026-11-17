@@ -655,6 +655,8 @@ final class DownloadManager {
     /// imported local file is available offline and was never downloaded.
     /// For the other question ask `isDeletableDownload`.
     func isDownloaded(itemId: String) -> Bool {
+        // A chapter entry lies here when its book does.
+        if let entry = ItemNamespace.chapterEntry(itemId) { return isDownloaded(itemId: entry.bookId) }
         // Offline available is what LIES here: an own file, or a completed
         // download. The rule used to read "cannot be downloaded, therefore
         // already here". Which is true for local files and false for every

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+**Single chapters in Up Next.** In the chapter list of an audiobook, a
+long press on a chapter puts it next or last in Up Next. It plays from
+the start of the chapter, or from where you are when you are inside it,
+and stops at its end; then whatever follows in Up Next plays, so a book's
+chapters and podcast episodes can take turns. The book keeps its one
+position, and the end of a chapter never marks the book as heard or
+starts the next book of the series. If the server's chapters change so
+that the chapter no longer begins where it did, the entry says Unknown
+Chapter and is passed over instead of playing another chapter. A chapter
+before the position your server holds asks before it moves that position
+back. Podcast episodes do not offer their chapters.
+
 ## v3.8 (Build 66)
 
 **A tidier player.** Under the playback buttons there are now four:

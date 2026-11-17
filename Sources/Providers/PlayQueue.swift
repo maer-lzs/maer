@@ -124,8 +124,9 @@ final class PlayQueue: ObservableObject {
 
     /// Text-only rss episodes never enter the queue.
     /// Even if some future call site forgets its own gate.
+    /// A chapter entry plays as its book does.
     private func isQueueable(_ id: String) -> Bool {
-        isPlayable(id)
+        isPlayable(ItemNamespace.bookOrSelf(id))
     }
 
     func playNext(_ id: String) {
@@ -177,17 +178,19 @@ final class PlayQueue: ObservableObject {
     }
 
     /// Invariant "heard = flies out": an item marked played (manually, on
-    /// playback end, or on an auto-continue jump) leaves the queue. Same effect
-    /// as `remove`, named for intent at the mark-played call sites.
-    func markedPlayed(_ id: String) { remove(id) }
+    /// playback end, or on an auto-continue jump) leaves the queue, and a book
+    /// heard to its end takes its chapter entries along.
+    func markedPlayed(_ id: String) { markedPlayed([id]) }
 
     /// Several titles marked played elsewhere at once (a sync, an import):
-    /// all of them and their equivalents leave, with one write.
+    /// all of them, their equivalents and the chapter entries of a book
+    /// among them leave, with one write. Starting a book or one of its
+    /// chapters (`remove`) leaves its other chapters where they are.
     func markedPlayed(_ ids: [String]) {
         var kept = self.ids
         for id in ids {
-            let eq = Set(equivalents(id))
-            kept.removeAll { eq.contains($0) || $0 == id }
+            let eq = Set(equivalents(id)).union([id])
+            kept.removeAll { eq.contains($0) || eq.contains(ItemNamespace.chapterEntry($0)?.bookId ?? "") }
         }
         guard kept != self.ids else { return }
         self.ids = kept

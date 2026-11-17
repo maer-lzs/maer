@@ -11,18 +11,23 @@ import Foundation
 /// position; a chapter entry has none of its own.
 nonisolated enum ChapterEntryRules {
     /// The chapter an entry names: the one that begins at its start. Nil when
-    /// no chapter begins there any more; the entry is then unknown.
+    /// no chapter begins there any more; the entry is then unknown and is
+    /// never laid onto the chapter that now holds that moment.
     static func chapter(startMs: Int, in chapters: [ABSChapter]) -> ABSChapter? {
-        nil
+        chapters.first { ms($0.start) == startMs }
     }
 
     /// The milliseconds of a chapter's start, the form an entry carries.
-    static func ms(_ seconds: Double) -> Int { 0 }
+    static func ms(_ seconds: Double) -> Int {
+        guard seconds.isFinite, seconds >= 0 else { return -1 }
+        return Int((seconds * 1000).rounded())
+    }
 
     /// Where the entry starts: at the book's position when that lies inside
-    /// the chapter, else at the chapter's start.
+    /// the chapter, so a chapter heard in part does not begin again; else at
+    /// the chapter's start.
     static func startPoint(of chapter: ABSChapter, bookPosition: Double) -> Double {
-        bookPosition
+        chapter.start <= bookPosition && bookPosition < chapter.end ? bookPosition : chapter.start
     }
 
     enum RangeState: Equatable, Sendable {
@@ -35,37 +40,69 @@ nonisolated enum ChapterEntryRules {
         case left
     }
 
+    /// How far past its end a range still counts as ended rather than left:
+    /// one tick of the clock and a little more.
+    static let endGrace: Double = 3
+
     static func state(at time: Double, of chapter: ABSChapter) -> RangeState {
-        .running
+        if time < chapter.start - 1 || time > chapter.end + endGrace { return .left }
+        return time >= chapter.end ? .ended : .running
     }
 
-    /// Whether the next book of a series may follow what ended.
+    /// Whether the next book of a series may follow what ended: never after
+    /// a chapter entry, whose end finishes no book.
     static func seriesMayFollow(_ finishedId: String, enabled: Bool) -> Bool {
-        enabled
+        enabled && ItemNamespace.chapterEntry(finishedId) == nil
     }
 
     /// Whether the stand written at `currentTime` tells the server the book
-    /// is finished.
+    /// is finished. The end of the last chapter as an entry is the book's
+    /// end in time, but the person asked for one chapter, not the book.
     static func reportsFinished(currentTime: Double, duration: Double, inChapterEntry: Bool) -> Bool {
-        SyncRules.isFinished(currentTime: currentTime, duration: duration)
+        !inChapterEntry && SyncRules.isFinished(currentTime: currentTime, duration: duration)
     }
 
-    /// Whether a title offers its chapters for Up Next.
+    /// Whether a title offers its chapters for Up Next: books only, with at
+    /// least two chapters (one chapter is the book). An episode with chapters
+    /// does not, from any podcast source, and neither does a station, a
+    /// routine's rule or a chapter entry.
     static func offersChapters(itemId: String, chapters: [ABSChapter]) -> Bool {
-        true
+        guard chapters.count >= 2 else { return false }
+        return !ItemNamespace.isPodcastEpisode(itemId)
+            && !ItemNamespace.isRadio(itemId)
+            && !ItemNamespace.isRoutineRule(itemId)
+            && ItemNamespace.chapterEntry(itemId) == nil
     }
 
-    /// Whether an id resolves to something the advance may start, given the
-    /// chapters of its book when they are known.
+    /// Whether an id resolves to something the advance may start: a chapter
+    /// entry only when its book resolves (`bookChapters` not nil) and no
+    /// known chapter list says its chapter is gone. An empty list is a list
+    /// item without its chapters; the open reads them from the detail and
+    /// leaves the entry where it is when none begins at its start. Any other
+    /// id asks no chapter.
     static func resolves(_ itemId: String, bookChapters: [ABSChapter]?) -> Bool {
-        true
+        guard let entry = ItemNamespace.chapterEntry(itemId) else { return true }
+        guard let bookChapters else { return false }
+        return bookChapters.isEmpty || chapter(startMs: entry.startMs, in: bookChapters) != nil
     }
 
-    /// The row of a chapter entry in Up Next.
+    /// The row of a chapter entry in Up Next: the chapter's title under the
+    /// book's, both from the book's item. A chapter that no longer begins at
+    /// the entry's start says it is unknown; the row never stands for the book.
     static func carrier(entryId: String, book: LibraryItem) -> LibraryItem {
-        book
+        let startMs = ItemNamespace.chapterEntry(entryId)?.startMs ?? -1
+        let found = chapter(startMs: startMs, in: book.media?.chapters ?? [])
+        let metadata = book.media?.metadata
+        let media = LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: found?.title ?? unknownChapterTitle, authorName: book.title,
+                                          narratorName: metadata?.narratorName, seriesName: metadata?.seriesName,
+                                          genres: metadata?.genres, publishedYear: metadata?.publishedYear,
+                                          description: metadata?.description),
+            duration: found.map { $0.end - $0.start },
+            chapters: book.media?.chapters, tracks: book.media?.tracks)
+        return LibraryItem(id: entryId, media: media, addedAt: book.addedAt)
     }
 
     /// The row's title of an entry whose chapter is unknown.
-    static var unknownChapterTitle: String { "" }
+    static var unknownChapterTitle: String { String(localized: "Unknown Chapter") }
 }

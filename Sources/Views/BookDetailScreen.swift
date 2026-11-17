@@ -1098,6 +1098,14 @@ private struct DetailChapterList: View {
                     }
                 }
             }
+            // One chapter into Up Next, with the actions of every title.
+            .contextMenu {
+                if ChapterEntryRules.offersChapters(itemId: entry.id, chapters: chapters) {
+                    CatalogQueueButtons(itemId: ItemNamespace.chapterEntryId(bookId: entry.id,
+                                                                             startMs: ChapterEntryRules.ms(chapter.start)),
+                                        offersPlaylist: false)
+                }
+            }
             .listRowBackground(embedded ? Color.clear : nil)
             // At the fold the gutter the frame counts on (`FoldColumns`).
             .listRowInsets(embedded ? EdgeInsets(top: 8, leading: FoldSplit.pageGutter, bottom: 8, trailing: 20) : nil)

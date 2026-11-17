@@ -141,7 +141,8 @@ extension PlayerViewModel {
             break
         }
 
-        let isFinishedNow = SyncRules.isFinished(currentTime: currentTime, duration: duration)
+        let isFinishedNow = ChapterEntryRules.reportsFinished(currentTime: currentTime, duration: duration,
+                                                              inChapterEntry: playsChapterEntry)
         // One line per deliberate write, never per tick: a position on the
         // device can be traced back to the occasion that wrote it.
         if plan.logWrite {

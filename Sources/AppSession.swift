@@ -182,6 +182,8 @@ final class AppSession: ObservableObject {
     }
 
     func provider(for itemId: String) -> any AudioProvider {
+        // A chapter entry is its book's.
+        if let entry = ItemNamespace.chapterEntry(itemId) { return provider(for: entry.bookId) }
         if itemId.hasPrefix("local:") { return localProvider }
         if itemId.hasPrefix("abspod:") { return absPodcastProvider }
         if itemId.hasPrefix("rss:") { return rssProvider }
@@ -209,6 +211,7 @@ final class AppSession: ObservableObject {
     func coverURL(forItemId itemId: String) -> URL? {
         // A routine's rule shows its show's picture; it has no source to ask.
         if ItemNamespace.isRoutineRule(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
+        if let entry = ItemNamespace.chapterEntry(itemId) { return coverURL(forItemId: entry.bookId) }
         // An id from an unknown namespace must NEVER turn
         // into a request to the library server. This is the path that produced
         // the 404 storm (FeedArtwork → here → ABS, token in the query string),
@@ -225,6 +228,7 @@ final class AppSession: ObservableObject {
     /// namespace guard as `coverURL`.
     func largeCoverURL(forItemId itemId: String) -> URL? {
         if ItemNamespace.isRoutineRule(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
+        if let entry = ItemNamespace.chapterEntry(itemId) { return largeCoverURL(forItemId: entry.bookId) }
         guard ItemNamespace.isKnown(itemId) else { return nil }
         return provider(for: itemId).largeCoverURL(forItemId: itemId)
     }
@@ -246,6 +250,10 @@ final class AppSession: ObservableObject {
     /// from the loaded library list. Best-effort. An id never seen yet is nil,
     /// which every caller already tolerates.
     func libraryItem(forId itemId: String) -> LibraryItem? {
+        // A chapter entry shows as its chapter under its book's title.
+        if let entry = ItemNamespace.chapterEntry(itemId) {
+            return libraryItem(forId: entry.bookId).map { ChapterEntryRules.carrier(entryId: itemId, book: $0) }
+        }
         if itemId.hasPrefix("rss:") {
             return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) via the guid index
         }
@@ -312,6 +320,11 @@ final class AppSession: ObservableObject {
     /// does not carry, a catalogue id fetched for its metadata). The three
     /// resolvers of old (session, library route, standby) are this one.
     func resolveItem(forId itemId: String) async -> LibraryItem? {
+        // A chapter entry asks its book's source with the book's id, never
+        // with its own.
+        if let entry = ItemNamespace.chapterEntry(itemId) {
+            return await resolveItem(forId: entry.bookId).map { ChapterEntryRules.carrier(entryId: itemId, book: $0) }
+        }
         if let item = resolve(forId: itemId, carried: nil).item, item.media != nil { return item }
         do {
             let detail = try await provider(for: itemId).fetchItemDetail(itemId: itemId)

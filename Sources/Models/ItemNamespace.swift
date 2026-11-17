@@ -94,22 +94,33 @@ nonisolated enum ItemNamespace {
     static let routinePrefix = "rule:"
     static func isRoutineRule(_ itemId: String) -> Bool { itemId.hasPrefix(routinePrefix) }
     /// One chapter of a book as an entry of Up Next
-    /// (`chapter:<start in ms>:<book id>`), not a title of its own.
+    /// (`chapter:<start in ms>:<book id>`), not a title of its own: every
+    /// question about its source, cover or download is the book's. The start
+    /// names the chapter, not its place in the list, so a chapter inserted
+    /// before it on the server does not move the entry. The namespace is not
+    /// a library id, so the entry itself never reaches the library server.
     static let chapterPrefix = "chapter:"
 
     static func chapterEntryId(bookId: String, startMs: Int) -> String {
-        bookId
+        "\(chapterPrefix)\(startMs):\(bookId)"
     }
 
     /// The book and the start of a chapter entry, nil for any other id.
     static func chapterEntry(_ itemId: String) -> (bookId: String, startMs: Int)? {
-        nil
+        guard itemId.hasPrefix(chapterPrefix) else { return nil }
+        let rest = itemId.dropFirst(chapterPrefix.count)
+        guard let colon = rest.firstIndex(of: ":"),
+              let startMs = Int(rest[rest.startIndex..<colon]), startMs >= 0
+        else { return nil }
+        let bookId = String(rest[rest.index(after: colon)...])
+        guard !bookId.isEmpty, !bookId.hasPrefix(chapterPrefix) else { return nil }
+        return (bookId, startMs)
     }
 
     /// The id every source question goes to: the book of a chapter entry,
     /// any other id as it is.
     static func bookOrSelf(_ itemId: String) -> String {
-        itemId
+        chapterEntry(itemId)?.bookId ?? itemId
     }
     static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }
     static func isCatalog(_ itemId: String) -> Bool { FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) }

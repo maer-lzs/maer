@@ -232,6 +232,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Counts the jumps, so a jump that waited for a plan knows a later one.
     private var seekCount = 0
     var sleepTask: Task<Void, Never>?
+    /// The watch of a chapter entry's range (`watchChapterRange`).
+    var chapterRangeTask: Task<Void, Never>?
+    /// The loaded book plays as a chapter entry, from its start to the stand
+    /// at its end: a stand at the book's end then tells the server nothing is
+    /// finished. A move out of the chapter, a stop or a new title clears it.
+    var playsChapterEntry = false
     var syncTask: Task<Void, Never>?
 
     let provider: any AudioProvider
@@ -540,6 +546,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
         ownStandMs = nil
+        endChapterEntry()
         self.item = item
         applySkipInterval(forItemId: item.id)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
@@ -1247,11 +1254,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 self.isPlaying = false
                 // Also mark finished locally. The sync writes it anyway;
                 // otherwise the UI shows the wrong state after a fully played book.
-                self.isFinished = true
+                // The last chapter played as an entry finishes no book, and
+                // its range watch starts what follows, not the book's end.
+                self.isFinished = !self.playsChapterEntry
                 self.updateNowPlayingInfo()
                 self.updateWidgetSnapshot()
                 await self.syncProgress(.bookEnd)
-                if let finishedId = self.item?.id {
+                if !self.playsChapterEntry, let finishedId = self.item?.id {
                     self.onBookFinished?(finishedId)
                 }
             }
@@ -2226,6 +2235,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player = nil
         syncTask?.cancel()
         sleepTask?.cancel()
+        endChapterEntry()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 }

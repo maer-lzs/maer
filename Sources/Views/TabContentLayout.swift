@@ -358,6 +358,8 @@ struct CatalogQueueButtons: View {
     var itemIds: [String]?
     /// Titles the surface has at hand, passed straight through.
     var knownTitles: [String: String] = [:]
+    /// A chapter of a book goes into Up Next only, not into a playlist.
+    var offersPlaylist = true
 
     private var ids: [String] { itemIds ?? [itemId] }
 
@@ -371,7 +373,9 @@ struct CatalogQueueButtons: View {
             } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
             // The playlist action exists EXACTLY ONCE. A second
             // copy here carried the same defect twice.
-            AddToPlaylistButton(itemId: itemId, itemIds: itemIds, knownTitles: knownTitles)
+            if offersPlaylist {
+                AddToPlaylistButton(itemId: itemId, itemIds: itemIds, knownTitles: knownTitles)
+            }
         }
     }
 }

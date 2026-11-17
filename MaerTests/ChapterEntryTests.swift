@@ -89,6 +89,17 @@ struct ChapterEntryRuleTests {
         #expect(!ChapterEntryRules.reportsFinished(currentTime: 1200.5, duration: 1800, inChapterEntry: false))
     }
 
+    @Test("the plan of the sync after a chapter entry before the server's stand writes nothing and raises the conflict")
+    func thePlanMeetsTheGuard() {
+        let state = SyncState(startSourceResolved: true, currentTime: 0, lastSyncedTime: 500,
+                              suspiciousDropThreshold: 60, suppressConflict: false, conflictPending: false,
+                              progressSync: true, podcastEpisode: false, potCarries: false)
+        #expect(SyncRules.plan(origin: .seek, state: state).gate == .conflict(raise: true))
+        var shown = state
+        shown.conflictPending = true
+        #expect(SyncRules.plan(origin: .seek, state: shown).gate == .conflict(raise: false))
+    }
+
     @Test("after a chapter entry no next book of the series follows; after a book it may")
     func noSeriesAfterAChapter() {
         let entry = ItemNamespace.chapterEntryId(bookId: "li_book-1", startMs: 0)
@@ -214,6 +225,7 @@ struct ChapterEntryQueueTests {
         // The person jumps out of the chapter: the book plays on as a book.
         model.currentTime = 700
         model.watchChapterRange(chapter) { ended += 1 }
+        #expect(model.playsChapterEntry)
         model.currentTime = 2000
         try await Task.sleep(nanoseconds: 2_300_000_000)
         #expect(ended == 1, "a jump out of the chapter ended the entry")
