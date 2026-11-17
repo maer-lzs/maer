@@ -258,7 +258,12 @@ run_tests() {
     # The red cases by name, and how often a case failed (once per
     # repetition in a run that repeats).
     RED_NAMES="$(grep -o '✘ Test "[^"]*"' "$STORE/lauf.log" | sed 's/^✘ Test "//; s/"$//' | sort -u | paste -sd ';' -)"
-    RED_COUNT="$(grep -c '✘ Test "[^"]*" failed after' "$STORE/lauf.log")"
+    # A repeated run writes a start line per repetition and only issue
+    # lines for a red one: a repetition (or a case) is red when an issue
+    # line follows its start before the next start.
+    RED_COUNT="$(awk '/^◇ Test .* started/ { if (bad) red++; bad = 0; next }
+                     /^✘ Test "[^"]*" recorded an issue/ { bad = 1 }
+                     END { if (bad) red++; print red + 0 }' "$STORE/lauf.log")"
     $SIMCTL --set "$HOME/Library/Developer/XCTestDevices" delete all >/dev/null 2>&1
     rm -rf -- "$STORE"; STORE=""
     return $rc
