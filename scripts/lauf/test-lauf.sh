@@ -1143,5 +1143,24 @@ clear_stub
 if [ $rc = 0 ] && [ "$left" = 0 ] && ! echo "$out" | grep -q "fremder Simulator"; then
     ok "78 each simulator is shut down after its run"; else fail "78 each simulator is shut down after its run" "rc=$rc left=$left $out"; fi
 
+# 79. No way out of the final run leaves its simulator booted: a load that
+# stays up after the boot, a reset that fails after the boot, and TERM or
+# INT during the run. The next run would wait for it as a foreign one.
+booted_after() { cat "$STUB/booted" 2>/dev/null | grep -c . ; }
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1; touch "$STUB/load-after-boot"
+LAUF_WARTE_S=2 bash scripts/lauf.sh abschluss >/dev/null 2>&1; loud=$?; loud_left="$(booted_after)"
+clear_stub; touch "$STUB/privacy-fails"
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; reset=$?; reset_left="$(booted_after)"
+clear_stub
+LAUF_STUB_SLEEP=20 bash scripts/lauf.sh abschluss >/dev/null 2>&1 &
+run=$!; sleep 3; kill -TERM "$run"; wait "$run" 2>/dev/null; term_left="$(booted_after)"
+clear_stub
+LAUF_STUB_SLEEP=20 bash scripts/lauf.sh abschluss >/dev/null 2>&1 &
+run=$!; sleep 3; kill -INT "$run"; wait "$run" 2>/dev/null; int_left="$(booted_after)"
+pkill -f "$STUB/xcodebuild" 2>/dev/null
+clear_stub
+if [ $loud -ne 0 ] && [ "$loud_left" = 0 ] && [ $reset -ne 0 ] && [ "$reset_left" = 0 ] && [ "$term_left" = 0 ] && [ "$int_left" = 0 ]; then
+    ok "79 no way out of the final run leaves a simulator booted"; else fail "79 no way out of the final run leaves a simulator booted" "loud=$loud/$loud_left reset=$reset/$reset_left term=$term_left int=$int_left"; fi
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
