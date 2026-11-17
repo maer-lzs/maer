@@ -93,6 +93,24 @@ nonisolated enum ItemNamespace {
     /// (`RoutinePlayback`); it never reaches a source.
     static let routinePrefix = "rule:"
     static func isRoutineRule(_ itemId: String) -> Bool { itemId.hasPrefix(routinePrefix) }
+    /// One chapter of a book as an entry of Up Next
+    /// (`chapter:<start in ms>:<book id>`), not a title of its own.
+    static let chapterPrefix = "chapter:"
+
+    static func chapterEntryId(bookId: String, startMs: Int) -> String {
+        bookId
+    }
+
+    /// The book and the start of a chapter entry, nil for any other id.
+    static func chapterEntry(_ itemId: String) -> (bookId: String, startMs: Int)? {
+        nil
+    }
+
+    /// The id every source question goes to: the book of a chapter entry,
+    /// any other id as it is.
+    static func bookOrSelf(_ itemId: String) -> String {
+        itemId
+    }
     static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }
     static func isCatalog(_ itemId: String) -> Bool { FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) }
 
