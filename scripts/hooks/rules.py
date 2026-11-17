@@ -17,6 +17,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import comments as tokenized  # noqa: E402  the reader of comments next to this file
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 AUTHORS = {"lzs <352619651+maer-lzs@users.noreply.github.com>"}
@@ -131,58 +134,37 @@ def check_message(text):
     return found
 
 
+HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
+
 def added_lines():
+    """Each added line of the staged change with its path and its number in
+    the staged file."""
     diff = subprocess.run(["git", "diff", "--cached", "-U0", "--no-color"], capture_output=True, text=True).stdout
-    path = None
+    path, number = None, 0
     for line in diff.split("\n"):
         if line.startswith("+++ "):
             path = line[6:] if line.startswith("+++ b/") else None
+        elif line.startswith("@@"):
+            m = HUNK.match(line)
+            number = int(m.group(1)) if m else 0
         elif line.startswith("+") and path is not None:
-            yield path, line[1:]
+            yield path, number, line[1:]
+            number += 1
 
 
-def outside_strings(line, marker, quotes):
-    """The text from the first marker outside a string literal, or None."""
-    quote = None
-    i = 0
-    while i < len(line):
-        c = line[i]
-        if quote:
-            if c == "\\":
-                i += 2
-                continue
-            if c == quote:
-                quote = None
-        elif c in quotes:
-            quote = c
-        elif line.startswith(marker, i):
-            return line[i:]
-        i += 1
-    return None
-
-
-def comment_of(path, line, doc):
-    """The comment part of a source line, or None: a whole comment line, a
-    comment after code, or a line of a Python docstring. `doc` carries per
-    file whether an added line lies inside a docstring."""
-    stripped = line.strip()
-    if path.endswith((".swift", ".kt", ".js", ".ts")):
-        if stripped.startswith(("/*", "*")):
-            return stripped
-        return outside_strings(line, "//", "\"")
-    if path.endswith(".py"):
-        triple = stripped.count('"""') + stripped.count("'''")
-        if doc.get(path) or (triple and stripped.startswith(('"""', "'''"))):
-            if triple % 2 == 1:
-                doc[path] = not doc.get(path)
-            # The quotes of the docstring are no quotation of a display text.
-            return stripped.replace('"""', " ").replace("'''", " ")
-        return outside_strings(line, "#", "\"'")
-    if path.endswith(".sh"):
-        if stripped.startswith("#!"):
-            return None
-        return outside_strings(line, "#", "\"'")
-    return None
+def staged_comments(path, cache):
+    """The comments of the staged file by line, read from the index; None for
+    a language without a reader. Raises tokenized.Unreadable."""
+    if path not in cache:
+        text = subprocess.run(["git", "show", f":{path}"], capture_output=True, text=True).stdout
+        try:
+            cache[path] = tokenized.comments(path, text)
+        except tokenized.Unreadable as error:
+            cache[path] = error
+    if isinstance(cache[path], tokenized.Unreadable):
+        raise cache[path]
+    return cache[path]
 
 
 def check_staged():
@@ -200,15 +182,23 @@ def check_staged():
         if not marked:
             found.append(f"the working tree lies in a temporary path without .wegwerf: {top}")
     files = set()
-    doc = {}
-    for path, line in added_lines():
+    read = {}
+    unread = set()
+    for path, number, line in added_lines():
         files.add(path)
         where = f"{path}: {line.strip()[:80]}"
         if any(pattern.search(line) for pattern in ACCESS):
             found.append(f"an access value: {where}")
         if path.endswith(".md") and DASH.search(line):
             found.append(f"a dash in a new markdown line: {where}")
-        comment = comment_of(path, line, doc)
+        try:
+            by_line = staged_comments(path, read)
+        except tokenized.Unreadable as error:
+            if path not in unread:
+                unread.add(path)
+                found.append(f"not read: {path}: {error}")
+            continue
+        comment = by_line.get(number) if by_line is not None else None
         if comment is not None and not any(h.match(comment) for h in HEADER):
             if ROLES.search(comment):
                 found.append(f"a comment names a role or a person: {where}")
