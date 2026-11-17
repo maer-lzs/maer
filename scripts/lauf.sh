@@ -497,7 +497,13 @@ abschluss)
         # that window failed. xcodebuild starts the app only once it is quiet.
         wait_for_quiet "nach dem Booten von $name"
         say "voller Lauf auf $runtime ($name)"
-        run_tests "$udid" || stop "rot auf $runtime: kein Vermerk" 1
+        # The run boots the simulator itself now, so it shuts it down
+        # again, green or red: the next one would wait for it as foreign.
+        if ! run_tests "$udid"; then
+            $SIMCTL shutdown "$udid" >/dev/null 2>&1
+            stop "rot auf $runtime: kein Vermerk" 1
+        fi
+        $SIMCTL shutdown "$udid" >/dev/null 2>&1
     done
     release_symbols
     write_note abschluss 27,18.6
