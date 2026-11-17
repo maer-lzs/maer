@@ -9,11 +9,13 @@ string, an open block comment, a syntax error. The hook refuses such a file
 as not read instead of letting it pass. Files of other languages answer
 None.
 
-Swift regex literals are read as literals: the extended form #/…/# always,
-the bare form /…/ where Swift starts one (after = ( , : [ { ; ! & | ? or
-return, on one line, not before a space). Limits, named: a bare regex in
-another place counts as code; a shell construct the machine does not know
-ends up as code, never as a comment.
+Swift and JavaScript regex literals are read as literals: the extended
+Swift form #/…/# always, the bare form /…/ where the language starts one
+(after = ( , : [ { ; ! & | ? or return, on one line, not before a space and
+not closing after a space). Python counts every string statement as a
+comment, wherever it stands. Kotlin and JavaScript templates ${…} hold code.
+Limits, named: a bare regex in another place counts as code; a shell
+construct the machine does not know ends up as code, never as a comment.
 """
 import ast
 import io
@@ -29,7 +31,8 @@ def comments(path, text):
     if path.endswith(".py"):
         return python_comments(text)
     if path.endswith((".swift", ".kt", ".kts", ".js", ".ts")):
-        return c_family_comments(text, swift=path.endswith(".swift"))
+        return c_family_comments(text, swift=path.endswith(".swift"),
+                                 regex=path.endswith((".swift", ".js", ".ts")))
     if path.endswith((".sh", ".bash")):
         return shell_comments(text)
     return None
@@ -49,28 +52,30 @@ def python_comments(text):
     except (tokenize.TokenError, SyntaxError, IndentationError) as error:
         raise Unreadable(f"Python does not parse: {error}")
     lines = text.split("\n")
+    # Every statement that is only a string: docstrings of modules, classes
+    # and functions, docstrings of attributes and blocks between statements.
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
-            first = node.body[0]
-            if isinstance(first, ast.Expr) and isinstance(getattr(first, "value", None), ast.Constant) \
-                    and isinstance(first.value.value, str):
-                for number in range(first.lineno, (first.end_lineno or first.lineno) + 1):
-                    piece = lines[number - 1].strip().replace('"""', " ").replace("'''", " ").strip()
-                    if piece:
-                        _add(found, number, "# " + piece)
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) \
+                and isinstance(node.value.value, str):
+            for number in range(node.lineno, (node.end_lineno or node.lineno) + 1):
+                piece = lines[number - 1].strip().replace('"""', " ").replace("'''", " ").strip()
+                if piece:
+                    _add(found, number, "# " + piece)
     return found
 
 
-def c_family_comments(text, swift):
+def c_family_comments(text, swift, regex):
     """Line and nested block comments outside strings. Strings: "…" with
-    escapes, triple-quoted multiline strings, and in Swift raw strings with
-    hashes and interpolation \\( … ) that holds code again."""
+    escapes, triple-quoted multiline strings, in Swift raw strings with
+    hashes and interpolation \\( … ), in Kotlin and JavaScript templates
+    ${ … }; an interpolation holds code again."""
     found = {}
     i, n, line = 0, len(text), 1
-    # A stack of open string contexts; each is (delimiter, hashes, depth of
-    # interpolation parentheses when code runs inside it).
+    # A stack of open contexts: a string is (delimiter, hashes, 0), code
+    # inside an interpolation is ("code", its opening bracket, depth).
     stack = []
     single_quotes = not swift
+    closing = {"(": ")", "{": "}"}
 
     def at(s):
         return text.startswith(s, i)
@@ -78,16 +83,17 @@ def c_family_comments(text, swift):
     while i < n:
         c = text[i]
         if stack and stack[-1][0] == "code":
-            # Code inside an interpolation: count parentheses to its end.
-            if c == "(":
-                stack[-1] = ("code", 0, stack[-1][2] + 1)
-            elif c == ")":
+            # Code inside an interpolation: count its brackets to its end.
+            opener = stack[-1][1]
+            if c == opener:
+                stack[-1] = ("code", opener, stack[-1][2] + 1)
+            elif c == closing[opener]:
                 depth = stack[-1][2] - 1
                 if depth == 0:
                     stack.pop()
                     i += 1
                     continue
-                stack[-1] = ("code", 0, depth)
+                stack[-1] = ("code", opener, depth)
         if stack and stack[-1][0] in ('"', '"""', "'", "`"):
             delimiter, hashes, _ = stack[-1]
             close = delimiter + "#" * hashes
@@ -100,10 +106,14 @@ def c_family_comments(text, swift):
             if c == "\\" and text.startswith("#" * hashes, i + 1):
                 after = i + 1 + hashes
                 if swift and after < n and text[after] == "(":
-                    stack.append(("code", 0, 1))
+                    stack.append(("code", "(", 1))
                     i = after + 1
                     continue
                 i = after + 1
+                continue
+            if not swift and delimiter != "'" and at("${"):
+                stack.append(("code", "{", 1))
+                i += 2
                 continue
             if at(close):
                 stack.pop()
@@ -162,7 +172,7 @@ def c_family_comments(text, swift):
                 continue
             i = rest
             continue
-        if swift and c == "/" and bare_regex_starts(text, i):
+        if regex and c == "/" and bare_regex_starts(text, i):
             j = i + 1
             klass = 0
             while j < n and text[j] != "\n":
@@ -176,7 +186,9 @@ def c_family_comments(text, swift):
                 elif text[j] == "/" and not klass:
                     break
                 j += 1
-            if j < n and text[j] == "/":
+            # A regex literal does not close after a space: then the slash
+            # was a division, and what follows is code.
+            if j < n and text[j] == "/" and text[j - 1] not in " \t":
                 i = j + 1
                 continue
         if at('"""'):
@@ -275,6 +287,14 @@ def shell_comments(text):
                 if not (number == 1 and raw.startswith("#!")):
                     _add(found, number, raw[i:].strip())
                 break
+            # A here string, and a shift inside arithmetic, open no heredoc.
+            if raw.startswith("<<<", i):
+                i += 3
+                continue
+            if raw.startswith("((", i):
+                end = raw.find("))", i + 2)
+                i = n if end < 0 else end + 2
+                continue
             m = HEREDOC.match(raw, i)
             if m:
                 pending.append((m.group(3), m.group(1) == "-"))

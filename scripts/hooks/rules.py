@@ -67,8 +67,9 @@ GERMAN_WORDS = {
     "hier", "dort", "immer", "der", "das", "zeile", "taste", "gezeigt", "steht", "geht",
 }
 WORD = re.compile(r"[A-Za-zÄÖÜäöüß]+")
-# German names of commands of the run script that slipped through as single
-# words in English messages; one of them alone makes the message German.
+# German names of commands of the run script, which the two-word rule does
+# not see as single words in an English message; one of them alone makes the
+# message German.
 GERMAN_COMMANDS = {"zweig", "wiederhole"}
 UMLAUT = re.compile(r"[ÄÖÜäöüß]")
 
@@ -143,11 +144,14 @@ HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 def added_lines():
     """Each added line of the staged change with its path and its number in
     the staged file."""
-    diff = subprocess.run(["git", "diff", "--cached", "-U0", "--no-color"], capture_output=True, text=True).stdout
+    # Paths unquoted (an umlaut stays an umlaut); git closes a path that
+    # holds a space with a tab, which is no part of the name.
+    diff = subprocess.run(["git", "-c", "core.quotepath=false", "diff", "--cached", "-U0", "--no-color"],
+                          capture_output=True, text=True).stdout
     path, number = None, 0
     for line in diff.split("\n"):
         if line.startswith("+++ "):
-            path = line[6:] if line.startswith("+++ b/") else None
+            path = line[6:].rstrip("\t") if line.startswith("+++ b/") else None
         elif line.startswith("@@"):
             m = HUNK.match(line)
             number = int(m.group(1)) if m else 0
