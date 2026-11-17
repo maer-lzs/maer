@@ -248,7 +248,13 @@ run_tests() {
     kill "$LOWER" 2>/dev/null; wait "$LOWER" 2>/dev/null
     CHILD=""; LOWER=""
     grep -E 'Test run with|\*\* TEST' "$STORE/lauf.log" | tail -2
-    [ $rc -ne 0 ] && grep -E '✘|error:' "$STORE/lauf.log" | head -40
+    if [ $rc -ne 0 ]; then
+        # The red cases by their markers, not every line with the word
+        # error; the log stays in the store as the evidence of the red run.
+        grep -E '✘ (Test|Suite) |Test Case .* failed|: error: |Fatal error|unexpected exit|crashed' "$STORE/lauf.log" | head -40
+        local kept="$ABLAGE_ROOT/rot-$(date +%Y%m%d-%H%M%S)-${udid:0:8}.log"
+        cp "$STORE/lauf.log" "$kept" && say "Beleg des roten Laufs: $kept"
+    fi
     # The red cases by name, and how often a case failed (once per
     # repetition in a run that repeats).
     RED_NAMES="$(grep -o '✘ Test "[^"]*"' "$STORE/lauf.log" | sed 's/^✘ Test "//; s/"$//' | sort -u | paste -sd ';' -)"

@@ -302,10 +302,13 @@ if grep -q '^start' "$STUB/xcodebuild.log" 2>/dev/null && [ -z "$(ls -A "$LAUF_A
     ok "12 aborted run: the store is gone"; else fail "12 aborted run: the store is gone" "$(ls -A "$LAUF_ABLAGE" 2>/dev/null)"; fi
 pkill -f "$STUB/xcodebuild" 2>/dev/null
 
-# 13. After a red run the store is gone and the red cases stand in the output.
+# 13. After a red run the store of the run is gone, only the kept log of the
+# red run stays, and the red cases stand in the output.
 clear_stub; touch "$STUB/red"
 out="$(bash scripts/lauf.sh auswahl --basis "$BASE" 2>&1)"; rc=$?
-if [ $rc -ne 0 ] && echo "$out" | grep -q "the row keeps four buttons" && [ -z "$(ls -A "$LAUF_ABLAGE" 2>/dev/null)" ]; then
+left="$(ls -A "$LAUF_ABLAGE" 2>/dev/null | grep -v '^rot-.*\.log$')"
+rm -f "$LAUF_ABLAGE"/rot-*.log
+if [ $rc -ne 0 ] && echo "$out" | grep -q "the row keeps four buttons" && [ -z "$left" ]; then
     ok "13 red run: the store is gone, the red cases are named"; else fail "13 red run: the store is gone, the red cases are named" "$out"; fi
 reset_base
 
