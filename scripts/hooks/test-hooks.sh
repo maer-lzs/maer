@@ -111,6 +111,34 @@ expect pass   "a hash sign in a bash string is no comment" tools/e.sh 'echo "# D
 expect pass   "technical terms are no channel codes" docs/f.md "one" "Reads UTF-8 names, HTTP-2 and SHA-256 sums with AES-GCM"
 expect refuse "a channel code stays refused beside them" docs/f.md "two" "Reads UTF-8 names for K-EQ-13"
 
+# Comments are read from the whole staged file, one tokenizer per language:
+# a line inserted into an existing docstring, a block comment or a heredoc
+# is judged by where it stands, not by its own text alone.
+mkdir -p tools
+printf 'def f():\n    """Reads the file.\n\n    Returns the rows.\n    """\n    return 1\n' > tools/doc.py
+git add tools/doc.py && git commit -q -m "A tool in Python" >/dev/null 2>&1
+python3 - <<'EOF'
+p = "tools/doc.py"
+lines = open(p).read().split("\n")
+lines.insert(3, "    Die Zeile wird nicht mehr gezeigt.")
+open(p, "w").write("\n".join(lines))
+EOF
+git add tools/doc.py
+if git commit -q -m "A line in the documentation of a tool" >/dev/null 2>"$WORK/err"; then
+    echo "FAIL want refuse: a German line inserted into an existing docstring"; failures=$((failures + 1))
+else
+    echo "ok   refuse  a German line inserted into an existing docstring"
+fi
+git reset -q --hard HEAD
+expect pass   "a comment marker inside a Swift multiline string is text" Sources/J.swift $'let s = """\n    // Die Zeile wird nicht mehr gezeigt\n    """' "A text in the source"
+expect pass   "a comment marker inside a Swift raw string is text" Sources/K.swift 'let s = #"a // Die Zeile wird nicht mehr gezeigt"#' "A text in the source"
+expect refuse "a German line inside a nested block comment" Sources/L.swift $'/* outer /* inner */\n   Die Zeile wird nicht mehr gezeigt\n*/' "A comment in the source"
+expect refuse "an open quote before a hash sign leaves the shell file unread" tools/f.sh "echo don't # Die Zeile wird nicht mehr gezeigt" "A tool in bash"
+expect pass   "a hash sign inside a heredoc is its content" tools/g.sh $'cat <<EOF\n# Die Zeile wird nicht mehr gezeigt\nEOF' "A tool in bash"
+expect pass   "a length of a variable is no comment" tools/h.sh 'n=${#list}' "A tool in bash"
+expect refuse "a Python file that does not parse is not read" tools/i.py 'def f(:' "A tool in Python"
+expect refuse "a Swift file with an open string is not read" Sources/M.swift 'let s = "open' "A text in the source"
+
 # The hooks read the index, never the working tree: a file changed after it
 # was staged does not change what the hook sees.
 printf 'clean\n' > Sources/F.swift && git add Sources/F.swift
