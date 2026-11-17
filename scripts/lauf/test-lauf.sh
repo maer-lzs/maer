@@ -1050,5 +1050,18 @@ printf '%s\n' "$kept" > "$list"
 if [ $rc = 0 ] && [ -n "$(remote_ref refs/tags/v9.11)" ] && [ $rc2 -ne 0 ] && echo "$out2" | grep -q "ohne Grund"; then
     ok "74 a product name on the list passes, an entry without a reason stops"; else fail "74 a product name on the list passes, an entry without a reason stops" "rc=$rc rc2=$rc2 $out / $out2"; fi
 
+# 75. A red run keeps its log in the store as the evidence, and names the red
+# cases, not lines that only carry the word error; a green run keeps none.
+clear_stub; rm -f "$LAUF_ABLAGE"/rot-*.log; touch "$STUB/red"
+out="$(bash scripts/lauf.sh auswahl --basis "$BASE" 2>&1)"
+kept="$(ls "$LAUF_ABLAGE"/rot-*.log 2>/dev/null | head -1)"
+clear_stub
+bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1
+after_green="$(ls "$LAUF_ABLAGE"/rot-*.log 2>/dev/null | wc -l | tr -d ' ')"
+if [ -n "$kept" ] && grep -q "the row keeps four buttons" "$kept" && echo "$out" | grep -q "the row keeps four buttons" \
+    && echo "$out" | grep -q "rot-" && [ "$after_green" = 1 ]; then
+    ok "75 a red run keeps its log and names its red cases"; else fail "75 a red run keeps its log and names its red cases" "kept=$kept after_green=$after_green $out"; fi
+rm -f "$LAUF_ABLAGE"/rot-*.log
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
