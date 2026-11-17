@@ -1162,5 +1162,15 @@ clear_stub
 if [ $loud -ne 0 ] && [ "$loud_left" = 0 ] && [ $reset -ne 0 ] && [ "$reset_left" = 0 ] && [ "$term_left" = 0 ] && [ "$int_left" = 0 ]; then
     ok "79 no way out of the final run leaves a simulator booted"; else fail "79 no way out of the final run leaves a simulator booted" "loud=$loud/$loud_left reset=$reset/$reset_left term=$term_left int=$int_left"; fi
 
+# 80. An entry of the list of product names in the underscore form names a
+# test hook, not a product name: the read stops.
+list="scripts/lauf/release-namen.txt"; kept="$(cat "$list")"
+printf '%s\n_testFeedFetcher # a seam of the podcast subscriptions\n' "$kept" > "$list"
+make_archive 9.13 913 "$REL8" '0000 T Maer.APIClient.testConnection() async throws'
+out="$(bash scripts/lauf.sh release v9.13 913 2>&1)"; rc=$?
+printf '%s\n' "$kept" > "$list"
+if [ $rc -ne 0 ] && echo "$out" | grep -q "Unterstrich" && [ -z "$(remote_ref refs/tags/v9.13)" ]; then
+    ok "80 an entry in the underscore form stops the read"; else fail "80 an entry in the underscore form stops the read" "rc=$rc $out"; fi
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
