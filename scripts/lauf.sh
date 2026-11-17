@@ -503,12 +503,13 @@ abschluss)
             BOOTED_SIM="$udid"
             $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
         fi
-        # The boot drives the load far up for minutes; a start of the app in
-        # that window failed. xcodebuild starts the app only once it is quiet.
+        # The boot drives the load far up for minutes, and a start of the app
+        # in that window can fail; xcodebuild starts the app only once it is
+        # quiet.
         wait_for_quiet "nach dem Booten von $name"
         say "voller Lauf auf $runtime ($name)"
-        # The run boots the simulator itself now, so it shuts it down
-        # again, green or red: the next one would wait for it as foreign.
+        # The run boots the simulator itself, so it shuts it down again,
+        # green or red: the next one would wait for it as foreign.
         if ! run_tests "$udid"; then
             stop "rot auf $runtime: kein Vermerk" 1
         fi

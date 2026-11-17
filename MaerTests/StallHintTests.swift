@@ -117,9 +117,9 @@ struct StallHintTests {
     /// Serves a WAV with ranges: long reads get the first `sendBytes` and then
     /// nothing more on a connection that stays open, every later long read an
     /// open connection without a byte, the way a stalled link stops
-    /// delivering. A hard close after the bytes raced the player: under load
-    /// it read the close before the item was ready and failed the item on the
-    /// short length (measured, 24 of 100 repetitions). Unchecked because the
+    /// delivering. The connection stays open because a close after the bytes
+    /// lets the player fail the item on the short length before it is ready,
+    /// which is a failed load, not a stall. Unchecked because the
     /// listener and its connections are only touched on the listener's own
     /// queue after start.
     nonisolated final class CuttingHost: @unchecked Sendable {
@@ -211,9 +211,8 @@ struct StallHintTests {
 
     /// The real player, not the rule: a stream that stops delivering leaves
     /// a ready item waiting with the stall reason, and the model says so; a
-    /// pause ends the wait. Measured here at the start (the player never
-    /// began with the cut stream); mid-play the same reason stands (measured
-    /// before with a cut after thirty seconds of audio).
+    /// pause ends the wait. The stall comes at the start here: the host sends
+    /// the first twenty seconds and then nothing more.
     @Test("a stream that stops delivering is reported by the model as waiting for the stream, a pause ends it", .needsAudio)
     func aStreamThatStopsIsAWait() async throws {
         let body = wav(seconds: 60)

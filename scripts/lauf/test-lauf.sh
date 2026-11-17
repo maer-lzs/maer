@@ -1113,7 +1113,7 @@ if [ $rc = 0 ] && echo "$kept_note" | grep -q "art=abschluss" && [ $rc2 -ne 0 ] 
 
 # 77. The final run boots each simulator, then waits for a quiet machine
 # before xcodebuild starts the app: the boot drives the load far up, and a
-# start of the app in that window failed. A load that stays up after the
+# start of the app in that window can fail. A load that stays up after the
 # boot stops the run without a test.
 clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1
 bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc=$?
