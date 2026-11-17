@@ -17,6 +17,9 @@ import re
 import subprocess
 import sys
 
+# The reader lies next to this file; no bytecode is written beside it, so
+# the tree that holds the hooks stays clean.
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import comments as tokenized  # noqa: E402  the reader of comments next to this file
 
