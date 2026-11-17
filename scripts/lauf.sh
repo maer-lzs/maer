@@ -295,6 +295,11 @@ test_hooks_in() {
         return 2
     fi
     allowed="$( [ -f "$list" ] && grep -vE '^[[:space:]]*(#|$)' "$list" | awk '{print $1}')"
+    # The underscore form is the form of a test hook, never a product name.
+    if echo "$allowed" | grep -q '^_'; then
+        echo "ein Eintrag in release-namen.txt in Unterstrichform ist ein Test-Haken: $(echo "$allowed" | grep '^_' | head -1)"
+        return 2
+    fi
     { $NM -a "$1" 2>/dev/null | $DEMANGLE; $STRINGS -a "$1" 2>/dev/null; } \
         | grep -oE '(^|[^A-Za-z])_?test[A-Z][A-Za-z0-9]*' | sed -E 's/^[^_t]//' | sort -u \
         | grep -vxF -f <(printf '%s\n' $allowed "") | head -5
