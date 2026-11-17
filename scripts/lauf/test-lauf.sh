@@ -110,7 +110,8 @@ cat > "$STUB/simctl" <<'EOF'
 echo "$*" >> "$LAUF_STUB_DIR/simctl.log"
 echo "simctl $*" >> "$LAUF_STUB_DIR/order.log"
 case "$*" in
-    bootstatus\ *) touch "$LAUF_STUB_DIR/booted-once" ;;
+    bootstatus\ *) touch "$LAUF_STUB_DIR/booted-once"; echo "$2" >> "$LAUF_STUB_DIR/booted" ;;
+    shutdown\ *) [ -f "$LAUF_STUB_DIR/booted" ] && { grep -vx "$2" "$LAUF_STUB_DIR/booted" > "$LAUF_STUB_DIR/booted.tmp"; mv "$LAUF_STUB_DIR/booted.tmp" "$LAUF_STUB_DIR/booted"; } ;;
     erase\ *) rm -rf "$LAUF_SIM_DEVICES/$2/data" ;;
     listapps\ *)
         [ -f "$LAUF_STUB_DIR/listapps-fails" ] && exit 1
@@ -126,11 +127,13 @@ case "$*" in
     keychain\ *) [ -f "$LAUF_STUB_DIR/keychain-fails" ] && exit 1 ;;
     *"list devices"*)
         r18=iOS-18-6; [ -f "$LAUF_STUB_DIR/moved" ] && r18=iOS-26-0
+        state() { grep -qx "$1" "$LAUF_STUB_DIR/booted" 2>/dev/null && echo Booted || echo Shutdown; }
+        s27="$(state AAAA2700-0000-0000-0000-000000000000)"; s18="$(state BBBB1860-0000-0000-0000-000000000000)"
         foreign=""
         if [ -f "$LAUF_STUB_DIR/booted-foreign" ]; then
             foreign=',{"name":"Fremder Sim","udid":"FFFF0000-0000-0000-0000-000000000000","state":"Booted"}'
         fi
-        echo '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-27-0":[{"name":"Maer-Abschluss-27","udid":"AAAA2700-0000-0000-0000-000000000000","state":"Shutdown"},{"name":"Maer-Test-Bau","udid":"C1F0240C-E988-41D2-9081-4CFF0B8EA34B","state":"Shutdown"}'"$foreign"'],"com.apple.CoreSimulator.SimRuntime.'"$r18"'":[{"name":"Maer-Abschluss-18","udid":"BBBB1860-0000-0000-0000-000000000000","state":"Shutdown"}]}}'
+        echo '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-27-0":[{"name":"Maer-Abschluss-27","udid":"AAAA2700-0000-0000-0000-000000000000","state":"'"$s27"'"},{"name":"Maer-Test-Bau","udid":"C1F0240C-E988-41D2-9081-4CFF0B8EA34B","state":"Shutdown"}'"$foreign"'],"com.apple.CoreSimulator.SimRuntime.'"$r18"'":[{"name":"Maer-Abschluss-18","udid":"BBBB1860-0000-0000-0000-000000000000","state":"'"$s18"'"}]}}'
         ;;
 esac
 exit 0
@@ -169,7 +172,7 @@ export LAUF_ARCHIVE="$DEV/archives"
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
-    "$STUB/order.log" "$STUB/booted-once" "$STUB/load-after-boot" "$STUB/release-symbols" "$STUB/keep-program" "$STUB/stale-stamp" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
+    "$STUB/order.log" "$STUB/booted-once" "$STUB/booted" "$STUB/load-after-boot" "$STUB/release-symbols" "$STUB/keep-program" "$STUB/stale-stamp" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
 # A simulator the script has not seen: its mark is gone, the next final run erases it.
 forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
@@ -1130,6 +1133,15 @@ ran="$(grep -c '^start' "$STUB/xcodebuild.log" 2>/dev/null)"
 clear_stub
 if [ $rc = 0 ] && [ "$order_ok" = ja ] && [ $rc2 -ne 0 ] && [ "${ran:-0}" = 0 ] && echo "$out" | grep -q "nach dem Booten"; then
     ok "77 the final run waits for a quiet machine after the boot"; else fail "77 the final run waits for a quiet machine after the boot" "rc=$rc order=$order_ok rc2=$rc2 ran=$ran $out"; fi
+
+# 78. The final run shuts each simulator down after its run: the next
+# simulator does not wait for it as a foreign one, and none stays booted.
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+out="$(LAUF_WARTE_S=2 bash scripts/lauf.sh abschluss 2>&1)"; rc=$?
+left="$(cat "$STUB/booted" 2>/dev/null | grep -c .)"
+clear_stub
+if [ $rc = 0 ] && [ "$left" = 0 ] && ! echo "$out" | grep -q "fremder Simulator"; then
+    ok "78 each simulator is shut down after its run"; else fail "78 each simulator is shut down after its run" "rc=$rc left=$left $out"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
