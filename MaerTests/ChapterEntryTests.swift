@@ -94,10 +94,11 @@ struct ChapterEntryRuleTests {
         let state = SyncState(startSourceResolved: true, currentTime: 0, lastSyncedTime: 500,
                               suspiciousDropThreshold: 60, suppressConflict: false, conflictPending: false,
                               progressSync: true, podcastEpisode: false, potCarries: false)
-        #expect(SyncRules.plan(origin: .seek, state: state).gate == .conflict(raise: true))
+        #expect(SyncOrigin.chapterEntry.isDeliberate && !SyncOrigin.chapterEntry.needsOwnStand)
+        #expect(SyncRules.plan(origin: .chapterEntry, state: state).gate == .conflict(raise: true))
         var shown = state
         shown.conflictPending = true
-        #expect(SyncRules.plan(origin: .seek, state: shown).gate == .conflict(raise: false))
+        #expect(SyncRules.plan(origin: .chapterEntry, state: shown).gate == .conflict(raise: false))
     }
 
     @Test("after a chapter entry no next book of the series follows; after a book it may")

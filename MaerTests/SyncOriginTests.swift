@@ -14,7 +14,7 @@ struct SyncOriginTests {
     @Test("only the tick is not deliberate, exactly as only the tick used to be not forced")
     func onlyTheTickIsNotDeliberate() {
         #expect(SyncOrigin.allCases.filter { !$0.isDeliberate } == [.tick])
-        #expect(SyncOrigin.allCases.count == 11, "elf Anlaesse, einer je Rufer")
+        #expect(SyncOrigin.allCases.count == 12, "twelve occasions, one per caller")
     }
 
     /// The callers that pass on an occasion a caller above already named,
@@ -56,31 +56,31 @@ struct SyncOriginTests {
     @Test("every caller names its occasion, every occasion has exactly one caller", .needsTheSources)
     func everyCallerNamesItsOccasion() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
-        try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
+        try #require(files.count > 300, "the witness did not read the sources")
         var found: [String: Int] = [:]
         for file in files {
             found.merge(Self.origins(in: try SourceTree.text(file))) { $0 + $1 }
         }
         let expected = Dictionary(uniqueKeysWithValues: SyncOrigin.allCases.map { ($0.rawValue, 1) })
             .merging(["forwarded": Self.forwarders.count]) { $1 }
-        #expect(found == expected, "Anlaesse der Rufer: \(found.sorted { $0.key < $1.key })")
+        #expect(found == expected, "occasions of the callers: \(found.sorted { $0.key < $1.key })")
         #expect(Self.origins(in: "await syncProgress(origin)") == ["forwarded": 1],
-                "ein benannter Weiterreicher zaehlt als solcher")
+                "a named forwarder counts as one")
         #expect(Self.origins(in: "await syncProgress(someOrigin)") == ["?": 1],
-                "ein anderer Weiterreicher bleibt ungenannt")
+                "another forwarder stays unnamed")
         #expect(Self.origins(in: "Task { await syncProgress(force: true) }") == ["?": 1],
-                "die fruehere Form zaehlt als ungenannt")
+                "the former form counts as unnamed")
         #expect(Self.origins(in: "await self.syncProgress(\n    .pause)") == ["pause": 1],
-                "der Zaehler liest den Anlass auch ueber einen Umbruch")
+                "the counter reads the occasion across a line break")
         #expect(Self.origins(in: "func syncProgress(_ origin: SyncOrigin, restoredAt: Double? = nil) async {").isEmpty,
-                "die Erklaerung ist kein Rufer")
+                "the declaration is no caller")
         #expect(Self.origins(in: "await syncProgress(.restoreFlush, restoredAt: restoredAtMs)") == ["restoreFlush": 1],
                 "the moment after the occasion does not hide the occasion")
         #expect(Self.origins(in: "await syncProgress(origin, restoredAt: origin == asked ? askedAt : nil)") == ["forwarded": 1],
                 "a forwarder with its moment still counts as the forwarder")
         #expect(Self.origins(in: "Task { await syncProgress(force: true, restoredAt: 1) }") == ["?": 1],
                 "the former form stays unnamed with a moment after it")
-        #expect(Self.origins(in: "// syncProgress(.pause)").isEmpty, "ein Kommentar ruft nicht")
+        #expect(Self.origins(in: "// syncProgress(.pause)").isEmpty, "a comment calls nothing")
     }
 }
 #endif

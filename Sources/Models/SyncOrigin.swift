@@ -32,6 +32,9 @@ nonisolated enum SyncOrigin: String, CaseIterable, Sendable {
     case confirmLower
     /// The user confirmed a series of lock-screen skips.
     case confirmLockscreenJump
+    /// A chapter entry of Up Next positioned its book at the chapter. The
+    /// queue started it, not the person, so a backward jump meets the guard.
+    case chapterEntry
 
     /// A deliberate occasion forces the write: past the five-second
     /// threshold, and as a follow-up round when a write is in flight.

@@ -452,46 +452,6 @@ final class PlayerCoordinator: ObservableObject {
         return true
     }
 
-    /// A chapter entry: the book opens, the entry leaves both lists, playback
-    /// starts in the chapter (`ChapterEntryRules.startPoint`) and runs to the
-    /// chapter's end, where the next entry starts and the book stays unheard.
-    /// The book's one position moves with it, through the backward guard. An
-    /// open that does not stand, or a book without that chapter any more,
-    /// leaves the entry where it was and plays nothing.
-    private func openChapter(entryId: String, bookId: String, startMs: Int,
-                             autoplay: Bool, preservesContext: Bool, origin: OpenOrigin) async {
-        guard let book = await AppSession.shared.resolveItem(forId: bookId) else {
-            Logger.player.notice("CHAPTER entry not opened, its book does not resolve: entry=\(entryId, privacy: .private(mask: .hash))")
-            return
-        }
-        await open(item: book, autoplay: false, preservesContext: preservesContext, origin: origin)
-        guard Self.jumpStands(opened: bookId, active: activeItem?.id, loaded: viewModel?.item?.id),
-              let model = viewModel else {
-            Logger.player.notice("CHAPTER entry not opened, the book does not stand: entry=\(entryId, privacy: .private(mask: .hash))")
-            return
-        }
-        guard let chapter = ChapterEntryRules.chapter(startMs: startMs, in: model.chapters) else {
-            Logger.player.notice("CHAPTER entry names no chapter of the book, it stays: entry=\(entryId, privacy: .private(mask: .hash)) chapters=\(model.chapters.count)")
-            return
-        }
-        leaveBothLists(entryId)
-        await model.startChapterEntry(chapter)
-        model.watchChapterRange(chapter) { [weak self, weak model] in
-            guard let self, let model, model === self.viewModel else { return }
-            self.chapterRangeEnded(entryId, model: model)
-        }
-        if autoplay { await model.playWithServerCheck() }
-    }
-
-    /// The end of a chapter entry's range: the book pauses at the chapter's
-    /// end, which writes its position like any pause, and what follows in
-    /// Up Next starts, as at the end of a title. The book is not heard.
-    private func chapterRangeEnded(_ entryId: String, model: PlayerViewModel) {
-        Logger.player.notice("CHAPTER entry ends at the chapter's end, the next entry starts")
-        if model.isPlaying { model.pause(caller: "chapter entry ends") }
-        advanceAfterFinish(finishedItemId: entryId)
-    }
-
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
         // A chapter entry of Up Next opens its book at the chapter.
@@ -813,6 +773,46 @@ final class PlayerCoordinator: ObservableObject {
     /// The natural-end advance, shared by the real end-of-item handler and the
     /// manual "mark as played". The finished item leaves the queue, then
     /// the next playable item starts.
+    /// A chapter entry: the book opens, the entry leaves both lists, playback
+    /// starts in the chapter (`ChapterEntryRules.startPoint`) and runs to the
+    /// chapter's end, where the next entry starts and the book stays unheard.
+    /// The book's one position moves with it, through the backward guard. An
+    /// open that does not stand, or a book without that chapter any more,
+    /// leaves the entry where it was and plays nothing.
+    private func openChapter(entryId: String, bookId: String, startMs: Int,
+                             autoplay: Bool, preservesContext: Bool, origin: OpenOrigin) async {
+        guard let book = await AppSession.shared.resolveItem(forId: bookId) else {
+            Logger.player.notice("CHAPTER entry not opened, its book does not resolve: entry=\(entryId, privacy: .private(mask: .hash))")
+            return
+        }
+        await open(item: book, autoplay: false, preservesContext: preservesContext, origin: origin)
+        guard Self.jumpStands(opened: bookId, active: activeItem?.id, loaded: viewModel?.item?.id),
+              let model = viewModel else {
+            Logger.player.notice("CHAPTER entry not opened, the book does not stand: entry=\(entryId, privacy: .private(mask: .hash))")
+            return
+        }
+        guard let chapter = ChapterEntryRules.chapter(startMs: startMs, in: model.chapters) else {
+            Logger.player.notice("CHAPTER entry names no chapter of the book, it stays: entry=\(entryId, privacy: .private(mask: .hash)) chapters=\(model.chapters.count)")
+            return
+        }
+        leaveBothLists(entryId)
+        await model.startChapterEntry(chapter)
+        model.watchChapterRange(chapter) { [weak self, weak model] in
+            guard let self, let model, model === self.viewModel else { return }
+            self.chapterRangeEnded(entryId, model: model)
+        }
+        if autoplay { await model.playWithServerCheck() }
+    }
+
+    /// The end of a chapter entry's range: the book pauses at the chapter's
+    /// end, which writes its position like any pause, and what follows in
+    /// Up Next starts, as at the end of a title. The book is not heard.
+    private func chapterRangeEnded(_ entryId: String, model: PlayerViewModel) {
+        Logger.player.notice("CHAPTER entry ends at the chapter's end, the next entry starts")
+        if model.isPlaying { model.pause(caller: "chapter entry ends") }
+        advanceAfterFinish(finishedItemId: entryId)
+    }
+
     private func advanceAfterFinish(finishedItemId: String) {
         // Invariant "heard = flies out": the finished item leaves both lists.
         // It was already removed when it started, but a restored-session item
@@ -1084,13 +1084,14 @@ final class PlayerCoordinator: ObservableObject {
         // the session cache does not carry (sub: albums and songs). A
         // successful open() re-writes lastItemKey, healing a stale value.
         if let item = entries.first(where: { $0.id == lastId })?.item { return (item, "library") }
-        if let item = await AppSession.shared.resolveItem(forId: lastId) { return (item, "seam") }
+        let session = AppSession.shared
+        if let item = await session.resolveItem(forId: lastId) { return (item, "seam") }
         guard ItemNamespace.isRSS(lastId) else { return (nil, "none") }
         let subscriptions = PodcastSubscriptions.shared
         // The same episode followed here under another feed key (the show
         // moved hosts, a premium twin): the twin is the same episode.
         if let twin = PodcastIdentity.twinEpisodeId(for: lastId, among: subscriptions.allEpisodes().map(\.episode.guid)),
-           let item = await AppSession.shared.resolveItem(forId: twin) {
+           let item = await session.resolveItem(forId: twin) {
             return (item, "twin")
         }
         guard let showId = Self.showId(forEpisodeId: lastId),

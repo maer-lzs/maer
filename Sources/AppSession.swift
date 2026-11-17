@@ -228,9 +228,10 @@ final class AppSession: ObservableObject {
     /// namespace guard as `coverURL`.
     func largeCoverURL(forItemId itemId: String) -> URL? {
         if ItemNamespace.isRoutineRule(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
-        if let entry = ItemNamespace.chapterEntry(itemId) { return largeCoverURL(forItemId: entry.bookId) }
-        guard ItemNamespace.isKnown(itemId) else { return nil }
-        return provider(for: itemId).largeCoverURL(forItemId: itemId)
+        // A chapter entry shows its book's cover.
+        let id = ItemNamespace.bookOrSelf(itemId)
+        guard ItemNamespace.isKnown(id) else { return nil }
+        return provider(for: id).largeCoverURL(forItemId: id)
     }
 
     /// Asks the sources of these ids for the cover addresses they have not

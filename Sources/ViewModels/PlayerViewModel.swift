@@ -101,7 +101,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// that observes the model would wake with it. The clock publishes it,
     /// and a surface that shows the time observes the clock.
     var currentTime: Double = 0 {
-        didSet { if clock.time != currentTime { clock.time = currentTime } }
+        didSet {
+            if clock.time != currentTime { clock.time = currentTime }
+            if chapterRange != nil { checkChapterRange() }
+        }
     }
     /// The running time, published on its own (`PlaybackClock`).
     let clock = PlaybackClock()
@@ -232,8 +235,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Counts the jumps, so a jump that waited for a plan knows a later one.
     private var seekCount = 0
     var sleepTask: Task<Void, Never>?
-    /// The watch of a chapter entry's range (`watchChapterRange`).
-    var chapterRangeTask: Task<Void, Never>?
+    /// The chapter entry's range and what runs at its end
+    /// (`watchChapterRange`); the clock's every move asks it.
+    var chapterRange: (chapter: ABSChapter, onEnd: @MainActor () -> Void)?
     /// The loaded book plays as a chapter entry, from its start to the stand
     /// at its end: a stand at the book's end then tells the server nothing is
     /// finished. A move out of the chapter, a stop or a new title clears it.
