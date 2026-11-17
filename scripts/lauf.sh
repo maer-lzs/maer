@@ -304,7 +304,14 @@ release_symbols() {
     fi
     rm -f "$log"
     program="$dd/Build/Products/Release-iphoneos/Maer.app/Maer"
-    [ -f "$program" ] && [ "$(stat -f %m "$program")" -ge "$began" ] || stop "kein frisches Release-Programm: kein Vermerk" 1
+    # Xcode links the program again only when a source changed; the stamp
+    # beside it is written on every build. The program is the head's when
+    # that stamp is fresh and names the head.
+    local plist="$dd/Build/Products/Release-iphoneos/Maer.app/Info.plist" stamp
+    stamp="$(plutil -extract GitSHA raw "$plist" 2>/dev/null)"
+    [ -f "$program" ] && [ -f "$plist" ] && [ "$(stat -f %m "$plist")" -ge "$began" ] \
+        && [ -n "$stamp" ] && [ "$(git rev-parse --short "$stamp" 2>/dev/null)" = "$(git rev-parse --short HEAD)" ] \
+        || stop "das Release-Programm ist nicht das des Kopfs (Stempel ${stamp:-keiner}): kein Vermerk" 1
     hooks="$(test_hooks_in "$program")" || stop "$hooks" 1
     [ -z "$hooks" ] || stop "Test-Haken im Release-Programm: $(echo "$hooks" | head -3 | tr '\n' ' '): kein Vermerk" 1
     say "Release-Programm ohne Test-Haken"
