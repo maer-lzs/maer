@@ -107,11 +107,11 @@ quiet() { LC_ALL=C awk -v l="$1" -v c="$($SYSCTL -n hw.ncpu)" 'BEGIN { exit !(l 
 # Waits while the machine is loud; stops with the load measured once the wait
 # is over. A run under heavy load measures nothing, red or green.
 wait_for_quiet() {
-    local waited=0 load
+    local waited=0 load when="${1:-}"
     while :; do
         load="$(load_now)"
-        quiet "$load" && { LOAD_START="$load"; return 0; }
-        [ "$waited" -ge "$WARTE_S" ] && stop "die Maschine ist laut: Last $load ueber eine Minute, $($SYSCTL -n hw.ncpu) Kerne, Abbruch nach $waited s" 5
+        quiet "$load" && { [ -z "$when" ] && LOAD_START="$load"; return 0; }
+        [ "$waited" -ge "$WARTE_S" ] && stop "die Maschine ist laut${when:+ $when}: Last $load ueber eine Minute, $($SYSCTL -n hw.ncpu) Kerne, Abbruch nach $waited s" 5
         [ "$waited" = 0 ] && say "die Maschine ist laut: Last $load, ich warte"
         sleep "$TICK_S"; waited=$((waited + TICK_S))
     done
@@ -167,7 +167,8 @@ reset_app() {
     [ -z "$ids" ] || stop "auf $name bleibt installiert: $(echo $ids)" 2
     $SIMCTL privacy "$udid" reset all "$APP_ID" >/dev/null 2>&1 || stop "die Rechte auf $name liessen sich nicht zuruecksetzen" 2
     $SIMCTL keychain "$udid" reset >/dev/null 2>&1 || stop "der Schluesselbund auf $name liess sich nicht zuruecksetzen" 2
-    $SIMCTL shutdown "$udid" >/dev/null 2>&1
+    # The simulator stays booted for the run; the app is gone, so nothing
+    # holds the files of its group.
     for dir in "$SIM_DEVICES/$udid/data/Containers/Shared/AppGroup"/*/; do
         [ "$(plutil -extract MCMMetadataIdentifier raw "$dir$GROUP_META" 2>/dev/null)" = "$APP_GROUP" ] || continue
         find "$dir" -mindepth 1 -maxdepth 1 ! -name "$GROUP_META" -exec rm -rf {} + \
@@ -479,15 +480,22 @@ abschluss)
         wait_for_foreign "$udid"
         mark="$BAU_ROOT/${udid:0:8}/stand"
         want="udid=$udid laufzeit=$(sim_runtime "$udid")"
+        # Silent before the one boot: the simulator reads its sound device
+        # when it boots.
         if [ "$(cat "$mark" 2>/dev/null)" = "$want" ]; then
+            silence "$udid"
             reset_app "$udid" "$name"
         else
             say "$name ist neu oder hat eine andere Laufzeit: ganz geloescht"
             $SIMCTL shutdown "$udid" >/dev/null 2>&1
             $SIMCTL erase "$udid" >/dev/null 2>&1 || stop "$name liess sich nicht loeschen" 2
             mkdir -p "${mark%/*}" && echo "$want" > "$mark"
+            silence "$udid"
+            $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
         fi
-        silence "$udid"
+        # The boot drives the load far up for minutes; a start of the app in
+        # that window failed. xcodebuild starts the app only once it is quiet.
+        wait_for_quiet "nach dem Booten von $name"
         say "voller Lauf auf $runtime ($name)"
         run_tests "$udid" || stop "rot auf $runtime: kein Vermerk" 1
     done
