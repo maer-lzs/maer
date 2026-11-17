@@ -153,6 +153,7 @@ for key in sorted(apps):
 # boot), so the list is asked again after each round.
 reset_app() {
     local udid="$1" name="$2" id dir ids round
+    BOOTED_SIM="$udid"
     $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
     ids="$(app_bundles "$udid")" || stop "die Liste der Apps auf $name liess sich nicht lesen" 2
     ids="$(printf '%s\n' "$APP_ID" $ids | sort -u)"
@@ -217,6 +218,8 @@ lower_simulator() {
 STORE=""
 CHILD=""
 LOWER=""
+# The simulator this run booted itself; every way out shuts it down.
+BOOTED_SIM=""
 # Ends the run's xcodebuild: TERM, ten seconds to end its test session,
 # then KILL; xcodebuild can go on after TERM.
 end_child() {
@@ -229,7 +232,8 @@ cleanup() {
     [ -n "$LOWER" ] && kill "$LOWER" 2>/dev/null
     [ -n "$CHILD" ] && end_child "$CHILD"
     [ -n "$STORE" ] && rm -rf -- "$STORE"
-    STORE=""; CHILD=""; LOWER=""
+    [ -n "$BOOTED_SIM" ] && $SIMCTL shutdown "$BOOTED_SIM" >/dev/null 2>&1
+    STORE=""; CHILD=""; LOWER=""; BOOTED_SIM=""
 }
 trap 'cleanup' EXIT
 trap 'cleanup; exit 143' TERM INT
@@ -491,6 +495,7 @@ abschluss)
             $SIMCTL erase "$udid" >/dev/null 2>&1 || stop "$name liess sich nicht loeschen" 2
             mkdir -p "${mark%/*}" && echo "$want" > "$mark"
             silence "$udid"
+            BOOTED_SIM="$udid"
             $SIMCTL bootstatus "$udid" -b >/dev/null 2>&1 || stop "$name liess sich nicht booten" 2
         fi
         # The boot drives the load far up for minutes; a start of the app in
@@ -500,10 +505,10 @@ abschluss)
         # The run boots the simulator itself now, so it shuts it down
         # again, green or red: the next one would wait for it as foreign.
         if ! run_tests "$udid"; then
-            $SIMCTL shutdown "$udid" >/dev/null 2>&1
             stop "rot auf $runtime: kein Vermerk" 1
         fi
         $SIMCTL shutdown "$udid" >/dev/null 2>&1
+        BOOTED_SIM=""
     done
     release_symbols
     write_note abschluss 27,18.6
