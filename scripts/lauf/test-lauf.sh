@@ -69,9 +69,19 @@ done
 [ -f "$LAUF_STUB_DIR/stubborn" ] && trap '' TERM
 sleep "${LAUF_STUB_SLEEP:-0}"
 if [ -f "$LAUF_STUB_DIR/flaky" ]; then
-    # A case that fails in some of its repetitions: four of them.
-    for i in 1 2 3 4; do echo "✘ Test \"the row keeps four buttons\" failed after 0.1 seconds with 1 issue."; done
-    echo "✘ Test run with 300 tests in 1 suite failed after 9.0 seconds with 4 issues."
+    # A case that fails in four of its repetitions, two issues each, written
+    # as the real xcodebuild writes a repeated run: a start line per
+    # repetition, issue lines without a line of their own per failed
+    # repetition, and a test run line that says passed.
+    echo "◇ Test \"the row keeps four buttons\" started."
+    for i in $(seq 2 300); do
+        echo "◇ Test \"the row keeps four buttons\" started (repetition $i)."
+        case $i in 7|50|51|299)
+            echo "✘ Test \"the row keeps four buttons\" recorded an issue at RowTests.swift:12:5: Expectation failed: a"
+            echo "✘ Test \"the row keeps four buttons\" recorded an issue at RowTests.swift:13:5: Expectation failed: b";;
+        esac
+    done
+    echo "✔ Test run with 1 test in 1 suite passed after 9.0 seconds."
     echo "** TEST FAILED **"
     echo "end $(now) 65" >> "$log"
     exit 65
