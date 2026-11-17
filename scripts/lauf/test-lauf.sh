@@ -50,6 +50,7 @@ if [ "${1:-}" = build ]; then
 fi
 now() { python3 -c 'import time; print(int(time.time()*1000))'; }
 echo "start $(now) $*" >> "$log"
+echo "xcodebuild start $*" >> "$LAUF_STUB_DIR/order.log"
 echo "nice $(ps -o nice= -p $$ | tr -d ' ')" >> "$log"
 if [ -n "${MAER_SERVER_ACCESS_FILE:-}" ]; then echo "access set" >> "$log"; else echo "access unset" >> "$log"; fi
 prev=""
@@ -107,7 +108,9 @@ EOF
 cat > "$STUB/simctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/simctl.log"
+echo "simctl $*" >> "$LAUF_STUB_DIR/order.log"
 case "$*" in
+    bootstatus\ *) touch "$LAUF_STUB_DIR/booted-once" ;;
     erase\ *) rm -rf "$LAUF_SIM_DEVICES/$2/data" ;;
     listapps\ *)
         [ -f "$LAUF_STUB_DIR/listapps-fails" ] && exit 1
@@ -138,6 +141,11 @@ EOF
 cat > "$STUB/sysctl" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$LAUF_STUB_DIR/sysctl.log"
+echo "sysctl $*" >> "$LAUF_STUB_DIR/order.log"
+# With the file load-after-boot the load is high once a simulator booted.
+if [ -f "$LAUF_STUB_DIR/load-after-boot" ] && [ -f "$LAUF_STUB_DIR/booted-once" ]; then
+    case "$*" in *vm.loadavg*) echo "{ 30,00 20,00 10,00 }"; exit 0;; esac
+fi
 case "$*" in
     *vm.loadavg*) echo "{ $(cat "$LAUF_STUB_DIR/load" 2>/dev/null || echo 0,50) 0,40 0,30 }" ;;
     *hw.ncpu*) echo 10 ;;
@@ -161,7 +169,7 @@ export LAUF_ARCHIVE="$DEV/archives"
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
-    "$STUB/release-symbols" "$STUB/keep-program" "$STUB/stale-stamp" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
+    "$STUB/order.log" "$STUB/booted-once" "$STUB/load-after-boot" "$STUB/release-symbols" "$STUB/keep-program" "$STUB/stale-stamp" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
 # A simulator the script has not seen: its mark is gone, the next final run erases it.
 forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
@@ -1099,6 +1107,29 @@ stale_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
 clear_stub
 if [ $rc = 0 ] && echo "$kept_note" | grep -q "art=abschluss" && [ $rc2 -ne 0 ] && [ -z "$stale_note" ]; then
     ok "76 an unlinked program is current by the stamp of the head"; else fail "76 an unlinked program is current by the stamp of the head" "rc=$rc rc2=$rc2 $out / $out2"; fi
+
+# 77. The final run boots each simulator, then waits for a quiet machine
+# before xcodebuild starts the app: the boot drives the load far up, and a
+# start of the app in that window failed. A load that stays up after the
+# boot stops the run without a test.
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+bash scripts/lauf.sh abschluss >/dev/null 2>&1; rc=$?
+order_ok="$(python3 -c "
+import sys
+lines = open(sys.argv[1]).read().splitlines()
+ok = True
+for udid in ('AAAA2700', 'BBBB1860'):
+    boot = next((i for i, l in enumerate(lines) if l.startswith('simctl bootstatus ' + udid)), None)
+    run = next((i for i, l in enumerate(lines) if l.startswith('xcodebuild start') and 'id=' + udid in l), None)
+    load = [i for i, l in enumerate(lines) if l.startswith('sysctl') and 'vm.loadavg' in l]
+    ok = ok and boot is not None and run is not None and any(boot < i < run for i in load)
+print('ja' if ok else 'nein')" "$STUB/order.log" 2>/dev/null)"
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1; touch "$STUB/load-after-boot"
+out="$(LAUF_WARTE_S=2 bash scripts/lauf.sh abschluss 2>&1)"; rc2=$?
+ran="$(grep -c '^start' "$STUB/xcodebuild.log" 2>/dev/null)"
+clear_stub
+if [ $rc = 0 ] && [ "$order_ok" = ja ] && [ $rc2 -ne 0 ] && [ "${ran:-0}" = 0 ] && echo "$out" | grep -q "nach dem Booten"; then
+    ok "77 the final run waits for a quiet machine after the boot"; else fail "77 the final run waits for a quiet machine after the boot" "rc=$rc order=$order_ok rc2=$rc2 ran=$ran $out"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
