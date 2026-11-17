@@ -178,6 +178,34 @@ else
     echo "FAIL want refuse: an untracked throwaway mark is no mark"; failures=$((failures + 1))
 fi
 
+# A string statement is a comment wherever it stands in a Python module: as
+# the docstring of an attribute and as a block between statements.
+expect refuse "a German attribute docstring in Python" tools/m.py $'X = 1\n"""Die Zeile wird nicht mehr gezeigt."""' "A tool in Python"
+expect refuse "a German string block between statements in Python" tools/n.py $'import os\nY = os.sep\n"""\nDie Zeile wird nicht mehr gezeigt.\n"""\nZ = 2' "A tool in Python"
+# A Swift line that begins with a slash is a division unless it reads as a
+# regex literal; a regex never ends on a space, so the comment after it counts.
+expect refuse "a German comment after a line that begins with a slash in Swift" Sources/Q.swift $'let w = 4\n    /2 // Die Zeile wird nicht mehr gezeigt /z' "A constant in the source"
+# JavaScript regex literals are literals: the line of the site with a quote
+# in a character class is read, and its English comment passes.
+expect pass   "a JavaScript regex with a quote in a class is a literal" site/k.js $'return encodeURIComponent(value).replace(/[!\'()*]/g, function (c) {\n  return c; // The character is kept\n});' "A script of the site"
+# Paths with a space or an umlaut are read like any other path.
+expect refuse "a German comment in a file whose path has a space" "Sources/Mit Leer.swift" "// Die Zeile wird nicht mehr gezeigt" "A comment in the source"
+expect refuse "a German comment in a file whose path has an umlaut" "Sources/Grüße.swift" "// Die Zeile wird nicht mehr gezeigt" "A comment in the source"
+# A here string and a shift inside arithmetic open no heredoc; a Kotlin
+# template holds code, and a string inside it is a string.
+expect pass   "a here string opens no heredoc" tools/o.sh $'cat <<< word\n# A comment after it' "A tool in bash"
+expect pass   "a shift in arithmetic opens no heredoc" tools/p.sh $'x=$(( a << b ))\n# A comment after it' "A tool in bash"
+expect pass   "a string inside a Kotlin template is a string" app/T.kt 'val t = "${ "Die Zeile//wird nicht mehr gezeigt" }"' "A constant in Kotlin"
+
+# The hooks leave no bytecode beside them: the folder of the hooks holds no
+# cache after the commits above.
+cache="$(find "$HOOKS" -name __pycache__ 2>/dev/null | head -1)"
+if [ -z "$cache" ]; then
+    echo "ok   pass  no bytecode beside the hooks"
+else
+    echo "FAIL want none: bytecode beside the hooks at $cache"; failures=$((failures + 1)); rm -rf "$cache"
+fi
+
 # The time a commit takes with both hooks: under two seconds.
 printf 'speed\n' > docs/h.md && git add docs/h.md
 start=$(python3 -c 'import time; print(time.time())')
