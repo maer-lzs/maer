@@ -16,23 +16,28 @@ extension PlayerViewModel {
     /// book. A new watch, a stop or a new title ends the old one.
     func watchChapterRange(_ chapter: ABSChapter, onEnd: @escaping @MainActor () -> Void) {
         playsChapterEntry = true
-        chapterRange = (chapter, onEnd)
+        chapterRange = (chapter, onEnd, false)
     }
 
     /// What the clock asks at every move while a range is watched.
     func checkChapterRange() {
         guard let range = chapterRange else { return }
-        switch ChapterEntryRules.state(at: currentTime, of: range.chapter) {
+        let state = ChapterEntryRules.state(at: currentTime, of: range.chapter)
+        if range.ended {
+            // After its end the entry holds only the stand at the chapter's
+            // end; once the clock moves on, by playing on or by a jump, the
+            // book plays as a book again and its own end finishes it.
+            if state != .ended { endChapterEntry() }
+            return
+        }
+        switch state {
         case .running:
             return
         case .left:
             Logger.player.notice("CHAPTER entry left: the book plays on")
-            chapterRange = nil
-            playsChapterEntry = false
+            endChapterEntry()
         case .ended:
-            // The stand at the chapter's end is still the entry's, so the
-            // flag stays until the next title loads.
-            chapterRange = nil
+            chapterRange?.ended = true
             range.onEnd()
         }
     }
