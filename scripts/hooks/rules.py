@@ -145,8 +145,10 @@ def added_lines():
     """Each added line of the staged change with its path and its number in
     the staged file."""
     # Paths unquoted (an umlaut stays an umlaut); git closes a path that
-    # holds a space with a tab, which is no part of the name.
-    diff = subprocess.run(["git", "-c", "core.quotepath=false", "diff", "--cached", "-U0", "--no-color"],
+    # holds a space with a tab, which is no part of the name. Renames are
+    # found whatever the configuration says, so a moved file shows only
+    # the lines added to it.
+    diff = subprocess.run(["git", "-c", "core.quotepath=false", "diff", "--cached", "-M", "-U0", "--no-color"],
                           capture_output=True, text=True).stdout
     path, number = None, 0
     for line in diff.split("\n"):
