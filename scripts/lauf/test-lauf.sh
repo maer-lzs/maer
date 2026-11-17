@@ -33,9 +33,16 @@ if [ "${1:-}" = build ]; then
     echo "release-build $*" >> "$log"
     prev=""; for arg in "$@"; do
         if [ "$prev" = "-derivedDataPath" ]; then
-            mkdir -p "$arg/Build/Products/Release-iphoneos/Maer.app"
-            cat "$LAUF_STUB_DIR/release-symbols" 2>/dev/null > "$arg/Build/Products/Release-iphoneos/Maer.app/Maer" \
-                || echo "0000 T _main" > "$arg/Build/Products/Release-iphoneos/Maer.app/Maer"
+            app="$arg/Build/Products/Release-iphoneos/Maer.app"
+            mkdir -p "$app"
+            # With the file keep-program the program is not linked again, as
+            # Xcode does when no source changed; the stamp is written always,
+            # with the head, or with another commit while stale-stamp exists.
+            if [ ! -f "$LAUF_STUB_DIR/keep-program" ] || [ ! -f "$app/Maer" ]; then
+                cat "$LAUF_STUB_DIR/release-symbols" 2>/dev/null > "$app/Maer" || echo "0000 T _main" > "$app/Maer"
+            fi
+            stamp="$(git rev-parse --short HEAD)"; [ -f "$LAUF_STUB_DIR/stale-stamp" ] && stamp=0000000
+            plutil -create xml1 "$app/Info.plist"; plutil -insert GitSHA -string "$stamp" "$app/Info.plist"
         fi
         prev="$arg"
     done
@@ -144,7 +151,7 @@ export LAUF_ARCHIVE="$DEV/archives"
 export MAER_ROLE_FENCE="$REAL/MaerTests/PublicReadmeFenceTests.swift"
 unset LAUF_PUSH
 clear_stub() { rm -f "$STUB/xcodebuild.log" "$STUB/simctl.log" "$STUB/sysctl.log" "$STUB/red" "$STUB/booted-foreign" "$STUB/load" \
-    "$STUB/release-symbols" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
+    "$STUB/release-symbols" "$STUB/keep-program" "$STUB/stale-stamp" "$STUB/moved" "$STUB/privacy-fails" "$STUB/keychain-fails" "$STUB/sticky" "$STUB/stuck" "$STUB/listapps-fails" "$STUB"/uninstalled.*; }
 # A simulator the script has not seen: its mark is gone, the next final run erases it.
 forget_marks() { rm -f "$DEV"/bau/*/stand; }
 
@@ -1065,6 +1072,23 @@ if [ -n "$kept" ] && grep -q "the row keeps four buttons" "$kept" && echo "$out"
     && echo "$out" | grep -q "rot-" && [ "$after_green" = 1 ]; then
     ok "75 a red run keeps its log and names its red cases"; else fail "75 a red run keeps its log and names its red cases" "kept=$kept after_green=$after_green $out"; fi
 rm -f "$LAUF_ABLAGE"/rot-*.log
+
+# 76. A release program that Xcode did not link again, because no source
+# changed, is current when the stamp beside it names the head; a stamp of
+# another commit is not.
+clear_stub; git notes --ref=lauf remove HEAD >/dev/null 2>&1
+bash scripts/lauf.sh abschluss >/dev/null 2>&1
+git notes --ref=lauf remove HEAD >/dev/null 2>&1
+sleep 1; touch "$STUB/keep-program"
+out="$(bash scripts/lauf.sh abschluss 2>&1)"; rc=$?
+kept_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+git notes --ref=lauf remove HEAD >/dev/null 2>&1
+touch "$STUB/stale-stamp"
+out2="$(bash scripts/lauf.sh abschluss 2>&1)"; rc2=$?
+stale_note="$(git notes --ref=lauf show HEAD 2>/dev/null)"
+clear_stub
+if [ $rc = 0 ] && echo "$kept_note" | grep -q "art=abschluss" && [ $rc2 -ne 0 ] && [ -z "$stale_note" ]; then
+    ok "76 an unlinked program is current by the stamp of the head"; else fail "76 an unlinked program is current by the stamp of the head" "rc=$rc rc2=$rc2 $out / $out2"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
