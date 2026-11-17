@@ -252,6 +252,80 @@ struct ChapterEntryQueueTests {
         #expect(player.lastSyncedTime == 500, "the stand behind the chapter was overwritten")
         player.stop()
     }
+
+    /// A book source with two chapters that keeps what it was told.
+    final class ChapteredServer: AudioProvider {
+        let file: String
+        let duration: Double
+        var position: Double
+        var finishedWrites = 0
+        init(file: String, duration: Double, position: Double) {
+            self.file = file
+            self.duration = duration
+            self.position = position
+        }
+        var providerId: String { "chaptered" }
+        var keepsMarksOnDevice: Bool { false }
+        var capabilities: ProviderCapabilities { [.progressSync] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [] }
+        func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            let half = duration / 2
+            return LibraryItemDetail(
+                id: itemId,
+                media: LibraryItemMedia(metadata: nil, duration: duration,
+                                        chapters: [ABSChapter(id: 0, start: 0, end: half, title: "One"),
+                                                   ABSChapter(id: 1, start: half, end: duration, title: "Two")],
+                                        tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: duration,
+                                                               contentUrl: file, metadata: nil)]),
+                userMediaProgress: MediaProgress(currentTime: position, duration: duration, progress: nil,
+                                                 isFinished: false, lastUpdate: Date().timeIntervalSince1970 * 1000 - 600_000))
+        }
+        func coverURL(forItemId itemId: String) -> URL? { nil }
+        func streamURL(forContentPath contentPath: String) -> URL? { URL(fileURLWithPath: contentPath) }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
+            position = currentTime
+            if isFinished { finishedWrites += 1 }
+        }
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
+    }
+
+    @Test("after a chapter's end with nothing queued the person plays on, and the book's end finishes the book", .needsAudio)
+    func playingOnAfterAChapterFinishesTheBook() async throws {
+        let file = try TickWorkTests().tone(seconds: 20)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "chapterplayon-\(UUID().uuidString)"
+        let server = ChapteredServer(file: file.path, duration: 20, position: 2)
+        let model = PlayerViewModel(provider: server, localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: try await server.fetchItemDetail(itemId: id))
+        await model.reconcileWithServer()
+        try #require(model.chapters.count == 2, "the precondition: the book has its two chapters")
+        var finished: [String] = []
+        model.onBookFinished = { finished.append($0) }
+        var ended = 0
+        let first = model.chapters[0]
+        await model.startChapterEntry(first)
+        model.watchChapterRange(first) { ended += 1 }
+        // The chapter ends; nothing waits in Up Next, so no title loads.
+        await model.seek(to: first.end, userInitiated: false)
+        #expect(ended == 1, "the precondition: the range ended")
+        // The person plays on, past the chapter, as a book.
+        model.play()
+        for _ in 0..<100 where model.currentTime < first.end + ChapterEntryRules.endGrace + 1 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        #expect(!model.playsChapterEntry, "the book still plays as a chapter entry after the person played on")
+        await model.seek(to: model.duration - 2)
+        for _ in 0..<100 where finished.isEmpty { try await Task.sleep(nanoseconds: 100_000_000) }
+        #expect(finished == [id], "the book's end did not reach the end of a title")
+        #expect(model.isFinished, "the book heard to its end is not finished on the device")
+        #expect(server.finishedWrites >= 1, "the server never heard the book is finished")
+        model.stop()
+    }
 }
 
 /// Where the chapter form may be spelled and who resolves it.
