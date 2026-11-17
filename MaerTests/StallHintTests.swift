@@ -114,10 +114,12 @@ struct StallHintTests {
         #expect(code.contains("self?.notices.streamWaits(waits, title:"), "the wait does not reach the channel")
     }
 
-    /// Serves a WAV with ranges: long reads get the first `sendBytes` and a
-    /// hard close, every later long read a close without a byte, the way a
-    /// dead link stops delivering (measured: a ready item and a wait with
-    /// `WaitingToMinimizeStalls`, never `.failed`). Unchecked because the
+    /// Serves a WAV with ranges: long reads get the first `sendBytes` and then
+    /// nothing more on a connection that stays open, every later long read an
+    /// open connection without a byte, the way a stalled link stops
+    /// delivering. A hard close after the bytes raced the player: under load
+    /// it read the close before the item was ready and failed the item on the
+    /// short length (measured, 24 of 100 repetitions). Unchecked because the
     /// listener and its connections are only touched on the listener's own
     /// queue after start.
     nonisolated final class CuttingHost: @unchecked Sendable {
@@ -126,6 +128,8 @@ struct StallHintTests {
         private let sendBytes: Int
         private(set) var port: UInt16 = 0
         private let notes = OSAllocatedUnfairLock<[String]>(initialState: [])
+        /// The connections held open, ended at `stop()`.
+        private let held = OSAllocatedUnfairLock<[NWConnection]>(initialState: [])
         /// The ranges asked and what each got, for the witness's message.
         var log: [String] { notes.withLock { $0 } }
 
@@ -152,7 +156,10 @@ struct StallHintTests {
             }
         }
 
-        func stop() { listener.cancel() }
+        func stop() {
+            listener.cancel()
+            for connection in held.withLock({ $0 }) { connection.cancel() }
+        }
 
         private func serve(_ connection: NWConnection) {
             connection.start(queue: .global())
@@ -168,7 +175,7 @@ struct StallHintTests {
                 }
                 let header = "HTTP/1.1 206 Partial Content\r\nContent-Type: audio/wav\r\nAccept-Ranges: bytes\r\n"
                     + "Content-Range: bytes \(lower)-\(upper)/\(total)\r\nContent-Length: \(upper - lower + 1)\r\n\r\n"
-                let served = upper - lower < 65_536 ? "all" : lower < sendBytes ? "cut" : "closed"
+                let served = upper - lower < 65_536 ? "all" : lower < sendBytes ? "stalled" : "silent"
                 let note = "\(lower)-\(upper) \(served)"
                 notes.withLock { $0.append(note) }
                 // The length probe and the tail are small reads and are served.
@@ -177,9 +184,10 @@ struct StallHintTests {
                                     completion: .contentProcessed { _ in })
                 } else if lower < sendBytes {
                     let chunk = body.subdata(in: lower..<min(upper + 1, sendBytes))
-                    connection.send(content: Data(header.utf8) + chunk, completion: .contentProcessed { _ in connection.cancel() })
+                    held.withLock { $0.append(connection) }
+                    connection.send(content: Data(header.utf8) + chunk, completion: .contentProcessed { _ in })
                 } else {
-                    connection.cancel()
+                    held.withLock { $0.append(connection) }
                 }
             }
         }
