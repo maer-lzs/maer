@@ -81,9 +81,17 @@ struct ChapterEntryChainRuleTests {
         }
     }
 
-    @Test("the end of the last chapter of a chain does not tell the server the book is finished, until the question is decided")
-    func theLastChapterOfAChainFinishesNothingYet() {
-        #expect(!ChapterEntryRules.reportsFinished(currentTime: 3000, duration: 3000, inChapterEntry: true))
+    @Test("the end of the last chapter of a chain finishes the book, also when the chain followed the book there; a single chapter and an earlier chapter of a chain do not")
+    func theLastChapterOfAChainFinishesTheBook() {
+        let last = Self.chapters[4]
+        #expect(ChapterEntryRules.finishesBook(entryId: Self.chain(2_400_000), chapter: last, chapters: Self.chapters),
+                "the end of a chain left its book unfinished")
+        #expect(ChapterEntryRules.finishesBook(entryId: Self.chain(0), chapter: last, chapters: Self.chapters),
+                "a chain that followed the book to its last chapter left it unfinished")
+        let single = ItemNamespace.chapterEntryId(bookId: "li_book-1", startMs: 2_400_000)
+        #expect(!ChapterEntryRules.finishesBook(entryId: single, chapter: last, chapters: Self.chapters),
+                "a single last chapter finished its book")
+        #expect(!ChapterEntryRules.finishesBook(entryId: Self.chain(0), chapter: Self.chapters[0], chapters: Self.chapters))
     }
 }
 

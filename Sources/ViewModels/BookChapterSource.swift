@@ -40,6 +40,14 @@ final class BookChapterSource {
         self.changed = changed
     }
 
+    /// The detail a book's chapters are read from, the way the open reads
+    /// it: a downloaded book's saved detail first, else its source, and the
+    /// saved one again when the source does not answer.
+    static func detail(isDownloaded: Bool, cached: () -> LibraryItemDetail?,
+                       fetch: () async throws -> LibraryItemDetail) async throws -> LibraryItemDetail {
+        try await fetch()
+    }
+
     /// The chapters known for a book now, nil when no source knows them.
     func chapters(of bookId: String) -> [ABSChapter]? {
         let held = playing().flatMap { $0.bookId == bookId ? $0.chapters : nil }

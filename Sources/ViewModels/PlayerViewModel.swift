@@ -245,6 +245,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// finished. A move out of the chapter, the clock moving on after its
     /// end, a stop or a new title clears it.
     var playsChapterEntry = false
+    /// The entry that plays ends where the book ends and finishes it: the
+    /// last chapter of a chain. Cleared with the entry.
+    var entryFinishesBook = false
     /// Called once whenever the chapter entry ends in this player, by any
     /// way (its end, a jump out, a stop, a new title), so the one who started
     /// it learns it.

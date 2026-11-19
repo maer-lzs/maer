@@ -826,7 +826,8 @@ final class PlayerCoordinator: ObservableObject {
             guard let self, self.orders.running == entryId else { return }
             self.orders.running = nil
         }
-        model.watchChapterRange(chapter, onLeave: { [weak self, weak model] in
+        let finishes = ChapterEntryRules.finishesBook(entryId: entryId, chapter: chapter, chapters: model.chapters)
+        model.watchChapterRange(chapter, finishesBook: finishes, onLeave: { [weak self, weak model] in
             guard let self, let model, model === self.viewModel else { return }
             self.orders.running = nil
             self.leaveBothLists(entryId)
@@ -844,7 +845,7 @@ final class PlayerCoordinator: ObservableObject {
     func enqueueChain(_ book: LibraryItem, position: Double) async {
         let detail: LibraryItemDetail
         do {
-            detail = try await session.provider(for: book.id).fetchItemDetail(itemId: book.id)
+            detail = try await session.chapterDetail(book.id)
         } catch {
             Logger.player.notice("CHAPTER chain not queued, the detail failed: \(FailureReason.of(error), privacy: .public)")
             sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: book.title)

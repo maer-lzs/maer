@@ -14,10 +14,13 @@ extension PlayerViewModel {
     /// Calls `onEnd` once when playback reaches the chapter's end; a move out
     /// of the chapter ends the watch without it and calls `onLeave`, and the
     /// book plays on as a book. A new watch, a stop or a new title ends the
-    /// old one.
-    func watchChapterRange(_ chapter: ABSChapter, onLeave: @escaping @MainActor () -> Void = {},
+    /// old one. `finishesBook`: the entry's end is the book's end and
+    /// finishes it (`ChapterEntryRules.finishesBook`).
+    func watchChapterRange(_ chapter: ABSChapter, finishesBook: Bool = false,
+                           onLeave: @escaping @MainActor () -> Void = {},
                            onEnd: @escaping @MainActor () -> Void) {
         playsChapterEntry = true
+        entryFinishesBook = finishesBook
         chapterRange = (chapter, onLeave, onEnd, false)
     }
 
@@ -63,6 +66,7 @@ extension PlayerViewModel {
         let wasEntry = playsChapterEntry || chapterRange != nil
         chapterRange = nil
         playsChapterEntry = false
+        entryFinishesBook = false
         if wasEntry { onChapterEntryEnd?() }
     }
 }

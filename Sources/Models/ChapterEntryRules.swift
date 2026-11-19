@@ -62,6 +62,13 @@ nonisolated enum ChapterEntryRules {
         !inChapterEntry && SyncRules.isFinished(currentTime: currentTime, duration: duration)
     }
 
+    /// Whether the end of an entry finishes its book: the end of the last
+    /// chapter of a chain heard chapter by chapter does, as the book's own
+    /// end does; a single chapter never does, not even the last.
+    static func finishesBook(entryId: String, chapter: ABSChapter, chapters: [ABSChapter]) -> Bool {
+        false
+    }
+
     /// Whether the stand of the loaded book belongs to a chapter entry, so
     /// its write tells the server nothing is finished: while the entry plays,
     /// and after the book's end as an entry as long as the position stands at

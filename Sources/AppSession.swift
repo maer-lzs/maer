@@ -356,11 +356,23 @@ final class AppSession: ObservableObject {
         },
         listed: { [unowned self] in libraryItem(forId: $0) },
         listedPosition: { [unowned self] in libraryViewModel.shelvedEntry(id: $0)?.progress?.currentTime },
-        fetch: { [unowned self] in try await provider(for: $0).fetchItemDetail(itemId: $0) },
+        fetch: { [unowned self] in try await chapterDetail($0) },
         changed: {
             PlayQueue.shared.objectWillChange.send()
             ListeningRevision.shared.bump("chapters of a book learned")
         })
+
+    /// The detail a book's chapters are read from, for the chain and the
+    /// rows of its entries: a downloaded book's saved detail first, as the
+    /// open reads it (`BookChapterSource.detail`).
+    func chapterDetail(_ bookId: String) async throws -> LibraryItemDetail {
+        let downloads = DownloadManager.shared
+        await downloads.ensureScanned()
+        return try await BookChapterSource.detail(
+            isDownloaded: downloads.isDownloaded(itemId: bookId),
+            cached: { downloads.loadCachedDetail(forItemId: bookId) },
+            fetch: { try await provider(for: bookId).fetchItemDetail(itemId: bookId) })
+    }
 
     private init() {}
 }

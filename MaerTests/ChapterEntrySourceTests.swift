@@ -179,6 +179,110 @@ struct BookChapterSourceTests {
     }
 }
 
+/// The end of a chain is the book's end.
+@MainActor
+struct ChapterEntryChainFinishTests {
+    @Test("the end of a chain's last chapter tells the server the book is finished, marks it here and advances once", .needsAudio)
+    func theChainsEndFinishesTheBook() async throws {
+        let file = try TickWorkTests().tone(seconds: 20)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let id = "chainend-\(UUID().uuidString)"
+        let server = ChapterEntryQueueTests.ChapteredServer(file: file.path, duration: 20, position: 12)
+        let model = PlayerViewModel(provider: server, localTracks: { _ in [:] }, isOnline: { true })
+        await model.load(item: try await server.fetchItemDetail(itemId: id))
+        await model.reconcileWithServer()
+        try #require(model.chapters.count == 2, "the precondition: the book has its two chapters")
+        let last = model.chapters[1]
+        var advanced = 0
+        var finished: [String] = []
+        model.onBookFinished = { finished.append($0) }
+        await model.startChapterEntry(last)
+        model.watchChapterRange(last, finishesBook: true) {
+            advanced += 1
+            model.endChapterEntry()
+        }
+        await model.finishBook()
+        #expect(server.lastFinished == true, "the server did not hear the book is finished")
+        #expect(model.isFinished, "the book does not count as finished here")
+        #expect(advanced == 1, "the range ended \(advanced) times")
+        #expect(finished.isEmpty, "the book's end advanced a second time: \(finished)")
+        model.stop()
+    }
+
+    @Test("the end of a chain takes the book's other chapters out of Up Next, as a heard book does; the end of a single chapter does not")
+    func theChainsEndTakesTheBookOut() {
+        let chapters = ChapterEntryChainRuleTests.chapters
+        let single = ItemNamespace.chapterEntryId(bookId: "li_book-1", startMs: 600_000)
+        let queue = PlayQueue(isPlayable: { _ in true })
+        queue.playLast(ChapterEntryChainRuleTests.chain(2_400_000))
+        queue.playLast(single)
+        queue.playLast("rss:feed:a")
+        queue.chapterEnded(ChapterEntryChainRuleTests.chain(2_400_000), chapters: chapters, played: chapters[4])
+        #expect(queue.ids == ["rss:feed:a"], "the book's chapters stayed after its end: \(queue.ids)")
+        let lastSingle = ItemNamespace.chapterEntryId(bookId: "li_book-1", startMs: 2_400_000)
+        queue.playLast(lastSingle)
+        queue.playLast(single)
+        queue.chapterEnded(lastSingle, chapters: chapters, played: chapters[4])
+        #expect(queue.ids == ["rss:feed:a", single], "a single chapter's end took the book out")
+    }
+}
+
+/// The chain reads a book's chapters the way the open reads its detail.
+struct ChapterDetailWayTests {
+    private struct Offline: Error {}
+    static let saved = LibraryItemDetail(id: "li_book-1", media: LibraryItemMedia(metadata: nil, duration: 3000,
+                                                                                  chapters: ChapterEntryChainRuleTests.chapters,
+                                                                                  tracks: nil),
+                                         userMediaProgress: nil)
+
+    @Test("a downloaded book gives its saved detail without asking the source, also offline; the source's miss falls back to it")
+    func theDownloadComesFirst() async throws {
+        var asked = 0
+        let offline = try await BookChapterSource.detail(isDownloaded: true, cached: { Self.saved },
+                                                         fetch: { asked += 1; throw Offline() })
+        #expect(offline.id == "li_book-1")
+        #expect(asked == 0, "the source was asked for a downloaded book")
+        let fallback = try await BookChapterSource.detail(isDownloaded: false, cached: { Self.saved },
+                                                          fetch: { throw Offline() })
+        #expect(fallback.id == "li_book-1", "the saved detail did not stand in for the source")
+        await #expect(throws: Offline.self) {
+            try await BookChapterSource.detail(isDownloaded: false, cached: { nil }, fetch: { throw Offline() })
+        }
+    }
+
+    @Test("the chain and the rows of its entries read the detail on the open's way", .needsTheSources)
+    func oneWay() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let chain = try #require(ABSPodcastRefreshTests.body(of: "func enqueueChain(",
+                                                             in: try code("Sources/ViewModels/PlayerCoordinator.swift")))
+        #expect(chain.contains("session.chapterDetail("), "the chain asks the source past a download")
+        #expect(!chain.contains("fetchItemDetail("), "the chain fetches its detail on its own way")
+        #expect(try code("Sources/AppSession.swift").contains("try await chapterDetail($0)"),
+                "the rows of chapter entries fetch past a download")
+    }
+}
+
+/// A chain whose book stands at its end without being finished.
+struct ChapterEntryChainAtTheEndTests {
+    @Test("a waiting chain whose book stands at its end plays no chapter, does not resolve, and the advance goes on past it")
+    func theAdvanceDoesNotHang() {
+        let chapters = ChapterEntryChainRuleTests.chapters
+        let chain = ChapterEntryChainRuleTests.chain(0)
+        #expect(ChapterEntryRules.playChapter(entryId: chain, chapters: chapters, bookPosition: 3000) == nil)
+        #expect(!ChapterEntryRules.resolves(chain, bookChapters: chapters, bookPosition: 3000),
+                "a chain with no chapter left resolved")
+        let hit = PlaybackAdvance.resolveNext(after: "rss:feed:ep-0", queueIds: [chain, "rss:feed:a"], contextIds: [],
+                                              isPlayable: { _ in true },
+                                              resolves: { ChapterEntryRules.resolves($0, bookChapters: chapters,
+                                                                                     bookPosition: 3000) },
+                                              isPodcast: ItemNamespace.isPodcastEpisode, bingeNext: { _ in nil },
+                                              seriesEnabled: false, seriesNext: { _ in nil })
+        #expect(hit?.id == "rss:feed:a", "the advance stopped at the chain: \(hit?.id ?? "nil")")
+    }
+}
+
 /// A chain that does not go in says why.
 @MainActor
 struct ChapterEntryChainRefusalTests {
