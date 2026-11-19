@@ -101,6 +101,7 @@ final class PlayerCoordinator: ObservableObject {
     private var goingBack = false
     /// The orders, reached in one place.
     private var orders: PlayQueue { PlayQueue.shared }
+    private var context: PlaybackContext { PlaybackContext.shared }
     @Published private(set) var isLoading = false
     /// Set while the end of a title opens the next one, across the titles
     /// it skips (`advance(to:)`).
@@ -695,7 +696,7 @@ final class PlayerCoordinator: ObservableObject {
     func playInOrder(items: [LibraryItem], contextSource: String? = nil, resuming: Set<String> = []) async {
         guard let first = items.first else { return }
         await open(item: first, restart: Self.restartsFirst(items, resuming: resuming), preservesContext: true)
-        PlaybackContext.shared.replace(ids: items.dropFirst().map(\.id),
+        context.replace(ids: items.dropFirst().map(\.id),
                                        source: contextSource)
     }
 
@@ -802,7 +803,7 @@ final class PlayerCoordinator: ObservableObject {
         }
         // The entry stays in Up Next until its end, so a restart finds it;
         // only the context forgets it now.
-        PlaybackContext.shared.remove(entryId)
+        context.remove(entryId)
         await model.startChapterEntry(chapter)
         watchEntry(entryId, chapter: chapter, model: model)
         if autoplay { await model.playWithServerCheck() }
@@ -976,7 +977,7 @@ final class PlayerCoordinator: ObservableObject {
         let offline = !NetworkMonitor.shared.isConnected
         let session = AppSession.shared
         let downloads = DownloadManager.shared
-        return (orders.shownIds, PlaybackContext.shared.ids, offline,
+        return (orders.shownIds, context.ids, offline,
                 { MediaAvailability.canPlayNow(isConnected: !offline,
                                                isDownloaded: downloads.isDownloaded(itemId: $0)) },
                 // Resolution on demand: a catalogue id and a music server song

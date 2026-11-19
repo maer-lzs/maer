@@ -83,7 +83,7 @@ struct CarPlayLayoutTests {
         for asked in ["CarPlayLayout.tabs(", "SharedRows.continueIds(", "SharedRows.playlists(at: .start)",
                       "SharedRows.newEpisodeIds(", "SharedRows.showEpisodes(", "SharedRows.musicRecentlyPlayed(",
                       "SharedRows.musicPlaylists(", "SharedRows.playAlbum(", "RoutinePlayback.start(",
-                      "queue.ids", "RadioPlay.play(", "CarPlayLayout.playerExtras("] {
+                      "queue.shownIds", "RadioPlay.play(", "CarPlayLayout.playerExtras("] {
             #expect(car.contains(asked), "the car does not ask \(asked)")
         }
         for copy in ["podcastPlayState(", ".sorted {", "newestPerShow(", "byRecency("] {
