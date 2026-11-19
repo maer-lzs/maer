@@ -1100,7 +1100,7 @@ private struct DetailChapterList: View {
             }
             // One chapter into Up Next, with the actions of every title.
             .contextMenu {
-                if ChapterEntryRules.offersChapters(itemId: entry.id, chapters: chapters) {
+                if ChapterEntryRules.offersChapters(itemId: entry.id, chapters: chapters, shownAsBook: true) {
                     CatalogQueueButtons(itemId: ItemNamespace.chapterEntryId(bookId: entry.id,
                                                                              startMs: ChapterEntryRules.ms(chapter.start)),
                                         offersPlaylist: false)

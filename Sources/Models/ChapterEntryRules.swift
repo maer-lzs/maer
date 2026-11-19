@@ -67,10 +67,14 @@ nonisolated enum ChapterEntryRules {
     /// does not, from any podcast source, and neither does music (its
     /// "chapters" are the tracks of an album), a station, a routine's rule or
     /// a chapter entry.
+    /// `shownAsBook`: the surface shows a book (the book's page, the player
+    /// of a title that is no music), which a music server's audiobook is
+    /// although its id is a music album's. Without it only an id of the book
+    /// family offers chapters, never a catalogue album or music.
     static func offersChapters(itemId: String, chapters: [ABSChapter], shownAsBook: Bool = false) -> Bool {
         guard chapters.count >= 2 else { return false }
         return !ItemNamespace.isPodcastEpisode(itemId)
-            && !MediaFamily.isMusicByForm(itemId)
+            && (shownAsBook || MediaFamily.of(itemId) == .book)
             && !ItemNamespace.isRadio(itemId)
             && !ItemNamespace.isRoutineRule(itemId)
             && ItemNamespace.chapterEntry(itemId) == nil
