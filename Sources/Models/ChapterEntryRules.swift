@@ -193,6 +193,13 @@ nonisolated enum ChapterEntryRules {
             && MediaFamily.booksTabMember(itemId, markedForm: markedForm)
     }
 
+    /// Whether this device holds a title as heard to its end: its stored
+    /// mark stands at the end or says played (`ProgressMark.reachedEnd`).
+    /// A title without a mark is not heard.
+    static func heardToTheEnd(stored: [Double]?) -> Bool {
+        false
+    }
+
     /// What became of a book asked into Up Next chapter by chapter.
     enum ChainOutcome: Equatable, Sendable {
         case queued
