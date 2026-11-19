@@ -168,11 +168,11 @@ nonisolated enum SharedLink {
     /// carries counts (the form, public addresses, no access in an
     /// address), never what this device knows of the feed.
     static func opens(_ content: Content) -> Bool {
-        false
+        offers(content, staysHome: { _ in false })
     }
 
-    /// Whether a content may be shared, and whether a link that names it
-    /// may open. The feed must not stay home (`staysHome`, the question the
+    /// Whether a content may be shared (a link opens by `opens`). The feed
+    /// must not stay home (`staysHome`, the question the
     /// export asks: access in the address, premium, a sign-in, Pinchflat, an
     /// own server); every address in it must be http or https and carry no
     /// access; a station is a Radio Browser uuid; a book is a catalog book

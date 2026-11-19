@@ -32,8 +32,9 @@ struct SharedLinkOpensTests {
 
     @Test("a feed this device keeps at home (a premium mark, a sign-in it cannot read now) opens from a link like any public feed")
     func whatTheDeviceKnowsDoesNotRefuse() async throws {
+        // The open has no question to the device left (the fence below):
+        // the same link opens the same on every device.
         let ways = SharedLinkOpenerTests.Ways()
-        ways.stayHome = [Self.feed]
         let episode = SharedLink.episodeId(feedURL: Self.feed, guid: "g")
         ways.known = [episode]
         #expect(await ways.opener().outcome(for: try link(.episode(feedURL: Self.feed, guid: "g", .init())))

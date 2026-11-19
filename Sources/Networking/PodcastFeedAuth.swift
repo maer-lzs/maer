@@ -37,6 +37,7 @@ nonisolated enum PodcastFeedAuth {
     /// request on behalf of an address someone else handed over (a shared
     /// link): it carries nothing of this device and does not wait for it.
     static func requestAccess(_ access: Access, sendsAccess: Bool) -> RequestAccess {
+        guard sendsAccess else { return .none }
         switch access {
         case .present(let user, let password):
             return .header("Basic " + Data("\(user):\(password)".utf8).base64EncodedString())

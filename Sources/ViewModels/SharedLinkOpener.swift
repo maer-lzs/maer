@@ -7,9 +7,9 @@ import Foundation
 import OSLog
 
 /// What a link on maer.fm opens in the app. The link opens only what
-/// `SharedLink.offers` confirms with the same question as sharing, so a link
-/// built by hand around a private feed or an address with access opens
-/// nothing. The ways to the content are seams: whether an episode is known,
+/// `SharedLink.opens` confirms from what the link carries, so a link built by
+/// hand around an address with access opens nothing, and what this device
+/// keeps at home changes nothing. The ways to the content are seams: whether an episode is known,
 /// reading a feed nobody follows, resolving a catalog title. A link shows its
 /// content and never starts playback.
 struct SharedLinkOpener {
@@ -68,8 +68,6 @@ struct SharedLinkOpener {
         case sourceOff
     }
 
-    /// The question of the export: whether a feed address stays home.
-    var staysHome: (String) -> Bool
     /// Whether the app resolves an episode id now.
     var knows: (String) -> Bool
     /// Reads a feed nobody follows and keeps its episodes for the visit,
@@ -93,10 +91,14 @@ struct SharedLinkOpener {
     /// The sentence of a station page while Radio Browser is switched off.
     static let stationSourceOff = String(localized: "Radio Browser is off in Settings, so this station can't be opened.")
 
+    /// The sentence of a link whose feed asks for a sign-in.
+    static let signInNeeded = String(localized: "This show asks for a sign-in, so the link can't open it.")
+
     /// The sentence for an outcome that opens nothing; nil for one that
     /// opens a page.
     static func sentence(for outcome: Outcome) -> String? {
         switch outcome {
+        case .refused(let reason) where reason == "signIn": signInNeeded
         case .refused: refusal
         case .episode, .show, .station, .book, .track, .stationPage: nil
         }
@@ -131,18 +133,23 @@ struct SharedLinkOpener {
         }
     }
 
-    /// The opener of the app: a feed nobody follows is read as the show
-    /// page reads it, a catalog title is resolved by the session (a Jamendo
-    /// track nobody saw this session is asked for there).
+    /// The opener of the app: a feed nobody follows is read without any
+    /// sign-in of this device, a catalog title is resolved by the session (a
+    /// Jamendo track nobody saw this session is asked for there).
     static func live(knows: @escaping (String) -> Bool) -> SharedLinkOpener {
         SharedLinkOpener(
-            staysHome: { PodcastSubscriptions.staysHome($0) },
             knows: knows,
             browse: { feedURL in
-                guard let address = PodcastFeedAddress.requestURL(feedURL),
-                      let show = await PodcastSubscriptions.fetchAndParse(feedURL: address) else { return .failed }
-                BrowsedEpisodes.shared.remember(show: show)
-                return .read
+                guard let address = PodcastFeedAddress.requestURL(feedURL) else { return .failed }
+                switch await PodcastSubscriptions.fetchOutcome(feedURL: address, sendsAccess: false) {
+                case .show(let show):
+                    BrowsedEpisodes.shared.remember(show: show)
+                    return .read
+                case .status(let status) where StatusMeaning.from(status: status) == .signIn:
+                    return .signInNeeded
+                case .status, .failed, .accessUnknown:
+                    return .failed
+                }
             },
             resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
             resolveStation: { await lookUpStation($0) })
@@ -181,15 +188,24 @@ struct SharedLinkOpener {
 
     func outcome(for url: URL) async -> Outcome {
         guard let content = SharedLink.read(url) else { return .refused(reason: "form") }
-        guard SharedLink.offers(content, staysHome: staysHome) else { return .refused(reason: "notShared") }
+        // Only what the link carries decides, never what this device knows
+        // of the feed: a link opens on every device alike.
+        guard SharedLink.opens(content) else { return .refused(reason: "notShared") }
         switch content {
         case .episode(let feedURL, let guid, _):
             let itemId = SharedLink.episodeId(feedURL: feedURL, guid: guid)
             if knows(itemId) { return .episode(itemId: itemId) }
             // A feed nobody follows: read it, then the episode resolves. An
-            // episode that left the feed opens its show.
-            guard await browse(feedURL) == .read else { return .show(feedURL: feedURL) }
-            return knows(itemId) ? .episode(itemId: itemId) : .show(feedURL: feedURL)
+            // episode that left the feed opens its show; a feed that asks
+            // for a sign-in says so.
+            switch await browse(feedURL) {
+            case .read:
+                return knows(itemId) ? .episode(itemId: itemId) : .show(feedURL: feedURL)
+            case .signInNeeded:
+                return .refused(reason: "signIn")
+            case .failed:
+                return .show(feedURL: feedURL)
+            }
         case .show(let feedURL, _):
             return .show(feedURL: feedURL)
         case .station(let uuid, _):

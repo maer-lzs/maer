@@ -13316,6 +13316,16 @@
         }
       }
     },
+    "This show asks for a sign-in, so the link can't open it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendung verlangt eine Anmeldung, der Link öffnet sie nicht."
+          }
+        }
+      }
+    },
     "This source contains" : {
       "localizations" : {
         "de" : {

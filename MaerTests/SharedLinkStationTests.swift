@@ -20,7 +20,7 @@ struct SharedLinkStationTests {
     static let catalog = RadioStation(id: "radio:rb:\(uuid)", name: "Deutschlandfunk", streamURL: "https://st01.dlf.de/dlf/01/128/mp3/stream.mp3")
 
     private func opener(resolve: @escaping (String) async -> SharedLinkOpener.StationLookup) -> SharedLinkOpener {
-        SharedLinkOpener(staysHome: { _ in false }, knows: { _ in false },
+        SharedLinkOpener(knows: { _ in false },
                          browse: { _ in .failed }, resolveCatalog: { _ in false }, resolveStation: resolve)
     }
 

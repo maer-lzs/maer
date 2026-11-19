@@ -41,6 +41,7 @@ struct StatusMeaningFenceTests {
         "FreeCatalog.swift": "only an absence marks a catalog item as gone, every other answer is no verdict; a page says absence and pause in their own sentences",
         "ABSPodcastProvider.swift": "a refused subscribe or episode download is worded by the meaning (sign in apart), the number goes to the log line",
         "DeadCatalogItems.swift": "an absence is a dead item; the body of a 200 is read on its own (a withdrawn item answers 200 with an error), any other answer is unknown",
+        "SharedLinkOpener.swift": "a shared link's feed that means sign in says its sentence; every other answer opens the show",
     ]
 
     /// The files that read the number themselves, each with the reason the

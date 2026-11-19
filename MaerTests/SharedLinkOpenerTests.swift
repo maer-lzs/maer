@@ -24,13 +24,11 @@ struct SharedLinkOpenerTests {
         var asksSignIn: Set<String> = []
         var feedHolds: [String: String] = [:]
         var books: Set<String> = []
-        var stayHome: Set<String> = []
         var stations: [String: RadioStation] = [:]
         var stationsAsked: [String] = []
 
         func opener() -> SharedLinkOpener {
             SharedLinkOpener(
-                staysHome: { [self] in stayHome.contains($0) },
                 knows: { [self] in known.contains($0) },
                 browse: { [self] feed in
                     browsed.append(feed)
@@ -133,7 +131,7 @@ struct SharedLinkOpenerTests {
         #expect(playing.isEmpty, "the opener starts playback: \(playing)")
     }
 
-    @Test("A hand-built link with a feed that stays at home, or an address with access, opens nothing, per kind, without asking")
+    @Test("A hand-built link around an address with access opens nothing, per kind, without asking")
     func aLinkAroundSomethingPrivateOpensNothing() async throws {
         let tainted = "https://cdn.example.org/a.mp3?token=s3cr3t"
         let contents: [SharedLink.Content] = [
@@ -149,12 +147,6 @@ struct SharedLinkOpenerTests {
             #expect(await ways.opener().outcome(for: try link(content)) == .refused(reason: "notShared"), "\(content)")
             #expect(ways.browsed.isEmpty, "a refused link read a feed: \(content)")
         }
-        let home = Ways()
-        home.stayHome = [Self.feed]
-        home.known = [SharedLink.episodeId(feedURL: Self.feed, guid: "g")]
-        #expect(await home.opener().outcome(for: try link(.episode(feedURL: Self.feed, guid: "g", .init()))) == .refused(reason: "notShared"))
-        #expect(await home.opener().outcome(for: try link(.show(feedURL: Self.feed, .init()))) == .refused(reason: "notShared"))
-        #expect(home.browsed.isEmpty)
         // Another form on the right host opens nothing either.
         let other = try #require(URL(string: "https://maer.fm/l#2?k=s&f=x"))
         #expect(await Ways().opener().outcome(for: other) == .refused(reason: "form"))
