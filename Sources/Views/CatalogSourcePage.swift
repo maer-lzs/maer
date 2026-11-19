@@ -944,7 +944,10 @@ struct ArchiveSeriesPage: View {
     /// Whether the page's menu offers the chain: a work in parts does, an
     /// album of tracks never, whatever has been played of it.
     nonisolated static func offersChain(_ flavor: Flavor) -> Bool {
-        true
+        switch flavor {
+        case .series: true
+        case .album: false
+        }
     }
 
     /// Which row carries the "last heard" mark.
@@ -1014,7 +1017,7 @@ struct ArchiveSeriesPage: View {
         // Queueing the whole release belongs in the page's menu; a single
         // track carries its own buttons in its row.
         .pageActions("album-actions") {
-            CatalogQueueButtons(itemId: itemId, chain: playerCoordinator,
+            CatalogQueueButtons(itemId: itemId, chain: Self.offersChain(effectiveFlavor) ? playerCoordinator : nil,
                                 title: shareContent?.facts.title ?? router.item(itemId)?.title)
             if let shareOffer { SharedLinkButton(offer: shareOffer, title: shareContent?.facts.title) }
         }
