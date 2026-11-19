@@ -205,6 +205,21 @@ final class PlayQueue: ObservableObject {
         save()
     }
 
+    /// A chapter entry played to its end: it leaves, and the entry that
+    /// follows it chapter by chapter (`ChapterEntryRules.follower`) joins the
+    /// end, so the book and the rest of Up Next take turns.
+    func chapterEnded(_ entryId: String, chapters: [ABSChapter]) {
+        remove(entryId)
+    }
+
+    /// Puts a book into Up Next chapter by chapter, at the end, starting at
+    /// the chapter of its position (`ChapterEntryRules.chainStart`). False
+    /// when the book has no two chapters or a chain of it already waits.
+    @discardableResult
+    func enqueueChain(bookId: String, chapters: [ABSChapter], bookPosition: Double) -> Bool {
+        false
+    }
+
     func move(from source: IndexSet, to destination: Int) {
         ids.move(fromOffsets: source, toOffset: destination)
         save()

@@ -123,6 +123,34 @@ nonisolated enum ChapterEntryRules {
         return (head, found)
     }
 
+    /// The entry that follows a chapter entry heard chapter by chapter at its
+    /// end: the next chapter of the book in the same form. Nil after the last
+    /// chapter, for a single chapter entry and for any other id.
+    static func follower(of entryId: String, chapters: [ABSChapter]) -> String? {
+        nil
+    }
+
+    /// The chapter a chain starts at: the one that holds the book's
+    /// position, else the first that begins after it.
+    static func chainStart(chapters: [ABSChapter], bookPosition: Double) -> ABSChapter? {
+        nil
+    }
+
+    /// The chapter an entry plays: a single entry its own chapter; an entry
+    /// heard chapter by chapter the chapter the book's position holds NOW,
+    /// else the next, because the book may have been heard as a book since.
+    static func playChapter(entryId: String, chapters: [ABSChapter], bookPosition: Double) -> ABSChapter? {
+        guard let entry = ItemNamespace.chapterEntry(entryId) else { return nil }
+        return chapter(startMs: entry.startMs, in: chapters)
+    }
+
+    /// Whether a book's card offers to put it into Up Next chapter by
+    /// chapter: a book that is not heard to its end. Its chapters are read
+    /// when the person asks, since the library list does not carry them.
+    static func offersChain(itemId: String, finished: Bool) -> Bool {
+        false
+    }
+
     /// The row's title of an entry whose chapter is unknown.
     static var unknownChapterTitle: String { String(localized: "Unknown Chapter") }
 }

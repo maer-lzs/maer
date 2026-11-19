@@ -349,7 +349,8 @@ struct ChapterEntryFenceTests {
         for url in SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources")) where url.pathExtension == "swift" {
             let path = SourceTree.relativePath(of: url)
             let text = try Self.code(path)
-            if text.contains("\"chapter:"), path != "Sources/Models/ItemNamespace.swift" { spelling.append(path) }
+            if text.contains("\"chapter:") || text.contains("\"chapters:"),
+               path != "Sources/Models/ItemNamespace.swift" { spelling.append(path) }
             if text.contains("chapterEntryId("),
                !["Sources/Models/ItemNamespace.swift", "Sources/Models/ChapterEntryRules.swift"].contains(path) {
                 building.append(path)

@@ -100,13 +100,18 @@ nonisolated enum ItemNamespace {
     /// before it on the server does not move the entry. The namespace is not
     /// a library id, so the entry itself never reaches the library server.
     static let chapterPrefix = "chapter:"
+    /// A chapter entry of a book heard chapter by chapter
+    /// (`chapters:<start in ms>:<book id>`): at its end the next chapter of
+    /// the book joins the end of Up Next.
+    static let chaptersPrefix = "chapters:"
 
-    static func chapterEntryId(bookId: String, startMs: Int) -> String {
+    static func chapterEntryId(bookId: String, startMs: Int, continues: Bool = false) -> String {
         "\(chapterPrefix)\(startMs):\(bookId)"
     }
 
-    /// The book and the start of a chapter entry, nil for any other id.
-    static func chapterEntry(_ itemId: String) -> (bookId: String, startMs: Int)? {
+    /// The book and the start of a chapter entry, and whether it continues
+    /// chapter by chapter; nil for any other id.
+    static func chapterEntry(_ itemId: String) -> (bookId: String, startMs: Int, continues: Bool)? {
         guard itemId.hasPrefix(chapterPrefix) else { return nil }
         let rest = itemId.dropFirst(chapterPrefix.count)
         guard let colon = rest.firstIndex(of: ":"),
@@ -114,7 +119,7 @@ nonisolated enum ItemNamespace {
         else { return nil }
         let bookId = String(rest[rest.index(after: colon)...])
         guard !bookId.isEmpty, !bookId.hasPrefix(chapterPrefix) else { return nil }
-        return (bookId, startMs)
+        return (bookId, startMs, false)
     }
 
     /// The id every source question goes to: the book of a chapter entry,
