@@ -941,6 +941,12 @@ struct ArchiveSeriesPage: View {
         }
     }
 
+    /// Whether the page's menu offers the chain: a work in parts does, an
+    /// album of tracks never, whatever has been played of it.
+    nonisolated static func offersChain(_ flavor: Flavor) -> Bool {
+        true
+    }
+
     /// Which row carries the "last heard" mark.
     ///
     /// The two flavours answer it from different places, because their tracks
