@@ -120,6 +120,14 @@ struct ChapterEntryRuleTests {
         #expect(!ChapterEntryRules.offersChapters(itemId: "radio:rb:x", chapters: Self.chapters))
     }
 
+    @Test("music never offers its tracks as chapters: a song or an album of a music server, a Jamendo album")
+    func musicOffersNoChapters() {
+        for id in ["sub:album:a1", "sub:song:s1", "jf:album:a1", "jam:123"] {
+            #expect(MediaFamily.isMusicByForm(id), "the precondition: \(id) is music")
+            #expect(!ChapterEntryRules.offersChapters(itemId: id, chapters: Self.chapters), "\(id) offered its tracks as chapters")
+        }
+    }
+
     @Test("the row of an entry shows the chapter under the book's title; an unknown chapter says so and never shows the book alone")
     func theRow() {
         let media = LibraryItemMedia(

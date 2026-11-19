@@ -108,6 +108,16 @@ struct ChapterEntryRunningFenceTests {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
+    @Test("the car rebuilds its lists when what decides the shown list changes: the queue and the running entry, in both of its signals", .needsTheSources)
+    func theCarHearsTheRunningEntry() throws {
+        let car = try Self.code("Sources/CarPlay/CarPlaySceneDelegate.swift")
+        let observe = try #require(ABSPodcastRefreshTests.body(of: "private func observe()", in: car))
+        for source in ["queue.$ids", "queue.$running"] {
+            let count = observe.components(separatedBy: source).count - 1
+            #expect(count == 2, "\(source) drives \(count) of the two signals of the car")
+        }
+    }
+
     @Test("Up Next, the home rows, CarPlay, the widget and the advance read the shown list", .needsTheSources)
     func theReadersReadTheShownList() throws {
         let readers = ["Sources/Views/PlayQueueView.swift", "Sources/Views/HomeView.swift", "Sources/CarPlay/CarPlaySceneDelegate.swift"]
