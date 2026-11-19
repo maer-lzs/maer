@@ -56,10 +56,13 @@ extension PlayerViewModel {
         await syncProgress(.chapterEntry)
     }
 
-    /// Ends the watch and the entry, when another title takes over or the
-    /// player stops.
+    /// Ends the watch and the entry, when another title takes over, the
+    /// player stops or the clock leaves the chapter. The one who started the
+    /// entry hears it once (`onChapterEntryEnd`), whichever way it ended.
     func endChapterEntry() {
+        let wasEntry = playsChapterEntry || chapterRange != nil
         chapterRange = nil
         playsChapterEntry = false
+        if wasEntry { onChapterEntryEnd?() }
     }
 }

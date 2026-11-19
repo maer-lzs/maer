@@ -819,6 +819,13 @@ final class PlayerCoordinator: ObservableObject {
     /// entry out of Up Next, and its end starts what follows.
     private func watchEntry(_ entryId: String, chapter: ABSChapter, model: PlayerViewModel) {
         orders.running = entryId
+        // Every end of the entry in the player, a stop or the end of the
+        // session among them, makes it visible again unless another entry
+        // runs by then; the entry stays in Up Next, it was not heard to its end.
+        model.onChapterEntryEnd = { [weak self] in
+            guard let self, self.orders.running == entryId else { return }
+            self.orders.running = nil
+        }
         model.watchChapterRange(chapter, onLeave: { [weak self, weak model] in
             guard let self, let model, model === self.viewModel else { return }
             self.orders.running = nil
