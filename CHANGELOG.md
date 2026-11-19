@@ -23,8 +23,11 @@ chapter you are in, also when you listened on in between, and its line in
 Up Next names that chapter. A book from your server shows its chapter
 names there too: the app reads them once from the book. When the book is
 already waiting chapter by chapter, or no chapter follows where you are,
-the app says so. Marking a book as heard after its last chapter played as
-an entry keeps it heard.
+the app says so. When the last chapter of a book heard chapter by chapter
+ends, the book counts as heard, as at its own end; a single chapter never
+marks it heard. A downloaded book goes in chapter by chapter offline too.
+Marking a book as heard after its last chapter played as an entry keeps
+it heard.
 
 ## v3.8 (Build 66)
 

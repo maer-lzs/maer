@@ -152,7 +152,11 @@ struct SharedGrowthFenceTests {
     /// 759: the chapters of a book learned from its detail reach every
     /// surface of its chapter entries, Up Next and the rows that follow the
     /// listening revision (two, in `AppSession.bookChapters`, none in a view).
-    nonisolated static let sourcesStock = 759
+    /// 760: a book's chapters are read from its download first
+    /// (`AppSession.chapterDetail`).
+    /// 756: the coordinator reaches the session through its one property
+    /// (four grips fewer).
+    nonisolated static let sourcesStock = 756
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

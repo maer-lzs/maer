@@ -66,7 +66,9 @@ nonisolated enum ChapterEntryRules {
     /// chapter of a chain heard chapter by chapter does, as the book's own
     /// end does; a single chapter never does, not even the last.
     static func finishesBook(entryId: String, chapter: ABSChapter, chapters: [ABSChapter]) -> Bool {
-        false
+        guard let entry = ItemNamespace.chapterEntry(entryId), entry.continues else { return false }
+        let played = ItemNamespace.chapterEntryId(bookId: entry.bookId, startMs: ms(chapter.start), continues: true)
+        return follower(of: played, chapters: chapters) == nil
     }
 
     /// Whether the stand of the loaded book belongs to a chapter entry, so

@@ -210,11 +210,19 @@ final class PlayQueue: ObservableObject {
     /// end, so the book and the rest of Up Next take turns.
     /// `played` is the chapter the entry really played, when a chain followed
     /// the book to another chapter (`ChapterEntryRules.playChapter`); its
-    /// follower comes after that one.
+    /// follower comes after that one. The end of a chain's last chapter
+    /// finishes the book (`ChapterEntryRules.finishesBook`): its other
+    /// chapters leave as for a book heard to its end.
     func chapterEnded(_ entryId: String, chapters: [ABSChapter], played: ABSChapter? = nil) {
         remove(entryId)
+        guard let entry = ItemNamespace.chapterEntry(entryId) else { return }
+        if let chapter = played ?? ChapterEntryRules.chapter(startMs: entry.startMs, in: chapters),
+           ChapterEntryRules.finishesBook(entryId: entryId, chapter: chapter, chapters: chapters) {
+            markedPlayed(entry.bookId)
+            return
+        }
         var asked = entryId
-        if let played, let entry = ItemNamespace.chapterEntry(entryId) {
+        if let played {
             asked = ItemNamespace.chapterEntryId(bookId: entry.bookId, startMs: ChapterEntryRules.ms(played.start),
                                                  continues: entry.continues)
         }

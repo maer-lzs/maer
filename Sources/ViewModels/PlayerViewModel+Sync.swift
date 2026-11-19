@@ -141,7 +141,7 @@ extension PlayerViewModel {
             break
         }
 
-        let inEntry = ChapterEntryRules.entryHoldsStand(playsEntry: playsChapterEntry, endedAsEntry: bookEndedAsEntry,
+        let inEntry = ChapterEntryRules.entryHoldsStand(playsEntry: entryKeepsBookOpen, endedAsEntry: bookEndedAsEntry,
                                                         currentTime: currentTime, duration: duration,
                                                         isFinished: isFinished)
         let isFinishedNow = ChapterEntryRules.reportsFinished(currentTime: currentTime, duration: duration,

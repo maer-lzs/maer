@@ -220,7 +220,7 @@ final class PlayerCoordinator: ObservableObject {
                 if pass != nil {
                     Task { @MainActor in
                         switch library {
-                        case .books: await AppSession.shared.libraryViewModel.refreshProgress()
+                        case .books: await self.session.libraryViewModel.refreshProgress()
                         case .serverPodcasts: await ABSPodcastProvider.shared.refreshProgress()
                         }
                         ListeningRevision.shared.bump("claim refresh")
@@ -527,7 +527,7 @@ final class PlayerCoordinator: ObservableObject {
 
         // Determine the item's source (server vs. local files). The injected
         // `provider` is the default source, local items are routed away.
-        let itemProvider = AppSession.shared.provider(for: item.id)
+        let itemProvider = session.provider(for: item.id)
         // 🔴 DOWNLOADED means LOCAL FIRST. Not only when
         // the monitor says "offline". The degraded case (connected but
         // unusable, one bar of LTE) ran into the network timeouts although
@@ -1015,7 +1015,7 @@ final class PlayerCoordinator: ObservableObject {
                                      isPlayable: (String) -> Bool, resolves: (String) -> Bool,
                                      item: (String) -> LibraryItem?) {
         let offline = !NetworkMonitor.shared.isConnected
-        let session = AppSession.shared
+        let session = self.session
         let downloads = DownloadManager.shared
         return (orders.shownIds, context.ids, offline,
                 { MediaAvailability.canPlayNow(isConnected: !offline,
@@ -1158,7 +1158,6 @@ final class PlayerCoordinator: ObservableObject {
         // the session cache does not carry (sub: albums and songs). A
         // successful open() re-writes lastItemKey, healing a stale value.
         if let item = entries.first(where: { $0.id == lastId })?.item { return (item, "library") }
-        let session = AppSession.shared
         if let item = await session.resolveItem(forId: lastId) { return (item, "seam") }
         guard ItemNamespace.isRSS(lastId) else { return (nil, "none") }
         let subscriptions = PodcastSubscriptions.shared

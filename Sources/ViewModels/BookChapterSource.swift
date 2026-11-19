@@ -45,7 +45,13 @@ final class BookChapterSource {
     /// saved one again when the source does not answer.
     static func detail(isDownloaded: Bool, cached: () -> LibraryItemDetail?,
                        fetch: () async throws -> LibraryItemDetail) async throws -> LibraryItemDetail {
-        try await fetch()
+        if isDownloaded, let saved = cached() { return saved }
+        do {
+            return try await fetch()
+        } catch {
+            guard let saved = cached() else { throw error }
+            return saved
+        }
     }
 
     /// The chapters known for a book now, nil when no source knows them.

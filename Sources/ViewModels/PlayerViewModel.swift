@@ -248,6 +248,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The entry that plays ends where the book ends and finishes it: the
     /// last chapter of a chain. Cleared with the entry.
     var entryFinishesBook = false
+    /// An entry plays whose end leaves the book unfinished.
+    var entryKeepsBookOpen: Bool { playsChapterEntry && !entryFinishesBook }
     /// Called once whenever the chapter entry ends in this player, by any
     /// way (its end, a jump out, a stop, a new title), so the one who started
     /// it learns it.
@@ -1271,15 +1273,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // entry starts what follows, and that ends the entry here while this
         // still writes the stand. The answer travels with the write.
         let asEntry = playsChapterEntry
-        bookEndedAsEntry = asEntry
+        let keepsBookOpen = entryKeepsBookOpen
+        bookEndedAsEntry = keepsBookOpen
         currentTime = duration
         notePlayback("stopped", from: "item ended")
         isPlaying = false
         // Also mark finished locally. The sync writes it anyway;
         // otherwise the UI shows the wrong state after a fully played book.
-        // The last chapter played as an entry finishes no book, and
-        // its range watch starts what follows, not the book's end.
-        isFinished = !asEntry
+        // A single last chapter played as an entry finishes no book; the end
+        // of a chain does. Either way the entry's range watch starts what
+        // follows, not the book's end.
+        isFinished = !keepsBookOpen
         updateNowPlayingInfo()
         updateWidgetSnapshot()
         await syncProgress(.bookEnd)
