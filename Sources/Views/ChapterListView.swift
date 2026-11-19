@@ -49,7 +49,7 @@ struct ChapterListView: View {
                         }
                         // One chapter into Up Next, with the actions of every title.
                         .contextMenu {
-                            if !isMusic, let itemId, ChapterEntryRules.offersChapters(itemId: itemId, chapters: chapters) {
+                            if let itemId, ChapterEntryRules.offersChapters(itemId: itemId, chapters: chapters) {
                                 CatalogQueueButtons(itemId: ItemNamespace.chapterEntryId(bookId: itemId,
                                                                                          startMs: ChapterEntryRules.ms(chapter.start)),
                                                     offersPlaylist: false)

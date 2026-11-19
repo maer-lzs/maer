@@ -64,11 +64,13 @@ nonisolated enum ChapterEntryRules {
 
     /// Whether a title offers its chapters for Up Next: books only, with at
     /// least two chapters (one chapter is the book). An episode with chapters
-    /// does not, from any podcast source, and neither does a station, a
-    /// routine's rule or a chapter entry.
+    /// does not, from any podcast source, and neither does music (its
+    /// "chapters" are the tracks of an album), a station, a routine's rule or
+    /// a chapter entry.
     static func offersChapters(itemId: String, chapters: [ABSChapter]) -> Bool {
         guard chapters.count >= 2 else { return false }
         return !ItemNamespace.isPodcastEpisode(itemId)
+            && !MediaFamily.isMusicByForm(itemId)
             && !ItemNamespace.isRadio(itemId)
             && !ItemNamespace.isRoutineRule(itemId)
             && ItemNamespace.chapterEntry(itemId) == nil

@@ -121,6 +121,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let changes: [AnyPublisher<Void, Never>] = [
             ListeningRevision.shared.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
             queue.$ids.map { _ in () }.eraseToAnyPublisher(),
+            // The running chapter entry decides the shown queue as much as
+            // the entries do (`PlayQueue.shownIds`).
+            queue.$running.map { _ in () }.eraseToAnyPublisher(),
             playlistStore.$playlists.map { _ in () }.eraseToAnyPublisher(),
             subscriptions.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
             session.libraryViewModel.$continueListening.map { _ in () }.eraseToAnyPublisher(),
@@ -136,7 +139,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         // carries the title and that player's speed. The player arrives
         // after its title, so it is a signal of its own.
         session.playerCoordinator.$activeItem
-            .combineLatest(queue.$ids, context.$ids, session.playerCoordinator.$viewModel)
+            .combineLatest(queue.$ids.combineLatest(queue.$running), context.$ids, session.playerCoordinator.$viewModel)
             .receive(on: RunLoop.main)
             .sink { [weak self] _, _, _, model in
                 self?.rateSignal = model?.$playbackRate
