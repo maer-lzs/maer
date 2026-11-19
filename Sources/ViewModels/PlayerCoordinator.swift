@@ -854,7 +854,7 @@ final class PlayerCoordinator: ObservableObject {
             sayOpenFailure(String(localized: "This book has no chapters to go through one by one."), cause: .unknown, title: book.title)
             return
         }
-        if !orders.enqueueChain(bookId: book.id, chapters: chapters, bookPosition: position) {
+        if orders.enqueueChain(bookId: book.id, chapters: chapters, bookPosition: position) != .queued {
             Logger.player.notice("CHAPTER chain not queued: one waits already or no chapter is left")
         }
     }
@@ -1020,9 +1020,10 @@ final class PlayerCoordinator: ObservableObject {
                 // session cache is only a shortcut; `open` fetches the detail.
                 // A chapter entry resolves through its book and its chapter.
                 { id in
-                    let book = session.playableItem(forId: ItemNamespace.bookOrSelf(id))
-                    return book != nil
-                        && ChapterEntryRules.resolves(id, bookChapters: book.map { $0.media?.chapters ?? [] })
+                    let bookId = ItemNamespace.bookOrSelf(id)
+                    guard session.playableItem(forId: bookId) != nil else { return false }
+                    return ChapterEntryRules.resolves(id, bookChapters: session.bookChapters.chapters(of: bookId) ?? [],
+                                                      bookPosition: session.bookChapters.position(of: bookId))
                 },
                 { session.playableItem(forId: $0) })
     }

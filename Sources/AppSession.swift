@@ -252,8 +252,8 @@ final class AppSession: ObservableObject {
     /// which every caller already tolerates.
     func libraryItem(forId itemId: String) -> LibraryItem? {
         // A chapter entry shows as its chapter under its book's title.
-        if let entry = ItemNamespace.chapterEntry(itemId) {
-            return libraryItem(forId: entry.bookId).map { ChapterEntryRules.carrier(entryId: itemId, book: $0) }
+        if ItemNamespace.chapterEntry(itemId) != nil {
+            return bookChapters.entryItem(itemId)
         }
         if itemId.hasPrefix("rss:") {
             return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) via the guid index
@@ -324,7 +324,11 @@ final class AppSession: ObservableObject {
         // A chapter entry asks its book's source with the book's id, never
         // with its own.
         if let entry = ItemNamespace.chapterEntry(itemId) {
-            return await resolveItem(forId: entry.bookId).map { ChapterEntryRules.carrier(entryId: itemId, book: $0) }
+            guard let book = await resolveItem(forId: entry.bookId) else { return nil }
+            await bookChapters.learn(entry.bookId)
+            return ChapterEntryRules.carrier(entryId: itemId, book: book,
+                                             chapters: bookChapters.chapters(of: entry.bookId) ?? [],
+                                             bookPosition: bookChapters.position(of: entry.bookId))
         }
         if let item = resolve(forId: itemId, carried: nil).item, item.media != nil { return item }
         do {
@@ -343,6 +347,20 @@ final class AppSession: ObservableObject {
 
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider, upNext: PlayQueue.shared, heldUnfinished: HeldUnfinished(database: .shared, kind: .books))
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
+
+    /// The chapters and the stand of a book for its chapter entries.
+    private(set) lazy var bookChapters = BookChapterSource(
+        playing: { [unowned self] in
+            guard let model = playerCoordinator.viewModel, let id = model.item?.id else { return nil }
+            return (id, model.chapters, model.currentTime)
+        },
+        listed: { [unowned self] in libraryItem(forId: $0) },
+        listedPosition: { [unowned self] in libraryViewModel.shelvedEntry(id: $0)?.progress?.currentTime },
+        fetch: { [unowned self] in try await provider(for: $0).fetchItemDetail(itemId: $0) },
+        changed: {
+            PlayQueue.shared.objectWillChange.send()
+            ListeningRevision.shared.bump("chapters of a book learned")
+        })
 
     private init() {}
 }

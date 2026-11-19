@@ -567,27 +567,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
         bookEndedAsEntry = false
         self.item = item
         applySkipInterval(forItemId: item.id)
-        let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
-            // Stable: fall back to the original position when the server
-            // index is missing/equal. Swift's sort is not stability-guaranteed,
-            // and download naming vs. playback order MUST agree.
-            let li = l.element.index ?? l.offset
-            let ri = r.element.index ?? r.offset
-            return li == ri ? l.offset < r.offset : li < ri
-        }.map(\.element)
+        let sortedTracks = ChapterModel.ordered(item.media.tracks ?? [])
         tracks = sortedTracks
-        duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
+        duration = ChapterModel.duration(of: item.media, ordered: sortedTracks)
 
         // Resolve the chapter list once. Validated chapters if they
         // cover the book, otherwise a track/rest fallback (ABS ships items with
         // chapters covering only part of the duration). Selector, player display
-        // and the cover swipe all use THIS list.
-        // Podcasts keep partial chapter coverage (segment markers). The
-        // coverage fallback is audiobook-only.
-        let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
-        let resolvedChapters = ChapterModel.resolved(
-            chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration,
-            isPodcast: isPodcast, isMusic: MusicSourceRule.isServerMusic(item.id))
+        // and the cover swipe all use THIS list, and so does a chapter entry
+        // of Up Next that reads the same detail (`BookChapterSource`).
+        let resolvedChapters = ChapterModel.resolved(detail: item)
         chapters = resolvedChapters.chapters
         chaptersAreFallback = resolvedChapters.isFallback
 

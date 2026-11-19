@@ -223,18 +223,18 @@ final class PlayQueue: ObservableObject {
     }
 
     /// Puts a book into Up Next chapter by chapter, at the end, starting at
-    /// the chapter of its position (`ChapterEntryRules.chainStart`). False
-    /// when the book has no two chapters or a chain of it already waits.
+    /// the chapter of its position (`ChapterEntryRules.chainStart`), and says
+    /// what became of it.
     @discardableResult
-    func enqueueChain(bookId: String, chapters: [ABSChapter], bookPosition: Double) -> Bool {
+    func enqueueChain(bookId: String, chapters: [ABSChapter], bookPosition: Double) -> ChapterEntryRules.ChainOutcome {
         guard chapters.count >= 2,
               !ids.contains(where: { ItemNamespace.chapterEntry($0).map { $0.bookId == bookId && $0.continues } == true }),
-              let start = ChapterEntryRules.chainStart(chapters: chapters, bookPosition: bookPosition) else { return false }
+              let start = ChapterEntryRules.chainStart(chapters: chapters, bookPosition: bookPosition) else { return .notHeld }
         let id = ItemNamespace.chapterEntryId(bookId: bookId, startMs: ChapterEntryRules.ms(start.start), continues: true)
-        guard isQueueable(id), Self.canHold(id) else { return false }
+        guard isQueueable(id), Self.canHold(id) else { return .notHeld }
         ids.append(id)
         save()
-        return true
+        return .queued
     }
 
     func move(from source: IndexSet, to destination: Int) {

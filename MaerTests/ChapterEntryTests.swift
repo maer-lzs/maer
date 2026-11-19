@@ -56,10 +56,11 @@ struct ChapterEntryRuleTests {
         #expect(ChapterEntryRules.chapter(startMs: 600_000, in: moved) == nil, "the entry slid onto another chapter")
         #expect(ChapterEntryRules.chapter(startMs: 0, in: []) == nil)
         let id = ItemNamespace.chapterEntryId(bookId: "li_book-1", startMs: 600_000)
-        #expect(ChapterEntryRules.resolves(id, bookChapters: Self.chapters))
-        #expect(!ChapterEntryRules.resolves(id, bookChapters: moved), "an unknown chapter would play")
-        #expect(!ChapterEntryRules.resolves(id, bookChapters: nil), "a chapter of a book whose chapters are unknown would play")
-        #expect(ChapterEntryRules.resolves("li_book-1", bookChapters: nil), "a plain book asks no chapter")
+        #expect(ChapterEntryRules.resolves(id, bookChapters: Self.chapters, bookPosition: 0))
+        #expect(!ChapterEntryRules.resolves(id, bookChapters: moved, bookPosition: 0), "an unknown chapter would play")
+        #expect(!ChapterEntryRules.resolves(id, bookChapters: nil, bookPosition: 0),
+                "a chapter of a book whose chapters are unknown would play")
+        #expect(ChapterEntryRules.resolves("li_book-1", bookChapters: nil, bookPosition: 0), "a plain book asks no chapter")
     }
 
     @Test("a chapter starts at the book's position when that lies inside it, else at its beginning")
@@ -136,12 +137,13 @@ struct ChapterEntryRuleTests {
             duration: 1800, chapters: Self.chapters, tracks: nil)
         let book = LibraryItem(id: "li_book-1", media: media, addedAt: 5)
         let id = ItemNamespace.chapterEntryId(bookId: book.id, startMs: 600_000)
-        let row = ChapterEntryRules.carrier(entryId: id, book: book)
+        let row = ChapterEntryRules.carrier(entryId: id, book: book, chapters: Self.chapters, bookPosition: 0)
         #expect(row.id == id)
         #expect(row.title == "The Middle")
         #expect(row.media?.metadata?.authorName == "The Book")
         #expect(row.media?.duration == 600.5)
-        let gone = ChapterEntryRules.carrier(entryId: ItemNamespace.chapterEntryId(bookId: book.id, startMs: 650_000), book: book)
+        let gone = ChapterEntryRules.carrier(entryId: ItemNamespace.chapterEntryId(bookId: book.id, startMs: 650_000),
+                                             book: book, chapters: Self.chapters, bookPosition: 0)
         #expect(gone.id != book.id, "the row of an unknown chapter stood for the book")
         #expect(gone.title == ChapterEntryRules.unknownChapterTitle)
         #expect(gone.media?.metadata?.authorName == "The Book")
@@ -157,7 +159,7 @@ struct ChapterEntryRuleTests {
         func next(after finished: String) -> String? {
             PlaybackAdvance.resolveNext(after: finished, queueIds: queue, contextIds: [],
                                         isPlayable: { _ in true },
-                                        resolves: { ChapterEntryRules.resolves($0, bookChapters: Self.chapters) },
+                                        resolves: { ChapterEntryRules.resolves($0, bookChapters: Self.chapters, bookPosition: 0) },
                                         isPodcast: ItemNamespace.isPodcastEpisode, bingeNext: { _ in nil },
                                         seriesEnabled: ChapterEntryRules.seriesMayFollow(finished, enabled: true),
                                         seriesNext: { _ in "li_book-2" })?.id
@@ -175,7 +177,8 @@ struct ChapterEntryRuleTests {
         let episode = "rss:feed:ep-1"
         let hit = PlaybackAdvance.resolveNext(after: "rss:feed:ep-0", queueIds: [gone, episode], contextIds: [],
                                               isPlayable: { _ in true },
-                                              resolves: { ChapterEntryRules.resolves($0, bookChapters: Self.chapters) },
+                                              resolves: { ChapterEntryRules.resolves($0, bookChapters: Self.chapters,
+                                                                                     bookPosition: 0) },
                                               isPodcast: ItemNamespace.isPodcastEpisode, bingeNext: { _ in nil },
                                               seriesEnabled: false, seriesNext: { _ in nil })
         #expect(hit?.id == episode)
@@ -268,6 +271,8 @@ struct ChapterEntryQueueTests {
         var position: Double
         var finishedWrites = 0
         var writes = 0
+        /// What the last write said, the stand the server keeps.
+        var lastFinished: Bool?
         init(file: String, duration: Double, position: Double) {
             self.file = file
             self.duration = duration
@@ -297,6 +302,7 @@ struct ChapterEntryQueueTests {
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
             position = currentTime
             writes += 1
+            lastFinished = isFinished
             if isFinished { finishedWrites += 1 }
         }
         func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }

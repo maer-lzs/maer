@@ -80,6 +80,31 @@ nonisolated enum ChapterModel {
         return (withTimeMarks(valid, duration: duration), true)
     }
 
+    /// A detail's tracks in play order: by the server's index, else by their
+    /// place. Stable, because download naming and playback order must agree.
+    static func ordered(_ tracks: [ABSAudioTrack]) -> [ABSAudioTrack] {
+        tracks.enumerated().sorted { l, r in
+            let li = l.element.index ?? l.offset
+            let ri = r.element.index ?? r.offset
+            return li == ri ? l.offset < r.offset : li < ri
+        }.map(\.element)
+    }
+
+    /// A detail's duration: the one it names, else the sum of its tracks.
+    static func duration(of media: LibraryItemMedia, ordered tracks: [ABSAudioTrack]) -> Double {
+        media.duration ?? tracks.reduce(0) { $0 + ($1.duration ?? 0) }
+    }
+
+    /// The chapters the player uses for a detail, read the same way wherever
+    /// a detail is at hand.
+    static func resolved(detail: LibraryItemDetail) -> (chapters: [ABSChapter], isFallback: Bool) {
+        let tracks = ordered(detail.media.tracks ?? [])
+        return resolved(chapters: detail.media.chapters ?? [], tracks: tracks,
+                        duration: duration(of: detail.media, ordered: tracks),
+                        isPodcast: ItemNamespace.isPodcastEpisode(detail.id),
+                        isMusic: MusicSourceRule.isServerMusic(detail.id))
+    }
+
     /// ONE label for every chapter-selector surface (player list button,
     /// selector sheet title, detail-page selector row). Media-type aware:
     /// music navigates tracks, a fallback book navigates parts ("Teile"), only

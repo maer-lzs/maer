@@ -62,6 +62,16 @@ nonisolated enum ChapterEntryRules {
         !inChapterEntry && SyncRules.isFinished(currentTime: currentTime, duration: duration)
     }
 
+    /// Whether the stand of the loaded book belongs to a chapter entry, so
+    /// its write tells the server nothing is finished: while the entry plays,
+    /// and after the book's end as an entry as long as the position stands at
+    /// that end. A finish marked by hand wins over both; a jump or playing on
+    /// moves the position off the end and ends it.
+    static func entryHoldsStand(playsEntry: Bool, endedAsEntry: Bool, currentTime: Double,
+                                duration: Double, isFinished: Bool) -> Bool {
+        playsEntry || endedAsEntry
+    }
+
     /// Whether a title offers its chapters for Up Next: books only, with at
     /// least two chapters (one chapter is the book). An episode with chapters
     /// does not, from any podcast source, and neither does music (its
@@ -86,18 +96,27 @@ nonisolated enum ChapterEntryRules {
     /// item without its chapters; the open reads them from the detail and
     /// leaves the entry where it is when none begins at its start. Any other
     /// id asks no chapter.
-    static func resolves(_ itemId: String, bookChapters: [ABSChapter]?) -> Bool {
+    static func resolves(_ itemId: String, bookChapters: [ABSChapter]?, bookPosition: Double) -> Bool {
         guard let entry = ItemNamespace.chapterEntry(itemId) else { return true }
         guard let bookChapters else { return false }
         return bookChapters.isEmpty || chapter(startMs: entry.startMs, in: bookChapters) != nil
     }
 
+    /// The chapters a book's entries ask, from the first source that knows
+    /// them: the player that holds the book, the chapters read from its
+    /// detail, its item in the library list (a server's list carries none).
+    /// Nil when none knows them.
+    static func knownChapters(playing: [ABSChapter]?, learned: [ABSChapter]?,
+                              listed: [ABSChapter]?) -> [ABSChapter]? {
+        listed
+    }
+
     /// The row of a chapter entry in Up Next: the chapter's title under the
     /// book's, both from the book's item. A chapter that no longer begins at
     /// the entry's start says it is unknown; the row never stands for the book.
-    static func carrier(entryId: String, book: LibraryItem) -> LibraryItem {
+    static func carrier(entryId: String, book: LibraryItem, chapters: [ABSChapter], bookPosition: Double) -> LibraryItem {
         let startMs = ItemNamespace.chapterEntry(entryId)?.startMs ?? -1
-        let found = chapter(startMs: startMs, in: book.media?.chapters ?? [])
+        let found = chapter(startMs: startMs, in: chapters)
         let metadata = book.media?.metadata
         let media = LibraryItemMedia(
             metadata: LibraryItemMetadata(title: found?.title ?? unknownChapterTitle, authorName: book.title,
@@ -159,6 +178,22 @@ nonisolated enum ChapterEntryRules {
     /// when the person asks, since the library list does not carry them.
     static func offersChain(itemId: String, finished: Bool) -> Bool {
         !finished && MediaFamily.of(itemId) == .book
+    }
+
+    /// What became of a book asked into Up Next chapter by chapter.
+    enum ChainOutcome: Equatable, Sendable {
+        case queued
+        /// A chain of the book waits in Up Next already.
+        case waitsAlready
+        /// No chapter holds the book's position or begins after it.
+        case noChapterLeft
+        /// The queue holds no entry of this book.
+        case notHeld
+    }
+
+    /// The sentence a refused chain says, nil when it was queued.
+    static func chainRefusal(_ outcome: ChainOutcome) -> String? {
+        nil
     }
 
     /// The row's title of an entry whose chapter is unknown.

@@ -92,7 +92,7 @@ struct ChapterEntryChainQueueTests {
     @Test("a book and two episodes take turns: chapter one, episode A, episode B, chapter two")
     func theBookAndTheEpisodesTakeTurns() {
         let queue = PlayQueue(isPlayable: { _ in true })
-        #expect(queue.enqueueChain(bookId: "li_book-1", chapters: ChapterEntryChainRuleTests.chapters, bookPosition: 0))
+        #expect(queue.enqueueChain(bookId: "li_book-1", chapters: ChapterEntryChainRuleTests.chapters, bookPosition: 0) == .queued)
         queue.playLast("rss:feed:a")
         queue.playLast("rss:feed:b")
         let first = ChapterEntryChainRuleTests.chain(0)
@@ -106,11 +106,12 @@ struct ChapterEntryChainQueueTests {
     func theChainGoesInOnce() {
         let queue = PlayQueue(isPlayable: { _ in true })
         queue.playLast("rss:feed:a")
-        #expect(queue.enqueueChain(bookId: "li_book-1", chapters: ChapterEntryChainRuleTests.chapters, bookPosition: 700))
+        #expect(queue.enqueueChain(bookId: "li_book-1", chapters: ChapterEntryChainRuleTests.chapters, bookPosition: 700) == .queued)
         #expect(queue.ids == ["rss:feed:a", ChapterEntryChainRuleTests.chain(600_000)])
-        #expect(!queue.enqueueChain(bookId: "li_book-1", chapters: ChapterEntryChainRuleTests.chapters, bookPosition: 0),
+        #expect(queue.enqueueChain(bookId: "li_book-1", chapters: ChapterEntryChainRuleTests.chapters, bookPosition: 0) != .queued,
                 "a second chain of the same book went in")
-        #expect(!queue.enqueueChain(bookId: "li_book-2", chapters: [ChapterEntryChainRuleTests.chapters[0]], bookPosition: 0))
+        #expect(queue.enqueueChain(bookId: "li_book-2", chapters: [ChapterEntryChainRuleTests.chapters[0]],
+                                   bookPosition: 0) != .queued)
         #expect(queue.ids.count == 2)
     }
 
