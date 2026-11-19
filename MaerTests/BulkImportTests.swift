@@ -557,7 +557,7 @@ struct BulkImportTests {
         #expect(store.components(separatedBy: "isSingleUserAct: false, patience: .bulk)").count - 1 == 2,
                 "both launches of the bulk run ask with .bulk")
         #expect(store.contains("if let silence = patience.silenceLimit { request.timeoutInterval = silence }"))
-        #expect(store.contains("RequestRetryPolicy.fetch(request, once: patience.asksOnce)"))
+        #expect(store.contains("RequestRetryPolicy.fetch(request, once: patience.asksOnce,"))
         #expect(!store.contains("lastFreeTwinSkip"), "no shared slot for what one fetch says about itself")
     }
 

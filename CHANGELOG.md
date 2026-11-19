@@ -5,9 +5,11 @@
 **Shared links open on every device.** A link to a public podcast now
 opens the episode or show whatever this device knows about the feed, also
 when you marked the show as premium here or its sign-in cannot be read at
-the moment. Opening a link sends none of your sign-ins with it. A feed
-that asks for a sign-in says so instead of opening an empty page. Sharing
-still offers no link for a feed that stays with you.
+the moment. To find the episode, the app reads the shared feed without
+any of your sign-ins, server headers or cookies; once the show opens, its
+page reads the feed like any other. A feed that asks for a sign-in says
+so instead of opening an empty page, unless you follow it, then its show
+opens. Sharing still offers no link for a feed that stays with you.
 
 **Single chapters in Up Next.** In the chapter list of an audiobook, a
 long press on a chapter puts it next or last in Up Next. It plays from

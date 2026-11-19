@@ -156,7 +156,9 @@ struct SharedGrowthFenceTests {
     /// (`AppSession.chapterDetail`).
     /// 756: the coordinator reaches the session through its one property
     /// (four grips fewer).
-    nonisolated static let sourcesStock = 756
+    /// 757: a shared link's read asks whether this device follows the feed
+    /// (one, in `SharedLinkOpener.live`, none in a view).
+    nonisolated static let sourcesStock = 757
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

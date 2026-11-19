@@ -370,15 +370,15 @@ nonisolated enum PodcastFeedAuth {
         return streamHeaders(forItemId: id)
     }
 
-    /// The headers for one answer of the access, pure.
+    /// The headers for one answer of the access, pure; the header itself is
+    /// built by `requestAccess`.
     static func headers(for access: Access) -> [String: String]? {
-        switch access {
-        case .present(let user, let password):
-            let token = Data("\(user):\(password)".utf8).base64EncodedString()
-            return ["Authorization": "Basic \(token)"]
-        case .absent:
+        switch requestAccess(access, sendsAccess: true) {
+        case .header(let value):
+            return ["Authorization": value]
+        case .none:
             return [:]
-        case .unknown:
+        case .wait:
             return nil
         }
     }

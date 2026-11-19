@@ -2760,6 +2760,8 @@ final class PodcastSubscriptions: ObservableObject {
         case .none:
             break
         }
+        // The host's cookies are this device's too.
+        if !sendsAccess { request.httpShouldHandleCookies = false }
         return request
     }
 

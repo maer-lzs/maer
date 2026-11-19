@@ -98,8 +98,10 @@ nonisolated enum RequestRetryPolicy {
         // `HTTP.prepare`, so the identity is set here as well.
         var request = request
         AppUserAgent.applyIfMissing(to: &request)
-        ServerHeaders.apply(to: &request)
-        try ServerHeaders.admit(request)
+        if carriesServerHeaders {
+            ServerHeaders.apply(to: &request)
+            try ServerHeaders.admit(request)
+        }
         let redirects = redirects ?? RedirectGuard.following()
         // Past every rung of `decide`, the first answer is final.
         var attempt = once ? Int.max : 0

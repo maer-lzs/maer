@@ -295,7 +295,8 @@ struct FeedAccessUnknownTests {
                 "the readers of the access were among the files read")
         #expect(namers.isEmpty, "the live item is named outside its place: \(namers)")
         let subscriptions = try code("Sources/Providers/PodcastSubscriptions.swift")
-        let fetch = try #require(subscriptions.range(of: "static func fetchOutcome(feedURL rawURL: URL"))
+        // The feed's request is built in `feedRequest`, which `fetchOutcome` asks.
+        let fetch = try #require(subscriptions.range(of: "static func feedRequest(_ feedURL: URL, sendsAccess: Bool)"))
         let fetchBody = String(subscriptions[fetch.lowerBound...].prefix(1400))
         #expect(fetchBody.contains("PodcastFeedAuth.access(feedKey:") && !fetchBody.contains("authHeader("),
                 "the fetch asks the three answers, not the header that reads unknown as none")

@@ -140,7 +140,7 @@ struct SharedLinkOpener {
         switch outcome {
         case .show:
             return .read
-        case .status(let status) where StatusMeaning.from(status: status) == .signIn:
+        case .status(let status) where StatusMeaning.from(status: status) == .signIn && !follows:
             return .signInNeeded
         case .status, .failed, .accessUnknown:
             return .failed
@@ -157,7 +157,11 @@ struct SharedLinkOpener {
                 guard let address = PodcastFeedAddress.requestURL(feedURL) else { return .failed }
                 let outcome = await PodcastSubscriptions.fetchOutcome(feedURL: address, sendsAccess: false)
                 if case .show(let show) = outcome { BrowsedEpisodes.shared.remember(show: show) }
-                return feedRead(outcome, follows: false)
+                let key = PodcastIdentity.feedKey(feedURL)
+                let follows = await MainActor.run {
+                    PodcastSubscriptions.shared.shows.contains { PodcastIdentity.feedKey($0.feedURL) == key }
+                }
+                return feedRead(outcome, follows: follows)
             },
             resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
             resolveStation: { await lookUpStation($0) })
