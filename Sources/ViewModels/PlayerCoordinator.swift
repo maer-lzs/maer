@@ -838,8 +838,9 @@ final class PlayerCoordinator: ObservableObject {
 
     /// Puts a book into Up Next chapter by chapter, at the end. The library
     /// list does not carry chapters, so the book's detail is asked first; a
-    /// book with fewer than two chapters says so, and a chain of the book
-    /// that already waits stays the one.
+    /// book with fewer than two chapters says so, and a chain that does not
+    /// go in says why. The chapters are the player's of that detail, and the
+    /// rows of the book's entries read them from here on.
     func enqueueChain(_ book: LibraryItem, position: Double) async {
         let detail: LibraryItemDetail
         do {
@@ -849,13 +850,16 @@ final class PlayerCoordinator: ObservableObject {
             sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: book.title)
             return
         }
-        let chapters = detail.media.chapters ?? []
+        let chapters = ChapterModel.resolved(detail: detail).chapters
+        session.bookChapters.note(chapters, of: book.id)
         guard chapters.count >= 2 else {
             sayOpenFailure(String(localized: "This book has no chapters to go through one by one."), cause: .unknown, title: book.title)
             return
         }
-        if orders.enqueueChain(bookId: book.id, chapters: chapters, bookPosition: position) != .queued {
-            Logger.player.notice("CHAPTER chain not queued: one waits already or no chapter is left")
+        let outcome = orders.enqueueChain(bookId: book.id, chapters: chapters, bookPosition: position)
+        if let sentence = ChapterEntryRules.chainRefusal(outcome) {
+            Logger.player.notice("CHAPTER chain not queued: \(String(describing: outcome), privacy: .public)")
+            sayOpenFailure(sentence, cause: .unknown, title: book.title)
         }
     }
 

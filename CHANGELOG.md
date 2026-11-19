@@ -19,7 +19,12 @@ never starts it again, and a jump out of the chapter takes it out. A
 book's menu has Chapter by Chapter in Up Next: the book goes in at the
 end, one chapter at a time, and when a chapter ends the next one joins the
 end of Up Next, so a book and your podcasts take turns. It picks up at the
-chapter you are in, also when you listened on in between.
+chapter you are in, also when you listened on in between, and its line in
+Up Next names that chapter. A book from your server shows its chapter
+names there too: the app reads them once from the book. When the book is
+already waiting chapter by chapter, or no chapter follows where you are,
+the app says so. Marking a book as heard after its last chapter played as
+an entry keeps it heard.
 
 ## v3.8 (Build 66)
 

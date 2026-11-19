@@ -227,9 +227,13 @@ final class PlayQueue: ObservableObject {
     /// what became of it.
     @discardableResult
     func enqueueChain(bookId: String, chapters: [ABSChapter], bookPosition: Double) -> ChapterEntryRules.ChainOutcome {
-        guard chapters.count >= 2,
-              !ids.contains(where: { ItemNamespace.chapterEntry($0).map { $0.bookId == bookId && $0.continues } == true }),
-              let start = ChapterEntryRules.chainStart(chapters: chapters, bookPosition: bookPosition) else { return .notHeld }
+        guard chapters.count >= 2 else { return .notHeld }
+        if ids.contains(where: { ItemNamespace.chapterEntry($0).map { $0.bookId == bookId && $0.continues } == true }) {
+            return .waitsAlready
+        }
+        guard let start = ChapterEntryRules.chainStart(chapters: chapters, bookPosition: bookPosition) else {
+            return .noChapterLeft
+        }
         let id = ItemNamespace.chapterEntryId(bookId: bookId, startMs: ChapterEntryRules.ms(start.start), continues: true)
         guard isQueueable(id), Self.canHold(id) else { return .notHeld }
         ids.append(id)

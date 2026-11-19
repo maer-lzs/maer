@@ -250,9 +250,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// it learns it.
     var onChapterEntryEnd: (@MainActor () -> Void)?
     /// Whether the book's end came while it played as a chapter entry, read
-    /// once at that end. Every write of that stand takes it from here (the
-    /// end, its follow-up round, the stop of this player when the next title
-    /// takes over), not from the entry that may have ended meanwhile; a new
+    /// once at that end. A write of that stand asks it through
+    /// `ChapterEntryRules.entryHoldsStand`, which counts it only while the
+    /// position stands at the end and no finish was marked by hand; a new
     /// title clears it.
     var bookEndedAsEntry = false
     var syncTask: Task<Void, Never>?

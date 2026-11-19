@@ -149,7 +149,10 @@ struct SharedGrowthFenceTests {
     /// build, its tabs and its signals (three grips are one).
     /// 757: the coordinator reaches the context through one property, as it
     /// reaches the orders.
-    nonisolated static let sourcesStock = 757
+    /// 759: the chapters of a book learned from its detail reach every
+    /// surface of its chapter entries, Up Next and the rows that follow the
+    /// listening revision (two, in `AppSession.bookChapters`, none in a view).
+    nonisolated static let sourcesStock = 759
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

@@ -7191,6 +7191,16 @@
         }
       }
     },
+    "No chapter follows from here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ab hier folgt kein Kapitel mehr."
+          }
+        }
+      }
+    },
     "No differences. This device and the server already match." : {
       "localizations" : {
         "de" : {
@@ -13010,6 +13020,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Adresse ist unverschlüsseltes http. Die Anmeldung und alles, was die App mit dem Dienst austauscht, reist versiegelt in der Sitzung. Offen auf der Leitung sind nur der erste Abruf des Dienst-Schlüssels und die Erreichbarkeitsfrage; von da an hält die App diesen Schlüssel."
+          }
+        }
+      }
+    },
+    "This book already waits in Up Next." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Buch wartet schon in Als Nächstes."
+          }
+        }
+      }
+    },
+    "This book cannot go into Up Next." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Buch kann nicht in Als Nächstes."
           }
         }
       }

@@ -141,8 +141,11 @@ extension PlayerViewModel {
             break
         }
 
+        let inEntry = ChapterEntryRules.entryHoldsStand(playsEntry: playsChapterEntry, endedAsEntry: bookEndedAsEntry,
+                                                        currentTime: currentTime, duration: duration,
+                                                        isFinished: isFinished)
         let isFinishedNow = ChapterEntryRules.reportsFinished(currentTime: currentTime, duration: duration,
-                                                              inChapterEntry: playsChapterEntry || bookEndedAsEntry)
+                                                              inChapterEntry: inEntry)
         // One line per deliberate write, never per tick: a position on the
         // device can be traced back to the occasion that wrote it.
         if plan.logWrite {
