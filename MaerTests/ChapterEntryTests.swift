@@ -267,6 +267,7 @@ struct ChapterEntryQueueTests {
         let duration: Double
         var position: Double
         var finishedWrites = 0
+        var writes = 0
         init(file: String, duration: Double, position: Double) {
             self.file = file
             self.duration = duration
@@ -295,6 +296,7 @@ struct ChapterEntryQueueTests {
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
             position = currentTime
+            writes += 1
             if isFinished { finishedWrites += 1 }
         }
         func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }

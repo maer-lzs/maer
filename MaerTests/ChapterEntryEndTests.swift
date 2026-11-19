@@ -58,6 +58,33 @@ struct ChapterEntryEndTests {
         model.stop()
     }
 
+    @Test("after the book's end as an entry, the stop of the old player writes nothing it does not owe and never a finished book, also with a pause record still waiting", .needsAudio)
+    func theStopAfterTheEndFinishesNothing() async throws {
+        for waitingPause in [false, true] {
+            let file = try TickWorkTests().tone(seconds: 20)
+            defer { try? FileManager.default.removeItem(at: file) }
+            let id = "chapterstop-\(UUID().uuidString)"
+            let server = ChapterEntryQueueTests.ChapteredServer(file: file.path, duration: 20, position: 12)
+            let model = PlayerViewModel(provider: server, localTracks: { _ in [:] }, isOnline: { true })
+            await model.load(item: try await server.fetchItemDetail(itemId: id))
+            await model.reconcileWithServer()
+            try #require(model.chapters.count == 2, "the precondition: the book has its two chapters")
+            let last = model.chapters[1]
+            await model.startChapterEntry(last)
+            model.watchChapterRange(last) {}
+            await model.finishBook()
+            let before = server.writes
+            // The next title takes the player over and stops this one.
+            model.pauseRecordPending = waitingPause
+            model.stop()
+            for _ in 0..<30 { try await Task.sleep(nanoseconds: 100_000_000) }
+            #expect(server.finishedWrites == 0, "the stop told the server the book is finished (pause waiting: \(waitingPause))")
+            if !waitingPause {
+                #expect(server.writes == before, "the stop wrote a stand the device did not owe")
+            }
+        }
+    }
+
     @Test("every end of a chapter entry in the player calls its end once: a stop, a jump out")
     func everyEndIsHeard() async throws {
         let chapter = ABSChapter(id: 1, start: 600, end: 1200, title: "Two")
