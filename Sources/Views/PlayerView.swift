@@ -256,7 +256,8 @@ struct PlayerView: View {
                 chapters: viewModel.chapters,
                 currentChapter: viewModel.currentChapter,
                 isFallback: viewModel.chaptersAreFallback,
-                isMusic: viewModel.isMusicItem
+                isMusic: viewModel.isMusicItem,
+                itemId: viewModel.item?.id
             ) { chapter in
                 viewModel.jumpToChapter(chapter)
                 showChapters = false

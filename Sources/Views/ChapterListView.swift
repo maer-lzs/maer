@@ -13,6 +13,9 @@ struct ChapterListView: View {
     var isFallback = false
     /// Music titles the sheet "Tracks" (the list is the album's tracks).
     var isMusic = false
+    /// The title the chapters belong to; a book's chapter goes into Up Next
+    /// from its row, as on the book's page (`ChapterEntryRules.offersChapters`).
+    var itemId: String?
     let onSelect: (ABSChapter) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -42,6 +45,14 @@ struct ChapterListView: View {
                                     Image(systemName: "waveform")
                                         .foregroundStyle(AppTheme.accent)
                                 }
+                            }
+                        }
+                        // One chapter into Up Next, with the actions of every title.
+                        .contextMenu {
+                            if !isMusic, let itemId, ChapterEntryRules.offersChapters(itemId: itemId, chapters: chapters) {
+                                CatalogQueueButtons(itemId: ItemNamespace.chapterEntryId(bookId: itemId,
+                                                                                         startMs: ChapterEntryRules.ms(chapter.start)),
+                                                    offersPlaylist: false)
                             }
                         }
                         .listRowBackground(isActive ? AppTheme.accent.opacity(0.12) : nil)

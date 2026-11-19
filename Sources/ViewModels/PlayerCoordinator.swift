@@ -759,12 +759,17 @@ final class PlayerCoordinator: ObservableObject {
     private func takeOver(_ id: String, preservesContext: Bool) {
         if !preservesContext { PlaybackContext.shared.clear() }
         leaveBothLists(id)
+        // A new title ends a running chapter entry; the open of a chapter
+        // and the restore set it again after this (`watchEntry`).
+        orders.running = nil
     }
 
     /// What starts or finishes leaves BOTH lists, the orders and the
     /// context: the running title is never in either ("launchpad, not
     /// playlist"), and what already ran is never offered again. The start
     /// and the end call this one door, so the invariant is written once.
+    /// The one exception is a running chapter entry: it stays in the orders
+    /// until its end, hidden from every list (`PlayQueue.shownIds`).
     private func leaveBothLists(_ id: String) {
         orders.remove(id)
         PlaybackContext.shared.remove(id)
@@ -773,8 +778,8 @@ final class PlayerCoordinator: ObservableObject {
     /// The natural-end advance, shared by the real end-of-item handler and the
     /// manual "mark as played". The finished item leaves the queue, then
     /// the next playable item starts.
-    /// A chapter entry: the book opens, the entry leaves both lists, playback
-    /// starts in the chapter (`ChapterEntryRules.startPoint`) and runs to the
+    /// A chapter entry: the book opens, the entry leaves the context and
+    /// stays in Up Next until its end, playback starts in the chapter (`ChapterEntryRules.startPoint`) and runs to the
     /// chapter's end, where the next entry starts and the book stays unheard.
     /// The book's one position moves with it, through the backward guard. An
     /// open that does not stand, or a book without that chapter any more,
@@ -795,21 +800,38 @@ final class PlayerCoordinator: ObservableObject {
             Logger.player.notice("CHAPTER entry names no chapter of the book, it stays: entry=\(entryId, privacy: .private(mask: .hash)) chapters=\(model.chapters.count)")
             return
         }
-        leaveBothLists(entryId)
+        // The entry stays in Up Next until its end, so a restart finds it;
+        // only the context forgets it now.
+        PlaybackContext.shared.remove(entryId)
         await model.startChapterEntry(chapter)
-        model.watchChapterRange(chapter) { [weak self, weak model] in
-            guard let self, let model, model === self.viewModel else { return }
-            self.chapterRangeEnded(entryId, model: model)
-        }
+        watchEntry(entryId, chapter: chapter, model: model)
         if autoplay { await model.playWithServerCheck() }
     }
 
+    /// The one watch of a running chapter entry, for the open and the
+    /// restore alike: the queue learns which entry plays and hides it from
+    /// every list and from the advance; a jump out of the chapter takes the
+    /// entry out of Up Next, and its end starts what follows.
+    private func watchEntry(_ entryId: String, chapter: ABSChapter, model: PlayerViewModel) {
+        orders.running = entryId
+        model.watchChapterRange(chapter, onLeave: { [weak self, weak model] in
+            guard let self, let model, model === self.viewModel else { return }
+            self.orders.running = nil
+            self.leaveBothLists(entryId)
+        }, onEnd: { [weak self, weak model] in
+            guard let self, let model, model === self.viewModel else { return }
+            self.chapterRangeEnded(entryId, model: model)
+        })
+    }
+
     /// The end of a chapter entry's range: the book pauses at the chapter's
-    /// end, which writes its position like any pause, and what follows in
-    /// Up Next starts, as at the end of a title. The book is not heard.
+    /// end, which writes its position like any pause, the entry leaves Up
+    /// Next, and what follows starts, as at the end of a title. The book is
+    /// not heard.
     private func chapterRangeEnded(_ entryId: String, model: PlayerViewModel) {
         Logger.player.notice("CHAPTER entry ends at the chapter's end, the next entry starts")
         if model.isPlaying { model.pause(caller: "chapter entry ends") }
+        orders.running = nil
         advanceAfterFinish(finishedItemId: entryId)
     }
 
@@ -954,7 +976,7 @@ final class PlayerCoordinator: ObservableObject {
         let offline = !NetworkMonitor.shared.isConnected
         let session = AppSession.shared
         let downloads = DownloadManager.shared
-        return (orders.ids, PlaybackContext.shared.ids, offline,
+        return (orders.shownIds, PlaybackContext.shared.ids, offline,
                 { MediaAvailability.canPlayNow(isConnected: !offline,
                                                isDownloaded: downloads.isDownloaded(itemId: $0)) },
                 // Resolution on demand: a catalogue id and a music server song
@@ -1042,6 +1064,16 @@ final class PlayerCoordinator: ObservableObject {
         }
         if let item = await resolveStandbyItem(lastId, entries: entries, allowsShowNewest: true) {
             await open(item: item, autoplay: false, preservesContext: true, origin: .restore)
+            // A book that played as a chapter entry before the restart plays
+            // as that entry again, when it still heads Up Next and its
+            // chapter holds the restored position.
+            if let model = viewModel, model.item?.id == item.id,
+               let found = ChapterEntryRules.restoredEntry(queueIds: orders.ids, bookId: item.id,
+                                                           position: model.currentTime, chapters: model.chapters) {
+                Logger.player.notice("CHAPTER entry restored at the head of Up Next")
+                model.playsChapterEntry = true
+                watchEntry(found.entryId, chapter: found.chapter, model: model)
+            }
         }
     }
 

@@ -898,7 +898,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// Up Next: a cold catalogue entry stays IN the car's queue and plays on
     /// tap (open resolves it); until then it carries the placeholder title.
     private func upNextItems() -> [LibraryItem] {
-        queue.ids.compactMap { session.playableItem(forId: $0) }
+        queue.shownIds.compactMap { session.playableItem(forId: $0) }
     }
 
     private func section(_ title: String, _ items: ArraySlice<LibraryItem>) async -> CPListSection {
@@ -1065,7 +1065,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let form = coordinator.viewModel?.playingForm
         let spoken = CarPlayLayout.playerExtras(for: coordinator.activeItem?.id, markedForm: form)
         nowPlaying.isUpNextButtonEnabled = CarPlayLayout.offersUpNext(
-            for: coordinator.activeItem?.id, markedForm: form, waiting: queue.ids.count + context.ids.count)
+            for: coordinator.activeItem?.id, markedForm: form, waiting: queue.shownIds.count + context.ids.count)
         var buttons: [CPNowPlayingButton] = []
         if spoken, let rate = coordinator.viewModel?.playbackRate {
             buttons.append(rateButton(showing: Double(rate)))

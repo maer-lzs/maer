@@ -40,7 +40,7 @@ struct PlayQueueView: View {
 
     var body: some View {
         List {
-            ForEach(queue.ids, id: \.self) { id in
+            ForEach(queue.shownIds, id: \.self) { id in
                 // A cache miss must not blank the row: an on-demand id after
                 // a cold start resolves by fetching its detail and fills in,
                 // and an entry that cannot play here says why. No entry of
@@ -76,9 +76,9 @@ struct PlayQueueView: View {
                         .accessibilityIdentifier("play-queue-unavailable-row")
                 }
             }
-            .onMove { queue.move(from: $0, to: $1) }
+            .onMove { queue.move(shownFrom: $0, to: $1) }
             .onDelete { offsets in
-                offsets.map { queue.ids[$0] }.forEach { queue.remove($0) }
+                offsets.map { queue.shownIds[$0] }.forEach { queue.remove($0) }
             }
             // The CONTEXT below the orders: what keeps playing after them,
             // and where it comes from. A display of the truth (the advance
@@ -118,12 +118,12 @@ struct PlayQueueView: View {
                     // ONE create dialog, so a queued ALBUM lands as its songs
                     // here too.
                     PlaylistPresenter.shared.askToCreate(place: .device,
-                                                         ids: queue.ids,
+                                                         ids: queue.shownIds,
                                                          host: playlistHost)
                 } label: { Image(systemName: "text.badge.plus") }
                 .accessibilityLabel(Text("Save as Playlist"))
                 .accessibilityIdentifier("queue-save-as-playlist")
-                .disabled(queue.ids.isEmpty)
+                .disabled(queue.shownIds.isEmpty)
             }
         }
         .toolbar {

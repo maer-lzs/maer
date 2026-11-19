@@ -235,9 +235,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Counts the jumps, so a jump that waited for a plan knows a later one.
     private var seekCount = 0
     var sleepTask: Task<Void, Never>?
-    /// The chapter entry's range, what runs at its end and whether that end
-    /// came (`watchChapterRange`); the clock's every move asks it.
-    var chapterRange: (chapter: ABSChapter, onEnd: @MainActor () -> Void, ended: Bool)?
+    /// The chapter entry's range, what runs on a jump out and at its end, and
+    /// whether that end came (`watchChapterRange`); the clock's every move
+    /// asks it.
+    var chapterRange: (chapter: ABSChapter, onLeave: @MainActor () -> Void,
+                       onEnd: @MainActor () -> Void, ended: Bool)?
     /// The loaded book plays as a chapter entry, from its start to the stand
     /// at its end: a stand at the book's end then tells the server nothing is
     /// finished. A move out of the chapter, the clock moving on after its

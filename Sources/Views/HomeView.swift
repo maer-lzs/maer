@@ -129,7 +129,7 @@ struct HomeView: View {
             entryIds: libraryViewModel.entries.map(\.id),
             continueEntries: libraryViewModel.continueListening.map { ($0.id, $0.progress?.lastUpdate ?? 0) },
             recentlyAddedIds: libraryViewModel.recentlyAdded.map(\.id),
-            queueIds: queue.ids,
+            queueIds: queue.shownIds,
             recommendationsEnabled: recommendationsEnabled,
             rediscoverEnabled: rediscoverRowVisible,
             hiddenRevision: hiddenRevision,
@@ -301,7 +301,7 @@ struct HomeView: View {
     /// "Up Next". The global PlayQueue, same row component as the queue page.
     @ViewBuilder
     private var upNextSection: some View {
-        let items = queue.ids.compactMap { router.item($0) }
+        let items = queue.shownIds.compactMap { router.item($0) }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
 // The heading OPENS the queue sheet (the row's

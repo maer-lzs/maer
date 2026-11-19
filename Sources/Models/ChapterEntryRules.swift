@@ -106,7 +106,8 @@ nonisolated enum ChapterEntryRules {
     /// The entries a person sees and the advance may start: the queue without
     /// the chapter entry that plays now.
     static func shown(_ ids: [String], running: String?) -> [String] {
-        ids
+        guard let running else { return ids }
+        return ids.filter { $0 != running }
     }
 
     /// The chapter entry a restored book plays as: the first entry of the
@@ -114,7 +115,10 @@ nonisolated enum ChapterEntryRules {
     /// restored position. Nil for anything else; the book is then a book.
     static func restoredEntry(queueIds: [String], bookId: String, position: Double,
                               chapters: [ABSChapter]) -> (entryId: String, chapter: ABSChapter)? {
-        nil
+        guard let head = queueIds.first, let entry = ItemNamespace.chapterEntry(head), entry.bookId == bookId,
+              let found = chapter(startMs: entry.startMs, in: chapters),
+              state(at: position, of: found) == .running else { return nil }
+        return (head, found)
     }
 
     /// The row's title of an entry whose chapter is unknown.

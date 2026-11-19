@@ -30,9 +30,11 @@ final class PlayQueue: ObservableObject {
     /// The chapter entry that plays now. It stays in `ids` until its end, so
     /// a restart finds it; every list a person sees and the advance read
     /// `shownIds`, which leave it out.
-    @Published var running: String?
+    @Published var running: String? {
+        didSet { if persists, running != oldValue { writeWidgetSnapshot() } }
+    }
     /// The entries a person sees and the advance may start.
-    var shownIds: [String] { ids }
+    var shownIds: [String] { ChapterEntryRules.shown(ids, running: running) }
 
     /// The queue lives as ONE row (`upNext` in `play_queue`): it is one
     /// ordered list, replaced whole on every change, so a row per entry
@@ -210,17 +212,26 @@ final class PlayQueue: ObservableObject {
 
     /// A move in a list that shows `shownIds`, carried onto `ids`.
     func move(shownFrom source: IndexSet, to destination: Int) {
-        move(from: source, to: destination)
+        move(from: Self.actualOffsets(source, ids: ids, running: running),
+             to: Self.actualDestination(destination, ids: ids, running: running))
     }
 
     /// The places in `ids` of places in `shownIds`, and of a destination
-    /// among them.
+    /// among them: a shown place is the place of the same entry in the queue,
+    /// the end of the shown list is the end of the queue.
     nonisolated static func actualOffsets(_ shown: IndexSet, ids: [String], running: String?) -> IndexSet {
-        shown
+        let places = shownPlaces(ids: ids, running: running)
+        return IndexSet(shown.compactMap { $0 < places.count ? places[$0] : nil })
     }
 
     nonisolated static func actualDestination(_ shown: Int, ids: [String], running: String?) -> Int {
-        shown
+        let places = shownPlaces(ids: ids, running: running)
+        return shown < places.count ? places[shown] : ids.count
+    }
+
+    /// The place in `ids` of each entry of `shownIds`, in order.
+    nonisolated private static func shownPlaces(ids: [String], running: String?) -> [Int] {
+        ids.indices.filter { ids[$0] != running }
     }
 
     /// Every entry in the form the server answers to (`NavidromeRekey`);
@@ -267,7 +278,7 @@ final class PlayQueue: ObservableObject {
     /// placeholder.
     private func writeWidgetSnapshot() {
         var covered: [(id: String, name: String)] = []
-        let items = ids.prefix(6).compactMap { id -> PodcastQueueSnapshot.Item? in
+        let items = shownIds.prefix(6).compactMap { id -> PodcastQueueSnapshot.Item? in
             guard let item = AppSession.shared.libraryItem(forId: id) else { return nil }
             var cover: String?
             if covered.count < PodcastQueueSnapshot.coveredCount {

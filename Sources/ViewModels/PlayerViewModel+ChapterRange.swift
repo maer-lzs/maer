@@ -18,7 +18,7 @@ extension PlayerViewModel {
     func watchChapterRange(_ chapter: ABSChapter, onLeave: @escaping @MainActor () -> Void = {},
                            onEnd: @escaping @MainActor () -> Void) {
         playsChapterEntry = true
-        chapterRange = (chapter, onEnd, false)
+        chapterRange = (chapter, onLeave, onEnd, false)
     }
 
     /// What the clock asks at every move while a range is watched.
@@ -38,6 +38,7 @@ extension PlayerViewModel {
         case .left:
             Logger.player.notice("CHAPTER entry left: the book plays on")
             endChapterEntry()
+            range.onLeave()
         case .ended:
             chapterRange?.ended = true
             range.onEnd()
