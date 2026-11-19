@@ -249,6 +249,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// way (its end, a jump out, a stop, a new title), so the one who started
     /// it learns it.
     var onChapterEntryEnd: (@MainActor () -> Void)?
+    /// Whether the book's end came while it played as a chapter entry, read
+    /// once at that end; the write of the end and its follow-up round take
+    /// it from here, not from the entry that may have ended meanwhile.
+    var bookEndedAsEntry = false
     var syncTask: Task<Void, Never>?
 
     let provider: any AudioProvider
@@ -558,6 +562,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         eventSinceLoad = restart
         ownStandMs = nil
         endChapterEntry()
+        bookEndedAsEntry = false
         self.item = item
         applySkipInterval(forItemId: item.id)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
@@ -1268,6 +1273,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The book played to its last byte: the position stands at its end, the
     /// stand is written, and what follows the book starts.
     func finishBook() async {
+        // Read once, before anything moves: the end of the last chapter as an
+        // entry starts what follows, and that ends the entry here while this
+        // still writes the stand. The answer travels with the write.
+        let asEntry = playsChapterEntry
+        bookEndedAsEntry = asEntry
         currentTime = duration
         notePlayback("stopped", from: "item ended")
         isPlaying = false
@@ -1275,11 +1285,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // otherwise the UI shows the wrong state after a fully played book.
         // The last chapter played as an entry finishes no book, and
         // its range watch starts what follows, not the book's end.
-        isFinished = !playsChapterEntry
+        isFinished = !asEntry
         updateNowPlayingInfo()
         updateWidgetSnapshot()
         await syncProgress(.bookEnd)
-        if !playsChapterEntry, let finishedId = item?.id {
+        if !asEntry, let finishedId = item?.id {
             onBookFinished?(finishedId)
         }
     }
