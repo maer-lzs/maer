@@ -356,6 +356,7 @@ final class AppSession: ObservableObject {
         },
         listed: { [unowned self] in libraryItem(forId: $0) },
         listedPosition: { [unowned self] in libraryViewModel.shelvedEntry(id: $0)?.progress?.currentTime },
+        storedPosition: { ListeningStore.position($0) },
         fetch: { [unowned self] in try await chapterDetail($0) },
         changed: {
             PlayQueue.shared.objectWillChange.send()

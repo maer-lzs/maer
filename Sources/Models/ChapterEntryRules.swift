@@ -186,7 +186,7 @@ nonisolated enum ChapterEntryRules {
     /// Whether a book's card offers to put it into Up Next chapter by
     /// chapter: a book that is not heard to its end. Its chapters are read
     /// when the person asks, since the library list does not carry them.
-    static func offersChain(itemId: String, finished: Bool) -> Bool {
+    static func offersChain(itemId: String, finished: Bool, markedForm: ProgressMark.StartedForm?) -> Bool {
         !finished && MediaFamily.of(itemId) == .book
     }
 

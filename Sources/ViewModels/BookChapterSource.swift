@@ -17,6 +17,9 @@ final class BookChapterSource {
     /// The book's item from the loaded library list, and its last known stand.
     private let listed: (String) -> LibraryItem?
     private let listedPosition: (String) -> Double?
+    /// The stand this device keeps for a title outside the library (a
+    /// catalog reading).
+    private let storedPosition: (String) -> Double?
     /// The book's detail from its source.
     private let fetch: (String) async throws -> LibraryItemDetail
     /// Called after a fetch taught new chapters, so the rows read again.
@@ -31,11 +34,13 @@ final class BookChapterSource {
     init(playing: @escaping () -> (bookId: String, chapters: [ABSChapter], position: Double)?,
          listed: @escaping (String) -> LibraryItem?,
          listedPosition: @escaping (String) -> Double?,
+         storedPosition: @escaping (String) -> Double? = { _ in nil },
          fetch: @escaping (String) async throws -> LibraryItemDetail,
          changed: @escaping () -> Void) {
         self.playing = playing
         self.listed = listed
         self.listedPosition = listedPosition
+        self.storedPosition = storedPosition
         self.fetch = fetch
         self.changed = changed
     }

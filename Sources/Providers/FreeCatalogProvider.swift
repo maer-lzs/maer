@@ -17,6 +17,8 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Asks Jamendo for one track by its id; the app's client, a witness's own.
     var fetchJamendoTrack: (String) async throws -> JamendoTrack? = { try await JamendoClient.track(id: $0) }
+    /// Asks LibriVox for one book by its number; the app's client, a witness's own.
+    var fetchLibriVoxBook: (String) async throws -> LibriVoxBook? = { try await LibriVoxClient.book(id: $0) }
     /// Whether Jamendo may be asked: the switch of the source.
     var jamendoAllowed: () -> Bool = { AppStorageKeys.jamendoActive }
 
@@ -635,7 +637,7 @@ final class FreeCatalogProvider: AudioProvider {
             // where it is needed instead of on every tile.
             if (book.sections?.isEmpty ?? true) {
                 let id = String(itemId.dropFirst(FreeCatalog.librivoxPrefix.count))
-                if let full = try await LibriVoxClient.book(id: id) {
+                if let full = try await fetchLibriVoxBook(id) {
                     book = full
                     librivoxBooks[itemId] = full
                 }

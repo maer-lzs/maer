@@ -73,12 +73,25 @@ struct ChapterEntryChainRuleTests {
 
     @Test("a book's card offers the chain for a book not heard to its end, never for music, an episode or a station")
     func theCardOffersTheChain() {
-        #expect(ChapterEntryRules.offersChain(itemId: "li_book-1", finished: false))
-        #expect(ChapterEntryRules.offersChain(itemId: "local:folder:book.m4b", finished: false))
-        #expect(!ChapterEntryRules.offersChain(itemId: "li_book-1", finished: true), "a book heard to its end offered the chain")
+        #expect(ChapterEntryRules.offersChain(itemId: "li_book-1", finished: false, markedForm: nil))
+        #expect(ChapterEntryRules.offersChain(itemId: "local:folder:book.m4b", finished: false, markedForm: nil))
+        #expect(!ChapterEntryRules.offersChain(itemId: "li_book-1", finished: true, markedForm: nil),
+                "a book heard to its end offered the chain")
         for id in ["rss:feed:ep-1", "abspod:sv:ep-1", "sub:album:a1", "jam:123", "radio:rb:x", Self.chain(0)] {
-            #expect(!ChapterEntryRules.offersChain(itemId: id, finished: false), "\(id) offered the chain")
+            #expect(!ChapterEntryRules.offersChain(itemId: id, finished: false, markedForm: nil), "\(id) offered the chain")
         }
+    }
+
+    @Test("a catalog reading offers the chain like a book: LibriVox, Gutenberg, an archive.org reading; never a song address, a Jamendo title or a release heard as an album")
+    func aReadingOffersTheChain() {
+        for id in ["lv:816", "gut:1342", "lva:peter_pan_0707_librivox"] {
+            #expect(ChapterEntryRules.offersChain(itemId: id, finished: false, markedForm: nil), "\(id) offered no chain")
+        }
+        #expect(!ChapterEntryRules.offersChain(itemId: "lva:peter_pan_0707_librivox#2", finished: false, markedForm: nil),
+                "a song address offered the chain")
+        #expect(!ChapterEntryRules.offersChain(itemId: "lva:some_release", finished: false, markedForm: .album),
+                "a release heard as an album offered the chain")
+        #expect(!ChapterEntryRules.offersChain(itemId: "lv:816", finished: true, markedForm: nil))
     }
 
     @Test("the end of the last chapter of a chain finishes the book, also when the chain followed the book there; a single chapter and an earlier chapter of a chain do not")

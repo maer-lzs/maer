@@ -97,7 +97,8 @@ struct BookContextMenuItems: View {
             }
             // The book at the end of Up Next, one chapter at a time, so it
             // takes turns with the rest.
-            if ChapterEntryRules.offersChain(itemId: entry.id, finished: entry.progress?.isFinished == true) {
+            if ChapterEntryRules.offersChain(itemId: entry.id, finished: entry.progress?.isFinished == true,
+                                             markedForm: nil) {
                 Button {
                     Task { await playerCoordinator.enqueueChain(entry.item, position: entry.progress?.currentTime ?? 0) }
                 } label: {
