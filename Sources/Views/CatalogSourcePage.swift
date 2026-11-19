@@ -685,7 +685,7 @@ struct CatalogPopularPage: View {
                         Button {
                             Task { await playerCoordinator.open(item: item) }
                         } label: { Label("Play", systemImage: "play.fill") }
-                        CatalogQueueButtons(itemId: item.id)
+                        CatalogQueueButtons(itemId: item.id, chain: playerCoordinator, title: item.title)
                     }
                     .onAppear {
                         if item.id == items.last?.id { Task { await load() } }
@@ -781,7 +781,7 @@ struct CatalogShelfPage: View {
                         Button {
                             Task { await playerCoordinator.open(item: item) }
                         } label: { Label("Play", systemImage: "play.fill") }
-                        CatalogQueueButtons(itemId: item.id)
+                        CatalogQueueButtons(itemId: item.id, chain: playerCoordinator, title: item.title)
                     }
                     .onAppear {
                         if item.id == items.last?.id { Task { await loadMore() } }
@@ -1008,7 +1008,8 @@ struct ArchiveSeriesPage: View {
         // Queueing the whole release belongs in the page's menu; a single
         // track carries its own buttons in its row.
         .pageActions("album-actions") {
-            CatalogQueueButtons(itemId: itemId)
+            CatalogQueueButtons(itemId: itemId, chain: playerCoordinator,
+                                title: shareContent?.facts.title ?? router.item(itemId)?.title)
             if let shareOffer { SharedLinkButton(offer: shareOffer, title: shareContent?.facts.title) }
         }
         .sharedLink(shareContent, cover: router.coverURL(itemId), to: $shareOffer)

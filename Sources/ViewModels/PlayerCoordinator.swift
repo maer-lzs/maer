@@ -841,26 +841,28 @@ final class PlayerCoordinator: ObservableObject {
     /// list does not carry chapters, so the book's detail is asked first; a
     /// book with fewer than two chapters says so, and a chain that does not
     /// go in says why. The chapters are the player's of that detail, and the
-    /// rows of the book's entries read them from here on.
-    func enqueueChain(_ book: LibraryItem, position: Double) async {
+    /// rows of the book's entries read them from here on. The chain starts
+    /// at the book's stand as the rows read it (`BookChapterSource.position`).
+    func enqueueChain(bookId: String, title: String) async {
         let detail: LibraryItemDetail
         do {
-            detail = try await session.chapterDetail(book.id)
+            detail = try await session.chapterDetail(bookId)
         } catch {
             Logger.player.notice("CHAPTER chain not queued, the detail failed: \(FailureReason.of(error), privacy: .public)")
-            sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: book.title)
+            sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: title)
             return
         }
         let chapters = ChapterModel.resolved(detail: detail).chapters
-        session.bookChapters.note(chapters, of: book.id)
+        session.bookChapters.note(chapters, of: bookId)
         guard chapters.count >= 2 else {
-            sayOpenFailure(String(localized: "This book has no chapters to go through one by one."), cause: .unknown, title: book.title)
+            sayOpenFailure(String(localized: "This book has no chapters to go through one by one."), cause: .unknown, title: title)
             return
         }
-        let outcome = orders.enqueueChain(bookId: book.id, chapters: chapters, bookPosition: position)
+        let outcome = orders.enqueueChain(bookId: bookId, chapters: chapters,
+                                          bookPosition: session.bookChapters.position(of: bookId))
         if let sentence = ChapterEntryRules.chainRefusal(outcome) {
             Logger.player.notice("CHAPTER chain not queued: \(String(describing: outcome), privacy: .public)")
-            sayOpenFailure(sentence, cause: .unknown, title: book.title)
+            sayOpenFailure(sentence, cause: .unknown, title: title)
         }
     }
 

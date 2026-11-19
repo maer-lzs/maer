@@ -360,6 +360,10 @@ struct CatalogQueueButtons: View {
     var knownTitles: [String: String] = [:]
     /// A chapter of a book goes into Up Next only, not into a playlist.
     var offersPlaylist = true
+    /// A surface that may put one audiobook in chapter by chapter hands its
+    /// player here, with the title it shows (`ChapterChainButton`).
+    var chain: PlayerCoordinator?
+    var title: String?
 
     private var ids: [String] { itemIds ?? [itemId] }
 
@@ -375,6 +379,9 @@ struct CatalogQueueButtons: View {
             // copy here carried the same defect twice.
             if offersPlaylist {
                 AddToPlaylistButton(itemId: itemId, itemIds: itemIds, knownTitles: knownTitles)
+            }
+            if itemIds == nil, let chain {
+                ChapterChainButton(itemId: itemId, title: title ?? knownTitles[itemId] ?? "", playerCoordinator: chain)
             }
         }
     }

@@ -67,10 +67,11 @@ final class BookChapterSource {
     }
 
     /// Where the book stands now: the player's position while it holds the
-    /// book, else the last stand the library knows, else its start.
+    /// book, else the last stand the library knows, else the stand this
+    /// device keeps (a catalog reading), else its start.
     func position(of bookId: String) -> Double {
         if let held = playing(), held.bookId == bookId { return held.position }
-        return listedPosition(bookId) ?? 0
+        return listedPosition(bookId) ?? storedPosition(bookId) ?? 0
     }
 
     /// Chapters read from the book's detail elsewhere (the chain asks it).

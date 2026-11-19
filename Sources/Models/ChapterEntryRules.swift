@@ -183,11 +183,14 @@ nonisolated enum ChapterEntryRules {
         return chapter(startMs: entry.startMs, in: chapters)
     }
 
-    /// Whether a book's card offers to put it into Up Next chapter by
-    /// chapter: a book that is not heard to its end. Its chapters are read
-    /// when the person asks, since the library list does not carry them.
+    /// Whether a title offers to go into Up Next chapter by chapter: an
+    /// audiobook that is not heard to its end, from a server, this device or
+    /// a catalog (`MediaFamily.booksTabMember`: a catalog release by its
+    /// started form, never a song address or a Jamendo title). Its chapters
+    /// are read when the person asks, since no list carries them.
     static func offersChain(itemId: String, finished: Bool, markedForm: ProgressMark.StartedForm?) -> Bool {
-        !finished && MediaFamily.of(itemId) == .book
+        !finished && ItemNamespace.chapterEntry(itemId) == nil
+            && MediaFamily.booksTabMember(itemId, markedForm: markedForm)
     }
 
     /// What became of a book asked into Up Next chapter by chapter.

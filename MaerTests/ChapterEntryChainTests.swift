@@ -178,9 +178,9 @@ struct ChapterEntryChainFenceTests {
 
     @Test("the book's card offers the chain under the decided words, in English and German", .needsTheSources)
     func theMenuSaysTheDecidedWords() throws {
-        let card = try Self.code("Sources/Views/BookGridComponents.swift")
-        #expect(card.contains("ChapterEntryRules.offersChain("), "the card offers the chain without the rule")
-        #expect(card.contains("\"Chapter by Chapter in Up Next\""), "the card does not say the decided words")
+        let button = try Self.code("Sources/Views/ChapterChainButton.swift")
+        #expect(button.contains("ChapterEntryRules.offersChain("), "the button offers the chain without the rule")
+        #expect(button.contains("\"Chapter by Chapter in Up Next\""), "the button does not say the decided words")
         let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"), encoding: .utf8)
         let parsed = try JSONSerialization.jsonObject(with: Data(catalog.utf8))
         let json = try #require(parsed as? [String: Any])
