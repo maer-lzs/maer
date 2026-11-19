@@ -67,7 +67,7 @@ nonisolated enum ChapterEntryRules {
     /// does not, from any podcast source, and neither does music (its
     /// "chapters" are the tracks of an album), a station, a routine's rule or
     /// a chapter entry.
-    static func offersChapters(itemId: String, chapters: [ABSChapter]) -> Bool {
+    static func offersChapters(itemId: String, chapters: [ABSChapter], shownAsBook: Bool = false) -> Bool {
         guard chapters.count >= 2 else { return false }
         return !ItemNamespace.isPodcastEpisode(itemId)
             && !MediaFamily.isMusicByForm(itemId)

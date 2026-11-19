@@ -245,6 +245,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// finished. A move out of the chapter, the clock moving on after its
     /// end, a stop or a new title clears it.
     var playsChapterEntry = false
+    /// Called once whenever the chapter entry ends in this player, by any
+    /// way (its end, a jump out, a stop, a new title), so the one who started
+    /// it learns it.
+    var onChapterEntryEnd: (@MainActor () -> Void)?
     var syncTask: Task<Void, Never>?
 
     let provider: any AudioProvider
@@ -1256,21 +1260,27 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     self.awaitPlanOfDryQueue(at: self.queueAppendIndex)
                     return
                 }
-                self.currentTime = self.duration
-                self.notePlayback("stopped", from: "item ended")
-                self.isPlaying = false
-                // Also mark finished locally. The sync writes it anyway;
-                // otherwise the UI shows the wrong state after a fully played book.
-                // The last chapter played as an entry finishes no book, and
-                // its range watch starts what follows, not the book's end.
-                self.isFinished = !self.playsChapterEntry
-                self.updateNowPlayingInfo()
-                self.updateWidgetSnapshot()
-                await self.syncProgress(.bookEnd)
-                if !self.playsChapterEntry, let finishedId = self.item?.id {
-                    self.onBookFinished?(finishedId)
-                }
+                await self.finishBook()
             }
+        }
+    }
+
+    /// The book played to its last byte: the position stands at its end, the
+    /// stand is written, and what follows the book starts.
+    func finishBook() async {
+        currentTime = duration
+        notePlayback("stopped", from: "item ended")
+        isPlaying = false
+        // Also mark finished locally. The sync writes it anyway;
+        // otherwise the UI shows the wrong state after a fully played book.
+        // The last chapter played as an entry finishes no book, and
+        // its range watch starts what follows, not the book's end.
+        isFinished = !playsChapterEntry
+        updateNowPlayingInfo()
+        updateWidgetSnapshot()
+        await syncProgress(.bookEnd)
+        if !playsChapterEntry, let finishedId = item?.id {
+            onBookFinished?(finishedId)
         }
     }
 
