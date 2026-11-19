@@ -103,6 +103,20 @@ nonisolated enum ChapterEntryRules {
         return LibraryItem(id: entryId, media: media, addedAt: book.addedAt)
     }
 
+    /// The entries a person sees and the advance may start: the queue without
+    /// the chapter entry that plays now.
+    static func shown(_ ids: [String], running: String?) -> [String] {
+        ids
+    }
+
+    /// The chapter entry a restored book plays as: the first entry of the
+    /// queue, when it is a chapter of this book whose chapter holds the
+    /// restored position. Nil for anything else; the book is then a book.
+    static func restoredEntry(queueIds: [String], bookId: String, position: Double,
+                              chapters: [ABSChapter]) -> (entryId: String, chapter: ABSChapter)? {
+        nil
+    }
+
     /// The row's title of an entry whose chapter is unknown.
     static var unknownChapterTitle: String { String(localized: "Unknown Chapter") }
 }

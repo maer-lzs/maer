@@ -334,7 +334,7 @@ struct ChapterEntryFenceTests {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("the chapter form is spelled only in the namespace, and only a book's page builds an entry", .needsTheSources)
+    @Test("the chapter form is spelled only in the namespace, and only the chapter lists of a book build an entry", .needsTheSources)
     func theFormLivesInTheNamespace() throws {
         var spelling: [String] = []
         var building: [String] = []
@@ -348,9 +348,13 @@ struct ChapterEntryFenceTests {
             }
         }
         #expect(spelling.isEmpty, "the chapter form is spelled outside the namespace: \(spelling)")
-        #expect(building == ["Sources/Views/BookDetailScreen.swift"], "entries are built here: \(building)")
-        let page = try Self.code("Sources/Views/BookDetailScreen.swift")
-        #expect(page.contains("ChapterEntryRules.offersChapters("), "the book's page offers chapters without the rule")
+        #expect(building.sorted() == ["Sources/Views/BookDetailScreen.swift", "Sources/Views/ChapterListView.swift"],
+                "entries are built here: \(building)")
+        for path in ["Sources/Views/BookDetailScreen.swift", "Sources/Views/ChapterListView.swift"] {
+            let page = try Self.code(path)
+            #expect(page.contains("ChapterEntryRules.offersChapters("), "\(path) offers chapters without the rule")
+            #expect(page.contains("offersPlaylist: false"), "\(path) offers a chapter for a playlist")
+        }
     }
 
     @Test("the inputs of every advance resolve a chapter entry to its book and ask its chapter", .needsTheSources)

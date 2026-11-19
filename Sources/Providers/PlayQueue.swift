@@ -27,6 +27,12 @@ final class PlayQueue: ObservableObject {
     )
 
     @Published private(set) var ids: [String] = []
+    /// The chapter entry that plays now. It stays in `ids` until its end, so
+    /// a restart finds it; every list a person sees and the advance read
+    /// `shownIds`, which leave it out.
+    @Published var running: String?
+    /// The entries a person sees and the advance may start.
+    var shownIds: [String] { ids }
 
     /// The queue lives as ONE row (`upNext` in `play_queue`): it is one
     /// ordered list, replaced whole on every change, so a row per entry
@@ -200,6 +206,21 @@ final class PlayQueue: ObservableObject {
     func move(from source: IndexSet, to destination: Int) {
         ids.move(fromOffsets: source, toOffset: destination)
         save()
+    }
+
+    /// A move in a list that shows `shownIds`, carried onto `ids`.
+    func move(shownFrom source: IndexSet, to destination: Int) {
+        move(from: source, to: destination)
+    }
+
+    /// The places in `ids` of places in `shownIds`, and of a destination
+    /// among them.
+    nonisolated static func actualOffsets(_ shown: IndexSet, ids: [String], running: String?) -> IndexSet {
+        shown
+    }
+
+    nonisolated static func actualDestination(_ shown: Int, ids: [String], running: String?) -> Int {
+        shown
     }
 
     /// Every entry in the form the server answers to (`NavidromeRekey`);
