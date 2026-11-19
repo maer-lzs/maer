@@ -400,10 +400,8 @@ struct BookDetailScreen: View {
     /// raw server chapters. Otherwise a coverage-fallback book shows a
     /// different (broken) chapter list here than in the player.
     private var resolvedChapters: (chapters: [ABSChapter], isFallback: Bool)? {
-        guard let media = detail?.media else { return nil }
-        let resolved = ChapterModel.resolved(
-            chapters: media.chapters ?? [], tracks: media.tracks ?? [],
-            duration: media.duration ?? 0)
+        guard let detail else { return nil }
+        let resolved = ChapterModel.resolved(detail: detail)
         return (resolved.chapters, resolved.isFallback)
     }
 

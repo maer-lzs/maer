@@ -197,7 +197,7 @@ nonisolated enum ChapterEntryRules {
     /// mark stands at the end or says played (`ProgressMark.reachedEnd`).
     /// A title without a mark is not heard.
     static func heardToTheEnd(stored: [Double]?) -> Bool {
-        false
+        stored.map { ProgressMark.reachedEnd(stored: $0, currentDuration: 0) } ?? false
     }
 
     /// What became of a book asked into Up Next chapter by chapter.

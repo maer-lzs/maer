@@ -1032,9 +1032,12 @@ nonisolated enum FreeCatalog {
         for section in sections ?? [] {
             guard let url = section.listen_url, !url.isEmpty else { continue }
             let duration = seconds(section.playtime)
+            // The section's own name names the part, as a release's track
+            // names its song (`ChapterModel.trackChapters`).
+            let title = section.title.flatMap { $0.isEmpty ? nil : $0 }
             out.append(ABSAudioTrack(index: out.count, startOffset: start,
                                      duration: duration, contentUrl: url,
-                                     metadata: nil))
+                                     metadata: title.map { ABSFileMetadata(size: nil, title: $0) }))
             start += duration ?? 0
         }
         return out

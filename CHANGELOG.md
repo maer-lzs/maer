@@ -37,7 +37,9 @@ the app says so. When the last chapter of a book heard chapter by chapter
 ends, the book counts as heard, as at its own end; a single chapter never
 marks it heard. A downloaded book goes in chapter by chapter offline too.
 Marking a book as heard after its last chapter played as an entry keeps
-it heard.
+it heard. A free reading you heard to its end no longer offers to go in
+chapter by chapter, and the parts of a LibriVox book carry the names of
+its sections instead of Part 2 of 17.
 
 ## v3.8 (Build 66)
 

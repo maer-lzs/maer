@@ -993,14 +993,9 @@ final class DownloadManager {
             kinds[item.id] = kind
             writeKinds()
         }
-        let tracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
-            // Stable: fall back to the original position when the server
-            // index is missing/equal. Swift's sort is not stability-guaranteed,
-            // and download naming vs. playback order MUST agree.
-            let li = l.element.index ?? l.offset
-            let ri = r.element.index ?? r.offset
-            return li == ri ? l.offset < r.offset : li < ri
-        }.map(\.element)
+        // The player's order (`ChapterModel.ordered`): download naming and
+        // playback order must agree.
+        let tracks = ChapterModel.ordered(item.media.tracks ?? [])
         guard !tracks.isEmpty else {
             phase[item.id] = .failed(String(localized: "No downloadable track found."))
             return

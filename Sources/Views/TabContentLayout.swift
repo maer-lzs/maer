@@ -381,7 +381,10 @@ struct CatalogQueueButtons: View {
                 AddToPlaylistButton(itemId: itemId, itemIds: itemIds, knownTitles: knownTitles)
             }
             if itemIds == nil, let chain {
-                ChapterChainButton(itemId: itemId, title: title ?? knownTitles[itemId] ?? "", playerCoordinator: chain)
+                ChapterChainButton(itemId: itemId, title: title ?? knownTitles[itemId] ?? "",
+                                   finished: ChapterEntryRules.heardToTheEnd(
+                                       stored: ListeningStore.backup(itemId) ?? ListeningStore.flushed(itemId)),
+                                   playerCoordinator: chain)
             }
         }
     }
