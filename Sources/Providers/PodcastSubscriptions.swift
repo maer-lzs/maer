@@ -2743,28 +2743,35 @@ final class PodcastSubscriptions: ObservableObject {
     /// noted in the app's domain: this runs off the main actor without a
     /// store (`UserDefaults` cannot be sent here), and a store built for a
     /// test fetches through `_testFeedFetcher`, never through this.
+    /// The request of a feed. Private/premium feeds send the Basic auth
+    /// header if stored; a stored sign-in that cannot be read now is not
+    /// asked without it (nil): the feed would refuse, and the refusal would
+    /// count against an access that is there (`PodcastFeedAuth.requestAccess`).
     /// `sendsAccess` false: a read for an address someone else handed over
-    /// (a shared link); it carries no sign-in of this device.
+    /// (a shared link); it carries nothing of this device.
+    nonisolated static func feedRequest(_ feedURL: URL, sendsAccess: Bool) -> URLRequest? {
+        var request = URLRequest(url: feedURL)
+        let access = sendsAccess ? PodcastFeedAuth.access(feedKey: PodcastIdentity.feedKey(feedURL.absoluteString)) : .absent
+        switch PodcastFeedAuth.requestAccess(access, sendsAccess: sendsAccess) {
+        case .wait:
+            return nil
+        case .header(let value):
+            request.setValue(value, forHTTPHeaderField: "Authorization")
+        case .none:
+            break
+        }
+        return request
+    }
+
+    /// `sendsAccess` false: a read for an address someone else handed over
+    /// (a shared link); it carries nothing of this device.
     @concurrent nonisolated static func fetchOutcome(feedURL rawURL: URL,
                                                      patience: FeedFetchPatience = .patient,
                                                      sendsAccess: Bool = true) async -> FeedFetchOutcome {
         // THE funnel for every feed request. The rule sits here so a call
         // site that builds its own URL cannot get cleartext past it.
         let feedURL = PodcastFeedAddress.upgraded(rawURL)
-        // Private/premium feeds: send the Basic auth header if stored. A
-        // stored sign-in that cannot be read now is not asked without it:
-        // the feed would refuse, and the refusal would count against an
-        // access that is there (`PodcastFeedAuth.requestAccess`).
-        var request = URLRequest(url: feedURL)
-        let access = sendsAccess ? PodcastFeedAuth.access(feedKey: PodcastIdentity.feedKey(feedURL.absoluteString)) : .absent
-        switch PodcastFeedAuth.requestAccess(access, sendsAccess: sendsAccess) {
-        case .wait:
-            return .accessUnknown
-        case .header(let value):
-            request.setValue(value, forHTTPHeaderField: "Authorization")
-        case .none:
-            break
-        }
+        guard var request = feedRequest(feedURL, sendsAccess: sendsAccess) else { return .accessUnknown }
         // A bulk run waits a short silence, once. The value on the request
         // beats the session's 20 s.
         if let silence = patience.silenceLimit { request.timeoutInterval = silence }
@@ -2774,7 +2781,8 @@ final class PodcastSubscriptions: ObservableObject {
         let data: Data
         let http: HTTPURLResponse?
         do {
-            (data, http) = try await RequestRetryPolicy.fetch(request, once: patience.asksOnce)
+            (data, http) = try await RequestRetryPolicy.fetch(request, once: patience.asksOnce,
+                                                              carriesServerHeaders: sendsAccess)
         } catch let error as URLError where error.code == .timedOut {
             return .failed(.timeout)
         } catch {

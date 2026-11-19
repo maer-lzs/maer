@@ -133,6 +133,20 @@ struct SharedLinkOpener {
         }
     }
 
+    /// What a link's read of a feed gave: a feed that means sign in says its
+    /// sentence, unless this device follows the feed, whose show then opens
+    /// as the person's own; every other answer opens the show.
+    nonisolated static func feedRead(_ outcome: FeedFetchOutcome, follows: Bool) -> FeedRead {
+        switch outcome {
+        case .show:
+            return .read
+        case .status(let status) where StatusMeaning.from(status: status) == .signIn:
+            return .signInNeeded
+        case .status, .failed, .accessUnknown:
+            return .failed
+        }
+    }
+
     /// The opener of the app: a feed nobody follows is read without any
     /// sign-in of this device, a catalog title is resolved by the session (a
     /// Jamendo track nobody saw this session is asked for there).
@@ -141,15 +155,9 @@ struct SharedLinkOpener {
             knows: knows,
             browse: { feedURL in
                 guard let address = PodcastFeedAddress.requestURL(feedURL) else { return .failed }
-                switch await PodcastSubscriptions.fetchOutcome(feedURL: address, sendsAccess: false) {
-                case .show(let show):
-                    BrowsedEpisodes.shared.remember(show: show)
-                    return .read
-                case .status(let status) where StatusMeaning.from(status: status) == .signIn:
-                    return .signInNeeded
-                case .status, .failed, .accessUnknown:
-                    return .failed
-                }
+                let outcome = await PodcastSubscriptions.fetchOutcome(feedURL: address, sendsAccess: false)
+                if case .show(let show) = outcome { BrowsedEpisodes.shared.remember(show: show) }
+                return feedRead(outcome, follows: false)
             },
             resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
             resolveStation: { await lookUpStation($0) })

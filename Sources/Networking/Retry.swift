@@ -81,11 +81,16 @@ nonisolated enum RequestRetryPolicy {
     /// a timeout or a 5xx nobody knows whether it landed, so it goes out
     /// once and the caller says the failure as before. The one probe after
     /// a 401 stays, nothing was applied there.
+    ///
+    /// `carriesServerHeaders: false` is a request on behalf of an address
+    /// someone else handed over (a shared link): the headers this device
+    /// keeps for a server do not travel with it.
     static func fetch(_ request: URLRequest,
                       session: URLSession? = nil,
                       redirects: RedirectGuard? = nil,
                       once: Bool = false,
-                      repeatable: Bool = true) async throws -> (Data, HTTPURLResponse?) {
+                      repeatable: Bool = true,
+                      carriesServerHeaders: Bool = true) async throws -> (Data, HTTPURLResponse?) {
         // Default argument can't reference `.maer` here (isolation of the
         // default-value context). Resolve inside instead.
         let session = session ?? URLSession.maer
