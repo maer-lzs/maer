@@ -20,6 +20,8 @@ struct SharedLinkOpenerTests {
         var known: Set<String> = []
         var browsed: [String] = []
         var loadsOnBrowse: Set<String> = []
+        /// Feeds that answer a read with 401 or 403.
+        var asksSignIn: Set<String> = []
         var feedHolds: [String: String] = [:]
         var books: Set<String> = []
         var stayHome: Set<String> = []
@@ -33,7 +35,8 @@ struct SharedLinkOpenerTests {
                 browse: { [self] feed in
                     browsed.append(feed)
                     if let id = feedHolds[feed] { known.insert(id) }
-                    return loadsOnBrowse.contains(feed)
+                    if asksSignIn.contains(feed) { return .signInNeeded }
+                    return loadsOnBrowse.contains(feed) ? .read : .failed
                 },
                 resolveCatalog: { [self] in books.contains($0) },
                 resolveStation: { [self] uuid in

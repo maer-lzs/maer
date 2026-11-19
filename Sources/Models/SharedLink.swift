@@ -164,6 +164,13 @@ nonisolated enum SharedLink {
 
     // MARK: - What may be shared
 
+    /// Whether a link that names a content opens it: only what the link
+    /// carries counts (the form, public addresses, no access in an
+    /// address), never what this device knows of the feed.
+    static func opens(_ content: Content) -> Bool {
+        false
+    }
+
     /// Whether a content may be shared, and whether a link that names it
     /// may open. The feed must not stay home (`staysHome`, the question the
     /// export asks: access in the address, premium, a sign-in, Pinchflat, an

@@ -29,6 +29,14 @@ struct SharedLinkOpener {
         case stationPage(uuid: String, StationGap)
     }
 
+    /// What reading a feed nobody follows gave.
+    nonisolated enum FeedRead: Equatable, Sendable {
+        case read
+        /// The feed asks for a sign-in (401 or 403).
+        case signInNeeded
+        case failed
+    }
+
     /// Why the page of a station link opens without its station.
     nonisolated enum StationGap: Hashable, Sendable {
         /// The catalog did not answer: the device is offline or the request
@@ -64,9 +72,9 @@ struct SharedLinkOpener {
     var staysHome: (String) -> Bool
     /// Whether the app resolves an episode id now.
     var knows: (String) -> Bool
-    /// Reads a feed nobody follows and keeps its episodes for the visit;
-    /// false when it could not be read.
-    var browse: (String) async -> Bool
+    /// Reads a feed nobody follows and keeps its episodes for the visit,
+    /// and says how it went.
+    var browse: (String) async -> FeedRead
     /// Resolves a catalog title, a book or a music track; false when it
     /// cannot be found.
     var resolveCatalog: (String) async -> Bool
@@ -132,9 +140,9 @@ struct SharedLinkOpener {
             knows: knows,
             browse: { feedURL in
                 guard let address = PodcastFeedAddress.requestURL(feedURL),
-                      let show = await PodcastSubscriptions.fetchAndParse(feedURL: address) else { return false }
+                      let show = await PodcastSubscriptions.fetchAndParse(feedURL: address) else { return .failed }
                 BrowsedEpisodes.shared.remember(show: show)
-                return true
+                return .read
             },
             resolveCatalog: { await AppSession.shared.resolveItem(forId: $0) != nil },
             resolveStation: { await lookUpStation($0) })
@@ -180,7 +188,7 @@ struct SharedLinkOpener {
             if knows(itemId) { return .episode(itemId: itemId) }
             // A feed nobody follows: read it, then the episode resolves. An
             // episode that left the feed opens its show.
-            guard await browse(feedURL) else { return .show(feedURL: feedURL) }
+            guard await browse(feedURL) == .read else { return .show(feedURL: feedURL) }
             return knows(itemId) ? .episode(itemId: itemId) : .show(feedURL: feedURL)
         case .show(let feedURL, _):
             return .show(feedURL: feedURL)

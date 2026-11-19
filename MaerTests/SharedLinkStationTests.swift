@@ -21,7 +21,7 @@ struct SharedLinkStationTests {
 
     private func opener(resolve: @escaping (String) async -> SharedLinkOpener.StationLookup) -> SharedLinkOpener {
         SharedLinkOpener(staysHome: { _ in false }, knows: { _ in false },
-                         browse: { _ in false }, resolveCatalog: { _ in false }, resolveStation: resolve)
+                         browse: { _ in .failed }, resolveCatalog: { _ in false }, resolveStation: resolve)
     }
 
     @Test("a link with a real id and a foreign stream never opens the station with a name or stream from the link")

@@ -23,6 +23,30 @@ nonisolated enum PodcastFeedAuth {
         case unknown
     }
 
+    /// What a feed request carries of the device's sign-in.
+    enum RequestAccess: Equatable, Sendable {
+        /// The Basic header with the stored sign-in.
+        case header(String)
+        /// No header.
+        case none
+        /// No request: the stored sign-in cannot be read now.
+        case wait
+    }
+
+    /// The request's part of a feed's sign-in. `sendsAccess` false is a
+    /// request on behalf of an address someone else handed over (a shared
+    /// link): it carries nothing of this device and does not wait for it.
+    static func requestAccess(_ access: Access, sendsAccess: Bool) -> RequestAccess {
+        switch access {
+        case .present(let user, let password):
+            return .header("Basic " + Data("\(user):\(password)".utf8).base64EncodedString())
+        case .absent:
+            return .none
+        case .unknown:
+            return .wait
+        }
+    }
+
     #if DEBUG
     /// A witness's keychain for the live items of this class: the read it
     /// sets answers per feed key in place of the keychain, for the task
