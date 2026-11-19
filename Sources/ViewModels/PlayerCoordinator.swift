@@ -102,6 +102,7 @@ final class PlayerCoordinator: ObservableObject {
     /// The orders, reached in one place.
     private var orders: PlayQueue { PlayQueue.shared }
     private var context: PlaybackContext { PlaybackContext.shared }
+    private var session: AppSession { AppSession.shared }
     @Published private(set) var isLoading = false
     /// Set while the end of a title opens the next one, across the titles
     /// it skips (`advance(to:)`).
@@ -787,7 +788,7 @@ final class PlayerCoordinator: ObservableObject {
     /// leaves the entry where it was and plays nothing.
     private func openChapter(entryId: String, bookId: String, startMs: Int,
                              autoplay: Bool, preservesContext: Bool, origin: OpenOrigin) async {
-        guard let book = await AppSession.shared.resolveItem(forId: bookId) else {
+        guard let book = await session.resolveItem(forId: bookId) else {
             Logger.player.notice("CHAPTER entry not opened, its book does not resolve: entry=\(entryId, privacy: .private(mask: .hash))")
             return
         }
@@ -797,7 +798,10 @@ final class PlayerCoordinator: ObservableObject {
             Logger.player.notice("CHAPTER entry not opened, the book does not stand: entry=\(entryId, privacy: .private(mask: .hash))")
             return
         }
-        guard let chapter = ChapterEntryRules.chapter(startMs: startMs, in: model.chapters) else {
+        // A chain plays the chapter the book's position holds now, a single
+        // entry its own chapter.
+        guard let chapter = ChapterEntryRules.playChapter(entryId: entryId, chapters: model.chapters,
+                                                          bookPosition: model.currentTime) else {
             Logger.player.notice("CHAPTER entry names no chapter of the book, it stays: entry=\(entryId, privacy: .private(mask: .hash)) chapters=\(model.chapters.count)")
             return
         }
@@ -821,18 +825,42 @@ final class PlayerCoordinator: ObservableObject {
             self.leaveBothLists(entryId)
         }, onEnd: { [weak self, weak model] in
             guard let self, let model, model === self.viewModel else { return }
-            self.chapterRangeEnded(entryId, model: model)
+            self.chapterRangeEnded(entryId, chapter: chapter, model: model)
         })
+    }
+
+    /// Puts a book into Up Next chapter by chapter, at the end. The library
+    /// list does not carry chapters, so the book's detail is asked first; a
+    /// book with fewer than two chapters says so, and a chain of the book
+    /// that already waits stays the one.
+    func enqueueChain(_ book: LibraryItem, position: Double) async {
+        let detail: LibraryItemDetail
+        do {
+            detail = try await session.provider(for: book.id).fetchItemDetail(itemId: book.id)
+        } catch {
+            Logger.player.notice("CHAPTER chain not queued, the detail failed: \(FailureReason.of(error), privacy: .public)")
+            sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: book.title)
+            return
+        }
+        let chapters = detail.media.chapters ?? []
+        guard chapters.count >= 2 else {
+            sayOpenFailure(String(localized: "This book has no chapters to go through one by one."), cause: .unknown, title: book.title)
+            return
+        }
+        if !orders.enqueueChain(bookId: book.id, chapters: chapters, bookPosition: position) {
+            Logger.player.notice("CHAPTER chain not queued: one waits already or no chapter is left")
+        }
     }
 
     /// The end of a chapter entry's range: the book pauses at the chapter's
     /// end, which writes its position like any pause, the entry leaves Up
-    /// Next, and what follows starts, as at the end of a title. The book is
-    /// not heard.
-    private func chapterRangeEnded(_ entryId: String, model: PlayerViewModel) {
+    /// Next and a chain's next chapter joins its end, and what follows
+    /// starts, as at the end of a title. The book is not heard.
+    private func chapterRangeEnded(_ entryId: String, chapter: ABSChapter, model: PlayerViewModel) {
         Logger.player.notice("CHAPTER entry ends at the chapter's end, the next entry starts")
         if model.isPlaying { model.pause(caller: "chapter entry ends") }
         orders.running = nil
+        orders.chapterEnded(entryId, chapters: model.chapters, played: chapter)
         advanceAfterFinish(finishedItemId: entryId)
     }
 

@@ -208,8 +208,18 @@ final class PlayQueue: ObservableObject {
     /// A chapter entry played to its end: it leaves, and the entry that
     /// follows it chapter by chapter (`ChapterEntryRules.follower`) joins the
     /// end, so the book and the rest of Up Next take turns.
-    func chapterEnded(_ entryId: String, chapters: [ABSChapter]) {
+    /// `played` is the chapter the entry really played, when a chain followed
+    /// the book to another chapter (`ChapterEntryRules.playChapter`); its
+    /// follower comes after that one.
+    func chapterEnded(_ entryId: String, chapters: [ABSChapter], played: ABSChapter? = nil) {
         remove(entryId)
+        var asked = entryId
+        if let played, let entry = ItemNamespace.chapterEntry(entryId) {
+            asked = ItemNamespace.chapterEntryId(bookId: entry.bookId, startMs: ChapterEntryRules.ms(played.start),
+                                                 continues: entry.continues)
+        }
+        guard let next = ChapterEntryRules.follower(of: asked, chapters: chapters) else { return }
+        playLast(next)
     }
 
     /// Puts a book into Up Next chapter by chapter, at the end, starting at
@@ -217,7 +227,14 @@ final class PlayQueue: ObservableObject {
     /// when the book has no two chapters or a chain of it already waits.
     @discardableResult
     func enqueueChain(bookId: String, chapters: [ABSChapter], bookPosition: Double) -> Bool {
-        false
+        guard chapters.count >= 2,
+              !ids.contains(where: { ItemNamespace.chapterEntry($0).map { $0.bookId == bookId && $0.continues } == true }),
+              let start = ChapterEntryRules.chainStart(chapters: chapters, bookPosition: bookPosition) else { return false }
+        let id = ItemNamespace.chapterEntryId(bookId: bookId, startMs: ChapterEntryRules.ms(start.start), continues: true)
+        guard isQueueable(id), Self.canHold(id) else { return false }
+        ids.append(id)
+        save()
+        return true
     }
 
     func move(from source: IndexSet, to destination: Int) {

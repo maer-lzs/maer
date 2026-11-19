@@ -118,7 +118,7 @@ nonisolated enum ChapterEntryRules {
     static func restoredEntry(queueIds: [String], bookId: String, position: Double,
                               chapters: [ABSChapter]) -> (entryId: String, chapter: ABSChapter)? {
         guard let head = queueIds.first, let entry = ItemNamespace.chapterEntry(head), entry.bookId == bookId,
-              let found = chapter(startMs: entry.startMs, in: chapters),
+              let found = playChapter(entryId: head, chapters: chapters, bookPosition: position),
               state(at: position, of: found) == .running else { return nil }
         return (head, found)
     }
@@ -127,13 +127,18 @@ nonisolated enum ChapterEntryRules {
     /// end: the next chapter of the book in the same form. Nil after the last
     /// chapter, for a single chapter entry and for any other id.
     static func follower(of entryId: String, chapters: [ABSChapter]) -> String? {
-        nil
+        guard let entry = ItemNamespace.chapterEntry(entryId), entry.continues else { return nil }
+        let start = Double(entry.startMs) / 1000
+        guard let next = chapters.sorted(by: { $0.start < $1.start }).first(where: { $0.start > start }) else { return nil }
+        return ItemNamespace.chapterEntryId(bookId: entry.bookId, startMs: ms(next.start), continues: true)
     }
 
     /// The chapter a chain starts at: the one that holds the book's
     /// position, else the first that begins after it.
     static func chainStart(chapters: [ABSChapter], bookPosition: Double) -> ABSChapter? {
-        nil
+        let ordered = chapters.sorted { $0.start < $1.start }
+        return ordered.first { $0.start <= bookPosition && bookPosition < $0.end }
+            ?? ordered.first { $0.start > bookPosition }
     }
 
     /// The chapter an entry plays: a single entry its own chapter; an entry
@@ -141,6 +146,7 @@ nonisolated enum ChapterEntryRules {
     /// else the next, because the book may have been heard as a book since.
     static func playChapter(entryId: String, chapters: [ABSChapter], bookPosition: Double) -> ABSChapter? {
         guard let entry = ItemNamespace.chapterEntry(entryId) else { return nil }
+        if entry.continues { return chainStart(chapters: chapters, bookPosition: bookPosition) }
         return chapter(startMs: entry.startMs, in: chapters)
     }
 
@@ -148,7 +154,7 @@ nonisolated enum ChapterEntryRules {
     /// chapter: a book that is not heard to its end. Its chapters are read
     /// when the person asks, since the library list does not carry them.
     static func offersChain(itemId: String, finished: Bool) -> Bool {
-        false
+        !finished && MediaFamily.of(itemId) == .book
     }
 
     /// The row's title of an entry whose chapter is unknown.

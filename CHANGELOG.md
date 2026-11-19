@@ -15,7 +15,11 @@ before the position your server holds asks before it moves that position
 back. Podcast episodes do not offer their chapters. The chapter list in
 the player offers the same. A chapter that plays stays in Up Next until
 its end, out of sight, so the app continues it after a restart; Next
-never starts it again, and a jump out of the chapter takes it out.
+never starts it again, and a jump out of the chapter takes it out. A
+book's menu has Chapter by Chapter in Up Next: the book goes in at the
+end, one chapter at a time, and when a chapter ends the next one joins the
+end of Up Next, so a book and your podcasts take turns. It picks up at the
+chapter you are in, also when you listened on in between.
 
 ## v3.8 (Build 66)
 

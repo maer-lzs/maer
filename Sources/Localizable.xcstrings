@@ -2611,6 +2611,16 @@
         }
       }
     },
+    "Chapter by Chapter in Up Next" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitelweise in Als Nächstes"
+          }
+        }
+      }
+    },
     "Chapters" : {
       "localizations" : {
         "de" : {
@@ -13000,6 +13010,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Adresse ist unverschlüsseltes http. Die Anmeldung und alles, was die App mit dem Dienst austauscht, reist versiegelt in der Sitzung. Offen auf der Leitung sind nur der erste Abruf des Dienst-Schlüssels und die Erreichbarkeitsfrage; von da an hält die App diesen Schlüssel."
+          }
+        }
+      }
+    },
+    "This book has no chapters to go through one by one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Buch hat keine Kapitel, die sich einzeln einreihen lassen."
           }
         }
       }

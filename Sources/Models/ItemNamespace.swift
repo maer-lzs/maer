@@ -106,20 +106,21 @@ nonisolated enum ItemNamespace {
     static let chaptersPrefix = "chapters:"
 
     static func chapterEntryId(bookId: String, startMs: Int, continues: Bool = false) -> String {
-        "\(chapterPrefix)\(startMs):\(bookId)"
+        "\(continues ? chaptersPrefix : chapterPrefix)\(startMs):\(bookId)"
     }
 
     /// The book and the start of a chapter entry, and whether it continues
     /// chapter by chapter; nil for any other id.
     static func chapterEntry(_ itemId: String) -> (bookId: String, startMs: Int, continues: Bool)? {
-        guard itemId.hasPrefix(chapterPrefix) else { return nil }
-        let rest = itemId.dropFirst(chapterPrefix.count)
+        let continues = itemId.hasPrefix(chaptersPrefix)
+        guard continues || itemId.hasPrefix(chapterPrefix) else { return nil }
+        let rest = itemId.dropFirst(continues ? chaptersPrefix.count : chapterPrefix.count)
         guard let colon = rest.firstIndex(of: ":"),
               let startMs = Int(rest[rest.startIndex..<colon]), startMs >= 0
         else { return nil }
         let bookId = String(rest[rest.index(after: colon)...])
-        guard !bookId.isEmpty, !bookId.hasPrefix(chapterPrefix) else { return nil }
-        return (bookId, startMs, false)
+        guard !bookId.isEmpty, !bookId.hasPrefix(chapterPrefix), !bookId.hasPrefix(chaptersPrefix) else { return nil }
+        return (bookId, startMs, continues)
     }
 
     /// The id every source question goes to: the book of a chapter entry,

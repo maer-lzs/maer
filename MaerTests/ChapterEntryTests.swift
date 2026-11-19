@@ -357,7 +357,10 @@ struct ChapterEntryFenceTests {
             }
         }
         #expect(spelling.isEmpty, "the chapter form is spelled outside the namespace: \(spelling)")
-        #expect(building.sorted() == ["Sources/Views/BookDetailScreen.swift", "Sources/Views/ChapterListView.swift"],
+        // The two chapter lists build single entries; the queue builds the
+        // links of a chain (`enqueueChain`, `chapterEnded`).
+        #expect(building.sorted() == ["Sources/Providers/PlayQueue.swift", "Sources/Views/BookDetailScreen.swift",
+                                      "Sources/Views/ChapterListView.swift"],
                 "entries are built here: \(building)")
         for path in ["Sources/Views/BookDetailScreen.swift", "Sources/Views/ChapterListView.swift"] {
             let page = try Self.code(path)

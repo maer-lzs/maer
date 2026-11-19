@@ -95,6 +95,15 @@ struct BookContextMenuItems: View {
             } label: {
                 Label("Play Last", systemImage: "text.append")
             }
+            // The book at the end of Up Next, one chapter at a time, so it
+            // takes turns with the rest.
+            if ChapterEntryRules.offersChain(itemId: entry.id, finished: entry.progress?.isFinished == true) {
+                Button {
+                    Task { await playerCoordinator.enqueueChain(entry.item, position: entry.progress?.currentTime ?? 0) }
+                } label: {
+                    Label("Chapter by Chapter in Up Next", systemImage: "list.bullet.indent")
+                }
+            }
         }
 
         BookDownloadMenuItems(itemId: entry.id)
