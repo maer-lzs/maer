@@ -423,6 +423,13 @@ nonisolated enum ListeningStore {
         mark(itemId, in: defaults)?.position
     }
 
+    /// The raw entry this device holds for a title: the backup, else the
+    /// flushed one, the order `mark(_:)` reads in. For a rule that reads the
+    /// array itself (`ProgressMark.reachedEnd(stored:)`).
+    static func storedEntry(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {
+        backup(itemId, in: defaults) ?? flushed(itemId, in: defaults)
+    }
+
     /// The raw entry. For the sync paths that hand the array on unchanged
     /// (iCloud blob, gpodder). Reading surfaces use `mark(_:)` instead.
     static func backup(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {

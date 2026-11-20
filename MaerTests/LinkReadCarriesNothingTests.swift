@@ -51,6 +51,41 @@ struct LinkReadCarriesNothingTests {
         #expect(!link.contains("cookie:"), "a link's read carried the host's cookie")
     }
 
+    @Test("after a redirect to a server the device keeps headers for, a link's read sends neither them nor a cookie; the device's own read does")
+    func aRedirectCarriesNothing() async throws {
+        let origin = try HeaderRedirectMeasureTests.RecordingHost(body: Self.feed, contentType: "application/rss+xml")
+        let target = try HeaderRedirectMeasureTests.RecordingHost(body: Self.feed, contentType: "application/rss+xml")
+        try await origin.start()
+        try await target.start()
+        defer { origin.stop(); target.stop() }
+        let goal = try #require(URL(string: "http://127.0.0.1:\(target.port)/feed.xml"))
+        origin.redirect(to: goal)
+        let start = try #require(URL(string: "http://127.0.0.1:\(origin.port)/start/feed.xml"))
+        let keys = ServerHeadersWayTests().headers(port: Int(target.port))
+        let cookie = try #require(HTTPCookie(properties: [.domain: "127.0.0.1", .path: "/", .name: "maer-hop",
+                                                          .value: "h-\(UUID().uuidString.prefix(6))", .originURL: goal]))
+        HTTPCookieStorage.shared.setCookie(cookie)
+        defer { HTTPCookieStorage.shared.deleteCookie(cookie) }
+
+        func read(sendsAccess: Bool) async throws -> String {
+            let before = target.recorded.count
+            try await ServerHeaders.$witness.withValue(keys.keys()) {
+                let request = try #require(PodcastSubscriptions.feedRequest(start, sendsAccess: sendsAccess))
+                _ = try await RequestRetryPolicy.fetch(request, once: true, carriesServerHeaders: sendsAccess)
+            }
+            await ServerHeadersWayTests.until { target.recorded.count > before }
+            return try #require(target.recorded.dropFirst(before).first, "the redirect never reached its target")
+        }
+
+        let own = try await read(sendsAccess: true)
+        try #require(ServerHeadersWayTests.carried(own) == 1, "the control: the device's read carries the target's header")
+        try #require(own.contains("cookie: maer-hop="), "the control: the device's read carries the cookie")
+
+        let link = try await read(sendsAccess: false)
+        #expect(ServerHeadersWayTests.carried(link) == 0, "a link's read picked the target's header up at the redirect")
+        #expect(!link.contains("cookie:"), "a link's read carried a cookie after the redirect")
+    }
+
     @Test("a feed that means sign in says so, unless this device follows it; every other answer opens the show")
     func theReadsAnswer() {
         let show = PodcastShow(id: "feed:f", title: "T", author: nil, artworkURL: nil,
@@ -81,7 +116,8 @@ struct LinkReadCarriesNothingTests {
         }
         let opener = try code("Sources/ViewModels/SharedLinkOpener.swift")
         let live = try #require(ABSPodcastRefreshTests.body(of: "static func live(", in: opener))
-        #expect(!live.contains("follows: false"), "the live open never asks whether this device follows the feed")
+        #expect(live.contains("feedRead(outcome, follows: follows)") && live.contains("let follows = await MainActor.run"),
+                "the live open does not hand the read whether this device follows the feed")
         let auth = try code("Sources/Networking/PodcastFeedAuth.swift")
         #expect(auth.components(separatedBy: "base64EncodedString()").count - 1 == 1, "the Basic header is built twice")
     }

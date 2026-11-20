@@ -102,7 +102,7 @@ nonisolated enum RequestRetryPolicy {
             ServerHeaders.apply(to: &request)
             try ServerHeaders.admit(request)
         }
-        let redirects = redirects ?? RedirectGuard.following()
+        let redirects = redirects ?? RedirectGuard.following(carriesServerHeaders: carriesServerHeaders)
         // Past every rung of `decide`, the first answer is final.
         var attempt = once ? Int.max : 0
         var pauseMs: Int?
@@ -208,7 +208,11 @@ nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendabl
     }
 
     /// Follows every redirect; only the server headers stay behind.
-    static func following() -> RedirectGuard { RedirectGuard(allows: { _ in true }) }
+    /// `carriesServerHeaders: false` is a request that carries none of them,
+    /// before or after a redirect.
+    static func following(carriesServerHeaders: Bool = true) -> RedirectGuard {
+        RedirectGuard(allows: { _ in true })
+    }
 
     /// Follows no redirect, for a flow that reads the redirect itself (the
     /// single sign-on): the request ends with the 3xx answer, whose

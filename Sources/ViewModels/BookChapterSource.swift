@@ -74,6 +74,13 @@ final class BookChapterSource {
         return listedPosition(bookId) ?? storedPosition(bookId) ?? 0
     }
 
+    /// The same, with the stand the surface that asks already holds (a card
+    /// of the search or of a mixed page, outside the loaded lists). The
+    /// player's position still comes first.
+    func position(of bookId: String, known: Double?) -> Double {
+        position(of: bookId)
+    }
+
     /// Chapters read from the book's detail elsewhere (the chain asks it).
     func note(_ chapters: [ABSChapter], of bookId: String) {
         guard !chapters.isEmpty else { return }

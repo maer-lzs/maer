@@ -1172,5 +1172,17 @@ printf '%s\n' "$kept" > "$list"
 if [ $rc -ne 0 ] && echo "$out" | grep -q "Unterstrich" && [ -z "$(remote_ref refs/tags/v9.13)" ]; then
     ok "80 an entry in the underscore form stops the read"; else fail "80 an entry in the underscore form stops the read" "rc=$rc $out"; fi
 
+# 81. The journeys of a selection build into one folder of the run's build
+# state, the same for every run, never a new temporary one: each of those
+# stayed behind with its 1.3 GB.
+clear_stub
+printf 'printf %%s "$MAER_JOURNEY_DD" > "%s/journeys-dd"\n' "$WORK" > "$WORK/journeys-stub"
+change Sources/Views/RowView.swift "// journeys" "A view for the journeys"
+LAUF_JOURNEYS="sh $WORK/journeys-stub" bash scripts/lauf.sh auswahl --basis "$BASE" >/dev/null 2>&1; rc=$?
+got="$(cat "$WORK/journeys-dd" 2>/dev/null)"
+reset_base
+if [ $rc = 0 ] && [ "$got" = "$LAUF_BAU/journeys" ]; then
+    ok "81 the journeys build into one folder of the run's build state"; else fail "81 the journeys build into one folder of the run's build state" "rc=$rc folder=$got"; fi
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
