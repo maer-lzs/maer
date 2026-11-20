@@ -172,7 +172,8 @@ enum CatalogSourceLoader {
                     book(reason, .librivox, into: &rows.failures)
                     guard let books else { continue }
                     let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
-                    rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
+                    // Only readings with a cover, then the preview's cut (`CatalogCoverRule`).
+                    rows.librivoxNew = Array(CatalogCoverRule.browsable(filtered.map { provider.remember(book: $0) }, register: provider).prefix(RowPreview.limit))
                     let fresh = rows.librivoxNew
                     await onRow?({ $0.librivoxNew = fresh })
                 case .librivoxPopular(let docs, let reason):
@@ -196,7 +197,7 @@ enum CatalogSourceLoader {
                 case .gutenberg(let books, let reason):
                     book(reason, .gutenberg, into: &rows.failures)
                     guard let books else { continue }
-                    rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
+                    rows.gutenberg = CatalogCoverRule.browsable(books.compactMap { provider.remember(gutenberg: $0) }, register: provider)
                     let fresh = rows.gutenberg
                     await onRow?({ $0.gutenberg = fresh })
                 }

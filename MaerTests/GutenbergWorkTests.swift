@@ -278,9 +278,11 @@ struct GutenbergStockTitleTests {
         clients.gutenberg = GutenbergSeam(audiobooks: { _, _ in asks.add(); return [] })
         let gates = CatalogGates(librivox: false, archiveBooks: false, gutenberg: true, jamendo: false,
                                  freeAudiobooksArea: true, freeClassical: false, netlabels: false, languages: [])
-        var stock = CatalogStock(surface: "gutenberg", takenAt: 1, watermark: nil, entries: (1...30).map {
-            CatalogStockEntry(id: "gut:\($0)", title: "Work \($0)", creator: nil, subjects: [],
-                              downloads: $0, licenseurl: nil, year: nil)
+        // The number typed: with `downloads: $0` the closure took an `Int?`
+        // and the ids read "gut:Optional(1)", works without a number.
+        var stock = CatalogStock(surface: "gutenberg", takenAt: 1, watermark: nil, entries: (1...30).map { (n: Int) in
+            CatalogStockEntry(id: "gut:\(n)", title: "Work \(n)", creator: nil, subjects: [],
+                              downloads: n, licenseurl: nil, year: nil)
         })
         stock.popularityComplete = true
 
@@ -330,9 +332,9 @@ struct GutenbergRightsTests {
 
     @Test("The Gutenberg page has the browse row, and it answers from the stock", .needsTheSources)
     func theBrowseShelf() async throws {
-        var stock = CatalogStock(surface: "gutenberg", takenAt: 1, watermark: nil, entries: (1...5).map {
-            CatalogStockEntry(id: "gut:\($0)", title: "W\($0)", creator: nil, subjects: [],
-                              downloads: $0, licenseurl: nil, year: nil)
+        var stock = CatalogStock(surface: "gutenberg", takenAt: 1, watermark: nil, entries: (1...5).map { (n: Int) in
+            CatalogStockEntry(id: "gut:\(n)", title: "W\(n)", creator: nil, subjects: [],
+                              downloads: n, licenseurl: nil, year: nil)
         })
         stock.popularityComplete = true
         let (answer, way) = try await CatalogShelfSource.preview(source: .gutenberg, shelf: CatalogGenreAxis.browseAllKey,

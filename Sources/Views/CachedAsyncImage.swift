@@ -130,7 +130,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // anyway, it put one show's cover on another's episode.
         guard !Task.isCancelled else { return }
         guard let answer else {
-            loadPot = ServicePlaceholderCovers.contains(url) ? "memo" : ""
+            loadPot = AbsentCovers.contains(url) ? "memo" : ""
             return
         }
         uiImage = answer.image

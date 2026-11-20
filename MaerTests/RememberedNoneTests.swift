@@ -121,20 +121,20 @@ struct RememberedNoneTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer {
             UserDefaults.standard.removePersistentDomain(forName: suite)
-            ServicePlaceholderCovers.dropSessionCopy()
+            AbsentCovers.dropSessionCopy()
         }
-        ServicePlaceholderCovers.dropSessionCopy()
+        AbsentCovers.dropSessionCopy()
         let url = try #require(URL(string: "https://archive.org/services/img/GUNSMOKE05"))
-        #expect(!ServicePlaceholderCovers.contains(url, defaults: defaults))
-        ServicePlaceholderCovers.insert(url, defaults: defaults)
-        #expect(defaults.data(forKey: ServicePlaceholderCovers.storeKey) == nil,
+        #expect(!AbsentCovers.contains(url, defaults: defaults))
+        AbsentCovers.insert(url, defaults: defaults)
+        #expect(defaults.data(forKey: AbsentCovers.storeKey) == nil,
                 "ein Eintrag schreibt nicht, erst der Fegelauf")
-        ServicePlaceholderCovers.flush(defaults: defaults)
-        ServicePlaceholderCovers.dropSessionCopy()
-        #expect(ServicePlaceholderCovers.contains(url, defaults: defaults), "gemerkt ueber den Neustart")
-        ServicePlaceholderCovers.forgetAll(defaults: defaults)
-        ServicePlaceholderCovers.dropSessionCopy()
-        #expect(!ServicePlaceholderCovers.contains(url, defaults: defaults), "das Leeren des Caches fragt neu")
+        AbsentCovers.flush(defaults: defaults)
+        AbsentCovers.dropSessionCopy()
+        #expect(AbsentCovers.contains(url, defaults: defaults), "gemerkt ueber den Neustart")
+        AbsentCovers.forgetAll(defaults: defaults)
+        AbsentCovers.dropSessionCopy()
+        #expect(!AbsentCovers.contains(url, defaults: defaults), "das Leeren des Caches fragt neu")
     }
 
     @Test("Cover: a list under a foreign stamp is not read and drops at the next write")
@@ -144,18 +144,18 @@ struct RememberedNoneTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer {
             UserDefaults.standard.removePersistentDomain(forName: suite)
-            ServicePlaceholderCovers.dropSessionCopy()
+            AbsentCovers.dropSessionCopy()
         }
-        ServicePlaceholderCovers.dropSessionCopy()
+        AbsentCovers.dropSessionCopy()
         let old = "https://archive.org/services/img/OLD"
         let written = try JSONSerialization.data(withJSONObject: ["rule": "another-rule", "urls": [old]])
-        defaults.set(written, forKey: ServicePlaceholderCovers.storeKey)
+        defaults.set(written, forKey: AbsentCovers.storeKey)
         let oldURL = try #require(URL(string: old))
-        #expect(!ServicePlaceholderCovers.contains(oldURL, defaults: defaults), "fremder Stempel, nicht gelesen")
+        #expect(!AbsentCovers.contains(oldURL, defaults: defaults), "fremder Stempel, nicht gelesen")
         let fresh = try #require(URL(string: "https://archive.org/services/img/NEW"))
-        ServicePlaceholderCovers.insert(fresh, defaults: defaults)
-        ServicePlaceholderCovers.flush(defaults: defaults)
-        let data = try #require(defaults.data(forKey: ServicePlaceholderCovers.storeKey))
+        AbsentCovers.insert(fresh, defaults: defaults)
+        AbsentCovers.flush(defaults: defaults)
+        let data = try #require(defaults.data(forKey: AbsentCovers.storeKey))
         let stored = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         #expect(stored["rule"] as? String == ArchiveServicePlaceholder.rule)
         #expect(stored["urls"] as? [String] == [fresh.absoluteString], "die alte Liste ist mit dem Schreiben gefallen")
@@ -168,33 +168,33 @@ struct RememberedNoneTests {
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer {
             UserDefaults.standard.removePersistentDomain(forName: suite)
-            ServicePlaceholderCovers.dropSessionCopy()
+            AbsentCovers.dropSessionCopy()
         }
-        ServicePlaceholderCovers.dropSessionCopy()
-        let cap = ServicePlaceholderCovers.cap
+        AbsentCovers.dropSessionCopy()
+        let cap = AbsentCovers.cap
         func address(_ n: Int) throws -> URL {
             try #require(URL(string: "https://archive.org/services/img/OTRR_Item_\(n)"))
         }
-        for n in 0..<cap { ServicePlaceholderCovers.insert(try address(n), defaults: defaults) }
-        #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap)
+        for n in 0..<cap { AbsentCovers.insert(try address(n), defaults: defaults) }
+        #expect(AbsentCovers.count(defaults: defaults) == cap)
         let clock = ContinuousClock()
         let extra = 3 * cap
         let spent = try clock.measure {
-            for n in cap..<(cap + extra) { ServicePlaceholderCovers.insert(try address(n), defaults: defaults) }
+            for n in cap..<(cap + extra) { AbsentCovers.insert(try address(n), defaults: defaults) }
         }
         print("PLACEHOLDER insert at cap \(cap): \(extra) inserts in \(spent)")
-        #expect(defaults.data(forKey: ServicePlaceholderCovers.storeKey) == nil,
+        #expect(defaults.data(forKey: AbsentCovers.storeKey) == nil,
                 "kein Eintrag hat geschrieben, auch nicht am Deckel")
-        #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap, "die Zahl bleibt beim Deckel")
-        #expect(!ServicePlaceholderCovers.contains(try address(0), defaults: defaults), "der aelteste ist weg")
-        #expect(!ServicePlaceholderCovers.contains(try address(extra - 1), defaults: defaults))
-        #expect(ServicePlaceholderCovers.contains(try address(extra), defaults: defaults), "der aelteste lebende")
-        #expect(ServicePlaceholderCovers.contains(try address(cap + extra - 1), defaults: defaults))
+        #expect(AbsentCovers.count(defaults: defaults) == cap, "die Zahl bleibt beim Deckel")
+        #expect(!AbsentCovers.contains(try address(0), defaults: defaults), "der aelteste ist weg")
+        #expect(!AbsentCovers.contains(try address(extra - 1), defaults: defaults))
+        #expect(AbsentCovers.contains(try address(extra), defaults: defaults), "der aelteste lebende")
+        #expect(AbsentCovers.contains(try address(cap + extra - 1), defaults: defaults))
         // And after the restart the same list.
-        ServicePlaceholderCovers.flush(defaults: defaults)
-        ServicePlaceholderCovers.dropSessionCopy()
-        #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap)
-        #expect(ServicePlaceholderCovers.contains(try address(extra), defaults: defaults))
+        AbsentCovers.flush(defaults: defaults)
+        AbsentCovers.dropSessionCopy()
+        #expect(AbsentCovers.count(defaults: defaults) == cap)
+        #expect(AbsentCovers.contains(try address(extra), defaults: defaults))
     }
 
     @Test("Cover: the stamp arises from the constants of the detection")
@@ -208,16 +208,16 @@ struct RememberedNoneTests {
     func theDoorAsksTheMemoryFirst() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/Artwork.swift"), encoding: .utf8)
-        let asked = try #require(text.range(of: "if ServicePlaceholderCovers.contains(url) {"))
+        let asked = try #require(text.range(of: "if AbsentCovers.contains(url) {"))
         let network = try #require(text.range(of: "await CoverFetchCoalescer.fetch(url"))
         #expect(asked.lowerBound < network.lowerBound, "the memory is asked before the network")
         let judged = try #require(text.range(of: "if ArchiveServicePlaceholder.isPlaceholder(data: data, url: url) {"))
-        let booked = try #require(text.range(of: "ServicePlaceholderCovers.insert(url)"))
+        let booked = try #require(text.range(of: "AbsentCovers.insert(url)"))
         #expect(judged.upperBound < booked.lowerBound)
-        #expect(text.contains("ServicePlaceholderCovers.forgetAll()"), "clearing the cover cache re-asks")
+        #expect(text.contains("AbsentCovers.forgetAll()"), "clearing the cover cache re-asks")
         #expect(!text.contains("static var seen"), "the session-only set is gone")
         let sweep = try #require(text.range(of: "static func sweep() {"))
-        let written = try #require(text.range(of: "ServicePlaceholderCovers.flush()"))
+        let written = try #require(text.range(of: "AbsentCovers.flush()"))
         let nextFunction = try #require(text.range(of: "static func sweepIfOverCap("))
         #expect(sweep.upperBound < written.lowerBound && written.upperBound < nextFunction.lowerBound,
                 "the sweep at start and on going to the background writes the list")

@@ -78,8 +78,13 @@ struct CatalogBrowseCoverTests {
         AbsentCovers.dropSessionCopy()
         defer { AbsentCovers.dropSessionCopy() }
         let provider = FreeCatalogProvider.shared
-        let reading = provider.remember(book: CatalogLoaderWitness.book())
-        let song = try #require(provider.remember(track: CatalogLoaderWitness.track()))
+        // A reading without an archive copy and a song without a picture.
+        let reading = provider.remember(book: LibriVoxBook(
+            id: "cover-\(UUID().uuidString)", title: "T", language: "English", totaltimesecs: 60, url_iarchive: nil,
+            url_librivox: nil, url_rss: nil, authors: nil, sections: [], genres: nil))
+        let song = try #require(provider.remember(track: JamendoTrack(
+            id: "cover-\(UUID().uuidString)", name: "T", artist_name: "A", image: nil,
+            audio: "https://example.org/a.mp3", shareurl: nil, duration: 60)))
         let gone = try #require(provider.remember(popular: CatalogLoaderWitness.doc()))
         let kept = try #require(provider.remember(popular: CatalogLoaderWitness.doc()))
         let alsoKept = try #require(provider.remember(popular: CatalogLoaderWitness.doc()))

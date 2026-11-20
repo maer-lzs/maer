@@ -27,23 +27,24 @@ enum CatalogShelfEntries {
         }
     }
 
-    /// Curated documents as entries of the register.
+    /// Curated documents as entries of the register, those with a cover
+    /// (`CatalogCoverRule.browsable`; every builder here is browsing).
     static func books(_ docs: [ArchivePopularDoc], source: CatalogSource,
                       register: FreeCatalogProvider = .shared) -> [LibraryItem] {
-        curated(docs, source: source).compactMap { register.remember(popular: $0) }
+        CatalogCoverRule.browsable(curated(docs, source: source).compactMap { register.remember(popular: $0) }, register: register)
     }
 
     /// Gutenberg books as entries; they need no curation.
     static func books(_ books: [GutenbergClient.Book],
                       register: FreeCatalogProvider = .shared) -> [LibraryItem] {
-        books.compactMap { register.remember(gutenberg: $0) }
+        CatalogCoverRule.browsable(books.compactMap { register.remember(gutenberg: $0) }, register: register)
     }
 
     /// Music documents as entries, uncurated as before: the book curation
     /// never applied to the music areas.
     static func music(_ docs: [ArchivePopularDoc],
                       register: FreeCatalogProvider = .shared) -> [LibraryItem] {
-        docs.compactMap { register.remember(popular: $0) }
+        CatalogCoverRule.browsable(docs.compactMap { register.remember(popular: $0) }, register: register)
     }
 
     /// One shelf answer as entries, nil where the source has no shelf.
@@ -59,7 +60,7 @@ enum CatalogShelfEntries {
             let kept = curated(docs, source: source)
             let single = kept.filter { !FreeCatalog.isMultiAuthorCollection($0) }
             let collections = kept.filter { FreeCatalog.isMultiAuthorCollection($0) }
-            return ((single + collections).compactMap { register.remember(popular: $0) }, total)
+            return (CatalogCoverRule.browsable((single + collections).compactMap { register.remember(popular: $0) }, register: register), total)
         case .gutenberg(let found, let total):
             return (books(found, register: register), total)
         case .unsupported, .none:

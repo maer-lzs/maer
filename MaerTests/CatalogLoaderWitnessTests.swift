@@ -24,8 +24,11 @@ nonisolated enum CatalogLoaderWitness {
     /// a transport failure by the device's reach.
     static var offlineSentence: String { FreeCatalog.failureReason(offline, online: true) ?? "" }
 
+    /// A song with a picture and a reading with an archive copy: browsing
+    /// shows only titles with a cover (`CatalogCoverRule`).
     static func track() -> JamendoTrack {
-        JamendoTrack(id: "witness-\(UUID().uuidString)", name: "T", artist_name: "A", image: nil,
+        JamendoTrack(id: "witness-\(UUID().uuidString)", name: "T", artist_name: "A",
+                     image: "https://usercontent.jamendo.com/?type=album&id=1&width=300",
                      audio: "https://example.org/a.mp3", shareurl: nil, duration: 60)
     }
 
@@ -36,8 +39,10 @@ nonisolated enum CatalogLoaderWitness {
     }
 
     static func book() -> LibriVoxBook {
-        LibriVoxBook(id: "witness-\(UUID().uuidString)", title: "T", language: "English", totaltimesecs: 60,
-                     url_iarchive: nil, url_librivox: nil, url_rss: nil, authors: nil, sections: [], genres: nil)
+        let id = "witness-\(UUID().uuidString)"
+        return LibriVoxBook(id: id, title: "T", language: "English", totaltimesecs: 60,
+                            url_iarchive: "https://archive.org/details/\(id)", url_librivox: nil, url_rss: nil,
+                            authors: nil, sections: [], genres: nil)
     }
 
     /// A book feed that carries a hi-res cover, and that cover.

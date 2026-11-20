@@ -91,7 +91,8 @@ enum JamendoLoader {
 
     private static func register(_ tracks: [JamendoTrack]) -> [LibraryItem] {
         let provider = FreeCatalogProvider.shared
-        return tracks.compactMap { provider.remember(track: $0) }
+        // Browsing: only songs with a picture (`CatalogCoverRule`).
+        return CatalogCoverRule.browsable(tracks.compactMap { provider.remember(track: $0) }, register: provider)
     }
 
     nonisolated private static func reason(_ error: Error) -> String { Outcome.reason(error) }

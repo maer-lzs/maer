@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Browsing the catalogs shows covers.** The pages and shelves of the free
+catalogs (LibriVox, archive.org, Old Time Radio, Project Gutenberg,
+Jamendo and the music areas) now leave out a title without a cover: one
+whose source names no picture, or whose picture turned out not to be
+there. A title on screen stays until the page loads again, nothing
+disappears while you are offline, and a missing picture is asked again
+after 30 days, since archive.org often adds one later. Search still finds
+every title, and Continue Listening keeps what you heard.
+
 **Keep all automatic downloads.** Keep downloaded, for one show or for
 all shows, now also offers All: the automatic download then loads every
 episode it is meant to and removes none to stay under a count; episodes

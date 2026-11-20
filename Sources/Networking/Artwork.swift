@@ -62,9 +62,10 @@ enum Artwork {
     static func verdict(for url: URL, thumbnail maxPixel: CGFloat? = nil,
                         attempt known: Int? = nil) async -> Verdict {
         let attempt = known ?? CoverTraceLog.attempt(for: url)
-        // A cover already recognised as a service placeholder stays the
-        // app placeholder; no re-download per appearance or per session.
-        if ServicePlaceholderCovers.contains(url) {
+        // A cover already recognised as a service placeholder, or a
+        // catalogue cover that answered none, stays the app placeholder; no
+        // re-download per appearance or per session, for 30 days.
+        if AbsentCovers.contains(url) {
             CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder, attempt: attempt, url: url)
             return .absent
         }
@@ -87,7 +88,8 @@ enum Artwork {
             await fetch(url, retryDelay: nil, attempt: attempt)
         }) {
         case .picture(let image): return .picture(Answer(image: await sized(image, maxPixel), pot: "net"))
-        case .absent: return .absent
+        // A catalogue's cover that is not there leaves browsing (`CatalogCoverRule`).
+        case .absent: AbsentCovers.noteAbsent(url); return .absent
         case .unanswered: break
         }
         // An automatic second attempt after a short pause covers most brief
@@ -99,7 +101,7 @@ enum Artwork {
             await fetch(url, retryDelay: 800_000_000, attempt: attempt)
         }) {
         case .picture(let image): return .picture(Answer(image: await sized(image, maxPixel), pot: "net2"))
-        case .absent: return .absent
+        case .absent: AbsentCovers.noteAbsent(url); return .absent
         case .unanswered:
             // An invalidated downloaded cover whose fresh picture did not
             // come: the old one stays on screen, the next display asks again.
@@ -219,7 +221,7 @@ enum Artwork {
     /// background.
     static func sweep() {
         Task { await sweep(over: DownloadManager.shared, onlyWhenOverCap: false) }
-        ServicePlaceholderCovers.flush()
+        AbsentCovers.flush()
     }
 
     /// The extra pass on returning to the app, for a session that has run
@@ -249,7 +251,7 @@ enum Artwork {
 
     static func clearCache() {
         tiers.clearCache()
-        ServicePlaceholderCovers.forgetAll()
+        AbsentCovers.forgetAll()
     }
 
     /// The purgeable covers of a kind of server that left the device.
@@ -311,7 +313,7 @@ enum Artwork {
         // where the bytes already are, never cached as a picture, and
         // remembered as "none" for good.
         if ArchiveServicePlaceholder.isPlaceholder(data: data, url: url) {
-            ServicePlaceholderCovers.insert(url)
+            AbsentCovers.insert(url)
             CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder, attempt: attempt, url: url)
             return .absent
         }
@@ -339,11 +341,18 @@ enum Artwork {
     }
 }
 
-/// Cover addresses whose answer turned out to be a service placeholder
-/// (archive's pillar logo, a derived waveform strip), kept across sessions
-/// like a found picture. Measured on a scroll run: 94 of 229 cover fetches
-/// at archive.org came back as such a placeholder, the same items many
-/// times over, because the memory lasted one session.
+/// Cover addresses that answered "none here": a service placeholder
+/// (archive's pillar logo, a derived waveform strip) from any address, and
+/// a 404 or 410 from a catalogue's cover address (`noteAbsent`), kept across
+/// sessions like a found picture. Measured on a scroll run: 94 of 229 cover
+/// fetches at archive.org came back as such a placeholder, the same items
+/// many times over, because the memory lasted one session. Browsing the
+/// catalogues leaves such a title out (`CatalogCoverRule.browsable`).
+///
+/// Every entry carries the moment it was noted and holds 30 days
+/// (`CatalogCoverRule.stillAbsent`): archive.org often makes a picture
+/// later, and then the address is asked again. An entry of a list written
+/// before the dates counts from the start that reads it.
 ///
 /// The list grows with every archive title scrolled past, so it has a cap
 /// and drops its oldest entries past it. It lives under a key of its own,
@@ -354,71 +363,76 @@ enum Artwork {
 /// never per entry. A session that ends without either loses its new
 /// entries, which costs one more question each. Measured on a Mac for 2000
 /// addresses: 133 kB, 0.55 ms to encode, 1.47 ms to decode.
-typealias AbsentCovers = ServicePlaceholderCovers
-
 @MainActor
-enum ServicePlaceholderCovers {
+enum AbsentCovers {
     nonisolated static let storeKey = "servicePlaceholderCovers"
     static let cap = 2000
-
-    static func contains(_ url: URL, now: Double, defaults: UserDefaults = AppStorageKeys.store) -> Bool {
-        contains(url, defaults: defaults)
-    }
-
-    static func insert(_ url: URL, now: Double, defaults: UserDefaults = AppStorageKeys.store) {
-        insert(url, defaults: defaults)
-    }
-
-    static func noteAbsent(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) {}
 
     private struct Stored: Codable {
         var rule: String
         /// Oldest first.
         var urls: [String]
+        /// When each was noted, in seconds since 1970, in the order of
+        /// `urls`; missing in a list written before the dates.
+        var at: [Double]?
     }
 
-    /// The session's copy, read once: the order for the cap, the set for
+    /// The session's copy, read once: the order for the cap, the dates for
     /// the question. Live entries are `order[head...]`; dropping the oldest
     /// moves `head`, and the dead front is cut once it is as long as the
     /// cap, so an entry costs a constant amount on average.
     private static var order: [String]?
     private static var head = 0
-    private static var members: Set<String> = []
+    private static var members: [String: Double] = [:]
     /// Whether the session holds entries the store does not.
     private static var unwritten = false
 
-    /// How many addresses are remembered now.
+    /// How many addresses are remembered now, aged ones included.
     static func count(defaults: UserDefaults = AppStorageKeys.store) -> Int {
         load(defaults)
         return members.count
     }
 
-    static func contains(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) -> Bool {
+    /// Whether the address answered "none here" within the last 30 days.
+    static func contains(_ url: URL, now: Double = Date().timeIntervalSince1970, defaults: UserDefaults = AppStorageKeys.store) -> Bool {
         load(defaults)
-        return members.contains(url.absoluteString)
+        guard let since = members[url.absoluteString] else { return false }
+        return CatalogCoverRule.stillAbsent(since: since, now: now)
     }
 
-    static func insert(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) {
+    /// A 404 or 410 of a cover address: noted when a catalogue names it,
+    /// so browsing leaves the title out; any other address is asked again
+    /// next time as before.
+    static func noteAbsent(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) {
+        guard CatalogCoverRule.isCatalogCover(url) else { return }
+        insert(url, defaults: defaults)
+    }
+
+    /// Notes the address at `now`; an address noted before takes the new
+    /// date, so an aged entry that is still absent holds again.
+    static func insert(_ url: URL, now: Double = Date().timeIntervalSince1970, defaults: UserDefaults = AppStorageKeys.store) {
         load(defaults)
         let address = url.absoluteString
-        guard members.insert(address).inserted else { return }
+        let known = members[address] != nil
+        members[address] = now
+        unwritten = true
+        guard !known else { return }
         order?.append(address)
         if members.count > cap, let oldest = order?[head] {
-            members.remove(oldest)
+            members[oldest] = nil
             head += 1
             if head >= cap {
                 order?.removeFirst(head)
                 head = 0
             }
         }
-        unwritten = true
     }
 
     /// The person cleared the cover cache: every placeholder is asked again.
     static func forgetAll(defaults: UserDefaults = AppStorageKeys.store) {
         order = []
         head = 0
-        members = []
+        members = [:]
         unwritten = false
         defaults.removeObject(forKey: storeKey)
     }
@@ -429,8 +443,9 @@ enum ServicePlaceholderCovers {
         guard unwritten, let order else { return }
         unwritten = false
         let live = Array(order[head...])
+        let dates = live.map { members[$0] ?? Date().timeIntervalSince1970 }
         // bearable, because a list of text always encodes; a failure would only keep the older list
-        guard let data = try? JSONEncoder().encode(Stored(rule: ArchiveServicePlaceholder.rule, urls: live))
+        guard let data = try? JSONEncoder().encode(Stored(rule: ArchiveServicePlaceholder.rule, urls: live, at: dates))
         else { return }
         defaults.set(data, forKey: storeKey)
     }
@@ -441,21 +456,27 @@ enum ServicePlaceholderCovers {
         unwritten = false
         order = nil
         head = 0
-        members = []
+        members = [:]
     }
 
     private static func load(_ defaults: UserDefaults) {
         guard order == nil else { return }
         var read: [String] = []
+        var dates: [String: Double] = [:]
         if let data = defaults.data(forKey: storeKey),
            // bearable, because an unreadable list only costs placeholders asked once more; the next write replaces it
            let stored = try? JSONDecoder().decode(Stored.self, from: data),
            stored.rule == ArchiveServicePlaceholder.rule {
-            read = Array(stored.urls.suffix(cap))
+            // A list from before the dates counts from this start.
+            let start = Date().timeIntervalSince1970
+            let at = stored.at.flatMap { $0.count == stored.urls.count ? $0 : nil }
+            let pairs = Array(zip(stored.urls, at ?? Array(repeating: start, count: stored.urls.count)).suffix(cap))
+            read = pairs.map(\.0)
+            dates = Dictionary(pairs, uniquingKeysWith: { _, later in later })
         }
         order = read
         head = 0
-        members = Set(read)
+        members = dates
     }
 }
 

@@ -73,7 +73,8 @@ enum ArchiveMusicLoader {
 
     private static func register(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
         let provider = catalog
-        return docs.compactMap { provider.remember(popular: $0) }
+        // Browsing: only releases with a cover (`CatalogCoverRule`).
+        return CatalogCoverRule.browsable(docs.compactMap { provider.remember(popular: $0) }, register: provider)
     }
 
     nonisolated private static func reason(_ error: Error) -> String { Outcome.reason(error) }

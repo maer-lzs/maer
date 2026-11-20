@@ -77,7 +77,8 @@ enum FreeCatalogLoader {
     static func picks(_ docs: [ArchivePopularDoc], cap: Int,
                       provider: FreeCatalogProvider) async -> [LibraryItem] {
         // No probing on the build path. See `picksWithoutProbing`.
-        picksWithoutProbing(docs.compactMap { provider.remember(popular: $0) }, cap: cap)
+        // Browsing: only titles with a cover (`CatalogCoverRule`), before the cap.
+        picksWithoutProbing(CatalogCoverRule.browsable(docs.compactMap { provider.remember(popular: $0) }, register: provider), cap: cap)
     }
 
     /// Has every ENABLED row an answer? Content or a stated
@@ -137,7 +138,7 @@ enum FreeCatalogLoader {
                 // and stays unprobed. It is the wider list, not a preview.
                 rows.discoverBooks = await Self.picks(docs, cap: Self.discoverBookCap,
                                                       provider: provider)
-                rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }
+                rows.tabBooks = CatalogCoverRule.browsable(docs.compactMap { provider.remember(popular: $0) }, register: provider)
             } catch {
                 guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
@@ -192,7 +193,7 @@ enum FreeCatalogLoader {
                 // and flip the visible row; that flicker is the finding. And
                 // one query per day is the operations cache clause 3.3
                 // sentence 2 covers, nothing more.
-                rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
+                rows.freeMusic = CatalogCoverRule.browsable(tracks.compactMap { provider.remember(track: $0) }, register: provider)
                 Logger.library.notice("FREECAT jamendo from day store: \(tracks.count)")
             } else {
                 do {
@@ -207,7 +208,7 @@ enum FreeCatalogLoader {
                         total: JamendoClient.rotationWindow, rowSize: 12, on: Date())
                     let tracks = try await clients.jamendo.popularTracks(12, [], (jamendoPage - 1) * 12, .none)
                     Logger.library.notice("FREECAT jamendo loaded=\(tracks.count)")
-                    rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
+                    rows.freeMusic = CatalogCoverRule.browsable(tracks.compactMap { provider.remember(track: $0) }, register: provider)
                     if rows.freeMusic.isEmpty {
                         // A clean 200 with a success envelope and no tracks.
                         // Everything else THROWS now, so this line is finally
