@@ -168,11 +168,19 @@ nonisolated enum PodcastAutoDownloadRules {
 
     /// How many episodes of one show the automatism keeps downloaded, and
     /// how many when nobody chose.
-    static let keepChoices: [Int] = [1, 3, 5, 10]
+    static let keepChoices: [Int] = [1, 3, 5, 10, keepAll]
     static let keepByDefault = 3
+    /// The choice All: the highest number, so `hold` of every build loads
+    /// every wanted episode and deletes nothing for the count, without a new
+    /// type. 0 or -1 would make an older build delete every own download, a
+    /// word would fall back to 3 there.
     static let keepAll = Int.max
 
-    static func warnsOfArchive(direction: Direction, keep: Int) -> Bool { false }
+    /// Whether the choice says that it can load the whole archive: in order
+    /// with All, `wanted` is every episode from where the listener stands.
+    static func warnsOfArchive(direction: Direction, keep: Int) -> Bool {
+        direction == .inOrder && keep == keepAll
+    }
 
     /// One of the automatism's own downloads of a show. Protected is one
     /// that is begun or playing: it never goes because of a count.

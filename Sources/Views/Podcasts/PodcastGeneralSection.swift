@@ -36,6 +36,14 @@ struct PodcastGeneralSection: View {
     @State private var question: PodcastGeneralSettings.Question?
     @State private var opened: PodcastShow?
 
+    /// In order with All for all shows: the section says it can load whole archives.
+    private var warnsOfArchive: Bool {
+        let direction = PodcastAutoDownload.Direction(rawValue: generals[.direction] ?? PodcastGeneralField.direction.general)
+        let keep = Int(generals[.keepDownloaded] ?? PodcastGeneralField.keepDownloaded.general)
+        return PodcastAutoDownloadRules.warnsOfArchive(direction: direction ?? .newest,
+                                                       keep: keep ?? PodcastAutoDownloadRules.keepByDefault)
+    }
+
     private var ownShows: [(show: PodcastShow, differences: [String])] {
         shows.compactMap { show in
             let differences = PodcastGeneralSettings.differences(of: show)
@@ -57,7 +65,12 @@ struct PodcastGeneralSection: View {
             } header: {
                 Text("For All Shows")
             } footer: {
-                Text("A new show follows these. A show with its own setting keeps it unless you overwrite all.")
+                VStack(alignment: .leading, spacing: 6) {
+                    if warnsOfArchive {
+                        Text("Loads every episode of the show from where you are, which can be the whole archive.")
+                    }
+                    Text("A new show follows these. A show with its own setting keeps it unless you overwrite all.")
+                }
             }
             let own = ownShows
             if !own.isEmpty {

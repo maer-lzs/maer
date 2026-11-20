@@ -79,6 +79,16 @@ struct PodcastShowSettingsSheet: View {
     @State private var own: [PodcastGeneralField: String] = [:]
     private let rates: [Float] = [0.8, 1.0, 1.1, 1.2, 1.5, 1.75, 2.0]
 
+    /// In order with All the automatism can load the whole archive: the
+    /// sheet says so from the values the show acts on, its own or those of
+    /// all shows.
+    private var warnsOfArchive: Bool {
+        let direction = PodcastAutoDownload.Direction(rawValue: own[.direction] ?? PodcastGeneralField.direction.general)
+        let keep = Int(own[.keepDownloaded] ?? PodcastGeneralField.keepDownloaded.general)
+        return PodcastAutoDownloadRules.warnsOfArchive(direction: direction ?? .newest,
+                                                       keep: keep ?? PodcastAutoDownloadRules.keepByDefault)
+    }
+
     /// One of the three values a show can take from all shows. The
     /// first choice is "As for all shows", the way back from its own value.
     private func generalPicker(_ field: PodcastGeneralField) -> some View {
@@ -207,6 +217,9 @@ struct PodcastShowSettingsSheet: View {
                     Text("Episodes")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
+                        if warnsOfArchive {
+                            Text("Loads every episode of the show from where you are, which can be the whole archive.")
+                        }
                         Text("Automatic downloads only run on Wi-Fi, and are removed a day after you finished them. Episodes you downloaded yourself are never touched.")
                         // A background job that failed says so where
                         // it was switched on, and says why.

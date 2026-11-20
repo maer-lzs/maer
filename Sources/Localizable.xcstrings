@@ -6026,6 +6026,16 @@
         }
       }
     },
+    "Loads every episode of the show from where you are, which can be the whole archive." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lädt jede Folge der Sendung ab deiner Stelle, das kann das ganze Archiv sein."
+          }
+        }
+      }
+    },
     "Loads the logos of the stations you see, saved ones included." : {
       "localizations" : {
         "de" : {

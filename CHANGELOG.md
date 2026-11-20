@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Keep all automatic downloads.** Keep downloaded, for one show or for
+all shows, now also offers All: the automatic download then loads every
+episode it is meant to and removes none to stay under a count; episodes
+still go a day after you finished them. In order, All can mean the whole
+archive from where you are, and the setting says so. Like the count, All
+stays on this device.
+
 **Shared links open on every device.** A link to a public podcast now
 opens the episode or show whatever this device knows about the feed, also
 when you marked the show as premium here or its sign-in cannot be read at

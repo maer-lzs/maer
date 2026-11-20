@@ -49,6 +49,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case (.autoDownload, _): return String(localized: "On")
         case (.direction, "newest"): return String(localized: "Newest episodes")
         case (.direction, _): return String(localized: "In order")
+        case (.keepDownloaded, String(PodcastAutoDownloadRules.keepAll)): return String(localized: "All")
         case (.keepDownloaded, _): return raw
         case (.playedTail, "0"): return String(localized: "At the end")
         case (.playedTail, "30"): return String(localized: "30 s before the end")
