@@ -6,7 +6,9 @@
 #
 # pre-push: every push goes through scripts/lauf.sh push or release. Refused
 # always: another remote than origin, a deletion, and anything that is no fast
-# forward (force, force with lease, rewritten history). A tag and main only
+# forward (force, force with lease, rewritten history). The one deletion is
+# lauf.sh aufraeumen (LAUF_AUFRAEUMEN): a branch that dev holds whole, never
+# dev, main, a tag or the notes. A tag and main only
 # through lauf.sh release (LAUF_RELEASE, the tag it pushes): the tag new, main
 # only to the commit of that tag. dev, main and a tag need the note of the
 # final run at the commit, unless the commit is from before the script. Every
@@ -28,7 +30,19 @@ refuse() { echo "pre-push: $*" >&2; exit 1; }
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ -n "${local_ref:-}" ] || continue
     [ -n "${LAUF_HOOK_LOG:-}" ] && echo "$local_ref $local_sha $remote_ref" >> "$LAUF_HOOK_LOG"
-    [ "$local_sha" = "$zero" ] && refuse "kein Loeschen: $remote_ref"
+    if [ "$local_sha" = "$zero" ]; then
+        # The one deletion: lauf.sh aufraeumen, a branch the server's dev
+        # holds whole, never dev, main, a tag or the notes.
+        [ "${LAUF_AUFRAEUMEN:-}" = 1 ] || refuse "kein Loeschen: $remote_ref"
+        case "$remote_ref" in
+            refs/heads/dev|refs/heads/main) refuse "kein Loeschen: $remote_ref";;
+            refs/heads/*) ;;
+            *) refuse "kein Loeschen: $remote_ref";;
+        esac
+        git cat-file -e "$remote_sha" 2>/dev/null && git merge-base --is-ancestor "$remote_sha" refs/remotes/origin/dev \
+            || refuse "kein Loeschen: ${remote_ref#refs/heads/} haelt Commits, die dev nicht haelt"
+        continue
+    fi
     noted=""
     case "$remote_ref" in
         refs/tags/*)

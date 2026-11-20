@@ -22,6 +22,9 @@
 #                                         from before this script needs none),
 #                                         the tag new, main only forward to it;
 #                                         origin only, never another remote
+#   aufraeumen [Zweig ...]                deletes branches on the server that
+#                                         dev holds whole and no worktree
+#                                         holds; without a name shows them
 # Every run: at least LAUF_MIN_GB free (15), waits while a foreign simulator
 # is booted, no parallel testing, nice 10 for xcodebuild and the processes of
 # its simulator, no access file, the store of the run
@@ -574,6 +577,33 @@ wiederhole)
     say "kalt: rot $cold von 3"
     [ $rc = 0 ] && [ $cold = 0 ] || stop "wackelt: rot $once von $count in einem Lauf, $cold von 3 kalt" 1
     ;;
+aufraeumen)
+    # Deletes branches on the server that dev holds whole. Without a name it
+    # only shows which would go. Never dev or main, never a branch with a
+    # commit dev does not hold, never one a worktree holds; the hook checks
+    # the first two again (LAUF_AUFRAEUMEN).
+    git fetch -q --prune origin 2>/dev/null || stop "origin nicht erreicht"
+    held="$(git worktree list --porcelain | sed -n 's|^branch refs/heads/||p')"
+    goes() {
+        case "$1" in dev|main|HEAD|"") echo "$1 bleibt immer"; return 1;; esac
+        git rev-parse -q --verify "refs/remotes/origin/$1" >/dev/null || { echo "$1 steht nicht am Server"; return 1; }
+        git merge-base --is-ancestor "refs/remotes/origin/$1" refs/remotes/origin/dev \
+            || { echo "$1 haelt Commits, die dev nicht haelt"; return 1; }
+        ! echo "$held" | grep -qxF -- "$1" || { echo "$1 ist in einem Arbeitsbaum ausgecheckt"; return 1; }
+    }
+    if [ $# -eq 0 ]; then
+        git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin | while read -r b; do
+            goes "$b" >/dev/null && say "geht: $b"
+        done
+        exit 0
+    fi
+    refs=()
+    for b in "$@"; do
+        why="$(goes "$b")" || stop "aufraeumen: $why"
+        refs+=(":refs/heads/$b")
+    done
+    LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin "${refs[@]}" || stop "das Loeschen wurde abgelehnt"
+    ;;
 vor-dem-skript)
     # For the pre-push hook: exit 0 when the commit is from before this script.
     before_the_script "$(git rev-parse --verify -q "${1:-}^{commit}")"
@@ -626,5 +656,5 @@ release)
     say "$tag an $(git rev-parse --short "$commit")${main:+, main ebenso}, nur nach origin"
     ;;
 *)
-    stop "lauf.sh auswahl | voll | abschluss | push <zweig|dev|nachzug|doku> | wiederhole <Suite> [Anzahl] | release <tag> <build>" 2;;
+    stop "lauf.sh auswahl | voll | abschluss | push <zweig|dev|nachzug|doku> | wiederhole <Suite> [Anzahl] | release <tag> <build> | aufraeumen [Zweig ...]" 2;;
 esac
