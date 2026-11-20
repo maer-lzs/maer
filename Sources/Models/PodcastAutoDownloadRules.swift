@@ -170,6 +170,9 @@ nonisolated enum PodcastAutoDownloadRules {
     /// how many when nobody chose.
     static let keepChoices: [Int] = [1, 3, 5, 10]
     static let keepByDefault = 3
+    static let keepAll = Int.max
+
+    static func warnsOfArchive(direction: Direction, keep: Int) -> Bool { false }
 
     /// One of the automatism's own downloads of a show. Protected is one
     /// that is begun or playing: it never goes because of a count.

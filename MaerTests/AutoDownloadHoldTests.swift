@@ -19,12 +19,13 @@ struct AutoDownloadHoldTests {
     /// The cases live in `Fixtures/Shared/abos/auto-download-hold.json`, read
     /// by Swift and Kotlin alike: newest and in order from five to one, a
     /// begun episode never goes, the standby episode stays and the new one
-    /// waits, a news show keeps only the newest, under the count fills.
+    /// waits, a news show keeps only the newest, under the count fills, All
+    /// in order fetches every wanted one and drops nothing for the count.
     nonisolated static let holds = SharedCases.cases("auto-download-hold")
 
-    @Test("shared cases: auto-download-hold carries six cases")
+    @Test("shared cases: auto-download-hold carries seven cases")
     func holdCasesLoaded() {
-        #expect(Self.holds.count == 6)
+        #expect(Self.holds.count == 7)
     }
 
     @Test("shared cases: hold answers per case as the file says", arguments: holds)
@@ -38,9 +39,12 @@ struct AutoDownloadHoldTests {
         }
         let directionName = try #require(input["direction"]?.string)
         let direction = try #require(Rules.Direction(rawValue: directionName))
+        // "all" is the choice All: each side reads its own highest value.
+        let limit: Int
+        if input["limit"]?.string == "all" { limit = Rules.keepAll } else { limit = try #require(input["limit"]?.int) }
         let hold = Rules.hold(wanted: input["wanted"]?.strings ?? [],
                               isDownloaded: { all || (downloaded ?? []).contains($0) },
-                              own: own, direction: direction, limit: try #require(input["limit"]?.int))
+                              own: own, direction: direction, limit: limit)
         let expect = try c.value("expect")
         #expect(hold.fetch == expect["fetch"]?.strings, "\(c.slug) fetch")
         #expect(hold.drop == expect["drop"]?.strings, "\(c.slug) drop")
