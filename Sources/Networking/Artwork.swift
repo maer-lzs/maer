@@ -354,10 +354,22 @@ enum Artwork {
 /// never per entry. A session that ends without either loses its new
 /// entries, which costs one more question each. Measured on a Mac for 2000
 /// addresses: 133 kB, 0.55 ms to encode, 1.47 ms to decode.
+typealias AbsentCovers = ServicePlaceholderCovers
+
 @MainActor
 enum ServicePlaceholderCovers {
     nonisolated static let storeKey = "servicePlaceholderCovers"
     static let cap = 2000
+
+    static func contains(_ url: URL, now: Double, defaults: UserDefaults = AppStorageKeys.store) -> Bool {
+        contains(url, defaults: defaults)
+    }
+
+    static func insert(_ url: URL, now: Double, defaults: UserDefaults = AppStorageKeys.store) {
+        insert(url, defaults: defaults)
+    }
+
+    static func noteAbsent(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) {}
 
     private struct Stored: Codable {
         var rule: String
