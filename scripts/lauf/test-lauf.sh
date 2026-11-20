@@ -1184,5 +1184,38 @@ reset_base
 if [ $rc = 0 ] && [ "$got" = "$LAUF_BAU/journeys" ]; then
     ok "81 the journeys build into one folder of the run's build state"; else fail "81 the journeys build into one folder of the run's build state" "rc=$rc folder=$got"; fi
 
+# 82. lauf.sh aufraeumen deletes a branch on the server only when the whole
+# branch lies in dev and no worktree holds it; without a name it shows which
+# would go. dev, main, a branch with commits dev does not hold and a branch a
+# worktree holds stay, also when the hook is asked past the script; a bare
+# deletion stays refused.
+clear_stub
+back="$(git branch --show-current)"
+git fetch -q origin
+devsha="$(git rev-parse origin/dev)"
+# Setup only: the branches on the server, pushed past the hooks.
+git -c core.hooksPath=/dev/null push -q origin "$devsha:refs/heads/fertig" "$devsha:refs/heads/belegt" 2>/dev/null
+git checkout -q -B offen "$devsha"
+change Sources/Models/Lonely.swift "// open" "A change dev does not hold"
+git -c core.hooksPath=/dev/null push -q origin HEAD:refs/heads/offen 2>/dev/null
+git checkout -q "$back"
+git branch -q -f belegt "$devsha"
+git worktree add -q "$WORK/wt-belegt" belegt
+on() { [ -n "$(git ls-remote origin "refs/heads/$1")" ]; }
+o0="$(LAUF_PUSH=1 git push origin :refs/heads/fertig 2>&1)"; r0=$?
+list="$(bash scripts/lauf.sh aufraeumen 2>&1)"
+o1="$(bash scripts/lauf.sh aufraeumen offen 2>&1)"; r1=$?
+o2="$(bash scripts/lauf.sh aufraeumen dev 2>&1)"; r2=$?
+o3="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/heads/offen 2>&1)"; r3=$?
+o4="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/heads/dev 2>&1)"; r4=$?
+o5="$(bash scripts/lauf.sh aufraeumen belegt 2>&1)"; r5=$?
+o6="$(bash scripts/lauf.sh aufraeumen fertig 2>&1)"; r6=$?
+git worktree remove --force "$WORK/wt-belegt"
+if [ $r0 -ne 0 ] && echo "$list" | grep -qx "lauf: geht: fertig" && ! echo "$list" | grep -q "geht: offen" \
+    && ! echo "$list" | grep -q "geht: belegt" && ! echo "$list" | grep -qE "geht: (dev|main)$" \
+    && [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ $r3 -ne 0 ] && [ $r4 -ne 0 ] && [ $r5 -ne 0 ] && [ $r6 -eq 0 ] \
+    && on offen && on dev && on main && on belegt && ! on fertig; then
+    ok "82 aufraeumen deletes only a branch that lies in dev"; else fail "82 aufraeumen deletes only a branch that lies in dev" "r=$r0$r1$r2$r3$r4$r5$r6 list=$list / $o1 / $o2 / $o3 / $o4 / $o5 / $o6"; fi
+
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
