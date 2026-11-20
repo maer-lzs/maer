@@ -877,7 +877,7 @@ struct ServerHeadersFenceTests {
         let set = try #require(retry.range(of: "ServerHeaders.apply(to: &request)"))
         let asked = try #require(retry.range(of: "session.data(for: request, delegate: redirects)"))
         #expect(set.lowerBound < asked.lowerBound)
-        #expect(retry.contains("redirects ?? RedirectGuard.following()"))
+        #expect(retry.contains("redirects ?? RedirectGuard.following(carriesServerHeaders: carriesServerHeaders)"))
         #expect(retry.contains("completionHandler(ServerHeaders.redirected("), "the guard passes the rule on")
 
         let downloader = try Self.code("Sources/Networking/FileDownloader.swift")

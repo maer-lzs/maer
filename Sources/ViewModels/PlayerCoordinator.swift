@@ -640,7 +640,7 @@ final class PlayerCoordinator: ObservableObject {
             explicitRestart: restart, autoplay: autoplay,
             isFinished: Self.isFinishedAtOpen(
                 serverFinished: detail.userMediaProgress?.isFinished,
-                localMark: ListeningStore.backup(item.id) ?? ListeningStore.flushed(item.id),
+                localMark: ListeningStore.storedEntry(item.id),
                 duration: detail.media.duration ?? 0))
         await newViewModel.load(item: detail, isOfflineFallback: offlineFallback,
                                 restart: effectiveRestart)
@@ -842,8 +842,10 @@ final class PlayerCoordinator: ObservableObject {
     /// book with fewer than two chapters says so, and a chain that does not
     /// go in says why. The chapters are the player's of that detail, and the
     /// rows of the book's entries read them from here on. The chain starts
-    /// at the book's stand as the rows read it (`BookChapterSource.position`).
-    func enqueueChain(bookId: String, title: String) async {
+    /// at the book's stand as the rows read it (`BookChapterSource.position`),
+    /// or at the stand of the card that asks (`known`), when the card lies
+    /// outside the loaded lists.
+    func enqueueChain(bookId: String, title: String, known: Double? = nil) async {
         let detail: LibraryItemDetail
         do {
             detail = try await session.chapterDetail(bookId)
@@ -859,7 +861,7 @@ final class PlayerCoordinator: ObservableObject {
             return
         }
         let outcome = orders.enqueueChain(bookId: bookId, chapters: chapters,
-                                          bookPosition: session.bookChapters.position(of: bookId))
+                                          bookPosition: session.bookChapters.position(of: bookId, known: known))
         if let sentence = ChapterEntryRules.chainRefusal(outcome) {
             Logger.player.notice("CHAPTER chain not queued: \(String(describing: outcome), privacy: .public)")
             sayOpenFailure(sentence, cause: .unknown, title: title)

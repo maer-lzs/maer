@@ -202,16 +202,18 @@ nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendabl
     private let refusals = Mutex(0)
     private let serverHeaders: [ServerHeaderRule.Entry]?
 
-    init(allows: @escaping @Sendable (URL) -> Bool) {
+    /// `carriesServerHeaders: false` reads no table: a redirect then sets
+    /// no header of the server it reaches.
+    init(allows: @escaping @Sendable (URL) -> Bool, carriesServerHeaders: Bool = true) {
         self.allows = allows
-        serverHeaders = ServerHeaders.entries()
+        serverHeaders = carriesServerHeaders ? ServerHeaders.entries() : nil
     }
 
     /// Follows every redirect; only the server headers stay behind.
     /// `carriesServerHeaders: false` is a request that carries none of them,
     /// before or after a redirect.
     static func following(carriesServerHeaders: Bool = true) -> RedirectGuard {
-        RedirectGuard(allows: { _ in true })
+        RedirectGuard(allows: { _ in true }, carriesServerHeaders: carriesServerHeaders)
     }
 
     /// Follows no redirect, for a flow that reads the redirect itself (the

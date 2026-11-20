@@ -98,7 +98,8 @@ struct BookContextMenuItems: View {
             // The book at the end of Up Next, one chapter at a time, so it
             // takes turns with the rest.
             ChapterChainButton(itemId: entry.id, title: entry.item.title,
-                               finished: entry.progress?.isFinished == true, playerCoordinator: playerCoordinator)
+                               finished: entry.progress?.isFinished == true,
+                               known: entry.progress?.currentTime, playerCoordinator: playerCoordinator)
         }
 
         BookDownloadMenuItems(itemId: entry.id)

@@ -78,7 +78,8 @@ final class BookChapterSource {
     /// of the search or of a mixed page, outside the loaded lists). The
     /// player's position still comes first.
     func position(of bookId: String, known: Double?) -> Double {
-        position(of: bookId)
+        if let held = playing(), held.bookId == bookId { return held.position }
+        return known ?? position(of: bookId)
     }
 
     /// Chapters read from the book's detail elsewhere (the chain asks it).

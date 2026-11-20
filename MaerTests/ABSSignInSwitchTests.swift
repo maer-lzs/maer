@@ -106,6 +106,9 @@ struct ABSSignInSwitchTests {
         auth.password = "passwort-fuer-b"
         await auth.connect()
         let seen = server.requests
+        // A sign-in that never reached this host asks nothing of it.
+        try #require(seen.first?.path == "/login",
+                     "the sign-in did not reach this host: \(auth.errorMessage ?? "-") \(server.diagnosis)")
         #expect(seen.map(\.path) == ["/login", "/api/libraries", "/api/me"], "\(seen.map(\.path)) \(server.diagnosis)")
         #expect(seen.first?.authorization == nil, "the sign-in to B carried: \(String(describing: seen.first?.authorization))")
         #expect(!seen.contains { $0.authorization?.contains("token-of-a") == true }, "a request to B carried the token of A")
@@ -310,7 +313,14 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         self.libraries = libraries
         self.userId = userId
         self.singleSignOn = singleSignOn
-        listener = try NWListener(using: .tcp, on: .any)
+        // Bound to the address the witnesses ask (127.0.0.1) and nowhere
+        // else: bound to every address, the port of one witness could be
+        // the port of another listener on IPv4, and a sign-in reached that
+        // one (measured: an answer 401 from 127.0.0.1 while this host saw
+        // no request).
+        let parameters = NWParameters.tcp
+        parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
+        listener = try NWListener(using: parameters)
     }
 
     static func start(login: Answer, libraries: Listing, userId: String? = nil,

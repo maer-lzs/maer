@@ -652,8 +652,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // else the flushed one. Measured cause of the silent null start: with
         // the backup deleted there was no reference at all, so the jump could
         // not be logged. The loudest case was the quietest.
-        let localWitness = (ListeningStore.backup(item.id))
-            ?? (ListeningStore.flushed(item.id))
+        let localWitness = ListeningStore.storedEntry(item.id)
         if let saved = localWitness, saved.count >= 2, saved[0] - startTime > 60 {
             let source = restoredFromLocal ? "local" : (restoredFromFlushed ? "flushed" : "server")
             let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms from=\(source)"

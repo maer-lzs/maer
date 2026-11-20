@@ -93,7 +93,7 @@ struct QueueTrackEndTests {
     func theStartAsksTheRule() throws {
         let coordinator = try Self.source("Sources/ViewModels/PlayerCoordinator.swift")
         #expect(coordinator.contains("isFinished: Self.isFinishedAtOpen("))
-        #expect(coordinator.contains("localMark: ListeningStore.backup(item.id) ?? ListeningStore.flushed(item.id)"),
+        #expect(coordinator.contains("localMark: ListeningStore.storedEntry(item.id)"),
                 "the same witnesses, in the same order, the player takes its start position from")
         #expect(!coordinator.contains("isFinished: detail.userMediaProgress?.isFinished == true"))
     }

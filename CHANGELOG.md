@@ -26,7 +26,8 @@ the player offers the same. A chapter that plays stays in Up Next until
 its end, out of sight, so the app continues it after a restart; Next
 never starts it again, and a jump out of the chapter takes it out. A
 book's menu has Chapter by Chapter in Up Next, also for a free reading
-from LibriVox, Project Gutenberg or archive.org: the book goes in at the
+from LibriVox, Project Gutenberg or archive.org (a music album from
+archive.org does not offer it): the book goes in at the
 end, one chapter at a time, and when a chapter ends the next one joins the
 end of Up Next, so a book and your podcasts take turns. It picks up at the
 chapter you are in, also when you listened on in between, and its line in

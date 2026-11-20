@@ -471,7 +471,9 @@ auswahl|voll)
     if clean_tree; then write_note "$note_kind" 27; else say "der Baum ist offen: kein Vermerk"; fi
     if echo "$plan" | grep -qx "ui: ja" && [ "$kind" = auswahl ]; then
         say "UI beruehrt: die Journeys laufen"
-        ${LAUF_JOURNEYS:-zsh scripts/journeys.sh} || stop "Journeys rot" 1
+        # One folder of the run's build state, the same every run: a new
+        # temporary one per run stayed behind with its 1.3 GB each.
+        MAER_JOURNEY_DD="$BAU_ROOT/journeys" ${LAUF_JOURNEYS:-zsh scripts/journeys.sh} || stop "Journeys rot" 1
     fi
     ;;
 abschluss)

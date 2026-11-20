@@ -28,12 +28,17 @@ struct CleanupThreeTests {
     func oneReaderOfTheEntry() throws {
         var readers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
+            // The one form `storedEntry` answers: the backup, else the
+            // flushed entry. A reader that tells the two apart (the start
+            // of the player, the progress report) reads each on its own.
             let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
-            if text.contains("ListeningStore.backup(") && text.contains("ListeningStore.flushed(") {
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+                .replacingOccurrences(of: "(", with: "").replacingOccurrences(of: ")", with: "")
+            if text.contains("?? ListeningStore.flushed") {
                 readers.append(file.lastPathComponent)
             }
         }
-        #expect(readers.isEmpty, "the backup and the flushed entry are read side by side in \(readers)")
+        #expect(readers.isEmpty, "the backup, else the flushed entry, is read on its own in \(readers)")
         let menu = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TabContentLayout.swift"), encoding: .utf8))
         #expect(menu.contains("ListeningStore.storedEntry("), "the catalog's menu reads the entry on its own")

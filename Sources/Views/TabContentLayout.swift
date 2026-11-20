@@ -383,7 +383,7 @@ struct CatalogQueueButtons: View {
             if itemIds == nil, let chain {
                 ChapterChainButton(itemId: itemId, title: title ?? knownTitles[itemId] ?? "",
                                    finished: ChapterEntryRules.heardToTheEnd(
-                                       stored: ListeningStore.backup(itemId) ?? ListeningStore.flushed(itemId)),
+                                       stored: ListeningStore.storedEntry(itemId)),
                                    playerCoordinator: chain)
             }
         }

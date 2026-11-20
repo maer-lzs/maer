@@ -12,13 +12,15 @@ struct ChapterChainButton: View {
     let itemId: String
     let title: String
     var finished = false
+    /// The stand the surface holds, for a card outside the loaded lists.
+    var known: Double?
     let playerCoordinator: PlayerCoordinator
 
     var body: some View {
         if ChapterEntryRules.offersChain(itemId: itemId, finished: finished,
                                          markedForm: ListeningStore.startedForm(itemId)) {
             Button {
-                Task { await playerCoordinator.enqueueChain(bookId: itemId, title: title) }
+                Task { await playerCoordinator.enqueueChain(bookId: itemId, title: title, known: known) }
             } label: {
                 Label("Chapter by Chapter in Up Next", systemImage: "list.bullet.indent")
             }

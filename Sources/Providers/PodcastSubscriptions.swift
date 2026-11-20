@@ -2738,11 +2738,6 @@ final class PodcastSubscriptions: ObservableObject {
         return show
     }
 
-    /// The same fetch, with the reason for a miss: the adoption path
-    /// tells a sign-in demand from an outage. A channel block it finds is
-    /// noted in the app's domain: this runs off the main actor without a
-    /// store (`UserDefaults` cannot be sent here), and a store built for a
-    /// test fetches through `_testFeedFetcher`, never through this.
     /// The request of a feed. Private/premium feeds send the Basic auth
     /// header if stored; a stored sign-in that cannot be read now is not
     /// asked without it (nil): the feed would refuse, and the refusal would
@@ -2765,6 +2760,11 @@ final class PodcastSubscriptions: ObservableObject {
         return request
     }
 
+    /// The same fetch, with the reason for a miss: the adoption path
+    /// tells a sign-in demand from an outage. A channel block it finds is
+    /// noted in the app's domain: this runs off the main actor without a
+    /// store (`UserDefaults` cannot be sent here), and a store built for a
+    /// test fetches through `_testFeedFetcher`, never through this.
     /// `sendsAccess` false: a read for an address someone else handed over
     /// (a shared link); it carries nothing of this device.
     @concurrent nonisolated static func fetchOutcome(feedURL rawURL: URL,
