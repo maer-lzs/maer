@@ -328,6 +328,8 @@ final class DownloadManager {
         trackCount > 0 && Set(0..<trackCount).isSubset(of: present)
     }
 
+    nonisolated static func heldOfLeaving(_ held: [String], owns: (String) -> Bool) -> [String] { [] }
+
     /// The files directly in a download folder with their sizes at hand;
     /// the hidden `.item-id` is no part of the download. One listing serves
     /// the count of the tracks and the bytes.
