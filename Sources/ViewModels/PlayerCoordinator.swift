@@ -1274,6 +1274,10 @@ final class PlayerCoordinator: ObservableObject {
             storedFinished: stored.map { Self.standbyCountsAsFinished(ListeningStore.mark($0)) } ?? false)
         switch verdict {
         case .keep:
+            // Every revision passes here, the adoption from the pot and a
+            // foreign claim among them: the silent player follows a later
+            // stand of its title without a fetch of its own.
+            viewModel?.followStoredStand()
             return
         case .clearFinished:
             viewModel?.stop(); viewModel = nil; activeItem = nil

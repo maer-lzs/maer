@@ -90,10 +90,27 @@ nonisolated enum SyncRules {
         return atMs > ownStandMs ? .newer : .older
     }
 
+    /// Where a silent, loaded player moves when the store holds a stand of
+    /// its title that another device wrote later than its own (`storedStand`
+    /// says `.newer`); nil for a running or loading player and for every
+    /// other stand. A loading player takes the store at the end of its load.
     static func silentFollow(isPlaying: Bool, isLoaded: Bool, position: Double, atMs: Double,
-                             ownStandMs: Double?, currentTime: Double) -> Double? { nil }
+                             ownStandMs: Double?, currentTime: Double) -> Double? {
+        guard !isPlaying, isLoaded else { return nil }
+        let verdict = storedStand(position: position, atMs: atMs, ownStandMs: ownStandMs, currentTime: currentTime)
+        return verdict == .newer ? position : nil
+    }
 
-    static func hybridStamp(nowMs: Double, seenMs: Double?) -> Double { nowMs }
+    /// The stamp of an own stand or claim: past everything this device has
+    /// seen of the title (`seenMs`), else its own clock. What a device has
+    /// seen it always passes, so a clock that runs ahead on another device
+    /// does not win over a later hand-over; what it has not seen the clocks
+    /// decide, so an hour heard offline still wins by its time. The field
+    /// stays milliseconds: an older app reads it as time.
+    static func hybridStamp(nowMs: Double, seenMs: Double?) -> Double {
+        guard let seenMs else { return nowMs }
+        return max(nowMs, seenMs + 1)
+    }
 
     /// Device reconcile: adopt the server state?
     /// With timestamp: newer entry + noticeable difference (also backwards).

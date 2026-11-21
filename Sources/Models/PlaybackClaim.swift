@@ -112,15 +112,25 @@ nonisolated enum PlaybackClaimRules {
     /// claim on the same item, with a position, not older than the
     /// validity window. Released or not, both carry the freshest stand
     /// that device knew.
+    /// The age counts from `receivedMs`, the moment this device first saw
+    /// the claim, when it knows it: the claim's `t` is the other device's
+    /// clock, which may run behind or ahead. Without it, from `t` as before.
     static func takeoverPosition(claim: PlaybackClaim?, itemId: String,
                                  ownDeviceId: String, nowMs: Double, receivedMs: Double? = nil) -> Double? {
         guard let claim, claim.deviceId != ownDeviceId, claim.itemId == itemId,
               let position = claim.position,
-              nowMs - claim.t < positionValidSeconds * 1000 else { return nil }
+              nowMs - (receivedMs ?? claim.t) < positionValidSeconds * 1000 else { return nil }
         return position
     }
 
-    static func takesRelease(_ claim: PlaybackClaim, heldStandMs: Double?) -> Bool { true }
+    /// Whether a foreign claim may become the current one: a running claim
+    /// always; a release only when it is not older than the stand this
+    /// device holds of its title (`heldStandMs`, hybrid stamps on both
+    /// sides), so an old release never moves a device back.
+    static func takesRelease(_ claim: PlaybackClaim, heldStandMs: Double?) -> Bool {
+        guard claim.released, let heldStandMs else { return true }
+        return claim.t >= heldStandMs
+    }
 
     /// The hint on a device that does not play: the foreign fresh claim,
     /// whatever it names. The old form needed the standby item to match

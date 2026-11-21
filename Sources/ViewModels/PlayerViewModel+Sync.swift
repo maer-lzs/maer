@@ -14,6 +14,21 @@ import OSLog
 /// Device reconcile, offline-queue integration and played state.
 extension PlayerViewModel {
 
+    /// A silent, loaded player follows a stand of its title that another
+    /// device wrote later (`SyncRules.silentFollow`): the jump writes
+    /// nothing, claims nothing and sends nothing to the pot, and the own
+    /// stand takes that stand's stamp. A running or loading player and every
+    /// other stand leave it where it is.
+    func followStoredStand() {
+        guard let item, let mark = ListeningStore.mark(item.id) else { return }
+        guard let target = SyncRules.silentFollow(isPlaying: isPlaying, isLoaded: player != nil && !isStopped && duration > 0,
+                                                  position: mark.position, atMs: mark.updatedAtMs,
+                                                  ownStandMs: ownStandMs, currentTime: currentTime) else { return }
+        ownStandMs = mark.updatedAtMs
+        Logger.player.notice("STANDBY follows stand item=\(item.id, privacy: .private(mask: .hash)) to=\(Int(target)) from=\(Int(self.currentTime))")
+        Task { await seek(to: target, userInitiated: false) }
+    }
+
     // MARK: - Sync (the app's actual reason for existing)
 
     func startSyncTimer() {
@@ -221,7 +236,7 @@ extension PlayerViewModel {
                 // at 0 whenever the server is missing, late or empty.
                 ListeningStore.noteFlushed(
                     item.id, position: currentTime,
-                    atMs: Date().timeIntervalSince1970 * 1000)
+                    atMs: ownStampMs(item.id))
                 ListeningStore.clearBackup(item.id)
             case .recordEpisode:
                 // This branch is gated on an EVENT since load. The
@@ -239,7 +254,7 @@ extension PlayerViewModel {
                 // finished episode as started again. `advancing`, not
                 // `entry`. With an unknown duration this must not drop a
                 // reference point that is already there.
-                let recordedAtMs = Date().timeIntervalSince1970 * 1000
+                let recordedAtMs = ownStampMs(item.id)
                 ListeningStore.record(item.id, position: currentTime,
                                       duration: duration,
                                       atMs: recordedAtMs, epoch: standEpoch)
@@ -474,7 +489,7 @@ extension PlayerViewModel {
         // Providers without server sync (RSS/local): the played state lives in
         // `localPosition`. Set or remove it directly here.
         if !provider.capabilities.contains(.progressSync) {
-            let nowMs = Date().timeIntervalSince1970 * 1000
+            let nowMs = ownStampMs(item.id)
             ownStandMs = nowMs
             if target {
                 // With an unknown duration `entry(position: 0, duration: 0)`

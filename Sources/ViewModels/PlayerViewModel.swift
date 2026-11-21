@@ -1404,7 +1404,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let claim = PlaybackClaimSync.shared.current
             if let claimed = PlaybackClaimRules.takeoverPosition(
                     claim: claim, itemId: item.id,
-                    ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs),
+                    ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs,
+                    receivedMs: claim.flatMap { PlaybackClaimSync.shared.arrivalMs(of: $0) }),
                (claim?.t ?? 0) >= (ListeningStore.mark(item.id)?.updatedAtMs ?? 0),
                abs(claimed - currentTime) > 2 {
                 Logger.player.notice("CLAIM start-at item=\(item.id, privacy: .private(mask: .hash)) position=\(Int(claimed))")
@@ -1481,12 +1482,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// every five seconds, so the local stand would otherwise lag behind the
     /// queued one, and the flush of the next start would write the older.
     func recordHaltStand() {
-        let nowMs = Date().timeIntervalSince1970 * 1000
+        let stampMs = ownStampMs(item?.id)
         if let id = item?.id {
             ListeningStore.record(id, position: currentTime, duration: duration,
-                                  atMs: nowMs, epoch: standEpoch)
+                                  atMs: stampMs, epoch: standEpoch)
         }
-        ownStandMs = nowMs
+        ownStandMs = stampMs
+    }
+
+    /// The stamp of an own stand of the loaded title: past everything this
+    /// device has seen of it, else the clock (`SyncRules.hybridStamp`).
+    func ownStampMs(_ itemId: String?) -> Double {
+        guard let itemId else { return Date().timeIntervalSince1970 * 1000 }
+        return PlaybackClaimSync.shared.stampMs(itemId)
     }
 
     /// The longest a start waits for the reconcile with the server.
@@ -1822,9 +1830,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // whole podcast tab recompute every five seconds.
                     let tail = PlayedTail.seconds(forItemId: id)
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
+                    let stampMs = self.ownStampMs(id)
                     ListeningStore.record(id, position: self.currentTime,
-                                          duration: self.duration, atMs: now * 1000, epoch: self.standEpoch)
-                    self.ownStandMs = now * 1000
+                                          duration: self.duration, atMs: stampMs, epoch: self.standEpoch)
+                    self.ownStandMs = stampMs
                     let phaseAfter = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     self.noteListeningHistory(id: id, phaseBefore: phaseBefore, phaseAfter: phaseAfter)
                     if ItemNamespace.isPodcastEpisode(id), phaseAfter != phaseBefore {

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Continuing on another device keeps the later stand.** A device that
+holds a title without playing it now moves to where you stopped on the
+other device, as soon as that stand arrives. A device whose clock runs
+ahead no longer wins against a later hand-over: every stand is stamped
+past what the device has already seen of that title, and an hour you
+listened offline still counts by its time. An old pause from the other
+device no longer moves a device back.
+
 **Browsing the catalogs shows covers.** The pages and shelves of the free
 catalogs (LibriVox, archive.org, Old Time Radio, Project Gutenberg,
 Jamendo and the music areas) now leave out a title without a cover: one

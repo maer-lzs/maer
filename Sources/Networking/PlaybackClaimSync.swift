@@ -74,6 +74,41 @@ final class PlaybackClaimSync: ObservableObject {
     /// witness hands in its own stock's.
     private let ownerEpoch: () -> Int
     private var didStart = false
+    /// The highest foreign claim this device has seen of each title, for
+    /// the hybrid stamp of its own stands and claims.
+    private var seenForeignMs: [String: Double] = [:]
+    /// When this device first saw the latest claim of each device and
+    /// title, with that claim's stamp: the age of its position counts from
+    /// here, not from the other device's clock. One entry per pair.
+    private var arrivals: [String: (t: Double, at: Double)] = [:]
+
+    /// Everything this device has seen of a title: the stamp of its stand
+    /// in the store, where every adoption (pot, Mär Sync, CloudKit,
+    /// gpodder, Audiobookshelf) writes, and the highest foreign claim.
+    func seenStampMs(_ itemId: String) -> Double? {
+        [ListeningStore.mark(itemId)?.updatedAtMs, seenForeignMs[itemId]].compactMap { $0 }.max()
+    }
+
+    /// The stamp of an own stand or claim of a title (`SyncRules.hybridStamp`).
+    func stampMs(_ itemId: String) -> Double {
+        SyncRules.hybridStamp(nowMs: now(), seenMs: seenStampMs(itemId))
+    }
+
+    /// When this device first saw this claim, nil when it never did.
+    func arrivalMs(of claim: PlaybackClaim) -> Double? {
+        guard let arrival = arrivals["\(claim.deviceId)|\(claim.itemId)"], arrival.t == claim.t else { return nil }
+        return arrival.at
+    }
+
+    /// Notes what a read of the claims showed: the highest stamp of each
+    /// title, and the arrival of a claim not seen before.
+    private func note(seen claims: [PlaybackClaim], at nowMs: Double) {
+        for claim in claims where claim.deviceId != ownDeviceId {
+            seenForeignMs[claim.itemId] = max(seenForeignMs[claim.itemId] ?? claim.t, claim.t)
+            let key = "\(claim.deviceId)|\(claim.itemId)"
+            if arrivals[key]?.t != claim.t { arrivals[key] = (claim.t, nowMs) }
+        }
+    }
 
     init(carrier: any ClaimCarrier = ClaimCarriers.make(),
          deviceId: @escaping () -> String? = { SyncHistoryStore.lastingDeviceId },
@@ -165,7 +200,7 @@ final class PlaybackClaimSync: ObservableObject {
         }
         let signpost = PerfSignpost.syncRound(.claim, signpostCarrier)
         defer { signpost.end() }
-        let claim = PlaybackClaim(deviceId: lasting, itemId: itemId, t: now(),
+        let claim = PlaybackClaim(deviceId: lasting, itemId: itemId, t: stampMs(itemId),
                                   position: position, duration: duration, title: title,
                                   playAt: playAt, deviceName: deviceName())
         // The write is the witness of the takeover chain: the other
@@ -205,7 +240,7 @@ final class PlaybackClaimSync: ObservableObject {
         // The release carries the final stand: the taking-over device
         // catches up to it when it arrives after playback started there.
         let claim = PlaybackClaim(deviceId: lasting, itemId: itemId,
-                                  t: now(), released: true,
+                                  t: stampMs(itemId), released: true,
                                   position: position, duration: duration)
         current = claim
         refreshHint()
@@ -238,9 +273,14 @@ final class PlaybackClaimSync: ObservableObject {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         let signpost = PerfSignpost.syncRound(.claimPoll, signpostCarrier)
         defer { signpost.end() }
+        let claims = allClaims()
+        note(seen: claims, at: now())
         let foreign = PlaybackClaimRules.dominantForeign(
-            claims: allClaims(), ownDeviceId: ownDeviceId, nowMs: now())
-        if let foreign {
+            claims: claims, ownDeviceId: ownDeviceId, nowMs: now())
+        if let foreign, !PlaybackClaimRules.takesRelease(foreign, heldStandMs: ListeningStore.mark(foreign.itemId)?.updatedAtMs) {
+            // An old release never moves this device back.
+            Logger.player.notice("CLAIM release older than the held stand, not taken item=\(foreign.itemId, privacy: .private(mask: .hash))")
+        } else if let foreign {
             if foreign != current { current = foreign }
             onForeignClaim?(foreign)
         } else if current?.deviceId != ownDeviceId {
