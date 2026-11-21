@@ -74,7 +74,6 @@ struct MiniPlayerBar: View {
         measuredWidth == 0 || measuredWidth >= extendedControlsThreshold
     }
 
-
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             // The tap area deliberately fills the whole available space up to
@@ -180,8 +179,8 @@ struct MiniBarSurface: ViewModifier {
     /// above and below to reach the column's measure.
     static func contentHeight(slim: Bool) -> CGFloat { slim ? TabBarPlacement.sideMeasure - 2 : 48 }
     static let shape = RoundedRectangle(cornerRadius: 30, style: .continuous)
-    /// The second line on glass: the main colour at 82 percent. Grey fell
-    /// under 4.5:1 in most pictures of the bar, down to 1.69:1.
+    /// The second line on glass: the main colour at 82 percent, which keeps
+    /// 4.5:1 over the covers behind the glass, where grey does not.
     static let secondLine = Color.primary.opacity(0.82)
 
     func body(content: Content) -> some View {

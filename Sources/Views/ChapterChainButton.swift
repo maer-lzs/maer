@@ -37,7 +37,7 @@ struct ChapterChainButton: View {
                 } label: {
                     // The button's own label: a menu takes the first text as
                     // the title, the second as the line under it, the image
-                    // as the sign. Inside a Label it showed the first alone.
+                    // as the sign. Inside a Label a menu shows the first alone.
                     Text("Add Chapter")
                     if let next, let chapters { Text(AddChapterRule.shown(next, in: chapters)) }
                     Image(systemName: "text.badge.plus")
