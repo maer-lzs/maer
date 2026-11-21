@@ -32,6 +32,8 @@ final class PlaybackContext: ObservableObject {
     /// order again.
     @Published private(set) var orderBeforeShuffle: [String]?
     var isShuffled: Bool { orderBeforeShuffle != nil }
+    /// The whole list a start handed over, its first title included.
+    private(set) var whole: [String] = []
 
     /// The context lives as ONE row (`context` in `playback_context`): it
     /// is one struct, replaced whole on every change.
@@ -41,6 +43,12 @@ final class PlaybackContext: ObservableObject {
         var version: Int
         var sourceTitle: String?
         var ids: [String]
+        /// Absent in a row of a build before repeat.
+        var whole: [String]?
+    }
+
+    func replace(ids newIds: [String], source: String?, whole: [String]) {
+        replace(ids: newIds, source: source)
     }
 
     /// `shared` persists to the row; test instances stay in memory and

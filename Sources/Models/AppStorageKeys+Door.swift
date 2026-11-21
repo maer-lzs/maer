@@ -109,6 +109,12 @@ nonisolated extension AppStorageKeys {
         set { set(newValue, for: autoPlayNextInSeries) }
     }
 
+    /// Repeat in music on this device; off when never set.
+    static var musicRepeatModeValue: RepeatMode {
+        get { RepeatMode.stored(string(musicRepeatMode)) }
+        set { set(newValue.rawValue, for: musicRepeatMode) }
+    }
+
     /// The standby pointer: the last played item, or nil.
     static var lastPlayedItemIdValue: String? {
         get { string(lastPlayedItemId) }

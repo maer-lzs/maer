@@ -71,6 +71,8 @@ nonisolated enum UserChoiceCatalog {
         // on the bedside phone says nothing about the tablet in the kitchen.
         // The travelling set is a decided list, and this is not on it.
         "sleepTimerLastMinutes": .device,
+        // Repeat in music belongs to this device, like shuffle.
+        "musicRepeatMode": .device,
         // The sound filter per output device. A Bluetooth device is paired
         // with one phone, and its id there names it for that phone only.
         "soundBook": .device,

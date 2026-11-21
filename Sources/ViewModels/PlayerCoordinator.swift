@@ -1057,7 +1057,7 @@ final class PlayerCoordinator: ObservableObject {
     /// The ONE resolution of "what plays after this title". The advance
     /// OPENS its answer, the player line NAMES it; both call this, so the
     /// line can never promise something the end would not play.
-    func resolveAdvance(after finishedId: String) -> LibraryItem? {
+    func resolveAdvance(after finishedId: String, natural: Bool = true) -> LibraryItem? {
         let inputs = advanceInputs()
         let queueIds = inputs.queueIds
         let contextIds = inputs.contextIds
