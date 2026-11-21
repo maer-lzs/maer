@@ -54,14 +54,23 @@ struct ABSSignInSwitchTests {
 
     /// A stand keeps every sign-in of the suite away from the real index of
     /// the search: forgetting a server there waited for the system, far
-    /// over a minute under load.
+    /// over a minute under load. The index is one for the whole process:
+    /// sign-ins of suites running beside this one forget into the same
+    /// recorder while the stand holds (measured in the gate: nine removals),
+    /// so the witness counts its own call, not the whole list. Two such
+    /// sign-ins are asked here, in line before its own.
     @Test("within a stand the search the sign-in forgets is the recorder of the stand")
     @available(iOS 27, *)
     func aStandHoldsTheSearch() async {
         let stand = Stand()
         defer { stand.restore() }
+        SpotlightIndex.forgetInLine()
+        SpotlightIndex.forgetInLine()
+        await SpotlightIndex.settled()
+        let before = stand.search.calls.filter { $0 == "remove" }.count
         await SpotlightIndex.forget()
-        #expect(stand.search.calls == ["remove"], "the sign-in reached another index: \(stand.search.calls)")
+        let after = stand.search.calls.filter { $0 == "remove" }.count
+        #expect(after > before, "the sign-in reached another index: \(stand.search.calls)")
     }
 
     /// The loopback speaks plain HTTP. A TLS greeting is closed at once, so
