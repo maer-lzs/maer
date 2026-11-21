@@ -13,6 +13,8 @@ struct IdleMiniBar: View {
     /// The title of the waiting or last heard one, when this device knows it.
     let title: String?
     var compact: Bool = false
+    /// Beside the side column, as the mini player there.
+    var slim: Bool = false
     let onOpenQueue: () -> Void
 
     var body: some View {
@@ -36,10 +38,16 @@ struct IdleMiniBar: View {
                     Spacer(minLength: 0)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: slim ? TabBarPlacement.sideMeasure - 2 : 48, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // The mini player's surface, the same shape and tier.
+        .padding(.horizontal, 12)
+        .padding(.vertical, slim ? 1 : 6)
+        .modifier(AdaptiveGlassBackground(shape: RoundedRectangle(cornerRadius: 30, style: .continuous),
+                                          tier: slim ? SideColumnStyle.tier : .glass,
+                                          morphID: nil, morphNamespace: nil))
         .accessibilityHint(Text("Opens Up Next"))
         .accessibilityIdentifier("mini-player-idle")
     }

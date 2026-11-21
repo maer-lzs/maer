@@ -1099,7 +1099,7 @@ struct LibraryView: View {
             let fill = MiniBarFill.of(hasSession: false, waiting: PlayQueue.shared.shownIds,
                                       lastPlayed: AppStorageKeys.lastPlayedItemIdValue)
             IdleMiniBar(fill: fill, title: Self.idleTitle(fill), compact: barCollapsed,
-                        onOpenQueue: { showQueueSheet = true })
+                        slim: tabBarPlacement.isSide, onOpenQueue: { showQueueSheet = true })
                 .matchedGeometryEffect(id: "player", in: barNS)
         }
     }
