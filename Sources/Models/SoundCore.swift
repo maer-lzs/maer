@@ -79,9 +79,20 @@ nonisolated struct SoundSetting: Codable, Hashable, Sendable {
         gain.isFinite ? min(max(gain, 1), Self.gainLimit) : 1
     }
 
+    /// How far the bands and the gain together may lift the sound, in
+    /// decibels: the speech preset's own lift (4 dB) and the whole gain
+    /// (6 dB). Measured above it: spoken word at 4 with 200 % lifted the
+    /// voice by about 16 dB, and the limiter cut 0.78 % of the samples.
     static let boostCeilingDB: Double = 10
 
-    var playedGain: Double { clampedGain }
+    /// The gain the filter plays: the chosen one, as far as the highest band
+    /// of the shaped preset leaves room under `boostCeilingDB`, never below
+    /// 1. The preset stays as chosen; the gain gives way.
+    var playedGain: Double {
+        let bands = max(0, shapedPreset.bandGainsDB.max() ?? 0)
+        let room = pow(10, (Self.boostCeilingDB - bands) / 20)
+        return max(1, min(clampedGain, room))
+    }
 
     /// Nothing to do: a flat preset and no gain. The player hangs no filter
     /// in for such a setting.

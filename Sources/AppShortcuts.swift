@@ -893,19 +893,31 @@ enum SpotlightIndex {
         }
     }
 
-    static func forgetInLine() {}
+    /// Takes every book out of the index in line without waiting for it: the
+    /// sign in and the sign out go on (measured on iOS 27: 0.6 to 7 s, under
+    /// load 37 s), and a pass asked after still runs after it.
+    static func forgetInLine() {
+        let previous = line
+        line = Task { @MainActor in
+            await previous?.value
+            await removeBooks()
+        }
+    }
 
-    /// Takes every book out of the index, in line: the sign out.
+    /// Takes every book out of the index, in line, and waits for it.
     static func forget() async {
-        await inLine {
-            indexed = nil
-            do {
-                try await index.removeAll()
-                indexed = []
-                Logger.library.notice("SPOTLIGHT books removed")
-            } catch {
-                Logger.library.error("SPOTLIGHT books not removed: \(FailureReason.of(error), privacy: .public)")
-            }
+        await inLine { await removeBooks() }
+    }
+
+    /// The removal of every book, run in line by both ways.
+    private static func removeBooks() async {
+        indexed = nil
+        do {
+            try await index.removeAll()
+            indexed = []
+            Logger.library.notice("SPOTLIGHT books removed")
+        } catch {
+            Logger.library.error("SPOTLIGHT books not removed: \(FailureReason.of(error), privacy: .public)")
         }
     }
 }

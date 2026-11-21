@@ -22,7 +22,7 @@ nonisolated final class SoundChain {
     init(setting: SoundSetting, sampleRate: Double, channels: Int) {
         let preset = setting.shapedPreset
         isOff = setting.isOff
-        gain = Float(setting.clampedGain)
+        gain = Float(setting.playedGain)
         self.channels = channels
         delaysPerChannel = 2 * preset.bandGainsDB.count + 2
         setup = preset.isFlat || sampleRate <= 0 ? nil

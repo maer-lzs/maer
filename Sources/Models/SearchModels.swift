@@ -37,8 +37,21 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     /// Internet Archive). Sources sign their hits.
     var sourceLabel: String? = nil
 
+    /// The kind of a title a music server's offline search names, from its
+    /// id (`sub:<kind>:` and `jf:<kind>:`): each kind as it is, an unknown
+    /// kind not at all. Before, every kind but a song was an album, and a
+    /// playlist or an artist led to an album page.
     static func offlineKind(of itemId: String) -> Kind? {
-        itemId.contains(":song:") ? .song : .album
+        let parts = itemId.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count == 3, parts[0] == "sub" || parts[0] == "jf", !parts[2].isEmpty else { return nil }
+        switch parts[1] {
+        case "song": return .song
+        case "playlist": return .playlist
+        case "album": return .album
+        case "artist": return .artist
+        case "book": return .book
+        default: return nil
+        }
     }
 }
 

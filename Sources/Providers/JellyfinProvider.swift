@@ -1122,7 +1122,7 @@ extension JellyfinProvider: SearchableProvider {
             guard PodcastLocalSearch.matches(item.title, query)
                 || (item.author.map { PodcastLocalSearch.matches($0, query) } ?? false)
             else { return nil }
-            let kind: SearchResult.Kind = item.id.hasPrefix("jf:song:") ? .song : .album
+            guard let kind = SearchResult.offlineKind(of: item.id) else { return nil }
             return SearchResult(
                 id: item.id, kind: kind, title: item.title,
                 subtitle: item.author, coverURL: coverURL(forItemId: item.id),

@@ -27,7 +27,8 @@ nonisolated enum SoundCurve {
         let chain = SoundMath.chain(setting.shapedPreset, sampleRate: sampleRate)
         let bands = stride(from: 0, to: chain.count, by: 5).map { Array(chain[$0..<($0 + 5)]) }
         return bands.reduce(0) { $0 + SoundMath.responseDB($1, at: frequency, sampleRate: sampleRate) }
-            + 20 * log10(setting.clampedGain)
+            // The gain the filter plays, so the curve shows what is heard.
+            + 20 * log10(setting.playedGain)
     }
 
     /// The curve at `count` frequencies.

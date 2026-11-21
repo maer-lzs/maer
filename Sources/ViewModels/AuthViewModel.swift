@@ -456,7 +456,9 @@ final class AuthViewModel: ObservableObject {
     /// sign-in to another server both forget it here.
     static func forgetFormerServer(player: PlayerCoordinator? = nil) async {
         await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, covers: .audiobookshelf, allRows: true, player: player)
-        if #available(iOS 27, *) { await SpotlightIndex.forget() }
+        // In line, not waited for: the index takes seconds on iOS 27, and a
+        // pass for the new server asked after runs after it.
+        if #available(iOS 27, *) { SpotlightIndex.forgetInLine() }
         ABSPodcastProvider.shared.forgetServerSets()
         AppSession.shared.libraryViewModel.forgetHeldUnfinished()
     }

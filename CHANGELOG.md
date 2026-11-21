@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Sound without distortion, faster sign-in, music search offline.** A
+strong preset together with full gain no longer overdrives: where the
+preset already lifts the voice, the gain gives way, and the curve shows
+what you hear. Signing in and out no longer waits for the system's search
+index. Offline, a found playlist or artist on a music server opens as
+itself instead of as an album.
+
 **Automatic downloads and private feeds.** Switching on Newest for a show
 now fetches what comes out from then on, not the backlog: the moment of
 switching on was compared in the wrong unit. A private feed's address no
