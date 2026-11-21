@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Radio Catalog.** The switch on the radio source page is now called Radio
+Catalog, for the station directory it turns on and off. Whether the Radio
+tab shows is its own setting, as before.
+
 **Catalog audiobooks offline.** Audiobooks from the free catalogs can be
 saved for offline listening where their source allows a copy: LibriVox
 recordings, Project Gutenberg readings marked public domain, and Internet

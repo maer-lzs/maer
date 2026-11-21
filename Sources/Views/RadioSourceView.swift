@@ -21,7 +21,8 @@ struct RadioSourceView: View {
     var body: some View {
         Form {
             Section {
-                AppSwitch("Show Radio tab", isOn: $enabled)
+                // The switch of the Radio Browser directory; the tab has its own.
+                AppSwitch("Radio Catalog", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("radio-tab-toggle")
                     // The toggle acts immediately, the tab bar

@@ -9571,6 +9571,16 @@
         }
       }
     },
+    "Radio Catalog" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio-Katalog"
+          }
+        }
+      }
+    },
     "Radio keeps your saved and recently played stations" : {
       "localizations" : {
         "de" : {
@@ -10759,16 +10769,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sendung nicht abonniert oder ohne Feed-Adresse"
-          }
-        }
-      }
-    },
-    "Show Radio tab" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Radio-Tab anzeigen"
           }
         }
       }
