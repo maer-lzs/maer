@@ -21,5 +21,6 @@ enum ServerLeaving {
         (player ?? AppSession.shared.playerCoordinator).endPlayback(ownedBy: owns)
         await ContinueRowsWriter.forgetServer(owns, allRows: allRows)
         Artwork.forgetServerCovers(of: covers)
+        DownloadManager.shared.forgetHeld(ownedBy: owns)
     }
 }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**A paused download stays with its server.** Signing in to another server
+ends the downloads that were paused or running for the one you left, so
+none of them continues against the new server.
+
 **Add Chapter.** The menu of an audiobook puts one chapter at a time at
 the end of Up Next, so chapters can take turns with episodes. The entry
 names the chapter it adds, the one you stand in first, then the one

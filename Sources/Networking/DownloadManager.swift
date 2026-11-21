@@ -328,7 +328,22 @@ final class DownloadManager {
         trackCount > 0 && Set(0..<trackCount).isSubset(of: present)
     }
 
-    nonisolated static func heldOfLeaving(_ held: [String], owns: (String) -> Bool) -> [String] { [] }
+    /// The held downloads (paused or running) of a server that is left.
+    nonisolated static func heldOfLeaving(_ held: [String], owns: (String) -> Bool) -> [String] {
+        held.filter(owns)
+    }
+
+    /// A server is left: its held downloads end, as a cancel ends them
+    /// (finished tracks stay on disk). Resumed, they asked the shared
+    /// source, which speaks to the new server by then, for the old paths.
+    func forgetHeld(ownedBy owns: (String) -> Bool) {
+        let leaving = Self.heldOfLeaving(Array(Set(controls.keys).union(phase.keys)), owns: owns)
+        guard !leaving.isEmpty else { return }
+        Logger.library.notice("DOWNLOADS held of a left server end: \(leaving.count, privacy: .public)")
+        for itemId in leaving {
+            if controls[itemId] != nil { cancelDownload(itemId: itemId) } else { phase[itemId] = nil }
+        }
+    }
 
     /// The files directly in a download folder with their sizes at hand;
     /// the hidden `.item-id` is no part of the download. One listing serves
