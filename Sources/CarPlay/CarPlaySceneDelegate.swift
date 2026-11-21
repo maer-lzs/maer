@@ -51,7 +51,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private let session = AppSession.shared
     private let queue = PlayQueue.shared
     private let playlistStore = MaerPlaylists.shared
-    private let context = PlaybackContext.shared
+    private var context: PlaybackContext { session.playerCoordinator.context }
     private let downloads = DownloadManager.shared
     private let subscriptions = PodcastSubscriptions.shared
     private let nowPlaying = CPNowPlayingTemplate.shared
@@ -202,7 +202,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             radio: MediaType.radio.userMasterEnabled
                 && !(RadioStore.favorites().isEmpty && RadioStore.recents().isEmpty),
             maximumTabCount: maximum)
-        Logger.player.notice("CARPLAY tabs read=\(read, privacy: .public) max=\(maximum, privacy: .public) shown=\(layout.tabs.map(\.rawValue).joined(separator: ","), privacy: .public) radioOnStart=\(layout.radioOnStart, privacy: .public)")
+        Logger.player.notice("CARPLAY tabs read=\(read, privacy: .public) max=\(maximum, privacy: .public) shown=\(layout.tabs.map(\.rawValue).joined(separator: ","), privacy: .public) radioOnStart=\(layout.radioOnStart, privacy: .public) cut=\(layout.cut.map(\.rawValue).joined(separator: ","), privacy: .public)")
         return (layout.tabs, layout.radioOnStart)
     }
 

@@ -16,7 +16,8 @@ nonisolated enum CarPlayLayout {
     /// The tabs in their order, Start always first and each other tab only
     /// with its source set up. Radio is a tab of its own only while the
     /// system allows one more; otherwise its favourites stand on Start.
-    /// Never more tabs than `maximumTabCount`: the tab bar refuses more.
+    /// Never more tabs than `maximumTabCount`: the tab bar refuses more, and
+    /// the last sources go; `cut` names them, so the log says which.
     static func tabs(audiobooks: Bool, podcasts: Bool, music: Bool, radio: Bool,
                      maximumTabCount: Int) -> (tabs: [Tab], radioOnStart: Bool, cut: [Tab]) {
         var tabs: [Tab] = [.start]
@@ -25,7 +26,8 @@ nonisolated enum CarPlayLayout {
         if music { tabs.append(.music) }
         let radioTab = radio && tabs.count < maximumTabCount
         if radioTab { tabs.append(.radio) }
-        return (Array(tabs.prefix(max(1, maximumTabCount))), radio && !radioTab, [])
+        let room = max(1, maximumTabCount)
+        return (Array(tabs.prefix(room)), radio && !radioTab, Array(tabs.dropFirst(room)))
     }
 
     /// Whether an area carries a tab: it is on, and it holds something; or,

@@ -169,7 +169,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var soundSetting: SoundSetting = .off
     /// What the last try to hang the filter found, with the item it tried:
     /// the sheet says the filter cannot work when it is the item playing now.
-    @Published var soundAttach: (item: ObjectIdentifier, outcome: SoundTap.Attached)?
+    /// The item is held weakly and compared by itself: the address of a
+    /// freed item can come back with a new one.
+    @Published var soundAttach: SoundAttachMark?
+
+    struct SoundAttachMark {
+        weak var item: AVPlayerItem?
+        let outcome: SoundTap.Attached
+    }
     private var timeObserverToken: Any?
     // These opaque NotificationCenter tokens are assigned only in methods of
     // this main-actor class (setup) and read again there (stop) or in the

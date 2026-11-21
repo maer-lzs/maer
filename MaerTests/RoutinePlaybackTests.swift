@@ -36,8 +36,8 @@ struct RoutinePlaybackTests {
     private static func picks(_ rule: RoutineRule, in show: PodcastShow? = show(5), online: Bool = true,
                               downloaded: Set<String> = [],
                               state: (LibraryItem) -> EpisodePlayState = { _ in .unplayed }) -> [String] {
-        RoutinePlayback.picks(rule, in: show, online: online, state: state,
-                              isDownloaded: { downloaded.contains($0) }).map(\.id)
+        RoutinePlayback.answer(rule, in: show, online: online, state: state,
+                               isDownloaded: { downloaded.contains($0) }).items.map(\.id)
     }
 
     @Test("a list without rules starts as before: every entry the device resolves, in order, the first from the start")
@@ -93,7 +93,7 @@ struct RoutinePlaybackTests {
         let newestBegun: (LibraryItem) -> EpisodePlayState = { $0.id == Self.id(5) ? .inProgress(fraction: 0.5, remaining: 300) : .unplayed }
         #expect(Self.picks(newest, state: newestBegun) == [Self.id(5)])
         let start = RoutinePlayback.expand([newest.id], entry: { _ in nil }) { rule in
-            RoutinePlayback.picks(rule, in: Self.show(5), online: true, state: newestBegun, isDownloaded: { _ in false })
+            RoutinePlayback.answer(rule, in: Self.show(5), online: true, state: newestBegun, isDownloaded: { _ in false }).items
         }
         #expect(start.fromRule == [Self.id(5)], "so the start resumes it")
     }
@@ -115,7 +115,7 @@ struct RoutinePlaybackTests {
         let newest = try #require(RoutineRule(kind: .newest, feedKey: Self.key))
         let begun: (LibraryItem) -> EpisodePlayState = { $0.id == Self.id(5) ? .inProgress(fraction: 0.5, remaining: 300) : .unplayed }
         let start = RoutinePlayback.expand([newest.id, "x"], entry: { Self.item($0) }) { rule in
-            RoutinePlayback.picks(rule, in: Self.show(5), online: true, state: begun, isDownloaded: { _ in false })
+            RoutinePlayback.answer(rule, in: Self.show(5), online: true, state: begun, isDownloaded: { _ in false }).items
         }
         #expect(start.items.map(\.id) == [Self.id(5), "x"], "the precondition: the rule picks the begun episode")
         let pool: () -> ShufflePool = { .of(start.items, resuming: start.fromRule) }

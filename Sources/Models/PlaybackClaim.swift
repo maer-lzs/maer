@@ -135,11 +135,15 @@ nonisolated enum PlaybackClaimRules {
     /// The hint on a device that does not play: the foreign fresh claim,
     /// whatever it names. The old form needed the standby item to match
     /// the claim, and no catalogue or radio item on the other device ever
-    /// did, so those sources never showed the hint.
+    /// did, so those sources never showed the hint. `ownLast` is the claim
+    /// this device wrote last: read back under its other id (the lasting id
+    /// and the spare one), it is the same title at the same moment, and it
+    /// is no other device's.
     static func hintClaim(claim: PlaybackClaim?, ownDeviceId: String, ownLast: PlaybackClaim? = nil,
                           nowMs: Double) -> PlaybackClaim? {
         guard let claim, !claim.released, claim.deviceId != ownDeviceId,
               isFresh(claim, nowMs: nowMs) else { return nil }
+        if let ownLast, ownLast.itemId == claim.itemId, ownLast.t == claim.t { return nil }
         return claim
     }
 
@@ -152,10 +156,10 @@ nonisolated enum PlaybackClaimRules {
         case openClaim(String)
     }
 
-    static func miniPlayAction(claim: PlaybackClaim?, ownDeviceId: String, ownItemId: String?,
-                               isPlaying: Bool, nowMs: Double) -> MiniPlayAction {
+    static func miniPlayAction(claim: PlaybackClaim?, ownDeviceId: String, ownLast: PlaybackClaim? = nil,
+                               ownItemId: String?, isPlaying: Bool, nowMs: Double) -> MiniPlayAction {
         guard !isPlaying,
-              let foreign = hintClaim(claim: claim, ownDeviceId: ownDeviceId, nowMs: nowMs),
+              let foreign = hintClaim(claim: claim, ownDeviceId: ownDeviceId, ownLast: ownLast, nowMs: nowMs),
               foreign.itemId != ownItemId else { return .toggle }
         return .openClaim(foreign.itemId)
     }

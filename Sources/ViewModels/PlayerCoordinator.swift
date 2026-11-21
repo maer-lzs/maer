@@ -105,7 +105,8 @@ final class PlayerCoordinator: ObservableObject {
     private var goingBack = false
     /// The orders, reached in one place.
     private var orders: PlayQueue { PlayQueue.shared }
-    private var context: PlaybackContext { PlaybackContext.shared }
+    /// The context, reached in one place; the car reads it here too.
+    var context: PlaybackContext { PlaybackContext.shared }
     private var session: AppSession { AppSession.shared }
     @Published private(set) var isLoading = false
     /// Set while the end of a title opens the next one, across the titles
@@ -807,10 +808,10 @@ final class PlayerCoordinator: ObservableObject {
     /// An order of Up Next leaves its list only at its title's first
     /// progress (`titleProgressed`): a stream that fails before it stays.
     private func takeOver(_ id: String, preservesContext: Bool) {
-        if !preservesContext { PlaybackContext.shared.clear() }
+        if !preservesContext { context.clear() }
         if orders.contains(id) {
             pendingOrder = (id, isAdvancing)
-            PlaybackContext.shared.remove(id)
+            context.remove(id)
         } else {
             leaveBothLists(id)
         }
@@ -827,7 +828,7 @@ final class PlayerCoordinator: ObservableObject {
     /// until its end, hidden from every list (`PlayQueue.shownIds`).
     private func leaveBothLists(_ id: String) {
         orders.remove(id)
-        PlaybackContext.shared.remove(id)
+        context.remove(id)
     }
 
     /// The natural-end advance, shared by the real end-of-item handler and the
@@ -1272,6 +1273,7 @@ final class PlayerCoordinator: ObservableObject {
     func miniPlayTapped(_ viewModel: PlayerViewModel) {
         let action = PlaybackClaimRules.miniPlayAction(
             claim: PlaybackClaimSync.shared.hint, ownDeviceId: SyncHistoryStore.deviceId,
+            ownLast: PlaybackClaimSync.shared.lastOwnClaim,
             ownItemId: viewModel.item?.id, isPlaying: viewModel.isPlaying,
             nowMs: Date().timeIntervalSince1970 * 1000)
         switch action {

@@ -1857,8 +1857,9 @@ struct LibraryView: View {
         }
     }
 
-    /// The device lists, read for a routine request and never observed:
-    /// the root draws nothing from them.
+    /// The device lists, read for a routine request. One `.onReceive` at the
+    /// root listens to them, to start a routine request that waited for
+    /// them; the root draws nothing from them.
     private var routineLists: MaerPlaylists { .shared }
 
     private func routineRequestFailed(_ sentence: String) {

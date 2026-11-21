@@ -18,7 +18,8 @@ enum PlayingNow {
         if coordinator.activeItem?.id == id, coordinator.viewModel?.isPlaying == true { return nowMs }
         guard let claim = PlaybackClaimRules.hintClaim(
                   claim: PlaybackClaimSync.shared.hint,
-                  ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs),
+                  ownDeviceId: SyncHistoryStore.deviceId,
+                  ownLast: PlaybackClaimSync.shared.lastOwnClaim, nowMs: nowMs),
               claim.itemId == id else { return nil }
         return nowMs
     }

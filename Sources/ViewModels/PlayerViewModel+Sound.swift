@@ -44,15 +44,17 @@ extension PlayerViewModel {
         Task { @MainActor in
             let outcome = await SoundTap.attach(state, to: item)
             Logger.player.notice("SOUND filter \(outcome.line, privacy: .public)")
-            soundAttach = (ObjectIdentifier(item), outcome)
+            soundAttach = SoundAttachMark(item: item, outcome: outcome)
         }
     }
 
     /// Why the filter cannot work on what plays now, if it cannot
     /// (`SoundSurface.block`).
     var soundBlock: SoundSurface.Block? {
-        let current = player?.currentItem.map(ObjectIdentifier.init)
-        let attach = soundAttach.flatMap { $0.item == current ? $0.outcome : nil }
+        let current = player?.currentItem
+        let attach = soundAttach.flatMap { mark in
+            mark.item != nil && mark.item === current ? mark.outcome : nil
+        }
         return SoundSurface.block(isRadio: ItemNamespace.isRadio(item?.id ?? ""), lastAttach: attach)
     }
 

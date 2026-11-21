@@ -291,7 +291,8 @@ final class PlaybackClaimSync: ObservableObject {
 
     /// Publishes only a change, so a quiet poll costs no render.
     private func refreshHint() {
-        let resolved = PlaybackClaimRules.hintClaim(claim: current, ownDeviceId: ownDeviceId, nowMs: now())
+        let resolved = PlaybackClaimRules.hintClaim(claim: current, ownDeviceId: ownDeviceId,
+                                                    ownLast: lastOwnClaim, nowMs: now())
         if resolved != hint { hint = resolved }
     }
 }

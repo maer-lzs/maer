@@ -518,9 +518,16 @@ nonisolated struct ContinueRows: Codable, Equatable {
         AppGroup.containerURL?.appendingPathComponent("continue-rows.json")
     }
 
+    /// Nil without a file, which is no error (the app has not written yet);
+    /// a file that does not read says why in the log.
     static func load() -> ContinueRows? {
-        guard let url, let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(ContinueRows.self, from: data)
+        guard let url, FileManager.default.fileExists(atPath: url.path) else { return nil }
+        do {
+            return try JSONDecoder().decode(ContinueRows.self, from: Data(contentsOf: url))
+        } catch {
+            WidgetLog.logger.error("WIDGET continue rows not read: \(String(describing: type(of: error)), privacy: .public)")
+            return nil
+        }
     }
 
     /// Says whether the file was written; only `ContinueRowsWriter` calls it.

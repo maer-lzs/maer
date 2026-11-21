@@ -91,13 +91,6 @@ enum RoutinePlayback {
         var lines: [String: Line]
     }
 
-    /// The episodes one rule picks from its show (`answer`).
-    static func picks(_ rule: RoutineRule, in show: PodcastShow?, online: Bool,
-                      state: (LibraryItem) -> EpisodePlayState,
-                      isDownloaded: (String) -> Bool) -> [LibraryItem] {
-        answer(rule, in: show, online: online, state: state, isDownloaded: isDownloaded).items
-    }
-
     /// What one rule answers from its show. Heard and begun are `state`'s
     /// answer, begun in the auto-download's sense
     /// (`PodcastAutoDownloadRules.isStarted`); an episode without audio is
@@ -216,7 +209,10 @@ enum RoutinePlayback {
         return nil
     }
 
-    /// A rule's cover: its show's picture as this device knows it.
+    /// A rule's cover: its show's picture as this device knows it. It
+    /// stays on this device, so a picture address that carries access is fine
+    /// here; what travels goes through `snapshot`, which keeps such an
+    /// address home.
     static func coverURL(forRule itemId: String) -> URL? {
         guard let rule = RoutineRule(id: itemId) else { return nil }
         return show(feedKey: rule.feedKey)?.artworkURL.flatMap(URL.init(string:))

@@ -1123,6 +1123,7 @@ final class PodcastSubscriptions: ObservableObject {
         if let show = shows.first(where: { $0.id == id }) {
             Self.recordUserRemovedFeed(PodcastIdentity.normalizeFeedURL(show.feedURL), defaults: defaults)
             removedFeedURL = show.feedURL
+            PodcastAutoDownload.forgetLocal(show.id, defaults: defaults)
         }
         shows.removeAll { $0.id == id }
         // ONLY the person's own unsubscribe may empty the list.
@@ -1164,6 +1165,7 @@ final class PodcastSubscriptions: ObservableObject {
                     // every write would take the same empty list and the
                     // shows came back at the next start.
                     Self.recordUserRemovedFeed(PodcastIdentity.normalizeFeedURL(show.feedURL), defaults: defaults)
+                    PodcastAutoDownload.forgetLocal(show.id, defaults: defaults)
                     self.shows.removeAll { $0.id == show.id }
                     self.save(emptying: .allowed)
                     removedTitles.append(show.title)

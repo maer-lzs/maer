@@ -181,9 +181,18 @@ enum PodcastAutoDownload {
     /// of the new keys wins over it. So an update moves nothing and writes
     /// nothing that could travel.
     private static func legacyKey(_ showId: String) -> String { "podcastAutoDownloadMode.\(showId)" }
-
-    static func forgetLocal(_ showId: String, defaults: UserDefaults = .standard) {}
     private static let generalLegacyKey = "podcastAutoDownloadModeAll"
+
+    /// An unsubscribed show's keys that stay on this device: on or off,
+    /// since when, how many, the old value, the last error and since when
+    /// it fills Up Next. They go without a word to the other devices; the
+    /// keys that travel stay, they are the person's choice on every device.
+    static func forgetLocal(_ showId: String, defaults: UserDefaults = .standard) {
+        for key in [flagKey(showId), sinceKey(showId), keepKey(showId), legacyKey(showId),
+                    errorKey(showId), UpNextAuto.sinceKey(showId)] {
+            defaults.removeObject(forKey: key)
+        }
+    }
 
     private static func legacyDirection(_ raw: String?) -> Direction? {
         raw.flatMap(Direction.init(rawValue:))
