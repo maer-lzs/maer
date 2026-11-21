@@ -111,6 +111,8 @@ nonisolated enum PodcastFeedAddress {
     /// Path segments that say access when another segment follows them.
     static let accessPathSegments = ["private", "token", "secret", "auth", "key"]
 
+    static let accessPathHosts: [String] = []
+
     /// Whether a path carries access: a whole segment from
     /// `accessPathSegments` (any case) with a further segment behind it, as
     /// in `…/podcast/123/private/<id>.rss`. A long id alone is no sign, open

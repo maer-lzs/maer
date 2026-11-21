@@ -29,6 +29,13 @@ struct ExportStaysHomeTests {
         "https://example.com/private",
         "https://example.com/feed.xml?q=/private/x",
         "https://example.com/feed.xml#/token/x",
+        // The hosts whose last segment is a secret: elsewhere such a path is open,
+        // and on those hosts the lead segment alone carries none.
+        "https://example.com/feeds/8a7b6c5d4e3f",
+        "https://example.com/content/abcDEF123.rss",
+        "https://show.supercast.com/feeds",
+        "https://pod.supportingcast.fm/content",
+        "https://notsupercast.com/feeds/8a7b6c5d4e3f",
     ]
 
     /// Paths that carry access: a whole segment that says it, another behind.
@@ -38,6 +45,10 @@ struct ExportStaysHomeTests {
         "example.com/Secret/xyz",
         "https://example.com/feeds/AUTH/x?format=mp3",
         "https://example.com//key//abc",
+        // A secret as the last segment, on the hosts that put it there.
+        "https://show.supercast.com/feeds/8a7b6c5d4e3f",
+        "https://supercast.com/feeds/8a7b6c5d4e3f",
+        "https://pod.supportingcast.fm/content/abcDEF123.rss",
     ]
 
     @Test("a path carries access only by a whole segment that says it, with another behind; long ids alone do not")

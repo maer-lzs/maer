@@ -116,6 +116,8 @@ struct SharedLinkPageAccessTests {
         #expect(try list("ACCESS_HARD") == PodcastFeedAddress.accessHardWords)
         #expect(try list("ACCESS_KEY_LEADS") == PodcastFeedAddress.accessKeyLeads)
         #expect(try list("ACCESS_PATH") == PodcastFeedAddress.accessPathSegments)
+        #expect(try list("ACCESS_PATH_HOSTS") == PodcastFeedAddress.accessPathHosts)
+        #expect(!PodcastFeedAddress.accessPathHosts.isEmpty, "the hosts that put a secret in the last segment are listed")
     }
 }
 #endif

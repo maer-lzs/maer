@@ -97,6 +97,8 @@ nonisolated enum PodcastAutoDownloadRules {
         return duration - remaining >= startedAtLeast
     }
 
+    static func cutoffMs(storedSeconds: Double?) -> Double { storedSeconds ?? 0 }
+
     /// What a run wants of one show, read in its direction from ONE judgement
     /// per episode (`state`), so heard, begun and started ask the same
     /// thing. "Newest": the unheard since the cutoff, newest first. "In

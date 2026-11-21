@@ -10,6 +10,8 @@ import Foundation
 /// Pure; which rows a new title replaces and what the widget shows of them
 /// is `WidgetRows`, shared with the widget.
 nonisolated enum ContinueBySource {
+    static func takesPass(passAtMs: Double, storedPassAtMs: Double?) -> Bool { true }
+
     /// The source of a title is its tab, by the app's one assignment
     /// (`MediaFamily.kind(for:markedForm:)`): a catalogue album is music, a
     /// reading an audiobook. Nil for an id no family knows.
