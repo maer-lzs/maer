@@ -201,6 +201,9 @@ struct ABSSignInSwitchTests {
             auth.loginMode = .password
             auth.username = "hoerer"
             auth.password = "passwort"
+            // A sign-in of a suite running beside this one, outside this
+            // case's task: it forgets into the process's index meanwhile.
+            if #available(iOS 27, *) { await Task.detached { @MainActor in SpotlightIndex.forgetInLine() }.value }
             await auth.connect()
             #expect(auth.errorMessage == nil, "\(stored): \(String(describing: auth.errorMessage)) \(server.diagnosis)")
             #expect((WidgetSnapshot.load() == nil) == forgets, "\(stored): the title of the former server")
