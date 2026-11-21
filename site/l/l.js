@@ -88,6 +88,7 @@
   var ACCESS_HARD = ["token", "secret", "password", "passwd", "passcode", "passphrase", "apikey", "signature", "pwd", "hmac"];
   var ACCESS_KEY_LEADS = ["api", "access", "auth", "secret", "private", "session", "client", "signing"];
   var ACCESS_PATH = ["private", "token", "secret", "auth", "key"];
+  var ACCESS_PATH_HOSTS = ["supercast.com/feeds", "supportingcast.fm/content"];
   var ALNUM = /[\p{L}\p{N}]/u;
 
   function isUpper(c) { return c !== c.toLowerCase() && c === c.toUpperCase(); }
@@ -137,6 +138,19 @@
     var segments = rest.slice(slash + 1).split("/").filter(function (s) { return s.length > 0; });
     for (var i = 0; i < segments.length - 1; i++) {
       if (has(ACCESS_PATH, segments[i].toLowerCase())) { return true; }
+    }
+    // The hosts that put the secret in the last segment, with their subdomains.
+    var host = rest.slice(0, slash).toLowerCase();
+    var at = host.lastIndexOf("@");
+    if (at >= 0) { host = host.slice(at + 1); }
+    for (var h = 0; h < ACCESS_PATH_HOSTS.length; h++) {
+      var cut2 = ACCESS_PATH_HOSTS[h].indexOf("/");
+      var name = ACCESS_PATH_HOSTS[h].slice(0, cut2);
+      var lead = ACCESS_PATH_HOSTS[h].slice(cut2 + 1);
+      if (host !== name && !endsWith(host, "." + name)) { continue; }
+      for (var j = 0; j < segments.length - 1; j++) {
+        if (segments[j].toLowerCase() === lead) { return true; }
+      }
     }
     return false;
   }

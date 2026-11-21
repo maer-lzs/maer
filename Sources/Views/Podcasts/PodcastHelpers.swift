@@ -290,12 +290,13 @@ enum PodcastAutoDownload {
         AppStorageKeys.remove(keepKey(showId))
     }
 
-    /// The cutoff of "newest" a run reads: the show's own, or for a show
-    /// that follows, the moment the automatism was switched on for all.
+    /// The cutoff of "newest" a run reads, in milliseconds like `pubDate`:
+    /// the show's own, or for a show that follows, the moment the
+    /// automatism was switched on for all (stored in seconds).
     static func since(_ showId: String) -> Double {
-        storedEnabled(showId) != nil
-            ? AppStorageKeys.double(sinceKey(showId)) ?? 0
-            : AppStorageKeys.double(generalSinceKey) ?? 0
+        PodcastAutoDownloadRules.cutoffMs(storedSeconds: storedEnabled(showId) != nil
+            ? AppStorageKeys.double(sinceKey(showId))
+            : AppStorageKeys.double(generalSinceKey))
     }
 
     /// The automatism's state for one show on THIS device, as one line of
@@ -307,7 +308,8 @@ enum PodcastAutoDownload {
         let onOrigin = storedEnabled(showId) != nil ? "chosen" : "for all shows"
         let directionOrigin = AppStorageKeys.string(directionKey(showId)) != nil ? "chosen"
             : storedDirection(showId) != nil ? "from the older setting" : "for all shows"
-        let cutoff = since(showId)
+        // The cutoff is in milliseconds, the format takes seconds.
+        let cutoff = since(showId) / 1000
         let cutoffText = cutoff > 0 ? format(cutoff) : "-"
         return "Auto download on this device: \(on) (\(onOrigin)), direction \(direction(showId).rawValue) (\(directionOrigin)), keep \(keep(showId)), newest since \(cutoffText)"
     }

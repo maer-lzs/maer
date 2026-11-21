@@ -10,7 +10,14 @@ import Foundation
 /// Pure; which rows a new title replaces and what the widget shows of them
 /// is `WidgetRows`, shared with the widget.
 nonisolated enum ContinueBySource {
-    static func takesPass(passAtMs: Double, storedPassAtMs: Double?) -> Bool { true }
+    /// Whether a pass writes the rows: never one older than the rows
+    /// written. A pass computed before a server left can land after its
+    /// rows went (`ContinueRowsWriter.forgetServer`, at that moment) and
+    /// would write its titles back. A pass that keeps the stored moment
+    /// (`keepingStanding`) writes.
+    static func takesPass(passAtMs: Double, storedPassAtMs: Double?) -> Bool {
+        passAtMs >= (storedPassAtMs ?? -.infinity)
+    }
 
     /// The source of a title is its tab, by the app's one assignment
     /// (`MediaFamily.kind(for:markedForm:)`): a catalogue album is music, a

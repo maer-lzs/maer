@@ -97,7 +97,10 @@ nonisolated enum PodcastAutoDownloadRules {
         return duration - remaining >= startedAtLeast
     }
 
-    static func cutoffMs(storedSeconds: Double?) -> Double { storedSeconds ?? 0 }
+    /// The cutoff of "newest" in the unit of `pubDate` (milliseconds): the
+    /// moment of switching on is stored in seconds since 1970. Without a
+    /// moment, everything unheard.
+    static func cutoffMs(storedSeconds: Double?) -> Double { (storedSeconds ?? 0) * 1000 }
 
     /// What a run wants of one show, read in its direction from ONE judgement
     /// per episode (`state`), so heard, begun and started ask the same

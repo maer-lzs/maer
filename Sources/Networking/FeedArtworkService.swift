@@ -29,32 +29,41 @@ actor FeedArtworkService {
         self.defaults = suite.flatMap { UserDefaults(suiteName: $0) } ?? AppStorageKeys.store
     }
 
-    private var cache: [String: URL?] = [:]   // feedURL → artwork (nil = negative)
+    private var cache: [String: URL?] = [:]   // key of the address → artwork (nil = negative)
     private var persistedLoaded = false
 
     /// The curation changes rarely. A generous span, but not eternal:
     /// public-broadcast image URLs rotate, which is exactly why nothing is
     /// hard-wired into the curation data. Written down in the door's one
-    /// directory under `feed|<address>`; a negative for 7 days, a found
-    /// picture for 30.
+    /// directory under `feed|<key of the address>` (`PodcastIdentity.feedKey`),
+    /// never the address: a private feed's address carries its secret, and
+    /// the key name stood in the settings beside the store of the
+    /// subscriptions. A negative for 7 days, a found picture for 30.
     private static let memoPrefix = "feed|"
     private static let positiveTTL: TimeInterval = 30 * 24 * 3600
     private static let negativeTTL: TimeInterval = 7 * 24 * 3600
 
+    /// The key the cache and the directory know a feed by.
+    private static func memoKey(_ feedURL: String) -> String { PodcastIdentity.feedKey(feedURL) }
+
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        for (feed, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, defaults: defaults) {
+        // An entry written under an address goes: it costs one more question.
+        for name in Artwork.Memo.entries(prefix: Self.memoPrefix, defaults: defaults).keys where name.contains("://") || name.contains("/") {
+            _ = Artwork.Memo.forget(Self.memoPrefix + name, defaults: defaults)
+        }
+        for (key, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, defaults: defaults) {
             switch answer {
-            case .found(let raw): cache[feed] = URL(string: raw)
-            case .missing: cache[feed] = URL?.none
+            case .found(let raw): cache[key] = URL(string: raw)
+            case .missing: cache[key] = URL?.none
             }
         }
     }
 
     private func persistResult(feedURL: String, url: URL?) {
         let now = Date().timeIntervalSince1970
-        Artwork.Memo.remember(Self.memoPrefix + feedURL, value: url?.absoluteString,
+        Artwork.Memo.remember(Self.memoPrefix + Self.memoKey(feedURL), value: url?.absoluteString,
                               until: now + (url == nil ? Self.negativeTTL : Self.positiveTTL), now: now,
                               defaults: defaults)
     }
@@ -66,7 +75,7 @@ actor FeedArtworkService {
     func artworkURL(feedURL: String,
                     fetch: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await RequestRetryPolicy.fetch($0) }) async -> URL? {
         loadPersistedIfNeeded()
-        if let cached = cache[feedURL] { return cached }
+        if let cached = cache[Self.memoKey(feedURL)] { return cached }
         // Source gate for NEW lookups only. Anything already resolved keeps
         // showing (the effect line promises exactly that).
         guard ExternalSources.isAllowed(ExternalSources.feedArtwork) else { return nil }
@@ -111,7 +120,7 @@ actor FeedArtworkService {
             Logger.rss.error("HOERSPIEL artwork feed=\(PodcastIdentity.maskedFeedURL(feedURL), privacy: .public) → FAILED: \(String(describing: error), privacy: .public)")
             return nil
         }
-        cache[feedURL] = resolved
+        cache[Self.memoKey(feedURL)] = resolved
         persistResult(feedURL: feedURL, url: resolved)
         Logger.rss.notice("HOERSPIEL artwork feed=\(PodcastIdentity.maskedFeedURL(feedURL), privacy: .public) → \(resolved == nil ? "miss" : "hit", privacy: .public)")
         return resolved

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Automatic downloads and private feeds.** Switching on Newest for a show
+now fetches what comes out from then on, not the backlog: the moment of
+switching on was compared in the wrong unit. A private feed's address no
+longer stands in the app's settings as the name of its artwork entry; an
+entry like that is removed. Feeds from Supercast and Supporting Cast,
+whose address ends in your personal key, now count as private: they stay
+on this device and are never sent to a directory or shared. The widget
+no longer brings back the titles of a server you just left.
+
 **Continuing on another device keeps the later stand.** A device that
 holds a title without playing it now moves to where you stopped on the
 other device, as soon as that stand arrives. A device whose clock runs

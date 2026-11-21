@@ -42,6 +42,11 @@ enum ContinueRowsWriter {
     /// (`WidgetRows.passMovesTitle`); covers only for changed rows.
     static func write(_ rows: [WidgetSourceRow], passAtMs: Double) async {
         let previous = ContinueRows.load()
+        // A pass computed before the rows written does not write over them.
+        guard ContinueBySource.takesPass(passAtMs: passAtMs, storedPassAtMs: previous?.passAtMs) else {
+            Logger.library.notice("WIDGET rows not written: the pass is older than the rows written")
+            return
+        }
         let changed = previous?.rows != rows
         guard ContinueRows(rows: rows, passAtMs: passAtMs).save() else {
             Logger.library.notice("WIDGET rows not written count=\(rows.count, privacy: .public)")

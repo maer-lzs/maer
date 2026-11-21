@@ -178,22 +178,29 @@ nonisolated final class StandMirror: Sendable {
             }
             guard movesNow || moved else { return }
             var lastWalkMs: Double?
+            // The moment of this walk, noted once the table was read.
+            var walkedAtMs: Double?
             let legacy: ListeningStore.Stock
             if let startWalk {
                 legacy = startWalk
             } else {
                 let walk = PerfSignpost.walkPositions()
                 let walkStarted = ContinuousClock.now
-                guard let walked = ListeningStore.legacyWalk(for: followed, nowMs: Date().timeIntervalSince1970 * 1000)
+                walkedAtMs = Date().timeIntervalSince1970 * 1000
+                guard let walked = ListeningStore.legacyWalk(for: followed)
                 else { walk.end(); return }
                 walk.end()
                 Logger.library.notice("STARTUP walk=positions ms=\(Int((ContinuousClock.now - walkStarted) / .milliseconds(1)))")
                 legacy = walked.legacy
                 lastWalkMs = walked.lastWalkMs
             }
-            guard !legacy.backups.isEmpty || !legacy.flushed.isEmpty else { return }
+            guard !legacy.backups.isEmpty || !legacy.flushed.isEmpty else {
+                if let walkedAtMs { ListeningStore.noteLegacyWalk(for: followed, atMs: walkedAtMs) }
+                return
+            }
             var table = ListeningStore.Stock(backups: try await store.all().mapValues(\.entry),
                                              flushed: try await store.allFlushed())
+            if let walkedAtMs { ListeningStore.noteLegacyWalk(for: followed, atMs: walkedAtMs) }
             // After the move an old key written since is listening a build
             // that writes old keys did: newer than its row, or newer than the
             // walk before when it has none, it goes into the stock. Its key

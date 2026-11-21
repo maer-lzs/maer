@@ -111,20 +111,33 @@ nonisolated enum PodcastFeedAddress {
     /// Path segments that say access when another segment follows them.
     static let accessPathSegments = ["private", "token", "secret", "auth", "key"]
 
-    static let accessPathHosts: [String] = []
+    /// Hosts that put a listener's secret in the last segment of a feed's
+    /// path, with no word for it, as `host/segment`: the segment before the
+    /// secret. Supercast (`<show>.supercast.com/feeds/<token>`) and
+    /// Supporting Cast (`<show>.supportingcast.fm/content/<token>.rss`).
+    /// The host counts with its subdomains, never as a part of another name.
+    static let accessPathHosts = ["supercast.com/feeds", "supportingcast.fm/content"]
 
     /// Whether a path carries access: a whole segment from
     /// `accessPathSegments` (any case) with a further segment behind it, as
-    /// in `…/podcast/123/private/<id>.rss`. A long id alone is no sign, open
-    /// feeds carry them (an Acast show is 24 hex characters), and a segment
-    /// that only contains such a word (`keynote`) is none either.
+    /// in `…/podcast/123/private/<id>.rss`, or on a host of
+    /// `accessPathHosts` its segment with a further one behind it. A long id
+    /// alone is no sign, open feeds carry them (an Acast show is 24 hex
+    /// characters), and a segment that only contains such a word
+    /// (`keynote`) is none either.
     static func pathCarriesAccess(_ raw: String) -> Bool {
         var rest = Substring(raw.trimmingCharacters(in: .whitespacesAndNewlines))
         if let scheme = rest.range(of: "://") { rest = rest[scheme.upperBound...] }
         if let cut = rest.firstIndex(where: { $0 == "?" || $0 == "#" }) { rest = rest[..<cut] }
         guard let slash = rest.firstIndex(of: "/") else { return false }
         let segments = rest[rest.index(after: slash)...].split(separator: "/")
-        return segments.dropLast().contains { accessPathSegments.contains($0.lowercased()) }
+        if segments.dropLast().contains(where: { accessPathSegments.contains($0.lowercased()) }) { return true }
+        let host = rest[..<slash].lowercased().split(separator: "@").last.map(String.init) ?? ""
+        return accessPathHosts.contains { entry in
+            let parts = entry.split(separator: "/", maxSplits: 1).map(String.init)
+            guard parts.count == 2, host == parts[0] || host.hasSuffix("." + parts[0]) else { return false }
+            return segments.dropLast().contains { $0.lowercased() == parts[1] }
+        }
     }
 
     /// Whether an address carries access at all: a secret in its query, by

@@ -97,8 +97,9 @@ struct FeedArtworkRefusalTests {
             let service = FeedArtworkService(suite: suite)
             let feed = "https://example.org/feed-\(status).xml"
             _ = await service.artworkURL(feedURL: feed, fetch: { await host.answer($0) })
-            // The store lists its entries without the namespace prefix.
-            let entry = Artwork.Memo.entries(prefix: "feed|", defaults: defaults)[feed]
+            // The store lists its entries without the namespace prefix, under
+            // the key of the address.
+            let entry = Artwork.Memo.entries(prefix: "feed|", defaults: defaults)[PodcastIdentity.feedKey(feed)]
             return (entry != nil, await host.asked)
         }
         // The clean way first: a head that names no image is a no, and it

@@ -223,13 +223,20 @@ nonisolated enum ListeningStore {
 
     /// The old keys of the defaults object `owner` names, read after the
     /// move on the mirror's chain, off the start, with the moment of the
-    /// walk before; this walk's moment is noted. Nil without that object.
-    static func legacyWalk(for owner: ObjectIdentifier, nowMs: Double) -> (legacy: Stock, lastWalkMs: Double?)? {
+    /// walk before. Nil without that object. The walk's own moment is noted
+    /// by `noteLegacyWalk` once the table was read: noted before, a read
+    /// that throws would burn it, and an old key without a row written
+    /// before it would never come.
+    static func legacyWalk(for owner: ObjectIdentifier) -> (legacy: Stock, lastWalkMs: Double?)? {
         guard let defaults = anchored(owner) else { return nil }
         let last = defaults.double(forKey: legacyWalkKey)
         let legacy = loadFromDefaults(defaults)
-        defaults.set(nowMs, forKey: legacyWalkKey)
         return (legacy, last > 0 ? last : nil)
+    }
+
+    /// Notes the moment of a walk over the old keys, after the table was read.
+    static func noteLegacyWalk(for owner: ObjectIdentifier, atMs: Double) {
+        anchored(owner)?.set(atMs, forKey: legacyWalkKey)
     }
 
     /// Which old position entries found after the move go into the stock:
