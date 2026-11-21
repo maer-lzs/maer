@@ -163,6 +163,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func rebuild() async {
         guard interfaceController != nil else { return }
         recentAnswer = nil
+        coversAsked = 0
+        // One line per rebuild that ran to its end: what it cost, for a count on a device.
+        defer {
+            if !Task.isCancelled {
+                Logger.player.notice("CARPLAY rebuild covers=\(self.coversAsked, privacy: .public)")
+            }
+        }
         let layout = tabLayout(read: true)
         radioOnStart = layout.radioOnStart
         for tab in layout.tabs {
@@ -379,7 +386,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func mosaic(_ addresses: [URL]) async -> UIImage? {
         var covers: [UIImage] = []
         for address in addresses.prefix(4) {
-            if let cover = await Artwork.thumbnail(for: address) { covers.append(cover) }
+            if let cover = await thumbnail(address) { covers.append(cover) }
         }
         guard let first = covers.first else { return nil }
         guard covers.count == 4 else { return first }
@@ -1016,11 +1023,20 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// small, just right for the car).
     private func cover(forItemId id: String) async -> UIImage? {
         guard let url = session.coverURL(forItemId: id) else { return nil }
-        return await Artwork.thumbnail(for: url)
+        return await thumbnail(url)
     }
 
     private func artwork(_ address: String?) async -> UIImage? {
         guard let url = address.flatMap({ URL(string: $0) }) else { return nil }
+        return await thumbnail(url)
+    }
+
+    /// The covers a rebuild asked for, for its line.
+    private var coversAsked = 0
+
+    /// The one way the car asks for a cover, counted for the rebuild's line.
+    private func thumbnail(_ url: URL) async -> UIImage? {
+        coversAsked += 1
         return await Artwork.thumbnail(for: url)
     }
 
