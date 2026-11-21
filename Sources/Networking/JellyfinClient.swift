@@ -155,33 +155,109 @@ final class JellyfinClient {
 
     // MARK: - Quick Connect
 
+    /// A Quick Connect request: the client header without a token, since
+    /// none exists before the trade.
+    private func quickConnectRequest(_ path: String, method: String = "GET", query: [URLQueryItem] = [],
+                                     body: Data? = nil) throws -> URLRequest {
+        var comps = URLComponents(url: try base().appendingPathComponent(path), resolvingAgainstBaseURL: false)
+        if !query.isEmpty { comps?.setQuery(query) }
+        guard let url = comps?.url else { throw JellyfinError.badURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue(authorizationHeader(), forHTTPHeaderField: "Authorization")
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+        }
+        return request
+    }
+
     /// Whether the server offers Quick Connect (`/QuickConnect/Enabled`).
-    func quickConnectOffered() async -> Bool { false }
+    /// A server that cannot be asked does not offer it; the line says why.
+    func quickConnectOffered() async -> Bool {
+        do {
+            let (data, http) = try await fetch(try quickConnectRequest("QuickConnect/Enabled"))
+            return JellyfinQuickConnect.offered(status: http?.statusCode, body: data)
+        } catch {
+            Logger.music.notice("JELLYFIN quick connect not asked: \(FailureReason.of(error), privacy: .public)")
+            return false
+        }
+    }
 
     /// Asks the server for a code and the secret behind it.
-    func quickConnectStart() async throws -> (secret: String, code: String) { throw JellyfinError.decoding }
+    func quickConnectStart() async throws -> (secret: String, code: String) {
+        let (data, http) = try await fetch(try quickConnectRequest("QuickConnect/Initiate", method: "POST"), repeatable: false)
+        guard let status = http?.statusCode, (200...299).contains(status) else {
+            throw Self.failure(forStatus: http?.statusCode)
+        }
+        // bearable, because an unreadable answer throws decoding right below
+        guard let state = try? JSONDecoder().decode(JFQuickConnectState.self, from: data),
+              let secret = state.secret, let code = state.code else {
+            throw JellyfinError.decoding
+        }
+        return (secret, code)
+    }
 
-    /// One look at the code (`/QuickConnect/Connect`).
-    func quickConnectAnswer(secret: String) async -> JellyfinQuickConnect.Answer { .waiting }
+    /// One look at the code (`/QuickConnect/Connect`). A look that does not
+    /// reach the server is a failure without a status.
+    func quickConnectAnswer(secret: String) async -> JellyfinQuickConnect.Answer {
+        do {
+            let request = try quickConnectRequest("QuickConnect/Connect", query: [URLQueryItem(name: "secret", value: secret)])
+            let (data, http) = try await fetch(request)
+            // bearable, because an unreadable 200 becomes a failure of status 200 in the rule
+            let state = try? JSONDecoder().decode(JFQuickConnectState.self, from: data)
+            return JellyfinQuickConnect.answer(status: http?.statusCode, authenticated: state?.authenticated)
+        } catch {
+            Logger.music.notice("JELLYFIN quick connect look failed: \(FailureReason.of(error), privacy: .public)")
+            return .failed(status: nil)
+        }
+    }
 
-    /// Trades an approved secret for a token, the user id and the user's name.
+    /// Trades an approved secret for a token, the user id and the user's
+    /// name, and keeps the first two in this client.
     func signIn(quickConnectSecret: String) async throws -> (token: String, userId: String, userName: String) {
-        throw JellyfinError.decoding
+        let body = try JSONEncoder().encode(["Secret": quickConnectSecret])
+        let request = try quickConnectRequest("Users/AuthenticateWithQuickConnect", method: "POST", body: body)
+        let (data, http) = try await fetch(request, repeatable: false)
+        guard let status = http?.statusCode, (200...299).contains(status) else {
+            throw Self.failure(forStatus: http?.statusCode)
+        }
+        // bearable, because an unreadable answer throws decoding right below
+        guard let auth = try? JSONDecoder().decode(JFAuthResponse.self, from: data),
+              let token = auth.accessToken, let user = auth.user else {
+            throw JellyfinError.decoding
+        }
+        accessToken = token
+        userId = user.id
+        Logger.music.notice("jellyfin quick connect sign-in ok (user id cached)")
+        return (token, user.id, user.name ?? "")
     }
 
     /// Ensures a token exists (silent sign-in with the stored credentials).
+    /// Without a password there is nothing to sign in with again: the token
+    /// came from Quick Connect, and the person signs in anew.
     private func ensureAuth() async throws -> (token: String, userId: String) {
         if let accessToken, let userId { return (accessToken, userId) }
-        guard !username.isEmpty, !password.isEmpty else { throw JellyfinError.auth }
+        guard !password.isEmpty else { throw username.isEmpty ? JellyfinError.auth : JellyfinError.signInAgain }
+        guard !username.isEmpty else { throw JellyfinError.auth }
         _ = try await authenticate()
         guard let accessToken, let userId else { throw JellyfinError.auth }
         return (accessToken, userId)
     }
 
-    /// Reachability + credentials probe; nil on success, else user-facing text.
+    /// Reachability + credentials probe; nil on success, else user-facing
+    /// text. A token without a password is asked with the token itself.
     func testConnection() async -> String? {
-        do { _ = try await authenticate(); return nil }
-        catch { return ErrorSentence.of(error) }
+        do {
+            if password.isEmpty, accessToken != nil {
+                _ = try await get("Users/Me", as: JFUser.self)
+            } else {
+                _ = try await authenticate()
+            }
+            return nil
+        } catch {
+            return ErrorSentence.of(error)
+        }
     }
 
     // MARK: - Request core

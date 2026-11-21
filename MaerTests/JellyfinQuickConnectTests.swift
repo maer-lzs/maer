@@ -175,7 +175,9 @@ struct JellyfinQuickConnectTests {
         let client = JellyfinProvider.quickConnectClient(address: server.address)
         let start = try await client.quickConnectStart()
         _ = await client.quickConnectAnswer(secret: start.secret)
-        let failure = await JellyfinProvider.shared.finishQuickConnect(address: server.address, client: client, secret: start.secret)
+        let failure = await JellyfinProvider.finishQuickConnect(client: client, secret: start.secret) { user in
+            JellyfinSourceView.keep(serverURL: server.address, username: user, password: "")
+        }
         #expect(failure == nil, "\(failure ?? "")")
         #expect(AppStorageKeys.jellyfinServerURLValue == server.address)
         #expect(AppStorageKeys.jellyfinUsernameValue == "hoerer")
@@ -209,8 +211,8 @@ struct JellyfinQuickConnectTests {
 /// A Jellyfin server on the loopback in the form the Quick Connect answers
 /// take on a real one: `Enabled` as a bare boolean, `Initiate` and
 /// `Connect` with `Secret`, `Code` and `Authenticated`, a 404 for a secret
-/// it does not know, and the trade answered like a sign-in. Unchecked
-/// because one lock guards the recorded requests and the looks.
+/// it does not know, and the trade answered like a sign-in.
+/// Unchecked because one lock guards the recorded requests and the looks.
 nonisolated final class JellyfinLoopback: @unchecked Sendable {
     struct Seen: Sendable {
         let method: String

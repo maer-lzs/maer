@@ -5259,6 +5259,16 @@
         }
       }
     },
+    "In Jellyfin, where you are signed in, open Quick Connect and enter this code." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne in Jellyfin, wo du angemeldet bist, Quick Connect und gib diesen Code ein."
+          }
+        }
+      }
+    },
     "In Mär: Audiobooks, Audiobookshelf server. The server address, then your user name and password or an API token." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9531,6 +9541,16 @@
         }
       }
     },
+    "Quick Connect signs in without a password, through a Jellyfin session where you are already signed in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Connect meldet dich ohne Passwort an, über eine Jellyfin-Sitzung, in der du schon angemeldet bist."
+          }
+        }
+      }
+    },
     "Radio" : {
       "localizations" : {
         "de" : {
@@ -10904,6 +10924,16 @@
         }
       }
     },
+    "Sign in with Quick Connect" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Quick Connect anmelden"
+          }
+        }
+      }
+    },
     "Sign in with SSO" : {
       "localizations" : {
         "de" : {
@@ -12201,6 +12231,16 @@
         }
       }
     },
+    "The code is no longer valid. Start Quick Connect again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Code gilt nicht mehr. Starte Quick Connect neu."
+          }
+        }
+      }
+    },
     "The connected music server reported an empty library." : {
       "localizations" : {
         "de" : {
@@ -13240,6 +13280,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Datei ist nicht mehr auf diesem Gerät."
+          }
+        }
+      }
+    },
+    "This Jellyfin sign-in is no longer valid. Sign in again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Jellyfin-Anmeldung gilt nicht mehr. Melde dich neu an."
           }
         }
       }

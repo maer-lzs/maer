@@ -21,7 +21,23 @@ nonisolated struct JFAuthResponse: Decodable {
 
 nonisolated struct JFUser: Decodable {
     let id: String
-    enum CodingKeys: String, CodingKey { case id = "Id" }
+    let name: String?
+    enum CodingKeys: String, CodingKey {
+        case id = "Id"
+        case name = "Name"
+    }
+}
+
+/// The state of a Quick Connect code (`/QuickConnect/Initiate`, `/Connect`).
+nonisolated struct JFQuickConnectState: Decodable {
+    let secret: String?
+    let code: String?
+    let authenticated: Bool?
+    enum CodingKeys: String, CodingKey {
+        case secret = "Secret"
+        case code = "Code"
+        case authenticated = "Authenticated"
+    }
 }
 
 nonisolated struct JFItemsResult: Decodable {

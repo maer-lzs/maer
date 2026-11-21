@@ -345,9 +345,14 @@ struct ServerAddressSwitchTests {
         #expect(AppStorageKeys.subsonicPasswordValue == "password-of-a")
     }
 
-    @Test("both forms ask the rule before they write an address, and only they write one", .needsTheSources)
+    @Test("both forms and the Quick Connect sign-in ask the rule before they write an address, and only they write one", .needsTheSources)
     func bothFormsAskBeforeTheyWrite() throws {
+        let quickConnect = try FetchAnswerTests.squeezedSource("Sources/Providers/JellyfinProvider.swift")
+        #expect(quickConnect.contains("keep(signed.userName) AppStorageKeys.setJellyfinToken(signed.token)"),
+                "the Quick Connect sign-in keeps its token before the account went the one way")
         let jellyfin = try FetchAnswerTests.squeezedSource("Sources/Views/JellyfinSourceView.swift")
+        #expect(jellyfin.contains("JellyfinProvider.finishQuickConnect(client: client, secret: start.secret) { user in Self.keep(serverURL: address, username: user, password: \"\") }"),
+                "the Quick Connect sign-in stores its account past the page's one way")
         #expect(jellyfin.contains("password = JellyfinProvider.passwordAfterAddress(address, user: newUser, typed: password) JellyfinProvider.forgetAccessOnSwitch(to: address, user: newUser) if !trimmedURL.isEmpty { AppStorageKeys.jellyfinServerURLValue = trimmedURL }"))
         let subsonic = try FetchAnswerTests.squeezedSource("Sources/Views/SubsonicSourceView.swift")
         #expect(subsonic.contains("password = SubsonicProvider.passwordAfterAddress(address, user: newUser, typed: password) SubsonicProvider.forgetAccessOnSwitch(to: address, user: newUser) if !trimmedURL.isEmpty { AppStorageKeys.subsonicServerURLValue = trimmedURL }"))
@@ -358,7 +363,8 @@ struct ServerAddressSwitchTests {
                 writers.append(file)
             }
         }
-        #expect(writers.sorted() == ["JellyfinSourceView.swift", "SubsonicSourceView.swift"], "another writer of an address: \(writers)")
+        #expect(writers.sorted() == ["JellyfinSourceView.swift", "SubsonicSourceView.swift"],
+                "another writer of an address: \(writers)")
     }
 }
 #endif

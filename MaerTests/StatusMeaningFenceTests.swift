@@ -49,6 +49,7 @@ struct StatusMeaningFenceTests {
     nonisolated static let ownSentence: [String: String] = [
         "Retry.swift": "the ladder: 401 means one probe, 429 and 5xx mean wait; a meaning here would sit before the ladder",
         "JellyfinClient.swift": "403 is blockedHere, not the same as 401; the client's sentences are richer than the meaning",
+        "JellyfinQuickConnect.swift": "404 is a Quick Connect code that is gone, a meaning the rule has no word for; every other status goes to the client's sentence",
         "APIClient.swift": "the probe reads 403 and 5xx as the proxy still coming up, and only a confirmed 401 logs out",
         "SubsonicClient.swift": "the errors ride in the body as API codes inside a 200; the status is not the meaning",
         "PinchflatClient.swift": "only 401 is read; an absent mesh-only server is a normal state, not a defect",

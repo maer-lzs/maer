@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Jellyfin with Quick Connect.** When your Jellyfin server offers Quick
+Connect, its source page shows Sign in with Quick Connect. Mär shows a
+code; enter it in Jellyfin where you are already signed in, and Mär signs
+in without your password. The access stays in the keychain. A code that
+is no longer valid says so, and a sign-in the server ended asks you to
+sign in again.
+
 **Siri plays whole shows and shuffles lists.** Ask Siri for a show and it
 plays the episode you began, or else the newest one you have not heard.
 A playlist asked for shuffled now starts shuffled. Tapping an audiobook in

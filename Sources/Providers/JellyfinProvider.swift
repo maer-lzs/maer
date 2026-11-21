@@ -134,9 +134,26 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
                        deviceId: AppStorageKeys.jellyfinDeviceIdValue, accessToken: nil, userId: nil)
     }
 
-    /// Trades an approved Quick Connect secret and keeps the account: nil
-    /// when it is stored, else the sentence.
-    func finishQuickConnect(address: String, client: JellyfinClient, secret: String) async -> String? { nil }
+    /// Trades an approved Quick Connect secret and keeps the account. The
+    /// address and the server's name for the user go through `keep`, the
+    /// page's one way to store an account, so another account than the
+    /// stored one goes the way of any account switch, its password with
+    /// it; then the token goes to the keychain and the user id is kept.
+    /// nil when it is kept, else the sentence.
+    static func finishQuickConnect(client: JellyfinClient, secret: String,
+                                   keep: (_ userName: String) -> Void) async -> String? {
+        let signed: (token: String, userId: String, userName: String)
+        do {
+            signed = try await client.signIn(quickConnectSecret: secret)
+        } catch {
+            return ErrorSentence.of(error)
+        }
+        keep(signed.userName)
+        AppStorageKeys.setJellyfinToken(signed.token)
+        AppStorageKeys.jellyfinUserIdValue = signed.userId
+        shared.reloadConfig()
+        return nil
+    }
 
     static func storedClient() -> JellyfinClient {
         let builtFor = AppStorageKeys.jellyfinServerURLValue
