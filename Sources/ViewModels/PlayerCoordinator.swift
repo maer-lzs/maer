@@ -808,6 +808,7 @@ final class PlayerCoordinator: ObservableObject {
     /// An order of Up Next leaves its list only at its title's first
     /// progress (`titleProgressed`): a stream that fails before it stays.
     private func takeOver(_ id: String, preservesContext: Bool) {
+        dropHeardChapters()
         if !preservesContext { context.clear() }
         if orders.contains(id) {
             pendingOrder = (id, isAdvancing)
@@ -891,35 +892,52 @@ final class PlayerCoordinator: ObservableObject {
         })
     }
 
-    /// Puts a book into Up Next chapter by chapter, at the end. The library
-    /// list does not carry chapters, so the book's detail is asked first; a
-    /// book with fewer than two chapters says so, and a chain that does not
-    /// go in says why. The chapters are the player's of that detail, and the
-    /// rows of the book's entries read them from here on. The chain starts
-    /// at the book's stand as the rows read it (`BookChapterSource.position`),
-    /// or at the stand of the card that asks (`known`), when the card lies
-    /// outside the loaded lists.
-    func enqueueChain(bookId: String, title: String, known: Double? = nil) async {
-        let detail: LibraryItemDetail
-        do {
-            detail = try await session.chapterDetail(bookId)
-        } catch {
-            Logger.player.notice("CHAPTER chain not queued, the detail failed: \(FailureReason.of(error), privacy: .public)")
-            sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: title)
-            return
+    /// Puts ONE chapter of a book at the end of Up Next (`AddChapterRule.next`):
+    /// the chapter of the stand, or the one after the last added. The
+    /// chapters are the known ones; a book whose chapters no list carries
+    /// has its detail asked first. A book with fewer than two chapters, or
+    /// none left to add, says so. The stand is the rows' one
+    /// (`BookChapterSource.position`), or the card's (`known`) when the card
+    /// lies outside the loaded lists.
+    func addChapter(bookId: String, title: String, known: Double? = nil) async {
+        var chapters = session.bookChapters.chapters(of: bookId)
+        if chapters == nil {
+            do {
+                let read = ChapterModel.resolved(detail: try await session.chapterDetail(bookId)).chapters
+                session.bookChapters.note(read, of: bookId)
+                chapters = read
+            } catch {
+                Logger.player.notice("CHAPTER not added, the detail failed: \(FailureReason.of(error), privacy: .public)")
+                sayOpenFailure(ErrorSentence.of(error), cause: .unknown, title: title)
+                return
+            }
         }
-        let chapters = ChapterModel.resolved(detail: detail).chapters
-        session.bookChapters.note(chapters, of: bookId)
-        guard chapters.count >= 2 else {
+        guard let chapters, chapters.count >= 2 else {
             sayOpenFailure(String(localized: "This book has no chapters to go through one by one."), cause: .unknown, title: title)
             return
         }
-        let outcome = orders.enqueueChain(bookId: bookId, chapters: chapters,
-                                          bookPosition: session.bookChapters.position(of: bookId, known: known))
-        if let sentence = ChapterEntryRules.chainRefusal(outcome) {
-            Logger.player.notice("CHAPTER chain not queued: \(String(describing: outcome), privacy: .public)")
-            sayOpenFailure(sentence, cause: .unknown, title: title)
+        guard let next = AddChapterRule.next(bookId: bookId, chapters: chapters,
+                                             position: session.bookChapters.position(of: bookId, known: known),
+                                             queue: orders.ids) else {
+            Logger.player.notice("CHAPTER not added, none left to add")
+            sayOpenFailure(String(localized: "No chapter follows from here."), cause: .unknown, title: title)
+            return
         }
+        orders.playLast(ItemNamespace.chapterEntryId(bookId: bookId, startMs: ChapterEntryRules.ms(next.start)))
+    }
+
+    /// A chapter waiting in Up Next that the book has been heard past falls
+    /// out (`AddChapterRule.heard`); the one that plays now stays.
+    func dropHeardChapters() {
+        let heard = orders.ids.filter { id in
+            guard id != orders.running, let entry = ItemNamespace.chapterEntry(id),
+                  let chapters = session.bookChapters.chapters(of: entry.bookId) else { return false }
+            return AddChapterRule.heard(entryId: id, chapters: chapters,
+                                        bookPosition: session.bookChapters.position(of: entry.bookId))
+        }
+        guard !heard.isEmpty else { return }
+        Logger.player.notice("CHAPTER heard entries leave Up Next: \(heard.count, privacy: .public)")
+        heard.forEach { orders.remove($0) }
     }
 
     /// The end of a chapter entry's range: the book pauses at the chapter's
@@ -935,6 +953,7 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     private func advanceAfterFinish(finishedItemId: String) {
+        dropHeardChapters()
         // Invariant "heard = flies out": the finished item leaves both lists.
         // It was already removed when it started, but a restored-session item
         // (never opened via `open`) would otherwise linger.

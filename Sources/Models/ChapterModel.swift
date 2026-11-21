@@ -69,11 +69,11 @@ nonisolated enum ChapterModel {
         if isPodcast || isMusic { return (valid, false) }
         // A multi-file book navigates by FILE. When its chapter list merely
         // MIRRORS the file structure (one per track, aligned to track starts) it
-        // is file navigation, not real chapters. Relabel as "Part N" so it reads
-        // "Teil", not "Kapitel", even though it covers the book. Real "Kapitel"
-        // stays reserved for chapters that do NOT map 1:1 onto the files.
+        // is file navigation: the selector reads "Parts". Each part keeps the
+        // name the server gives it ("02 - The Shadow"); a part without a name,
+        // or named by its file only, reads "Part N of M".
         if tracks.count > 1, chaptersMirrorTracks(valid, tracks: tracks, duration: duration) {
-            return (trackChapters(tracks, duration: duration), true)
+            return (namedParts(trackChapters(tracks, duration: duration), names: valid.map(\.title)), true)
         }
         if coversBook(valid, duration: duration) { return (valid, false) }
         if tracks.count > 1 { return (trackChapters(tracks, duration: duration), true) }
@@ -124,6 +124,17 @@ nonisolated enum ChapterModel {
         let tolerance = 2.0
         return tracks.indices.allSatisfy { i in
             abs(chapters[i].start - TrackMath.trackStart(index: i, tracks: tracks, bookDuration: duration)) <= tolerance
+        }
+    }
+
+    /// The parts of a book whose chapters follow its files, under the names
+    /// the server gives them, in their order; an empty name or a file's name
+    /// leaves the part's own ("Part N of M").
+    static func namedParts(_ parts: [ABSChapter], names: [String]) -> [ABSChapter] {
+        parts.enumerated().map { i, part in
+            let name = i < names.count ? names[i].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+            guard !name.isEmpty, !ChapterCounting.isFileName(name) else { return part }
+            return ABSChapter(id: part.id, start: part.start, end: part.end, title: name)
         }
     }
 

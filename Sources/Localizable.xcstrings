@@ -1172,6 +1172,16 @@
         }
       }
     },
+    "Add Chapter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitel hinzufügen"
+          }
+        }
+      }
+    },
     "Add by URL" : {
       "localizations" : {
         "de" : {
@@ -2617,16 +2627,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kapitel %lld von %lld"
-          }
-        }
-      }
-    },
-    "Chapter by Chapter in Up Next" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kapitelweise in Als Nächstes"
           }
         }
       }

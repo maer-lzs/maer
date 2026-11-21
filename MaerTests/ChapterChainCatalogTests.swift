@@ -54,7 +54,7 @@ struct ChapterChainCatalogTests {
         #expect(try code("Sources/Views/TabContentLayout.swift").contains("ChapterChainButton("),
                 "the catalog's menu offers no chain")
         let saying = ProjectFileIntegrityTests.sourceFiles().filter {
-            (try? String(contentsOf: $0, encoding: .utf8))?.contains("\"Chapter by Chapter in Up Next\"") == true
+            (try? String(contentsOf: $0, encoding: .utf8))?.contains("Text(\"Add Chapter\")") == true
         }.map(\.lastPathComponent)
         #expect(saying == ["ChapterChainButton.swift"], "the words stand in \(saying)")
     }

@@ -176,18 +176,18 @@ struct ChapterEntryChainFenceTests {
         #expect(asking == ["Sources/Providers/PlayQueue.swift"], "a follower is made here: \(asking)")
     }
 
-    @Test("the book's card offers the chain under the decided words, in English and German", .needsTheSources)
+    @Test("the book's card offers a chapter under the decided words, in English and German", .needsTheSources)
     func theMenuSaysTheDecidedWords() throws {
         let button = try Self.code("Sources/Views/ChapterChainButton.swift")
-        #expect(button.contains("ChapterEntryRules.offersChain("), "the button offers the chain without the rule")
-        #expect(button.contains("\"Chapter by Chapter in Up Next\""), "the button does not say the decided words")
+        #expect(button.contains("ChapterEntryRules.offersChain("), "the button offers the chapter without the rule")
+        #expect(button.contains("\"Add Chapter\""), "the button does not say the decided words")
         let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"), encoding: .utf8)
         let parsed = try JSONSerialization.jsonObject(with: Data(catalog.utf8))
         let json = try #require(parsed as? [String: Any])
         let strings = try #require(json["strings"] as? [String: Any])
-        let entry = try #require(strings["Chapter by Chapter in Up Next"] as? [String: Any], "the words are not in the catalogue")
+        let entry = try #require(strings["Add Chapter"] as? [String: Any], "the words are not in the catalogue")
         let german = ((entry["localizations"] as? [String: Any])?["de"] as? [String: Any])?["stringUnit"] as? [String: Any]
-        #expect(german?["value"] as? String == "Kapitelweise in Als Nächstes")
+        #expect(german?["value"] as? String == "Kapitel hinzufügen")
     }
 }
 #endif

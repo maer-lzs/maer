@@ -129,7 +129,8 @@ nonisolated enum ChapterEntryRules {
         let found = playChapter(entryId: entryId, chapters: chapters, bookPosition: bookPosition)
         let metadata = book.media?.metadata
         let media = LibraryItemMedia(
-            metadata: LibraryItemMetadata(title: found?.title ?? unknownChapterTitle, authorName: book.title,
+            metadata: LibraryItemMetadata(title: found.map { AddChapterRule.shown($0, in: chapters) } ?? unknownChapterTitle,
+                                          authorName: book.title,
                                           narratorName: metadata?.narratorName, seriesName: metadata?.seriesName,
                                           genres: metadata?.genres, publishedYear: metadata?.publishedYear,
                                           description: metadata?.description),

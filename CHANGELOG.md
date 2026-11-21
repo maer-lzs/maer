@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Add Chapter.** The menu of an audiobook puts one chapter at a time at
+the end of Up Next, so chapters can take turns with episodes. The entry
+names the chapter it adds, the one you stand in first, then the one
+after the last added. A chapter name without a number of its own gets its
+place in front ("9. He Did It"), never a second one. A chapter you have
+heard past in the meantime leaves Up Next. Books whose chapters follow
+their files now show the chapter names the server gives instead of
+"Part N of M". This replaces "Chapter by Chapter in Up Next".
+
 **No hint about this device's own playback.** After leaving the app
 while it played, the mini player could name this very device as another
 one for up to a minute and a half. Unsubscribing a show now also clears
