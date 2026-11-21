@@ -20,7 +20,7 @@ struct VisibleDecidedTests {
             contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("a list with nothing to play right now says so with the info sign; a list not on this device keeps the warning")
+    @Test("a list with nothing to play right now says so with the info sign; a list not on this device keeps the warning", .needsTheSources)
     @available(iOS 27, *)
     func nothingToPlayIsNoError() throws {
         let list = MaerPlaylists.Playlist(id: "l", name: "L", updatedAt: 1, itemIds: [])
@@ -69,7 +69,7 @@ struct VisibleDecidedTests {
         #expect(bar.components(separatedBy: ".foregroundStyle(.secondary)").count - 1 == 1, "only the placeholder's sign stays grey")
     }
 
-    @Test("the offer after a rule next sets the show in order; after newest it leaves the direction")
+    @Test("the offer after a rule next sets the show in order; after newest it leaves the direction", .needsTheSources)
     func theOfferAfterNextIsInOrder() throws {
         #expect(RoutinePlayback.offerDirection(for: ["rule:next:2:abc"]) == .inOrder)
         #expect(RoutinePlayback.offerDirection(for: ["rule:newest:abc"]) == nil)
@@ -79,7 +79,7 @@ struct VisibleDecidedTests {
                 "the offer does not set the direction")
     }
 
-    @Test("at an accessibility size the band of the widget grows and its title takes two lines")
+    @Test("at an accessibility size the band of the widget grows and its title takes two lines", .needsTheSources)
     func theBandGrows() throws {
         #expect(WidgetRows.bandCoverFraction(accessibilitySize: false) == 0.75)
         #expect(WidgetRows.bandCoverFraction(accessibilitySize: true) == 0.6)
