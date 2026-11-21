@@ -67,8 +67,9 @@ struct WidgetCoverTintTests {
         let widget = try FetchAnswerTests.squeezedSource("LiveActivityWidget/ContinueListeningWidget.swift")
         #expect(widget.contains("entry.snapshot?.coverTint.flatMap(Self.color(of:))"), "the widget's gradient ignores the colour")
         #expect(!widget.contains("bottomComponents"), "the widget computes the colour itself")
-        #expect(widget.contains(".frame(height: space.size.height * 0.75) .overlay(alignment: .top) { coverImage } .clipped()"),
-                "the cover no longer takes three quarters of the small widget, closed with its top edge")
+        // Three quarters, 0.6 at the sizes for accessibility (`WidgetRows.bandCoverFraction`).
+        #expect(widget.contains(".frame(height: space.size.height * WidgetRows.bandCoverFraction(accessibilitySize: dynamicTypeSize.isAccessibilitySize)) .overlay(alignment: .top) { coverImage } .clipped()"),
+                "the cover no longer takes its share of the small widget, closed with its top edge")
         #expect(widget.contains(".overlay { coverWithBand }"), "the playing half lays its text over the cover again")
         let player = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerViewModel+NowPlaying.swift")
         #expect(player.contains("if self.item?.id == stationID { self.refreshSharedCover(from: image) }"),

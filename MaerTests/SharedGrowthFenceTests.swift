@@ -74,7 +74,11 @@ struct SharedGrowthFenceTests {
     /// lowered, by folding or removing a grip in the same neighbourhood (the
     /// page of the listening history paid with a grip nobody read), and it
     /// rose and was written back as measured instead of hidden behind a default.
-    nonisolated static let stock = 368
+    /// 372, measured: "Add Chapter" observes Up Next and reads the chapters
+    /// a book's entries read (two, `ChapterChainButton`), the mini player
+    /// without a title names the first waiting order (one, `LibraryView`),
+    /// and the hint asks the claim this device wrote last (one, `PlayingNow`).
+    nonisolated static let stock = 372
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -158,7 +162,14 @@ struct SharedGrowthFenceTests {
     /// (four grips fewer).
     /// 757: a shared link's read asks whether this device follows the feed
     /// (one, in `SharedLinkOpener.live`, none in a view).
-    nonisolated static let sourcesStock = 757
+    /// 764, measured: the four of the views above; the claim this device
+    /// saw and stamped, asked by the player's own stand (two,
+    /// `PlayerViewModel`); the progress of a show's episodes for Siri (one,
+    /// `AppShortcuts`); a server that is left ends its held downloads (one,
+    /// `ServerLeaving`); the car reads the context through the coordinator
+    /// (one fewer). 765: the coordinator's open and advance ask the session
+    /// through two seams a witness replaces (`route`, `known`), one more line.
+    nonisolated static let sourcesStock = 765
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

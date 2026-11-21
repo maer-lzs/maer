@@ -63,7 +63,7 @@ nonisolated enum AccessGuard {
             // The door logs the failure; an address that cannot be reached
             // names no guard. A local one that says offline while the device
             // is online is the refused local network.
-            let online = await MainActor.run { NetworkMonitor.shared.isConnected }
+            let online = await Reachability.isConnected()
             if let code = (error as? URLError)?.code,
                LocalNetworkAccess.isDenied(host: base.host, code: code, deviceOnline: online) {
                 Logger.library.notice("ACCESSGUARD host=\(base.host ?? "-", privacy: .public) local network refused")

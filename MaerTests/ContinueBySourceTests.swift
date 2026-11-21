@@ -402,7 +402,9 @@ struct ContinueBySourceTests {
     func aSignOutForgetsTheRows() async throws {
         let before = ContinueRows.load()
         defer { _ = before?.save() }
-        await ContinueRowsWriter.write([row("li_old-server", .audiobooks, at: 1_000)], passAtMs: 1_000)
+        // A pass of now: an older one than the stored would be refused (`takesPass`).
+        await ContinueRowsWriter.write([row("li_old-server", .audiobooks, at: 1_000)],
+                                       passAtMs: Date().timeIntervalSince1970 * 1000)
         #expect(ContinueRows.load()?.rows.isEmpty == false, "the precondition: rows of the server")
         let signedOutAt = Date().timeIntervalSince1970 * 1000
         await AuthViewModel.forgetFormerServer(player: PlayerCoordinator(provider: MockProvider()))
@@ -496,7 +498,7 @@ struct ContinueBySourceTests {
             for (to, switches) in [("https://old.example", false), ("https://new.example", true)] {
                 family.store("https://old.example")
                 await ContinueRowsWriter.write(ids.enumerated().map { row($1, .music, at: Double(9 - $0) * 1_000) },
-                                               passAtMs: 10_000)
+                                               passAtMs: Date().timeIntervalSince1970 * 1000)
                 let heard = try #require(ids.first(where: family.owns))
                 WidgetSnapshot(itemId: heard, title: "Titel", author: nil, fraction: 0.5, remainingText: nil, isPlaying: false).save()
                 try Data([0x89]).write(to: coverURL)
@@ -515,7 +517,7 @@ struct ContinueBySourceTests {
             // A player on a station stays when a music server changes its address.
             family.store("https://old.example")
             await ContinueRowsWriter.write(ids.enumerated().map { row($1, .music, at: Double(9 - $0) * 1_000) },
-                                           passAtMs: 10_000)
+                                           passAtMs: Date().timeIntervalSince1970 * 1000)
             let station = playing("radio:rb:x")
             #expect(family.forget("https://other.example", station))
             for _ in 0..<50 where ContinueRows.load()?.rows.contains(where: { family.owns($0.itemId) }) == true {

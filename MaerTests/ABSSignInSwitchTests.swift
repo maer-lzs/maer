@@ -184,6 +184,8 @@ struct ABSSignInSwitchTests {
             let former = WidgetSourceRow(source: .audiobooks, itemId: "li_former", title: "Titel", subtitle: nil, fraction: 0.5,
                                          remainingText: nil, isLive: false, kindSymbol: "book", cover: nil, playedAt: 1)
             #expect(ContinueRows(rows: [former], passAtMs: 1).save(), "\(stored): the precondition, a row of the former server")
+            // A removal asked before, still in the index's line, lands before the count starts.
+            if #available(iOS 27, *) { await SpotlightIndex.settled() }
             recorder.calls = []
             let auth = signedInToA(stored)
             auth.serverURLString = server.address
@@ -197,6 +199,8 @@ struct ABSSignInSwitchTests {
             let rows = ContinueRows.load()?.rows.map(\.itemId)
             #expect(rows == (forgets ? [] : ["li_former"]), "\(stored): the widget's rows \(String(describing: rows))")
             if #available(iOS 27, *) {
+                // The removal runs in the index's line, not waited for by the switch.
+                await SpotlightIndex.settled()
                 #expect(recorder.calls == (forgets ? ["remove"] : []), "\(stored): the books in the search \(recorder.calls)")
             }
         }
@@ -207,9 +211,15 @@ struct ABSSignInSwitchTests {
     @Test("the old server is forgotten in one place, by the sign-out and by the switch, at the switch before the sources are kicked off", .needsTheSources)
     func theFormerServerIsForgottenInOnePlace() throws {
         let auth = try FetchAnswerTests.squeezedSource("Sources/ViewModels/AuthViewModel.swift")
-        #expect(auth.contains("static func forgetFormerServer(player: PlayerCoordinator? = nil) async { await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, covers: .audiobookshelf, allRows: true, player: player) if #available(iOS 27, *) { await SpotlightIndex.forget() } ABSPodcastProvider.shared.forgetServerSets() AppSession.shared.libraryViewModel.forgetHeldUnfinished() }"),
-                "the one place does not let the server leave the device, or forgets not the search")
-        for forget in ["ServerLeaving.forget(", "SpotlightIndex.forget("] {
+        let place = try #require(ABSPodcastRefreshTests.body(of: "static func forgetFormerServer(", in: auth),
+                                 "the one place is gone")
+        for step in ["await ServerLeaving.forget(ItemNamespace.isAudiobookshelf, covers: .audiobookshelf, allRows: true, player: player)",
+                     "if #available(iOS 27, *) { SpotlightIndex.forgetInLine() }",
+                     "ABSPodcastProvider.shared.forgetServerSets()",
+                     "AppSession.shared.libraryViewModel.forgetHeldUnfinished()"] {
+            #expect(place.contains(step), "the one place does not let the server leave the device: \(step)")
+        }
+        for forget in ["ServerLeaving.forget(", "SpotlightIndex.forgetInLine("] {
             #expect(auth.components(separatedBy: forget).count == 2, "\(forget) is called past the one place")
         }
         #expect(auth.contains("AppSession.shared.notifySourcesChanged() Task { await Self.forgetFormerServer() } }"),

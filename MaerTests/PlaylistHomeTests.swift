@@ -47,7 +47,8 @@ struct PlaylistHomeTests {
     @Test("the page of all lists carries the name of its section, routines or playlists", .needsTheSources)
     func thePageTakesTheSectionsName() throws {
         let text = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistNameList.swift")
-        #expect(text.contains("if limit == nil { section(lists, title: title) .navigationTitle(title) }"),
+        // The title sits on the whole content, so it stays when the last list goes.
+        #expect(text.contains("if limit == nil { content.navigationTitle(title) }"),
                 "the page of all lists has a name of its own")
         #expect(!text.contains(".navigationTitle(\"Playlists\")"), "the page is always called Playlists")
     }

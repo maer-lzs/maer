@@ -366,7 +366,8 @@ struct RoutinePlaybackTests {
             if count > 0 { switching[file.name] = count }
         }
         #expect(switching == ["PodcastGeneralSettings.swift": 1, "AddToPlaylistSheet.swift": 1])
-        #expect(sheet.contains("Button(\"Download Automatically\") { PodcastAutoDownload.setEnabled(show.id, true) }"))
+        // The button switches the show on first; after a rule "next" it sets the direction too.
+        #expect(sheet.contains("Button(\"Download Automatically\") { PodcastAutoDownload.setEnabled(show.id, true)"))
     }
 
     // MARK: - Where a routine stands

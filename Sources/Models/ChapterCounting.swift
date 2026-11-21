@@ -27,14 +27,18 @@ nonisolated enum ChapterCounting {
     /// case, so "Mix" and "Civil" are words, and it never takes a lone C,
     /// D, L or M.
     private static let forms: [(regex: NSRegularExpression, roman: Bool)] = {
+        // The en and em dash as escapes, so no app text carries the sign.
+        let dashes = "\u{2013}\u{2014}"
         let patterns: [(String, Bool, Bool)] = [
-            ("^\\s*\\d{1,3}(?:\\s*[-.:)_–—]\\s*|\\s+(?=\\D))(?!\\d)", true, false),
+            ("^\\s*\\d{1,3}(?:\\s*[-.:)_\(dashes)]\\s*|\\s+(?=\\D))(?!\\d)", true, false),
             ("^\\s*\\d{1,3}\\s*$", true, false),
             ("(?:^|[\\s\\-_.,:(])\\s*\(words)[\\s_]*(?:\\d+|\(roman)\\b|\(enNum)\\b|\(deNum)\\b|the\\s+\(enOrd)\\b)", true, false),
             ("^\\s*(?:\(enOrd)|\(deOrd)|\\d+(?:st|nd|rd|th|\\.))\\s+\(words)\\b", true, false),
-            ("^\\s*(\(roman))(?:\\s*[-.:)–—]\\s*|\\s*$)", false, true),
+            ("^\\s*(\(roman))(?:\\s*[-.:)\(dashes)]\\s*|\\s*$)", false, true),
             ("^(?!.*\\b\(months)\\s+\\d{1,2}\\s*$)\\D.*\\s\\d{1,3}(?:-\\d{1,3})?\\s*$", true, false),
-            ("^\\s*(?:\(enNum)|\(deNum))\\s*[-.:–—]\\s*", true, false),
+            ("^\\s*(?:\(enNum)|\(deNum))\\s*[-.:\(dashes)]\\s*", true, false),
+            // A number word alone counts, as a number alone does: "Three".
+            ("^\\s*(?:\(enNum)|\(deNum))\\s*$", true, false),
         ]
         return patterns.compactMap { pattern, ignoresCase, roman in
             (try? NSRegularExpression(pattern: pattern, options: ignoresCase ? [.caseInsensitive] : []))

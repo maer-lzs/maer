@@ -439,9 +439,9 @@ struct ShortcutBooksTests {
                 "Siri's title does not go through the door")
         #expect(shortcuts.contains("case .list(let listId): try await PlaylistStart.run(listId: listId, shuffled: playbackAttributes.contains(.shuffle), in: PlaylistQuery.lists())"),
                 "Siri's list does not go through the start of lists")
-        #expect(shortcuts.contains("await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)"),
+        #expect(shortcuts.contains("await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator, shuffled: shuffled)"),
                 "the start of a list is a way of its own")
-        #expect(shortcuts.contains("case .audiobook(let book): .item(book.itemId) case .episode(let episode): .item(episode.id) case .station(let station): .item(station.id) case .playlist(let list): .list(list.id)"),
+        #expect(shortcuts.contains("case .audiobook(let book): .item(book.itemId) case .episode(let episode): .item(episode.id) case .show(let show): .show(show.id) case .station(let station): .item(station.id) case .playlist(let list): .list(list.id)"),
                 "a kind starts something else than its id of the app")
         #expect(!shortcuts.contains("resume(namedItemId:"), "a way of its own beside the door")
         let widget = try FetchAnswerTests.squeezedSource("Sources/Models/WidgetShared.swift")
@@ -855,7 +855,9 @@ struct ShortcutBooksTests {
             if squeezed.contains("indexAppEntities(") || squeezed.contains("deleteAppEntities(")
                 || squeezed.contains("CSSearchableIndex") { writing.append(file) }
             if squeezed.contains("SpotlightIndex.reconcile(") { reconciling.append(file) }
-            if squeezed.contains("SpotlightIndex.forget(") { forgetting.append(file) }
+            if squeezed.contains("SpotlightIndex.forget(") || squeezed.contains("SpotlightIndex.forgetInLine(") {
+                forgetting.append(file)
+            }
             if squeezed.contains("SpotlightIndex.reconcileShows(") { following.append(file) }
             if squeezed.contains("SpotlightIndex.showsChanged(") { asking.append(file) }
         }

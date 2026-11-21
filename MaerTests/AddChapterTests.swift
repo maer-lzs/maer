@@ -25,6 +25,7 @@ struct AddChapterTests {
         ("MCMLXXXIV", true), ("LIV", true), ("I", true), ("I.", true), ("VI - Mix", true), ("Kapitel 1984", true),
         ("Der Schimmelreiter - Teil 01", true), ("Kohlhaas Teil 01", true), ("Mowgli's Brothers (part 1)", true),
         ("Day One", true), ("Part I", true), ("CD_7", true), ("Abendrot 03", true), ("Sternenreich 01-02", true),
+        ("Three", true), ("Neun", true), ("twenty-one", true),
         ("1984", false), ("1984 Revisited", false), ("I Am Legend", false), ("I, Robot", false),
         ("Catch-22", false), ("Mix Tape", false), ("Vicky", false), ("Civil War", false),
         ("Dix Mille", false), ("Liv", false), ("Mad Max", false), ("Did It", false),

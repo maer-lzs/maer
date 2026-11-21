@@ -94,7 +94,9 @@ struct ContinueAcrossDevicesTests {
     func noBareClock() throws {
         let sync = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/PlaybackClaimSync.swift"), encoding: .utf8))
-        #expect(!sync.contains("t: now()"), "a claim or release is stamped with the bare clock")
+        // The label `t:` alone: `at: now()` notes when a claim arrived, which is the clock's to say.
+        #expect(sync.range(of: #"(?<![A-Za-z])t: now\(\)"#, options: .regularExpression) == nil,
+                "a claim or release is stamped with the bare clock")
         let model = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
         let halt = try #require(model.range(of: "func recordHaltStand() {"))

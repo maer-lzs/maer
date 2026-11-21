@@ -71,7 +71,10 @@ struct DataPackageTests {
         let store = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ListeningStore.swift"), encoding: .utf8))
         let walk = try #require(store.range(of: "static func legacyWalk("))
-        #expect(!store[walk.upperBound...].prefix(500).contains("forKey: legacyWalkKey)"),
+        // The body alone: the next function, `noteLegacyWalk`, writes the key by its purpose.
+        let body = store[walk.upperBound...].components(separatedBy: "static func noteLegacyWalk(").first ?? ""
+        // A write of the key, not its read (`double(forKey:)`).
+        #expect(body.range(of: #"\.set\([^)]*forKey: legacyWalkKey\)"#, options: .regularExpression) == nil,
                 "reading the old keys notes the moment before the table is read")
         let mirror = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Storage/StandMirror.swift"), encoding: .utf8))

@@ -718,8 +718,8 @@ struct PlayAudioIntent: AppIntent {
             guard let pick = show.flatMap({ EpisodeOffer.showStart($0) { store.state(guid: $0.guid, duration: $0.duration) } }) else {
                 Logger.library.notice("SIRI show starts nothing found=\(show != nil)")
                 try await continueInForeground(nil, alwaysConfirm: false)
-                AppSession.shared.playerCoordinator.sayOpenFailure(
-                    String(localized: "This show has nothing to play right now."), cause: .nothingYet, title: nil)
+                // Said the way a list that starts nothing says it.
+                PlaylistStart.say(String(localized: "This show has nothing to play right now."), .nothingYet)
                 return .result()
             }
             try await ResumeListeningIntent.run(itemId: pick) {
@@ -811,6 +811,12 @@ extension PodcastShowEntity: IndexedEntity {}
 enum SpotlightIndex {
     /// The last pass or sign out asked for; the next one waits for it.
     private static var line: Task<Void, Never>?
+
+    /// Waits for everything asked before; a witness of a removal in line
+    /// (`forgetInLine`) reads the index after it.
+    static func settled() async {
+        await inLine {}
+    }
 
     /// Runs `work` after everything asked before it.
     private static func inLine(_ work: @escaping @MainActor () async -> Void) async {

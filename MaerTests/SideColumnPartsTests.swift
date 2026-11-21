@@ -15,7 +15,8 @@ import SwiftUI
 struct SideColumnPartsTests {
     /// The one place that names the column's material besides the two
     /// parts: the playback bar beside the column takes the same glass.
-    nonisolated static let materialUsers: Set<String> = ["SideColumnParts.swift", "MiniPlayerBar.swift"]
+    /// The idle mini player wears the mini player's surface, the same tier when slim.
+    nonisolated static let materialUsers: Set<String> = ["SideColumnParts.swift", "MiniPlayerBar.swift", "IdleMiniBar.swift"]
 
     /// Lines of code that give a view the column's glass.
     nonisolated static func materialLines(in text: String) -> Int {

@@ -58,11 +58,21 @@ struct OrdersWaitForProgressTests {
         return file
     }
 
+    /// A coordinator whose opens ask the witness's source and whose advance
+    /// knows the witness's titles.
+    private static func coordinator(_ file: URL) -> PlayerCoordinator {
+        let source = DeadOrAliveProvider(file: file)
+        let coordinator = PlayerCoordinator(provider: source)
+        coordinator.route = { _ in source }
+        coordinator.known = { title($0) }
+        return coordinator
+    }
+
     @Test("an order opened stays in Up Next until its title progresses, then it leaves")
     func anOrderLeavesAtTheFirstProgress() async throws {
         let file = try Self.silence()
         defer { try? FileManager.default.removeItem(at: file) }
-        let coordinator = PlayerCoordinator(provider: DeadOrAliveProvider(file: file))
+        let coordinator = Self.coordinator(file)
         let id = "order-\(UUID().uuidString)"
         PlayQueue.shared.playLast(id)
         defer { PlayQueue.shared.remove(id); coordinator.viewModel?.stop() }
@@ -79,7 +89,7 @@ struct OrdersWaitForProgressTests {
     func aDeadStreamStaysAndIsPassed() async throws {
         let file = try Self.silence()
         defer { try? FileManager.default.removeItem(at: file) }
-        let coordinator = PlayerCoordinator(provider: DeadOrAliveProvider(file: file))
+        let coordinator = Self.coordinator(file)
         let first = "first-\(UUID().uuidString)"
         let dead = "dead-\(UUID().uuidString)"
         let next = "next-\(UUID().uuidString)"

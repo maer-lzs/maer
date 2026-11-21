@@ -108,7 +108,9 @@ struct FlawsFromThreeEightTests {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("one-track-\(UUID().uuidString).wav")
         try SilentAudio.wav(seconds: 60).write(to: file)
         defer { try? FileManager.default.removeItem(at: file) }
-        let coordinator = PlayerCoordinator(provider: OneTrackProvider(file: file))
+        let source = OneTrackProvider(file: file)
+        let coordinator = PlayerCoordinator(provider: source)
+        coordinator.route = { _ in source }
         let id = "open-lands-\(UUID().uuidString)"
         let title = LibraryItem(id: id, media: LibraryItemMedia(metadata: nil, duration: 60, chapters: nil, tracks: nil), addedAt: nil)
         await Reachability.$assumed.withValue(true) {

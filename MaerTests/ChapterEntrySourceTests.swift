@@ -255,10 +255,10 @@ struct ChapterDetailWayTests {
         func code(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
-        let chain = try #require(ABSPodcastRefreshTests.body(of: "func enqueueChain(",
+        let chain = try #require(ABSPodcastRefreshTests.body(of: "func addChapter(",
                                                              in: try code("Sources/ViewModels/PlayerCoordinator.swift")))
-        #expect(chain.contains("session.chapterDetail("), "the chain asks the source past a download")
-        #expect(!chain.contains("fetchItemDetail("), "the chain fetches its detail on its own way")
+        #expect(chain.contains("session.chapterDetail("), "adding a chapter asks the source past a download")
+        #expect(!chain.contains("fetchItemDetail("), "adding a chapter fetches its detail on its own way")
         #expect(try code("Sources/AppSession.swift").contains("try await chapterDetail($0)"),
                 "the rows of chapter entries fetch past a download")
     }
@@ -299,15 +299,15 @@ struct ChapterEntryChainRefusalTests {
         #expect(Set(sentences).count == 2, "two refusals say the same sentence")
     }
 
-    @Test("the chain's refusal reaches the person through the notice the other refusals use", .needsTheSources)
+    @Test("a chapter that cannot be added says why through the notice the other refusals use", .needsTheSources)
     func theRefusalIsSaid() throws {
         let coordinator = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerCoordinator.swift"),
                        encoding: .utf8))
-        let body = try #require(ABSPodcastRefreshTests.body(of: "func enqueueChain(", in: coordinator))
-        #expect(body.contains("ChapterEntryRules.chainRefusal("), "the chain's refusal has no sentence")
+        let body = try #require(ABSPodcastRefreshTests.body(of: "func addChapter(", in: coordinator))
+        // The detail failed, fewer than two chapters, none left to add.
         #expect(body.components(separatedBy: "sayOpenFailure(").count - 1 == 3,
-                "a refusal of the chain is not said like the other two")
+                "a refusal to add a chapter is not said like the others")
     }
 }
 #endif

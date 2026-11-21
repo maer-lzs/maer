@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Siri and Spotlight in 3.9, as decided: a whole show plays its begun
+/// Siri and Spotlight in 3.9: a whole show plays its begun
 /// episode, else its newest unheard one; a list may start shuffled; a tap
 /// on a book in Spotlight opens its page and plays nothing.
 struct SiriThreeNineTests {
@@ -33,10 +33,10 @@ struct SiriThreeNineTests {
         #expect(start(["rss:f:1": .played, "rss:f:2": .played, "rss:f:3": .played]) == nil)
     }
 
-    @Test("a list asked shuffled starts shuffled", .enabled(if: { if #available(iOS 27, *) { true } else { false } }()))
+    @Test("a list asked shuffled starts shuffled")
+    @available(iOS 27, *)
     @MainActor
     func listShuffled() async throws {
-        guard #available(iOS 27, *) else { return }
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("siri-shuffle-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

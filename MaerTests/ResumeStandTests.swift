@@ -95,7 +95,8 @@ struct ResumeStandTests {
                 "the pause's release carries the position without asking")
         #expect(text.contains("if wasPlaying { recordHaltStand() }"),
                 "a pause makes the stand its own without having played")
-        #expect(text.contains("ownStandMs = nowMs"), "the hold's stand is the device's own")
+        // The stamp past every stand this device saw (`ownStampMs`), not the bare clock.
+        #expect(text.contains("ownStandMs = stampMs"), "the hold's stand is the device's own")
     }
 
     @Test("Playing on asks the rule and not a bare distance of the positions", .needsTheSources)

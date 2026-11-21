@@ -108,6 +108,12 @@ final class PlayerCoordinator: ObservableObject {
     /// The context, reached in one place; the car reads it here too.
     var context: PlaybackContext { PlaybackContext.shared }
     private var session: AppSession { AppSession.shared }
+    /// The source an open asks for a title: the session's router. A witness
+    /// that plays a file of its own puts its source here.
+    var route: @MainActor (String) -> any AudioProvider = { AppSession.shared.provider(for: $0) }
+    /// The title an advance names for an id: the session's answer. A witness
+    /// with titles of its own names them here.
+    var known: @MainActor (String) -> LibraryItem? = { AppSession.shared.playableItem(forId: $0) }
     @Published private(set) var isLoading = false
     /// Set while the end of a title opens the next one, across the titles
     /// it skips (`advance(to:)`).
@@ -572,9 +578,9 @@ final class PlayerCoordinator: ObservableObject {
         // on nothing.
         defer { if openGate.isCurrent(generation) { isLoading = false } }
 
-        // Determine the item's source (server vs. local files). The injected
-        // `provider` is the default source, local items are routed away.
-        let itemProvider = session.provider(for: item.id)
+        // Determine the item's source (server vs. local files): the session's
+        // router (`route`), which a witness replaces with its own source.
+        let itemProvider = route(item.id)
         // 🔴 DOWNLOADED means LOCAL FIRST. Not only when
         // the monitor says "offline". The degraded case (connected but
         // unusable, one bar of LTE) ran into the network timeouts although
@@ -1105,11 +1111,11 @@ final class PlayerCoordinator: ObservableObject {
                 // A chapter entry resolves through its book and its chapter.
                 { id in
                     let bookId = ItemNamespace.bookOrSelf(id)
-                    guard session.playableItem(forId: bookId) != nil else { return false }
+                    guard self.known(bookId) != nil else { return false }
                     return ChapterEntryRules.resolves(id, bookChapters: session.bookChapters.chapters(of: bookId) ?? [],
                                                       bookPosition: session.bookChapters.position(of: bookId))
                 },
-                { session.playableItem(forId: $0) })
+                { self.known($0) })
     }
 
     /// What plays after the ACTIVE title, for the player line. Same rule,

@@ -1102,16 +1102,17 @@ struct LibraryView: View {
             // what waits or what was heard last, and opens Up Next.
             let fill = MiniBarFill.of(hasSession: false, waiting: PlayQueue.shared.shownIds,
                                       lastPlayed: AppStorageKeys.lastPlayedItemIdValue)
-            IdleMiniBar(fill: fill, title: Self.idleTitle(fill), compact: barCollapsed,
+            IdleMiniBar(fill: fill, title: idleTitle(fill), compact: barCollapsed,
                         slim: tabBarPlacement.isSide, onOpenQueue: { showQueueSheet = true })
                 .matchedGeometryEffect(id: "player", in: barNS)
         }
     }
 
-    /// The title an idle bar names, from what this device knows of it.
-    private static func idleTitle(_ fill: MiniBarFill) -> String? {
+    /// The title an idle bar names, from what this device knows of it,
+    /// through the views' one router.
+    private func idleTitle(_ fill: MiniBarFill) -> String? {
         switch fill {
-        case .waiting(let id), .lastPlayed(let id): return AppSession.shared.playableItem(forId: id)?.title
+        case .waiting(let id), .lastPlayed(let id): return router.playable(id)?.title
         case .session, .empty: return nil
         }
     }

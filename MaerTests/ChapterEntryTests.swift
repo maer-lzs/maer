@@ -139,7 +139,7 @@ struct ChapterEntryRuleTests {
         let id = ItemNamespace.chapterEntryId(bookId: book.id, startMs: 600_000)
         let row = ChapterEntryRules.carrier(entryId: id, book: book, chapters: Self.chapters, bookPosition: 0)
         #expect(row.id == id)
-        #expect(row.title == "The Middle")
+        #expect(row.title == "2. The Middle", "a name without a count of its own takes its place in front")
         #expect(row.media?.metadata?.authorName == "The Book")
         #expect(row.media?.duration == 600.5)
         let gone = ChapterEntryRules.carrier(entryId: ItemNamespace.chapterEntryId(bookId: book.id, startMs: 650_000),
@@ -365,10 +365,10 @@ struct ChapterEntryFenceTests {
             }
         }
         #expect(spelling.isEmpty, "the chapter form is spelled outside the namespace: \(spelling)")
-        // The two chapter lists build single entries; the queue builds the
-        // links of a chain (`enqueueChain`, `chapterEnded`).
-        #expect(building.sorted() == ["Sources/Providers/PlayQueue.swift", "Sources/Views/BookDetailScreen.swift",
-                                      "Sources/Views/ChapterListView.swift"],
+        // The two chapter lists and "Add Chapter" (`addChapter`) build single
+        // entries; the queue builds the links of a chain (`chapterEnded`).
+        #expect(building.sorted() == ["Sources/Providers/PlayQueue.swift", "Sources/ViewModels/PlayerCoordinator.swift",
+                                      "Sources/Views/BookDetailScreen.swift", "Sources/Views/ChapterListView.swift"],
                 "entries are built here: \(building)")
         for path in ["Sources/Views/BookDetailScreen.swift", "Sources/Views/ChapterListView.swift"] {
             let page = try Self.code(path)

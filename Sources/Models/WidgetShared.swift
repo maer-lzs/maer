@@ -525,7 +525,9 @@ nonisolated struct ContinueRows: Codable, Equatable {
         do {
             return try JSONDecoder().decode(ContinueRows.self, from: Data(contentsOf: url))
         } catch {
-            WidgetLog.logger.error("WIDGET continue rows not read: \(String(describing: type(of: error)), privacy: .public)")
+            // Domain and code: they name the failure and carry no path of the container.
+            let failure = error as NSError
+            WidgetLog.logger.error("WIDGET continue rows not read: \(failure.domain, privacy: .public) \(failure.code, privacy: .public)")
             return nil
         }
     }
