@@ -5,7 +5,9 @@
 
 import Foundation
 
-/// What a search asks of radio.
+/// What a search asks of radio: nothing while the Radio tab is off; the
+/// saved and hand-entered stations while it is on; the Radio Browser
+/// directory too only while the Radio Catalog switch is on.
 nonisolated enum RadioSearchRule {
     enum Scope: Equatable, Sendable {
         case off
@@ -13,5 +15,8 @@ nonisolated enum RadioSearchRule {
         case withCatalog
     }
 
-    static func scope(tabOn: Bool, catalogOn: Bool) -> Scope { .off }
+    static func scope(tabOn: Bool, catalogOn: Bool) -> Scope {
+        guard tabOn else { return .off }
+        return catalogOn ? .withCatalog : .ownStations
+    }
 }

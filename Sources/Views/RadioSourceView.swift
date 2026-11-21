@@ -5,14 +5,10 @@
 
 import SwiftUI
 
-/// The radio source page. The shared source pattern (Etappe E):
-/// toggle + the manual stream list (name + URL). The catalog needs no
-/// account: Radio Browser is an open, key-free community directory.
+/// The radio source page: the stations entered by hand (name + URL). The
+/// Radio Browser directory has its one switch on the radio card of the
+/// sources (`SourceMapCard`), not here.
 struct RadioSourceView: View {
-    // Registered default is TRUE (`radioEnabledValue`); a false here made
-    // a never-touched key read as off on this page while every fetch path
-    // treated it as on.
-    @AppStorage(AppStorageKeys.radioEnabled) private var enabled = true
     @State private var manualStations: [RadioStation] = []
     @State private var newName = ""
     @State private var newURL = ""
@@ -20,20 +16,6 @@ struct RadioSourceView: View {
 
     var body: some View {
         Form {
-            Section {
-                // The switch of the Radio Browser directory; the tab has its own.
-                AppSwitch("Radio Catalog", isOn: $enabled)
-                    // Locale-independent handle for the UI-test harness.
-                    .accessibilityIdentifier("radio-tab-toggle")
-                    // The toggle acts immediately, the tab bar
-                    // reacts live in both directions.
-                    .onChange(of: enabled) { _, _ in
-                        AppSession.shared.notifySourcesChanged()
-                    }
-            } footer: {
-                Text("Stations come from the open Radio Browser directory (no account) and from your own stream URLs below.")
-            }
-
             Section {
                 ForEach(manualStations) { station in
                     VStack(alignment: .leading, spacing: 2) {
@@ -78,7 +60,7 @@ struct RadioSourceView: View {
                     Text(addError).font(.footnote).foregroundStyle(.red)
                 }
             } header: {
-                Text("My Streams")
+                Text("Your Own Stations")
             } footer: {
                 Text("Direct stream URLs (e.g. from your AzuraCast or Icecast server) play like any catalog station.")
             }

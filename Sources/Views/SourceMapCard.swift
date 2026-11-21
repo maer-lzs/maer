@@ -302,7 +302,8 @@ struct SourceAreaPage: View {
     @ViewBuilder
     private var radioSection: some View {
         Section {
-            sourceToggle("Internet radio", isOn: $radioOn)
+            // The one switch of the Radio Browser directory; the tab has its own.
+            sourceToggle("Radio Catalog", isOn: $radioOn)
             NavigationLink { RadioSourceView() } label: {
                 Label("Radio", systemImage: "dot.radiowaves.left.and.right")
             }

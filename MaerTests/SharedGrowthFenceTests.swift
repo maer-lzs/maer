@@ -78,7 +78,9 @@ struct SharedGrowthFenceTests {
     /// a book's entries read (two, `ChapterChainButton`), the mini player
     /// without a title names the first waiting order (one, `LibraryView`),
     /// and the hint asks the claim this device wrote last (one, `PlayingNow`).
-    nonisolated static let stock = 372
+    /// 371: the radio page carries no switch, so it no longer tells the
+    /// session of a change (one fewer, `RadioSourceView`).
+    nonisolated static let stock = 371
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -169,7 +171,9 @@ struct SharedGrowthFenceTests {
     /// `ServerLeaving`); the car reads the context through the coordinator
     /// (one fewer). 765: the coordinator's open and advance ask the session
     /// through two seams a witness replaces (`route`, `known`), one more line.
-    nonisolated static let sourcesStock = 765
+    /// 763: the radio page above, and the search bar asks the rule of radio
+    /// search instead of the provider (one fewer, `SearchDoor`).
+    nonisolated static let sourcesStock = 763
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

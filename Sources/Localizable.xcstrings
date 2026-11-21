@@ -5479,16 +5479,6 @@
         }
       }
     },
-    "Internet radio" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Internetradio"
-          }
-        }
-      }
-    },
     "Invalid response from the server." : {
       "localizations" : {
         "de" : {
@@ -6775,16 +6765,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Meine Sender"
-          }
-        }
-      }
-    },
-    "My Streams" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meine Streams"
           }
         }
       }
@@ -11549,16 +11529,6 @@
         }
       }
     },
-    "Stations come from the open Radio Browser directory (no account) and from your own stream URLs below." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sender kommen aus dem offenen Radio-Browser-Verzeichnis (ohne Konto) und aus deinen eigenen Stream-URLs unten."
-          }
-        }
-      }
-    },
     "Statistics" : {
       "localizations" : {
         "de" : {
@@ -14806,6 +14776,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein eigener Bestand, immer sichtbar."
+          }
+        }
+      }
+    },
+    "Your Own Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eigene Radiosender"
           }
         }
       }

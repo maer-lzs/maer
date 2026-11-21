@@ -49,7 +49,10 @@ final class GlobalSearchModel: ObservableObject {
         GlobalSearchModel(
             providers: {
                 AppSession.shared.allProviders.compactMap { provider in
-                    guard provider.isAvailable else { return nil }
+                    // Radio answers with saved and own stations also while
+                    // its catalog is off (`RadioSearchRule`).
+                    let asked = provider is RadioProvider ? RadioProvider.searchScope != .off : provider.isAvailable
+                    guard asked else { return nil }
                     return provider as? any SearchableProvider
                 }
             },

@@ -128,10 +128,11 @@ enum SearchDoor {
 
     // MARK: - What a row needs to know about a hit
 
-    /// The scopes the bar may offer. Radio appears only while its source is
-    /// on, re-asked per render like every other availability question.
+    /// The scopes the bar may offer. Radio appears while the search asks it
+    /// anything (`RadioSearchRule`: the tab on, with or without the
+    /// catalog), re-asked per render like every other availability question.
     static func visibleScopes() -> [SearchScope] {
-        SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
+        SearchScope.allCases.filter { $0 != .radio || RadioProvider.searchScope != .off }
     }
 
     /// Whether a show is mirrored on a podcast server, for the origin capsule.

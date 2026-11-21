@@ -130,17 +130,22 @@ final class RadioProvider: AudioProvider {
             duration: nil, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    /// Catalog search. Live over Radio Browser; offline, favorites and
-    /// manual stations filter locally (offline-first like every provider).
-    /// A failed catalog search is not "no stations": with no local hit it
-    /// throws, so the search counts the source as failed; beside local hits
-    /// it is logged and the local hits stand.
-    func searchStations(query: String, scope: RadioSearchRule.Scope) async throws -> [RadioStation] { [] }
+    /// What a search asks of radio now (`RadioSearchRule`): the Radio tab
+    /// and the Radio Catalog switch.
+    static var searchScope: RadioSearchRule.Scope {
+        RadioSearchRule.scope(tabOn: AppStorageKeys.radioTabEnabledValue, catalogOn: AppStorageKeys.radioActive)
+    }
 
-    func searchStations(query: String) async throws -> [RadioStation] {
+    /// Station search. Favorites and stations entered by hand filter
+    /// locally, always; Radio Browser is asked only in `.withCatalog` and
+    /// online. A failed catalog search is not "no stations": with no local
+    /// hit it throws, so the search counts the source as failed; beside
+    /// local hits it is logged and the local hits stand.
+    func searchStations(query: String, scope: RadioSearchRule.Scope) async throws -> [RadioStation] {
+        guard scope != .off else { return [] }
         let local = (RadioStore.favorites() + RadioStore.manualStations())
             .filter { $0.name.localizedCaseInsensitiveContains(query) }
-        guard await Reachability.isConnected() else { return local }
+        guard scope == .withCatalog, await Reachability.isConnected() else { return local }
         let answer = await FetchAnswer.of("radio search", logger: .library) {
             try await RadioBrowserClient.search(name: query)
         }
@@ -162,7 +167,7 @@ extension RadioProvider: SearchableProvider {
                 .map { SearchResult(id: $0.id, kind: .radioStation, title: $0.name) }
         }
         #endif
-        return try await searchStations(query: query).map { station in
+        return try await searchStations(query: query, scope: Self.searchScope).map { station in
             SearchResult(id: station.id, kind: .radioStation, title: station.name,
                          subtitle: station.tags.first,
                          coverURL: station.faviconURL.flatMap { URL(string: $0) })

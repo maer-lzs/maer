@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-**Radio Catalog.** The switch on the radio source page is now called Radio
-Catalog, for the station directory it turns on and off. Whether the Radio
-tab shows is its own setting, as before.
+**Radio Catalog.** The station directory has one switch, Radio Catalog, on
+the Radio card of your sources; the radio page keeps only Your Own
+Stations. With the catalog off, search still finds your saved and your own
+stations. Whether the Radio tab shows is its own setting, as before.
 
 **Catalog audiobooks offline.** Audiobooks from the free catalogs can be
 saved for offline listening where their source allows a copy: LibriVox
