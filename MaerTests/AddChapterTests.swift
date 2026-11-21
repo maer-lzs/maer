@@ -126,6 +126,9 @@ struct AddChapterTests {
         }
         let button = try code("Sources/Views/ChapterChainButton.swift")
         #expect(button.contains("@ObservedObject"), "the menu does not rebuild when a chapter is added or learned")
+        // A menu shows a subtitle only from the button's own label: inside a
+        // Label it showed the first line alone (measured in the simulator).
+        #expect(!button.contains("Label {"), "the chapter's line does not reach the menu")
         #expect(button.contains("AddChapterRule.next(") && button.contains("AddChapterRule.shown("))
         #expect(button.contains("addChapter("))
         #expect(!button.contains("enqueueChain("), "the chain to the book's end is gone from the menu")
