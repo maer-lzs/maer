@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Siri plays whole shows and shuffles lists.** Ask Siri for a show and it
+plays the episode you began, or else the newest one you have not heard.
+A playlist asked for shuffled now starts shuffled. Tapping an audiobook in
+Spotlight opens its page without starting playback.
+
 **A paused download stays with its server.** Signing in to another server
 ends the downloads that were paused or running for the one you left, so
 none of them continues against the new server.

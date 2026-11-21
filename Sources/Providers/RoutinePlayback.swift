@@ -224,10 +224,11 @@ enum RoutinePlayback {
     /// leaves the episodes this device holds. Then the first item opens and
     /// the rest becomes the context. Answers whether anything was handed to
     /// playback: a button is disabled when nothing would play, a shortcut
-    /// has no button and says so instead.
+    /// has no button and says so instead. `shuffled`: Siri asked the list
+    /// shuffled; the order is mixed as the shuffle of a list's page mixes it.
     @discardableResult
     static func start(_ list: MaerPlaylists.Playlist, in store: MaerPlaylists,
-                      on coordinator: PlayerCoordinator) async -> Bool {
+                      on coordinator: PlayerCoordinator, shuffled: Bool = false) async -> Bool {
         let online = await Reachability.isConnected()
         let fresh = online ? await refreshed(list.itemIds.compactMap(RoutineRule.init(id:))) : [:]
         await DownloadManager.shared.ensureScanned()
@@ -236,8 +237,8 @@ enum RoutinePlayback {
             logAbsence(rule, said)
             return said.items
         }
-        await coordinator.playInOrder(items: start.items, contextSource: list.name,
-                                      resuming: start.fromRule)
+        shuffled ? await coordinator.shufflePlay(items: start.items, contextSource: list.name, resuming: start.fromRule)
+            : await coordinator.playInOrder(items: start.items, contextSource: list.name, resuming: start.fromRule)
         return !start.items.isEmpty
     }
 

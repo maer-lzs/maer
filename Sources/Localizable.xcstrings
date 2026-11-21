@@ -8374,6 +8374,16 @@
         }
       }
     },
+    "Open Audiobook" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch öffnen"
+          }
+        }
+      }
+    },
     "Open Account, then Export Your Data." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13392,6 +13402,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Fach konnte nicht geladen werden. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
+    "This show has nothing to play right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendung hat gerade nichts zum Abspielen."
           }
         }
       }

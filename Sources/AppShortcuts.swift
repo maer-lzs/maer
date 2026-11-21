@@ -293,7 +293,16 @@ nonisolated struct EpisodeOffer: Equatable, Sendable {
     /// Whether a show has an episode on offer.
     static func hasOffer(_ show: PodcastShow) -> Bool { show.episodes.contains(where: isOffered) }
 
-    static func showStart(_ show: PodcastShow, state: (PodcastEpisode) -> EpisodePlayState) -> String? { nil }
+    /// What Siri starts for a whole show: the episode on offer that is
+    /// begun (the newest begun, when there are several), else the newest
+    /// one not heard; nil when every one is heard.
+    static func showStart(_ show: PodcastShow, state: (PodcastEpisode) -> EpisodePlayState) -> String? {
+        let offered = show.episodes.filter(isOffered).sorted { $0.pubDate > $1.pubDate }
+        if let begun = offered.first(where: { if case .inProgress = state($0) { true } else { false } }) {
+            return begun.guid
+        }
+        return offered.first { if case .played = state($0) { false } else { true } }?.guid
+    }
 
     /// What Siri gets for an ask: the episodes it finds, the newest first,
     /// at most `limit`. Every episode of every show is asked; only the answer
@@ -536,23 +545,27 @@ struct PlaylistQuery: EntityStringQuery {
 nonisolated enum AudioStart: Equatable, Sendable {
     case item(String)
     case list(String)
+    /// A whole show: its begun episode, else its newest unheard one
+    /// (`EpisodeOffer.showStart`).
+    case show(String)
 }
 
 /// The kinds Siri may ask this app to play; each kind joins with its slice.
-/// A show is not one yet: what playing a whole show starts is open.
 @available(iOS 27, *)
 @UnionValue
 enum PlayableAudio {
     case audiobook(AudiobookEntity)
     case episode(PodcastEpisodeEntity)
+    case show(PodcastShowEntity)
     case station(RadioStationEntity)
     case playlist(PlaylistEntity)
 
-    /// What the intent starts: a title by its id of the app, or a list.
+    /// What the intent starts: a title by its id of the app, a list, or a show.
     var start: AudioStart {
         switch self {
         case .audiobook(let book): .item(book.itemId)
         case .episode(let episode): .item(episode.id)
+        case .show(let show): .show(show.id)
         case .station(let station): .item(station.id)
         case .playlist(let list): .list(list.id)
         }
@@ -586,8 +599,8 @@ enum PlaylistStart {
     }
 
     /// The list's start; a witness stands in for the app's.
-    static var start: @MainActor (MaerPlaylists.Playlist, Bool) async -> Bool = { list, _ in
-        await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)
+    static var start: @MainActor (MaerPlaylists.Playlist, Bool) async -> Bool = { list, shuffled in
+        await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator, shuffled: shuffled)
     }
 
     /// The app's way to say a sentence once it is in front.
@@ -601,7 +614,7 @@ enum PlaylistStart {
                     bringsAppToFront: @MainActor () async throws -> Bool) async throws {
         let request = RoutinePlayback.request(listId, in: store.playlists, complete: !store.startIncomplete)
         var started = false
-        if case .start(let list) = request { started = await start(list, false) }
+        if case .start(let list) = request { started = await start(list, shuffled) }
         Logger.library.notice("SIRI list start=\(started) found=\(request != .missing && request != .wait)")
         guard let sentence = sentence(for: request, started: started) else { return }
         guard try await bringsAppToFront() else {
@@ -628,8 +641,12 @@ struct PlayableAudioSearch: IntentValueQuery {
         let episodes = await PodcastEpisodeQuery.answer(for: ask, lastPlayedId: lastPlayed)
         let stations = AudioAsk.stations(for: ask, in: RadioStationQuery.stations(), lastPlayedId: lastPlayed)
         let lists = AudioAsk.lists(for: ask, in: await PlaylistQuery.lists().playlists)
-        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count) stations=\(stations.count) lists=\(lists.count)")
+        // A show is found by its name; nothing named continues a title, never a show.
+        let shows = AudioAsk.found(for: ask, in: await PodcastShowQuery.shows(), itemId: \.id,
+                                   fields: { [$0.title] }, lastPlayedId: nil)
+        Logger.library.notice("SIRI audio search ask=\(ask.kind, privacy: .public) books=\(books.count) episodes=\(episodes.count) shows=\(shows.count) stations=\(stations.count) lists=\(lists.count)")
         return books.map { .audiobook(AudiobookEntity($0)) } + episodes.map { .episode(PodcastEpisodeEntity($0)) }
+            + shows.map { .show($0) }
             + stations.map { .station(RadioStationEntity($0)) } + lists.map { .playlist(PlaylistEntity($0)) }
     }
 }
@@ -680,7 +697,8 @@ struct PlayAudioIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         if !playbackAttributes.isEmpty || queueLocation != nil {
-            // A book plays from where it stands and now; the wish is noted, not followed.
+            // A title plays from where it stands and now; only a list follows
+            // the shuffle (below), every other wish is noted, not followed.
             Logger.library.notice("SIRI play attributes=\(playbackAttributes.map(\.rawValue).sorted(), privacy: .public) queue=\(queueLocation?.rawValue ?? "none", privacy: .public) not followed")
         }
         switch audioEntity.start {
@@ -690,7 +708,21 @@ struct PlayAudioIntent: AppIntent {
                 return true
             }
         case .list(let listId):
-            try await PlaylistStart.run(listId: listId, in: PlaylistQuery.lists()) {
+            try await PlaylistStart.run(listId: listId, shuffled: playbackAttributes.contains(.shuffle), in: PlaylistQuery.lists()) {
+                try await continueInForeground(nil, alwaysConfirm: false)
+                return true
+            }
+        case .show(let showId):
+            let show = PodcastShowSources.active().first { $0.id == showId }
+            let store = PodcastProgressStore.shared
+            guard let pick = show.flatMap({ EpisodeOffer.showStart($0) { store.state(guid: $0.guid, duration: $0.duration) } }) else {
+                Logger.library.notice("SIRI show starts nothing found=\(show != nil)")
+                try await continueInForeground(nil, alwaysConfirm: false)
+                AppSession.shared.playerCoordinator.sayOpenFailure(
+                    String(localized: "This show has nothing to play right now."), cause: .nothingYet, title: nil)
+                return .result()
+            }
+            try await ResumeListeningIntent.run(itemId: pick) {
                 try await continueInForeground(nil, alwaysConfirm: false)
                 return true
             }
@@ -929,6 +961,23 @@ enum SpotlightIndex {
         } catch {
             Logger.library.error("SPOTLIGHT books not removed: \(FailureReason.of(error), privacy: .public)")
         }
+    }
+}
+
+/// A tap on a book in Spotlight: the app opens the book's page and plays
+/// nothing (`BookPageRequest`). Spotlight asks an entity's open intent.
+@available(iOS 27, *)
+struct OpenAudiobookIntent: OpenIntent {
+    static let title: LocalizedStringResource = "Open Audiobook"
+
+    @Parameter(title: "Book")
+    var target: AudiobookEntity
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        Logger.library.notice("SPOTLIGHT opens a book's page")
+        BookPageRequest.ask(target.itemId)
+        return .result()
     }
 }
 

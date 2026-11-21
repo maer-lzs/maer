@@ -437,7 +437,7 @@ struct ShortcutBooksTests {
         let shortcuts = try FetchAnswerTests.squeezedSource("Sources/AppShortcuts.swift")
         #expect(shortcuts.contains("switch audioEntity.start { case .item(let itemId): try await ResumeListeningIntent.run(itemId: itemId)"),
                 "Siri's title does not go through the door")
-        #expect(shortcuts.contains("case .list(let listId): try await PlaylistStart.run(listId: listId, in: PlaylistQuery.lists())"),
+        #expect(shortcuts.contains("case .list(let listId): try await PlaylistStart.run(listId: listId, shuffled: playbackAttributes.contains(.shuffle), in: PlaylistQuery.lists())"),
                 "Siri's list does not go through the start of lists")
         #expect(shortcuts.contains("await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)"),
                 "the start of a list is a way of its own")

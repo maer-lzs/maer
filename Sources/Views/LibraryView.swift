@@ -840,6 +840,10 @@ struct LibraryView: View {
             // Fires when the app was ALREADY running (no scene-phase change).
             Task { await handlePendingResumeRequest() }
         }
+        // A book's page asked from Spotlight: on a running root at once, on
+        // a starting one when it appears.
+        .onReceive(NotificationCenter.default.publisher(for: BookPageRequest.asked)) { _ in openAskedBookPage() }
+        .onAppear { openAskedBookPage() }
         // A routine request that waits for rows the start read missed goes
         // on when the lists arrive; the root reads the lists only here.
         .onReceive(routineLists.$playlists.dropFirst()) { _ in
@@ -1861,6 +1865,14 @@ struct LibraryView: View {
     /// root listens to them, to start a routine request that waited for
     /// them; the root draws nothing from them.
     private var routineLists: MaerPlaylists { .shared }
+
+    /// Opens the page of a book asked from Spotlight on the audiobooks tab,
+    /// once; nothing plays.
+    private func openAskedBookPage() {
+        guard let itemId = BookPageRequest.take() else { return }
+        selectedMediaType = .audiobooks
+        push(itemId, to: .audiobooks)
+    }
 
     private func routineRequestFailed(_ sentence: String) {
         Haptics.tap()
