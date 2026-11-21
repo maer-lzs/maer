@@ -346,7 +346,7 @@ struct ShortcutBooksTests {
         var said: [String] = []
         var fronts = 0
         var startsSomething = true
-        PlaylistStart.start = { list in
+        PlaylistStart.start = { list, _ in
             started.append(list.id)
             return startsSomething
         }

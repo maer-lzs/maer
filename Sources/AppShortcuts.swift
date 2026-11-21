@@ -293,6 +293,8 @@ nonisolated struct EpisodeOffer: Equatable, Sendable {
     /// Whether a show has an episode on offer.
     static func hasOffer(_ show: PodcastShow) -> Bool { show.episodes.contains(where: isOffered) }
 
+    static func showStart(_ show: PodcastShow, state: (PodcastEpisode) -> EpisodePlayState) -> String? { nil }
+
     /// What Siri gets for an ask: the episodes it finds, the newest first,
     /// at most `limit`. Every episode of every show is asked; only the answer
     /// is bounded, so it stays a handful of entities however long the
@@ -584,7 +586,7 @@ enum PlaylistStart {
     }
 
     /// The list's start; a witness stands in for the app's.
-    static var start: @MainActor (MaerPlaylists.Playlist) async -> Bool = { list in
+    static var start: @MainActor (MaerPlaylists.Playlist, Bool) async -> Bool = { list, _ in
         await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)
     }
 
@@ -595,11 +597,11 @@ enum PlaylistStart {
 
     /// Starts the list `listId` among `store`'s lists. A list the start read
     /// has not reached yet is not here for Siri: there is no view to wait in.
-    static func run(listId: String, in store: MaerPlaylists,
+    static func run(listId: String, shuffled: Bool = false, in store: MaerPlaylists,
                     bringsAppToFront: @MainActor () async throws -> Bool) async throws {
         let request = RoutinePlayback.request(listId, in: store.playlists, complete: !store.startIncomplete)
         var started = false
-        if case .start(let list) = request { started = await start(list) }
+        if case .start(let list) = request { started = await start(list, false) }
         Logger.library.notice("SIRI list start=\(started) found=\(request != .missing && request != .wait)")
         guard let sentence = sentence(for: request, started: started) else { return }
         guard try await bringsAppToFront() else {
