@@ -837,10 +837,18 @@ enum SpotlightIndex {
 
     /// The index of one kind as the app uses it; a witness stands in for
     /// the system.
-    struct Index<Entity> {
-        var removeAll: @MainActor () async throws -> Void
-        var add: @MainActor ([Entity]) async throws -> Void
+    struct Index<Entity>: Sendable {
+        var removeAll: @MainActor @Sendable () async throws -> Void
+        var add: @MainActor @Sendable ([Entity]) async throws -> Void
     }
+
+    /// The books' index of one task and every task it starts, ahead of
+    /// `index`: a witness binds its own here, and a sign-in running beside
+    /// it in another task never reaches it. Nil in the app.
+    @TaskLocal static var taskIndex: Index<AudiobookEntity>?
+
+    /// The index the books go to: the task's own, else the process's.
+    private static var bookIndex: Index<AudiobookEntity> { taskIndex ?? index }
 
     static var index = Index<AudiobookEntity>(
         removeAll: { try await CSSearchableIndex.default().deleteAppEntities(ofType: AudiobookEntity.self) },
@@ -909,7 +917,7 @@ enum SpotlightIndex {
                 return
             }
             let offer = await books().map(AudiobookEntity.init)
-            indexed = await replace(offer, in: index, indexed: indexed, kind: "books")
+            indexed = await replace(offer, in: bookIndex, indexed: indexed, kind: "books")
         }
     }
 
@@ -961,7 +969,7 @@ enum SpotlightIndex {
     private static func removeBooks() async {
         indexed = nil
         do {
-            try await index.removeAll()
+            try await bookIndex.removeAll()
             indexed = []
             Logger.library.notice("SPOTLIGHT books removed")
         } catch {

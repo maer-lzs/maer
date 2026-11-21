@@ -25,7 +25,7 @@ final class SpotlightRecorder {
 
     /// The index of one kind; `name` gives what a call writes for an entity.
     @available(iOS 27, *)
-    func index<Entity>(naming name: @escaping (Entity) -> String) -> SpotlightIndex.Index<Entity> {
+    func index<Entity>(naming name: @escaping @Sendable (Entity) -> String) -> SpotlightIndex.Index<Entity> {
         SpotlightIndex.Index(
             removeAll: {
                 self.calls.append("remove")

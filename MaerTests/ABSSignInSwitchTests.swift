@@ -73,6 +73,17 @@ struct ABSSignInSwitchTests {
         #expect(after > before, "the sign-in reached another index: \(stand.search.calls)")
     }
 
+    /// The index bound to a task is a witness's alone: no source of the app
+    /// binds it, so in the app the books go to the process's index.
+    @Test("Fence: no source of the app binds the task's index of the search", .needsTheSources)
+    func noSourceBindsTheTaskIndex() throws {
+        let binders = try SourceTree.files(under: SourceTree.root.appendingPathComponent("Sources"))
+            .filter { $0.pathExtension == "swift" }
+            .filter { try SourceTree.text($0).contains("$taskIndex") }
+            .map(SourceTree.relativePath(of:))
+        #expect(binders.isEmpty, "\(binders)")
+    }
+
     /// The loopback speaks plain HTTP. A TLS greeting is closed at once, so
     /// an ask over https fails in a moment instead of at the limit of the
     /// request (three times twenty seconds with its retries).
@@ -166,12 +177,14 @@ struct ABSSignInSwitchTests {
     /// the widget, its rows and its snapshot, and from iOS 27 its books in
     /// the device's search, as a sign out does; a sign-in again to the same
     /// server keeps them. The widget's files and the index are put back
-    /// after the witness.
+    /// after the witness. The sign-in forgets into a recorder bound to its
+    /// own task: the stand's recorder is the process's, and sign-ins of
+    /// other suites reach it too, so it cannot witness "no removal".
     @Test("a sign-in to another server forgets the titles of the widget and the books of the search, a repeated one to the same server does not")
     func aSignInToAnotherServerForgetsTheWidgetsTitles() async throws {
         let stand = Stand()
         defer { stand.restore() }
-        let recorder = stand.search
+        let recorder = SpotlightRecorder()
         let snapshotURL = try #require(WidgetSnapshot.snapshotURL)
         let rowsURL = try #require(ContinueRows.url)
         let keptSnapshot = try? Data(contentsOf: snapshotURL)
@@ -204,7 +217,11 @@ struct ABSSignInSwitchTests {
             // A sign-in of a suite running beside this one, outside this
             // case's task: it forgets into the process's index meanwhile.
             if #available(iOS 27, *) { await Task.detached { @MainActor in SpotlightIndex.forgetInLine() }.value }
-            await auth.connect()
+            if #available(iOS 27, *) {
+                await SpotlightIndex.$taskIndex.withValue(recorder.index()) { await auth.connect() }
+            } else {
+                await auth.connect()
+            }
             #expect(auth.errorMessage == nil, "\(stored): \(String(describing: auth.errorMessage)) \(server.diagnosis)")
             #expect((WidgetSnapshot.load() == nil) == forgets, "\(stored): the title of the former server")
             #expect(AppStorageKeys.string(AppStorageKeys.absSignedInUser) == "user-b", "the signed-in user is not noted")
