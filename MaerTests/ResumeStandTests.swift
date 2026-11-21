@@ -218,9 +218,11 @@ struct ResumeStandTests {
 
     /// The device plays to `position` and pauses; returns once the pause is written.
     private static func playAndPause(_ model: PlayerViewModel, to position: Double, _ server: SharedServer) async throws {
+        // The player itself jumps: a time set past it is written back by its
+        // next tick, which under load came after the pause (seen on 18.6).
+        await model.seek(to: position, userInitiated: false)
         let before = server.writes
         model.isPlaying = true
-        model.currentTime = position
         model.pause()
         for _ in 0..<100 where server.writes == before { try await Task.sleep(nanoseconds: 50_000_000) }
         #expect(server.writes == before + 1, "the precondition: the pause wrote its stand")
