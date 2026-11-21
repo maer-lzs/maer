@@ -1211,11 +1211,45 @@ o4="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/heads/dev 2>&1)"; r4=$
 o5="$(bash scripts/lauf.sh aufraeumen belegt 2>&1)"; r5=$?
 o6="$(bash scripts/lauf.sh aufraeumen fertig 2>&1)"; r6=$?
 git worktree remove --force "$WORK/wt-belegt"
-if [ $r0 -ne 0 ] && echo "$list" | grep -qx "lauf: geht: fertig" && ! echo "$list" | grep -q "geht: offen" \
+if [ $r0 -ne 0 ] && echo "$list" | grep -qx "lauf: geht: fertig (ohne eigenen Commit, steht auf dev)" && ! echo "$list" | grep -q "geht: offen" \
     && ! echo "$list" | grep -q "geht: belegt" && ! echo "$list" | grep -qE "geht: (dev|main)$" \
     && [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ $r3 -ne 0 ] && [ $r4 -ne 0 ] && [ $r5 -ne 0 ] && [ $r6 -eq 0 ] \
     && on offen && on dev && on main && on belegt && ! on fertig; then
     ok "82 aufraeumen deletes only a branch that lies in dev"; else fail "82 aufraeumen deletes only a branch that lies in dev" "r=$r0$r1$r2$r3$r4$r5$r6 list=$list / $o1 / $o2 / $o3 / $o4 / $o5 / $o6"; fi
+
+# 83. The list of aufraeumen tells a branch dev has gone past from one that
+# stands on dev without a commit of its own, which may be a branch begun a
+# moment ago: the first plain, the second marked. Both go only by name.
+clear_stub
+git fetch -q origin
+devsha="$(git rev-parse origin/dev)"
+git -c core.hooksPath=/dev/null push -q origin "$devsha~1:refs/heads/vorbei" "$devsha:refs/heads/frisch" 2>/dev/null
+git fetch -q origin
+list="$(bash scripts/lauf.sh aufraeumen 2>&1)"
+git -c core.hooksPath=/dev/null push -q origin :refs/heads/vorbei :refs/heads/frisch 2>/dev/null
+if echo "$list" | grep -qx "lauf: geht: vorbei" \
+    && echo "$list" | grep -qx "lauf: geht: frisch (ohne eigenen Commit, steht auf dev)"; then
+    ok "83 aufraeumen marks a branch without a commit of its own"; else fail "83 aufraeumen marks a branch without a commit of its own" "$list"; fi
+
+# 84. With the switch of aufraeumen the hook still refuses to delete a tag,
+# the notes and main, and a branch the server does not have is named as
+# such, not as one holding commits dev does not hold.
+clear_stub
+git fetch -q origin
+devsha="$(git rev-parse origin/dev)"
+git -c core.hooksPath=/dev/null push -q origin "$devsha:refs/tags/haken-probe" "$devsha:refs/notes/haken-probe" 2>/dev/null
+o1="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/tags/haken-probe 2>&1)"; r1=$?
+o2="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/notes/haken-probe 2>&1)"; r2=$?
+o3="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/heads/main 2>&1)"; r3=$?
+o4="$(LAUF_PUSH=1 LAUF_AUFRAEUMEN=1 git push origin :refs/heads/nirgends 2>&1)"; r4=$?
+tag_on="$(git ls-remote origin refs/tags/haken-probe)"
+notes_on="$(git ls-remote origin refs/notes/haken-probe)"
+git -c core.hooksPath=/dev/null push -q origin :refs/tags/haken-probe :refs/notes/haken-probe 2>/dev/null
+if [ $r1 -ne 0 ] && [ $r2 -ne 0 ] && [ $r3 -ne 0 ] && [ $r4 -ne 0 ] \
+    && echo "$o1" | grep -q "kein Loeschen: refs/tags/haken-probe" && echo "$o2" | grep -q "kein Loeschen: refs/notes/haken-probe" \
+    && echo "$o3" | grep -q "kein Loeschen: refs/heads/main" && echo "$o4" | grep -q "nirgends steht nicht am Server" \
+    && [ -n "$tag_on" ] && [ -n "$notes_on" ] && on main; then
+    ok "84 the switch of aufraeumen deletes no tag, no notes, no main"; else fail "84 the switch of aufraeumen deletes no tag, no notes, no main" "r=$r1$r2$r3$r4 / $o1 / $o2 / $o3 / $o4"; fi
 
 echo "failures: $failures"
 [ "$failures" -eq 0 ]
