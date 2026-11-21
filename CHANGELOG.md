@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**No hint about this device's own playback.** After leaving the app
+while it played, the mini player could name this very device as another
+one for up to a minute and a half. Unsubscribing a show now also clears
+its download settings on this device.
+
 **Servers at home when local network access is off.** If iOS keeps Mär
 from your local network, connecting to a server at home now says so and
 offers a button to the app's settings, where Local Network can be turned
