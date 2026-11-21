@@ -107,6 +107,8 @@ final class PlayerCoordinator: ObservableObject {
     /// Set while the end of a title opens the next one, across the titles
     /// it skips (`advance(to:)`).
     @Published private(set) var isAdvancing = false
+    private(set) var unstartable: Set<String> = []
+    func networkChanged() {}
     /// A title is on its way: what shows a session holds the one it showed.
     var isChangingTitle: Bool { isLoading || isAdvancing }
     /// The titles in a row the advance skips when they do not start.

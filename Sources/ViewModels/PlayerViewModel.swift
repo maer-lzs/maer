@@ -75,6 +75,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Every start of playback, from any way (button, lock screen, AirPods,
     /// CarPlay, Siri): the channel lets a stopping error fall on it.
     let playbackStarts = PassthroughSubject<Void, Never>()
+    let firstProgress = PassthroughSubject<String, Never>()
+    let failedBeforeProgress = PassthroughSubject<String, Never>()
     /// The player waits to play because the stream does not deliver, not
     /// because it is paused: mid-play when it stopped, and at the start while
     /// the first bytes come (measured, the same reason both times). A state
