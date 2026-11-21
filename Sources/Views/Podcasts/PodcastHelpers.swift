@@ -102,7 +102,8 @@ extension View {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }
             } else if NetworkMonitor.shared.isConnected,
-                      MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
+                      MediaDownloadOffer.isPossible(router.provider(item.id).capabilities,
+                                                    mayKeep: router.provider(item.id).mayKeep(itemId: item.id)) {
                 // Offline a download can't start. Hide the entry.
                 Button {
                     Task { await DownloadManager.shared.startDownload(itemId: item.id, kind: .podcasts) }

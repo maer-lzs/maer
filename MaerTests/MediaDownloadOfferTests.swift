@@ -36,7 +36,11 @@ struct MediaDownloadOfferTests {
     func therealProvidersAnswerAsExpected() {
         #expect(!MediaDownloadOffer.isPossible(LocalProvider.shared.capabilities),
                 "eine importierte Datei darf kein Download-Angebot bekommen")
-        #expect(!MediaDownloadOffer.isPossible(FreeCatalogProvider.shared.capabilities))
+        // The catalog downloads title by title; its rights answer per title
+        // (`CatalogOfflineTests`).
+        #expect(MediaDownloadOffer.isPossible(FreeCatalogProvider.shared.capabilities))
+        #expect(!MediaDownloadOffer.isPossible(FreeCatalogProvider.shared.capabilities,
+                                               mayKeep: FreeCatalogProvider.shared.mayKeep(itemId: "jam:1")))
         #expect(!MediaDownloadOffer.isPossible(RadioProvider.shared.capabilities))
         #expect(MediaDownloadOffer.isPossible(RSSProvider.shared.capabilities))
         #expect(MediaDownloadOffer.isPossible(SubsonicProvider.shared.capabilities))

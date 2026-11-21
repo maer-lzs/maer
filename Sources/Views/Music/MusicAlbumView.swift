@@ -571,7 +571,7 @@ private struct AlbumDownloadMenuItems: View {
                 downloadManager.cancelDownload(itemId: itemId)
             } label: { Label("Cancel Download", systemImage: "xmark.circle") }
         } else if let detail, let provider, isOnline,
-                  MediaDownloadOffer.isPossible(provider.capabilities) {
+                  MediaDownloadOffer.isPossible(provider.capabilities, mayKeep: provider.mayKeep(itemId: detail.id)) {
             Button {
                 Task { await downloadManager.download(item: detail, provider: provider, kind: .music) }
             } label: { Label("Download Album", systemImage: "arrow.down.circle") }

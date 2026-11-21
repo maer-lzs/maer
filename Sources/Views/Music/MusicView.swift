@@ -768,7 +768,8 @@ struct MusicDownloadMenuItems: View {
                 downloads.deleteDownload(itemId: itemId)
             } label: { Label("Delete Download", systemImage: "trash") }
         } else if isOnline,
-                  MediaDownloadOffer.isPossible(router.provider(itemId).capabilities) {
+                  MediaDownloadOffer.isPossible(router.provider(itemId).capabilities,
+                                                mayKeep: router.provider(itemId).mayKeep(itemId: itemId)) {
             Button {
                 Task { await downloads.startDownload(itemId: itemId, kind: .music) }
             } label: { Label("Download", systemImage: "arrow.down.circle") }

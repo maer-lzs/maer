@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Catalog audiobooks offline.** Audiobooks from the free catalogs can be
+saved for offline listening where their source allows a copy: LibriVox
+recordings, Project Gutenberg readings marked public domain, and Internet
+Archive items with a stated licence. Jamendo music stays streaming only.
+
 **Jellyfin with Quick Connect.** When your Jellyfin server offers Quick
 Connect, its source page shows Sign in with Quick Connect. Mär shows a
 code; enter it in Jellyfin where you are already signed in, and Mär signs

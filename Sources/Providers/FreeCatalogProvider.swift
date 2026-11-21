@@ -59,9 +59,17 @@ final class FreeCatalogProvider: AudioProvider {
     var providerId: String { "freecatalog" }
     var mediaTypes: Set<MediaType> { [.audiobooks] }
     var keepsMarksOnDevice: Bool { true }
-    var capabilities: ProviderCapabilities { [] }
+    /// It downloads title by title: `mayKeep(itemId:)` asks the rights.
+    var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
-    func mayKeep(itemId: String) -> Bool { false }
+    func mayKeep(itemId: String) -> Bool {
+        FreeCatalog.mayKeepOffline(itemId: itemId, statedLicence: statedLicence.contains(itemId),
+                                   gutenbergPublicDomain: gutenbergPublicDomain.contains(itemId))
+    }
+    /// The archive.org items whose record states a licence, as seen this run.
+    private var statedLicence: Set<String> = []
+    /// The Gutenberg readings whose record says public domain, as read this run.
+    private var gutenbergPublicDomain: Set<String> = []
     /// Deliberately false. Discover-only surface, never a tab/search source.
     var isAvailable: Bool { false }
 
@@ -258,6 +266,7 @@ final class FreeCatalogProvider: AudioProvider {
         }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
+        if FreeCatalog.mayDownload(licenceURL: doc.licenseurl) { statedLicence.insert(id) }
         // A recording whose US term has run out is public domain by LAW,
         // not by uploader claim; the year is the recording year the index
         // states. Computed from the current year, so the boundary moves by
@@ -760,6 +769,7 @@ final class FreeCatalogProvider: AudioProvider {
         let tracks = try work.tracks()
         // The rights line comes from the record, verbatim reading.
         licences[itemId] = FreeCatalog.gutenbergRightsLabel(work.rights)
+        if FreeCatalog.gutenbergIsPublicDomain(work.rights) { gutenbergPublicDomain.insert(itemId) }
         let detail = LibraryItemDetail(
             id: itemId,
             media: LibraryItemMedia(

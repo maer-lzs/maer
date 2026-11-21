@@ -429,7 +429,8 @@ struct PodcastEpisodeRow: View {
                 } label: {
                     Label("Delete Download", systemImage: "trash")
                 }
-            } else if MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
+            } else if MediaDownloadOffer.isPossible(router.provider(item.id).capabilities,
+                                                    mayKeep: router.provider(item.id).mayKeep(itemId: item.id)) {
                 Button {
                     Task { await DownloadManager.shared.startDownload(itemId: item.id, kind: .podcasts) }
                 } label: {

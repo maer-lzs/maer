@@ -409,9 +409,23 @@ nonisolated enum FreeCatalog {
         return !licenceURL.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    static func mayKeepOffline(itemId: String, statedLicence: Bool, gutenbergPublicDomain: Bool) -> Bool { false }
+    /// May a catalog title be kept on the device? Per source: a LibriVox
+    /// recording is public domain in the USA by the project's rule; a
+    /// Gutenberg reading only when its record says public domain; an
+    /// archive.org item only with a stated licence (`mayDownload`), never
+    /// for a year that only makes a label; a Jamendo track never (its terms
+    /// allow streaming, not a copy). Any other id is not a catalog title.
+    static func mayKeepOffline(itemId: String, statedLicence: Bool, gutenbergPublicDomain: Bool) -> Bool {
+        if itemId.hasPrefix(librivoxPrefix) { return true }
+        if itemId.hasPrefix(gutenbergPrefix) { return gutenbergPublicDomain }
+        if itemId.hasPrefix(archivePrefix) { return statedLicence }
+        return false
+    }
 
-    static func gutenbergIsPublicDomain(_ rights: String?) -> Bool { false }
+    /// Whether a Gutenberg record's `dcterms:rights` says public domain.
+    static func gutenbergIsPublicDomain(_ rights: String?) -> Bool {
+        rights?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().hasPrefix("public domain") == true
+    }
 
     /// What the tile carries when the source states nothing. NEVER nothing
     /// at all. A missing statement is information rather than a gap, and it

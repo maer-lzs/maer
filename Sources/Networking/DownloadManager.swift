@@ -1006,6 +1006,12 @@ final class DownloadManager {
     /// kind and falls only with its own delete or with deleting everything.
     func download(item: LibraryItemDetail, provider: any AudioProvider, kind: DownloadKind?) async {
         guard !isDownloading(itemId: item.id) else { return }
+        // The offer asks the same question; a way past it (a self-heal, an
+        // automatism) still takes no copy the source's rights do not allow.
+        guard provider.mayKeep(itemId: item.id) else {
+            Logger.library.notice("DOWNLOAD not taken, the source may not keep this title: \(item.id, privacy: .public)")
+            return
+        }
         if let kind, kinds[item.id] != kind {
             kinds[item.id] = kind
             writeKinds()

@@ -1008,7 +1008,8 @@ private struct BookDownloadCapsule: View {
                         .modifier(AdaptiveGlassBackground(shape: Capsule()))
                     }
                 }
-            } else if MediaDownloadOffer.isPossible(router.provider(itemId).capabilities) {
+            } else if MediaDownloadOffer.isPossible(router.provider(itemId).capabilities,
+                                                    mayKeep: router.provider(itemId).mayKeep(itemId: itemId)) {
                 Button {
                     Task { await start() }
                 } label: {

@@ -63,11 +63,11 @@ struct MediaFamilyTests {
     func offlineAvailabilityIsStatedPositively() {
         // Local files ARE here.
         #expect(LocalProvider.shared.capabilities.contains(.alwaysLocal))
-        // Streams are not. Neither carries the download capability, and the
-        // old rule turned that into "already here".
+        // Streams are not. The catalog can download title by title, and a
+        // capability to download is never "already here".
         #expect(!FreeCatalogProvider.shared.capabilities.contains(.alwaysLocal))
         #expect(!RadioProvider.shared.capabilities.contains(.alwaysLocal))
-        #expect(!FreeCatalogProvider.shared.capabilities.contains(.downloadable))
+        #expect(!RadioProvider.shared.capabilities.contains(.downloadable))
         #expect(!DownloadManager.shared.isDownloaded(itemId: "lva:some-netlabel-release"),
                 "a catalogue stream is not offline available")
     }

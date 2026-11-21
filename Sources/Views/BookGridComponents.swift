@@ -676,7 +676,8 @@ struct BookDownloadMenuItems: View {
                 // capability; before this check it was offered „Save for
                 // Offline" and would have fetched its detail from the library
                 // provider, which does not know it.
-                if isOnline, MediaDownloadOffer.isPossible(router.provider(itemId).capabilities) {
+                if isOnline, MediaDownloadOffer.isPossible(router.provider(itemId).capabilities,
+                                                           mayKeep: router.provider(itemId).mayKeep(itemId: itemId)) {
                     Button {
                         // The quick variant, without a Wi-Fi prompt.
                         Task { await downloadManager.startDownload(itemId: itemId, kind: .audiobooks) }
