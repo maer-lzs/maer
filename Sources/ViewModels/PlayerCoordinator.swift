@@ -65,6 +65,9 @@ final class PlayerCoordinator: ObservableObject {
             // stays when its stream fails before it.
             progressCancellable = viewModel?.firstProgress.sink { [weak self] in self?.titleProgressed($0) }
             failureCancellable = viewModel?.failedBeforeProgress.sink { [weak self] in self?.titleFailedBeforeProgress($0) }
+            // A failure in the load came before this sink: the model is
+            // attached after its load. Its state at the attach counts.
+            if viewModel !== oldValue, let failed = viewModel?.failedBeforeProgressId { titleFailedBeforeProgress(failed) }
             // A wait on the stream goes to the channel as a state; the
             // channel times the hint and lets it go when the wait ends.
             waitCancellable = viewModel?.$waitsOnTheStream.removeDuplicates().sink { [weak self] waits in

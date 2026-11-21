@@ -238,6 +238,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
     /// Whether the loaded title has played: its time grew while it played.
     private var progressedSinceLoad = false
+    /// The loaded title, when it failed before its first progress: what
+    /// `failedBeforeProgress` said, readable at the attach. A failure in the
+    /// load comes before anyone hears the model.
+    var failedBeforeProgressId: String? {
+        (loadFailureNoted || loadBuiltNothing) && !progressedSinceLoad ? item?.id : nil
+    }
+    /// The load built no queue (no track of the title could be asked): the
+    /// title failed before its first progress, with the sentence of the
+    /// hint, and before anyone hears the model.
+    private var loadBuiltNothing = false
     /// The time of the last tick while the title had not progressed yet.
     private var progressWatchTime: Double?
 
@@ -601,6 +611,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         ownStandMs = nil
         progressedSinceLoad = false
         progressWatchTime = nil
+        loadBuiltNothing = false
         endChapterEntry()
         bookEndedAsEntry = false
         self.item = item
@@ -743,6 +754,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             }
         }
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
+            loadBuiltNothing = true
+            failedBeforeProgress.send(item.id)
             cannotPlay(queueWaitedForSignIn
                        ? unlockSentence
                        : String(localized: "Audiobook could not be loaded."))
