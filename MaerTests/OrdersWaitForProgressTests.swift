@@ -15,8 +15,9 @@ import Combine
 /// network changes; for the advance, started means the first progress.
 @MainActor
 struct OrdersWaitForProgressTests {
-    /// Titles whose id starts with "dead" name a file that is not there;
-    /// every other title is 60 s of silence.
+    /// Titles whose id starts with "dead" name a file that is not there,
+    /// titles starting with "void" have no address for their track; every
+    /// other title is 60 s of silence.
     @MainActor
     final class DeadOrAliveProvider: AudioProvider {
         let file: URL
@@ -39,7 +40,8 @@ struct OrdersWaitForProgressTests {
         }
         func coverURL(forItemId itemId: String) -> URL? { nil }
         func streamURL(forContentPath contentPath: String) -> URL? {
-            contentPath.hasPrefix("dead") ? file.deletingLastPathComponent().appendingPathComponent("gone-\(UUID().uuidString).wav") : file
+            if contentPath.hasPrefix("void") { return nil }
+            return contentPath.hasPrefix("dead") ? file.deletingLastPathComponent().appendingPathComponent("gone-\(UUID().uuidString).wav") : file
         }
         func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
         func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
@@ -113,6 +115,36 @@ struct OrdersWaitForProgressTests {
         #expect(coordinator.resolveAdvance(after: next)?.id != dead, "the advance offers the dead stream again")
         coordinator.networkChanged()
         #expect(coordinator.unstartable.isEmpty, "a change of the network asks the dead stream again")
+    }
+
+    /// A title that fails in its load fails before the coordinator hears
+    /// its model: the model is attached after the load. The failure said
+    /// then must still reach the order.
+    @Test("a title that fails in its load, before its model is attached, stays in Up Next and the advance passes it")
+    func aFailureInTheLoadIsHeard() async throws {
+        let file = try Self.silence()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let coordinator = Self.coordinator(file)
+        let first = "first-\(UUID().uuidString)"
+        let void = "void-\(UUID().uuidString)"
+        let next = "next-\(UUID().uuidString)"
+        PlayQueue.shared.playLast(void)
+        PlayQueue.shared.playLast(next)
+        defer {
+            for id in [void, next] { PlayQueue.shared.remove(id) }
+            coordinator.viewModel?.stop()
+        }
+        await Reachability.$assumed.withValue(true) {
+            await coordinator.open(item: Self.title(first), autoplay: false)
+            coordinator.markPlayedAndAdvance(itemId: first)
+            var waited = 0
+            while coordinator.activeItem?.id != next && waited < 100 {
+                try? await Task.sleep(for: .milliseconds(100)); waited += 1
+            }
+        }
+        #expect(coordinator.activeItem?.id == next, "the advance stopped at the title that failed in its load: \(coordinator.activeItem?.id ?? "-")")
+        #expect(PlayQueue.shared.contains(void), "the title that failed in its load left Up Next")
+        #expect(coordinator.unstartable.contains(void))
     }
 
     @Test("Fence: the model says the first progress and a failure before it, the coordinator hears both and the network", .needsTheSources)
