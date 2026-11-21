@@ -593,7 +593,13 @@ aufraeumen)
     }
     if [ $# -eq 0 ]; then
         git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin | while read -r b; do
-            goes "$b" >/dev/null && say "geht: $b"
+            goes "$b" >/dev/null || continue
+            # A branch on dev's own commit may be one begun a moment ago.
+            if [ "$(git rev-parse "refs/remotes/origin/$b")" = "$(git rev-parse refs/remotes/origin/dev)" ]; then
+                say "geht: $b (ohne eigenen Commit, steht auf dev)"
+            else
+                say "geht: $b"
+            fi
         done
         exit 0
     fi

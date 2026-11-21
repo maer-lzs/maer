@@ -39,6 +39,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
             refs/heads/*) ;;
             *) refuse "kein Loeschen: $remote_ref";;
         esac
+        [ "$remote_sha" != "$zero" ] || refuse "kein Loeschen: ${remote_ref#refs/heads/} steht nicht am Server"
         git cat-file -e "$remote_sha" 2>/dev/null && git merge-base --is-ancestor "$remote_sha" refs/remotes/origin/dev \
             || refuse "kein Loeschen: ${remote_ref#refs/heads/} haelt Commits, die dev nicht haelt"
         continue
