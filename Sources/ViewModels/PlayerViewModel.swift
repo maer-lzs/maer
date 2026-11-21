@@ -220,8 +220,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// against a rebuild loop on a persistently broken track.
     private var trackAttempts = FailedLoad.TrackAttempts()
     /// The playing item failed to load and playback stopped for it; the
-    /// next play or the network's return builds the queue anew.
-    private var loadFailureNoted = false
+    /// next play or the network's return builds the queue anew. A failure
+    /// before the title's first progress is said (`failedBeforeProgress`):
+    /// an order of Up Next then stays, and the advance passes it.
+    private var loadFailureNoted = false {
+        didSet {
+            guard loadFailureNoted, !progressedSinceLoad, let id = item?.id else { return }
+            failedBeforeProgress.send(id)
+        }
+    }
+    /// Whether the loaded title has played: its time grew while it played.
+    private var progressedSinceLoad = false
+    /// The time of the last tick while the title had not progressed yet.
+    private var progressWatchTime: Double?
+
+    /// The first progress of the loaded title, said once per load: the first
+    /// tick in which its time grew while it played. A silent restore, a
+    /// load and a jump are none.
+    private func noteProgress() {
+        guard !progressedSinceLoad, isPlaying, let id = item?.id else { return }
+        defer { progressWatchTime = currentTime }
+        guard let last = progressWatchTime, currentTime > last + 0.05 else { return }
+        progressedSinceLoad = true
+        firstProgress.send(id)
+    }
     /// The last queue left out a track because the sign-in its stream needs
     /// cannot be read now (before the first unlock): a start that ends
     /// without a track says so in its own sentence.
@@ -570,6 +592,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
         ownStandMs = nil
+        progressedSinceLoad = false
+        progressWatchTime = nil
         endChapterEntry()
         bookEndedAsEntry = false
         self.item = item
@@ -1807,6 +1831,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                         }
                     }
                 }
+                // The first progress lets an order of Up Next go.
+                self.noteProgress()
                 // Crash safety: keep the position locally. Throttled to every
                 // 5s (UserDefaults writes aren't free). The loss window on crash
                 // is thus at most ~5s instead of 30s.

@@ -61,6 +61,10 @@ final class PlayerCoordinator: ObservableObject {
                 self?.notices.show(notice, title: self?.viewModel?.item?.media.metadata?.title)
             }
             startsCancellable = viewModel?.playbackStarts.sink { [weak self] in self?.notices.played() }
+            // An order of Up Next goes at its title's first progress, and
+            // stays when its stream fails before it.
+            progressCancellable = viewModel?.firstProgress.sink { [weak self] in self?.titleProgressed($0) }
+            failureCancellable = viewModel?.failedBeforeProgress.sink { [weak self] in self?.titleFailedBeforeProgress($0) }
             // A wait on the stream goes to the channel as a state; the
             // channel times the hint and lets it go when the wait ends.
             waitCancellable = viewModel?.$waitsOnTheStream.removeDuplicates().sink { [weak self] waits in
@@ -107,8 +111,44 @@ final class PlayerCoordinator: ObservableObject {
     /// Set while the end of a title opens the next one, across the titles
     /// it skips (`advance(to:)`).
     @Published private(set) var isAdvancing = false
+    /// Titles whose stream failed before they played: the advance passes
+    /// them for the rest of the process, until the person opens one (that
+    /// one) or the network changes (all).
     private(set) var unstartable: Set<String> = []
-    func networkChanged() {}
+    /// An order of Up Next whose title opened and has not played yet: it
+    /// stays in the list until the first progress; `byAdvance` when the end
+    /// of a title opened it, which then goes on past it if it fails.
+    private var pendingOrder: (id: String, byAdvance: Bool)?
+    private var progressCancellable: AnyCancellable?
+    private var failureCancellable: AnyCancellable?
+
+    /// A change of the network asks every passed stream again.
+    func networkChanged() {
+        guard !unstartable.isEmpty else { return }
+        Logger.player.notice("ADVANCE skips cleared: the network changed, \(self.unstartable.count) titles are asked again")
+        unstartable.removeAll()
+    }
+
+    /// The first progress of a title: an order waiting for it leaves the
+    /// list now, and a passed stream is asked again.
+    private func titleProgressed(_ id: String) {
+        unstartable.remove(id)
+        guard pendingOrder?.id == id else { return }
+        pendingOrder = nil
+        orders.remove(id)
+    }
+
+    /// The stream of an order failed before it played: it stays in Up Next,
+    /// the advance passes it for the process, and when the end of a title
+    /// opened it, the advance goes on to the next one.
+    private func titleFailedBeforeProgress(_ id: String) {
+        guard let pending = pendingOrder, pending.id == id else { return }
+        pendingOrder = nil
+        unstartable.insert(id)
+        Logger.player.notice("ADVANCE passes item=\(id, privacy: .private(mask: .hash)): its stream failed before it played, it stays in Up Next")
+        guard pending.byAdvance, let next = resolveAdvance(after: id) else { return }
+        Task { await self.advance(to: next) }
+    }
     /// A title is on its way: what shows a session holds the one it showed.
     var isChangingTitle: Bool { isLoading || isAdvancing }
     /// The titles in a row the advance skips when they do not start.
@@ -164,6 +204,8 @@ final class PlayerCoordinator: ObservableObject {
         // network carries again, without starting: the next play then plays.
         NetworkMonitor.shared.onChange { [weak self] path in
             self?.viewModel?.rebuildAfterPathChange(path)
+            // A stream passed for failing is asked again on another network.
+            self?.networkChanged()
         }
         // Takeover: a foreign claim on the item THIS device is
         // playing means another device took over on explicit play. This
@@ -458,6 +500,8 @@ final class PlayerCoordinator: ObservableObject {
 
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
+        // The person opens a passed stream: it is asked again, this one only.
+        if origin == .gesture && !isAdvancing { unstartable.remove(item.id) }
         // A chapter entry of Up Next opens its book at the chapter.
         if let entry = ItemNamespace.chapterEntry(item.id) {
             await openChapter(entryId: item.id, bookId: entry.bookId, startMs: entry.startMs,
@@ -760,9 +804,16 @@ final class PlayerCoordinator: ObservableObject {
     /// leaves both lists (audiobooks, podcasts and music alike). Called where
     /// the open stands (`start`, and the shortcut for the title already
     /// open), never before a refusal, a failed fetch or an overtaken open.
+    /// An order of Up Next leaves its list only at its title's first
+    /// progress (`titleProgressed`): a stream that fails before it stays.
     private func takeOver(_ id: String, preservesContext: Bool) {
         if !preservesContext { PlaybackContext.shared.clear() }
-        leaveBothLists(id)
+        if orders.contains(id) {
+            pendingOrder = (id, isAdvancing)
+            PlaybackContext.shared.remove(id)
+        } else {
+            leaveBothLists(id)
+        }
         // A new title ends a running chapter entry; the open of a chapter
         // and the restore set it again after this (`watchEntry`).
         orders.running = nil
@@ -1024,8 +1075,10 @@ final class PlayerCoordinator: ObservableObject {
         let session = self.session
         let downloads = DownloadManager.shared
         return (orders.shownIds, context.ids, offline,
-                { MediaAvailability.canPlayNow(isConnected: !offline,
-                                               isDownloaded: downloads.isDownloaded(itemId: $0)) },
+                // A stream that failed before it played is passed for the process.
+                { !self.unstartable.contains($0)
+                    && MediaAvailability.canPlayNow(isConnected: !offline,
+                                                    isDownloaded: downloads.isDownloaded(itemId: $0)) },
                 // Resolution on demand: a catalogue id and a music server song
                 // are self-describing (`SyncCarried.resolvesOnDemand`), the
                 // session cache is only a shortcut; `open` fetches the detail.

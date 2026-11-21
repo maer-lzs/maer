@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Up Next keeps a title until it plays.** A title you put in Up Next now
+leaves the list once it actually starts playing, not when it opens. If
+its stream fails, it stays in Up Next and playback moves on to the next
+one; it is tried again when you open it yourself or your network changes.
+
 **Sound without distortion, faster sign-in, music search offline.** A
 strong preset together with full gain no longer overdrives: where the
 preset already lifts the voice, the gain gives way, and the curve shows
