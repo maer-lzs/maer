@@ -85,6 +85,7 @@ struct JellyfinSourceView: View {
                     Text(statusMessage)
                         .font(.footnote)
                         .foregroundStyle(statusIsError ? .red : .secondary)
+                    LocalNetworkSettingsButton(message: statusMessage)
                 }
             }
         }

@@ -158,6 +158,7 @@ struct SubsonicSourceView: View {
                         .foregroundStyle(statusIsError ? .red : .secondary)
                         // The outcome as a handle, for the server journeys; the colour alone is no handle.
                         .accessibilityIdentifier(statusIsError ? "subsonic-status-error" : "subsonic-status-ok")
+                    LocalNetworkSettingsButton(message: statusMessage)
                 }
             }
         }

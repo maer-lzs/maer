@@ -157,6 +157,7 @@ struct ABSLoginForm: View {
                 Section {
                     Text(error).foregroundStyle(.red)
                         .accessibilityIdentifier("setup-error")
+                    LocalNetworkSettingsButton(message: error)
                 }
             }
 

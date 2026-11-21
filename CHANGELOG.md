@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Servers at home when local network access is off.** If iOS keeps Mär
+from your local network, connecting to a server at home now says so and
+offers a button to the app's settings, where Local Network can be turned
+on, instead of a general error.
+
 **The mini player always stays.** With nothing loaded it shows the first
 title waiting in Up Next, or the one you heard last; a tap opens Up Next.
 The line under the gain now says it does less with a strong sound preset.

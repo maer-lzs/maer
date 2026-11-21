@@ -6242,6 +6242,16 @@
         }
       }
     },
+    "Mär may not reach devices on your local network. Allow it in Settings under Mär, Local Network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär darf keine Geräte im lokalen Netzwerk erreichen. Erlaube es in den Einstellungen unter Mär, Lokales Netzwerk."
+          }
+        }
+      }
+    },
     "Mär playlist" : {
       "localizations" : {
         "de" : {
@@ -8381,6 +8391,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Offene Kataloge"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen öffnen"
           }
         }
       }
