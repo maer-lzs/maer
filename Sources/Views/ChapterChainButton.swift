@@ -35,12 +35,12 @@ struct ChapterChainButton: View {
                 Button {
                     Task { await playerCoordinator.addChapter(bookId: itemId, title: title, known: known) }
                 } label: {
-                    Label {
-                        Text("Add Chapter")
-                        if let next, let chapters { Text(AddChapterRule.shown(next, in: chapters)) }
-                    } icon: {
-                        Image(systemName: "text.badge.plus")
-                    }
+                    // The button's own label: a menu takes the first text as
+                    // the title, the second as the line under it, the image
+                    // as the sign. Inside a Label it showed the first alone.
+                    Text("Add Chapter")
+                    if let next, let chapters { Text(AddChapterRule.shown(next, in: chapters)) }
+                    Image(systemName: "text.badge.plus")
                 }
                 .onAppear {
                     if chapters == nil { Task { await source.learn(itemId) } }
