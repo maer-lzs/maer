@@ -52,6 +52,7 @@ nonisolated struct SourceMapFacts: Equatable, Sendable {
     /// service's page reads too. Never credentials.
     var syncStanding: MaerSyncStanding = .notInUse
     var syncHost: String?
+    var absAccessUnread = false
 
     init() {}
 }
@@ -81,6 +82,7 @@ nonisolated enum SourceMapState: Equatable, Sendable {
     case ready
     /// Works right away AND is synced (the Mär sync service, or gpodder).
     case readySynced(host: String)
+    case accessUnread
 }
 
 extension SourceMapFacts {

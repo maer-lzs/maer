@@ -95,7 +95,7 @@ struct SourceMapCard: View {
     static func isConnected(_ area: SourceMapArea, facts: SourceMapFacts) -> Bool {
         switch facts.state(of: area) {
         case .connected, .readySynced, .ready: return true
-        case .needsServer: return false
+        case .needsServer, .accessUnread: return false
         }
     }
 
@@ -121,6 +121,8 @@ struct SourceMapCard: View {
             return Text("Connected to \(breakableHost(host))")
         case .readySynced(let host):
             return Text("No account needed · synced with \(breakableHost(host))")
+        case .accessUnread:
+            return Text(verbatim: "")
         case .needsServer:
             return area == .audiobooks
                 ? Text("Needs an Audiobookshelf server")

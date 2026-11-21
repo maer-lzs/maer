@@ -206,6 +206,8 @@ enum RoutinePlayback {
         return nil
     }
 
+    nonisolated static func offerDirection(for itemIds: [String]) -> PodcastAutoDownload.Direction? { nil }
+
     /// A rule's cover: its show's picture as this device knows it.
     static func coverURL(forRule itemId: String) -> URL? {
         guard let rule = RoutineRule(id: itemId) else { return nil }

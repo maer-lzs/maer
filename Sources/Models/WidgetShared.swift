@@ -350,6 +350,9 @@ nonisolated struct WidgetSourceRow: Codable, Equatable, Sendable {
 /// Which rows a large or medium "Continue" shows, from its settings and
 /// the type size. Pure, the same for the widget and its witnesses.
 nonisolated enum WidgetRows {
+    static func bandCoverFraction(accessibilitySize: Bool) -> Double { 0.75 }
+    static func bandTitleLines(accessibilitySize: Bool) -> Int { 1 }
+
     enum Layout: Equatable, Sendable {
         /// The newest title of every source that is switched on, in the
         /// order of the app's tabs.

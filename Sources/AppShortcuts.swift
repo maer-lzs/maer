@@ -575,6 +575,8 @@ enum PlaylistStart {
         }
     }
 
+    nonisolated static func cause(for request: RoutinePlayback.Request, started: Bool) -> NoticeCause { .unknown }
+
     /// The list's start; a witness stands in for the app's.
     static var start: @MainActor (MaerPlaylists.Playlist) async -> Bool = { list in
         await RoutinePlayback.start(list, in: PlaylistQuery.lists(), on: coordinator)
