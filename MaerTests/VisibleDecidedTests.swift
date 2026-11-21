@@ -75,7 +75,8 @@ struct VisibleDecidedTests {
         #expect(RoutinePlayback.offerDirection(for: ["rule:newest:abc"]) == nil)
         #expect(RoutinePlayback.offerDirection(for: ["rss:abc:1"]) == nil)
         let sheet = try Self.code("Sources/Views/Music/AddToPlaylistSheet.swift")
-        #expect(sheet.contains("PodcastAutoDownload.setDirection(offer.show.id, direction)"), "the offer does not set the direction")
+        #expect(sheet.contains("if let direction = presenter.offeringDirection { PodcastAutoDownload.setDirection(show.id, direction) }"),
+                "the offer does not set the direction")
     }
 
     @Test("at an accessibility size the band of the widget grows and its title takes two lines")

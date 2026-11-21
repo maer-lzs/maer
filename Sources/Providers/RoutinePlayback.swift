@@ -206,7 +206,15 @@ enum RoutinePlayback {
         return nil
     }
 
-    nonisolated static func offerDirection(for itemIds: [String]) -> PodcastAutoDownload.Direction? { nil }
+    /// The direction the offer sets with the automatic download: after a
+    /// rule "next" the show in order, or the download would fetch the newest
+    /// episodes and nothing the rule plays; after "newest" the show keeps
+    /// its direction.
+    nonisolated static func offerDirection(for itemIds: [String]) -> PodcastAutoDownload.Direction? {
+        guard let rule = itemIds.lazy.compactMap(RoutineRule.init(id:)).first else { return nil }
+        if case .next = rule.kind { return .inOrder }
+        return nil
+    }
 
     /// A rule's cover: its show's picture as this device knows it.
     static func coverURL(forRule itemId: String) -> URL? {

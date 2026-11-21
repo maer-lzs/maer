@@ -350,7 +350,7 @@ struct ShortcutBooksTests {
             started.append(list.id)
             return startsSomething
         }
-        PlaylistStart.say = { said.append($0) }
+        PlaylistStart.say = { sentence, _ in said.append(sentence) }
         let front: @MainActor () async throws -> Bool = {
             fronts += 1
             return true

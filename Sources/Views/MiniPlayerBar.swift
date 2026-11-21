@@ -188,6 +188,9 @@ struct MiniPlayerBar: View {
 /// standby title instead of sitting under it, and both lines then read
 /// the same claim once.
 private struct MiniPlayerLines: View {
+    /// The second line on glass: the main colour at 82 percent. Grey fell
+    /// under 4.5:1 in most pictures of the bar, down to 1.69:1.
+    static let secondLine = Color.primary.opacity(0.82)
     @ObservedObject var viewModel: PlayerViewModel
     /// The running time: this leaf shows it, so it observes the clock.
     @ObservedObject var clock: PlaybackClock
@@ -244,7 +247,7 @@ private struct MiniPlayerLines: View {
                 Image(systemName: "ipad.and.iphone")
             }
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Self.secondLine)
             .lineLimit(1)
             .truncationMode(.tail)
             .accessibilityIdentifier("mini-foreign-playing")
@@ -256,7 +259,7 @@ private struct MiniPlayerLines: View {
             Label(words, systemImage: held.icon)
                 .labelStyle(.titleAndIcon)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Self.secondLine)
                 .lineLimit(1)
         } else if let chapter = viewModel.currentChapter {
             HStack(spacing: 4) {
@@ -280,7 +283,7 @@ private struct MiniPlayerLines: View {
                 }
             }
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Self.secondLine)
         } else if viewModel.isLiveStream {
             // "03:42 / 03:42" is nonsense for a stream. The
             // shared LIVE marker plus the elapsed time (drive-mode parity).
@@ -298,11 +301,11 @@ private struct MiniPlayerLines: View {
                 }
             }
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Self.secondLine)
         } else {
             Text(timeText)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Self.secondLine)
         }
     }
 

@@ -32,13 +32,14 @@ struct PlaylistHomeSection: View {
         // Start shows routines under their own name until a mixed list joins
         // them; the page of all lists carries the same name.
         let title: LocalizedStringKey = lists.allSatisfy(\.isRoutine) ? "Routines" : "Playlists"
-        if !lists.isEmpty {
-            if limit == nil {
-                section(lists, title: title)
-                    .navigationTitle(title)
-            } else {
-                section(lists, title: title)
-            }
+        let content = Group {
+            if !lists.isEmpty { section(lists, title: title) }
+        }
+        // The page keeps its name when its last list goes while it is open.
+        if limit == nil {
+            content.navigationTitle(title)
+        } else {
+            content
         }
     }
 

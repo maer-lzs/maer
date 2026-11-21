@@ -350,8 +350,12 @@ nonisolated struct WidgetSourceRow: Codable, Equatable, Sendable {
 /// Which rows a large or medium "Continue" shows, from its settings and
 /// the type size. Pure, the same for the widget and its witnesses.
 nonisolated enum WidgetRows {
-    static func bandCoverFraction(accessibilitySize: Bool) -> Double { 0.75 }
-    static func bandTitleLines(accessibilitySize: Bool) -> Int { 1 }
+    /// How much of the height the cover takes above the band of the small
+    /// widget and the playing half: three quarters, at an accessibility size
+    /// less, so the larger title has room.
+    static func bandCoverFraction(accessibilitySize: Bool) -> Double { accessibilitySize ? 0.6 : 0.75 }
+    /// The lines of the title in the band: one, at an accessibility size two.
+    static func bandTitleLines(accessibilitySize: Bool) -> Int { accessibilitySize ? 2 : 1 }
 
     enum Layout: Equatable, Sendable {
         /// The newest title of every source that is switched on, in the

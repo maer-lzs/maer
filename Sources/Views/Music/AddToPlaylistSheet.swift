@@ -59,6 +59,8 @@ final class PlaylistPresenter: ObservableObject {
     /// A followed show whose rule just went into a list, while its
     /// downloads are off (`RoutinePlayback.autoDownloadOffer`).
     @Published var offeringAutoDownload: PodcastShow?
+    /// The direction the offer sets with it (`RoutinePlayback.offerDirection`).
+    var offeringDirection: PodcastAutoDownload.Direction?
 
     /// WHICH hierarchy has to present. A sheet cannot be presented from the
     /// root while another sheet is already up, so a surface living inside one
@@ -110,6 +112,7 @@ final class PlaylistPresenter: ObservableObject {
         let expanded = await Self.expandedForDevice(ids, titles: titles)
         let outcome = lists.add(itemIds: expanded.ids, to: listId, knownTitles: expanded.titles)
         message = Self.text(for: outcome, listName: listName)
+        offeringDirection = RoutinePlayback.offerDirection(for: expanded.ids)
         if outcome == .added { offeringAutoDownload = RoutinePlayback.autoDownloadOffer(for: expanded.ids) }
     }
 
@@ -378,7 +381,11 @@ private struct PlaylistDialogs: ViewModifier {
                 get: { presenter.offeringAutoDownload != nil && presenter.host == hostId },
                 set: { if !$0 { presenter.offeringAutoDownload = nil } }),
                    presenting: presenter.offeringAutoDownload) { show in
-                Button("Download Automatically") { PodcastAutoDownload.setEnabled(show.id, true) }
+                Button("Download Automatically") {
+                    PodcastAutoDownload.setEnabled(show.id, true)
+                    // After a rule "next" the show downloads in order, so it fetches what the rule plays.
+                    if let direction = presenter.offeringDirection { PodcastAutoDownload.setDirection(show.id, direction) }
+                }
                 Button("Not Now", role: .cancel) {}
             } message: { show in
                 Text("Offline, a routine plays only downloaded episodes. Download new episodes of “\(show.title)” automatically?")

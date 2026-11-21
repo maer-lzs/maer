@@ -329,11 +329,12 @@ private struct ContinueListeningView: View {
     private func small(_ line: WidgetLine) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Spacer(minLength: 0)
-            // One line: title and bar stand in the band under the cover.
+            // Title and bar stand in the band under the cover; at an
+            // accessibility size the band is higher and the title takes two lines.
             Text(line.title)
                 .font(.caption.bold())
                 .foregroundStyle(.white)
-                .lineLimit(1)
+                .lineLimit(WidgetRows.bandTitleLines(accessibilitySize: dynamicTypeSize.isAccessibilitySize))
             if line.isLive {
                 liveMark
             } else {
@@ -451,7 +452,8 @@ private struct ContinueListeningView: View {
         return GeometryReader { space in
             VStack(spacing: 0) {
                 Color.clear
-                    .frame(height: space.size.height * 0.75)
+                    .frame(height: space.size.height
+                        * WidgetRows.bandCoverFraction(accessibilitySize: dynamicTypeSize.isAccessibilitySize))
                     .overlay(alignment: .top) { coverImage }
                     .clipped()
                     .overlay(alignment: .bottom) {

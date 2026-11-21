@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Small things you see.** The second line of the mini player is easier to
+read on glass. When your sign-in cannot be read yet after a restart, the
+sources say it will be read once the iPhone is unlocked, instead of a
+made-up address. A playlist with nothing to play right now says so with
+an info sign rather than a warning. Turning on automatic downloads after
+adding a "next episodes" rule to a playlist downloads the show in order.
+The page of all playlists keeps its title when its last list goes. At the
+largest text sizes the Continue widget gives its title two lines.
+
 **Up Next keeps a title until it plays.** A title you put in Up Next now
 leaves the list once it actually starts playing, not when it opens. If
 its stream fails, it stays in Up Next and playback moves on to the next

@@ -575,7 +575,13 @@ enum PlaylistStart {
         }
     }
 
-    nonisolated static func cause(for request: RoutinePlayback.Request, started: Bool) -> NoticeCause { .unknown }
+    /// The sign the sentence stands with: a list with nothing to play right
+    /// now is no error and takes the info sign; a list not on this device
+    /// keeps the warning.
+    nonisolated static func cause(for request: RoutinePlayback.Request, started: Bool) -> NoticeCause {
+        if case .start = request { return .nothingYet }
+        return .unknown
+    }
 
     /// The list's start; a witness stands in for the app's.
     static var start: @MainActor (MaerPlaylists.Playlist) async -> Bool = { list in
@@ -583,8 +589,8 @@ enum PlaylistStart {
     }
 
     /// The app's way to say a sentence once it is in front.
-    static var say: @MainActor (String) -> Void = { sentence in
-        coordinator.sayOpenFailure(sentence, cause: .unknown, title: nil)
+    static var say: @MainActor (String, NoticeCause) -> Void = { sentence, cause in
+        coordinator.sayOpenFailure(sentence, cause: cause, title: nil)
     }
 
     /// Starts the list `listId` among `store`'s lists. A list the start read
@@ -600,7 +606,7 @@ enum PlaylistStart {
             Logger.library.notice("SIRI list says nothing: the system cannot bring the app to the front")
             return
         }
-        say(sentence)
+        say(sentence, cause(for: request, started: started))
     }
 }
 

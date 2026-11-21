@@ -52,6 +52,9 @@ nonisolated struct SourceMapFacts: Equatable, Sendable {
     /// service's page reads too. Never credentials.
     var syncStanding: MaerSyncStanding = .notInUse
     var syncHost: String?
+    /// The sign-in of the audiobook server could not be read at the start
+    /// (the device not unlocked since it started): the stored address is
+    /// not known, and the line must not name the placeholder.
     var absAccessUnread = false
 
     init() {}
@@ -82,6 +85,7 @@ nonisolated enum SourceMapState: Equatable, Sendable {
     case ready
     /// Works right away AND is synced (the Mär sync service, or gpodder).
     case readySynced(host: String)
+    /// The sign-in is stored but cannot be read until the device is unlocked.
     case accessUnread
 }
 
@@ -89,6 +93,7 @@ extension SourceMapFacts {
     func state(of area: SourceMapArea) -> SourceMapState {
         switch area {
         case .audiobooks:
+            if absAccessUnread { return .accessUnread }
             let host = SourceMap.host(from: absServer)
             return absConnected && !host.isEmpty ? .connected(host: host) : .needsServer
         case .music:

@@ -122,7 +122,7 @@ struct SourceMapCard: View {
         case .readySynced(let host):
             return Text("No account needed · synced with \(breakableHost(host))")
         case .accessUnread:
-            return Text(verbatim: "")
+            return Text("Sign-in will be read once the iPhone is unlocked")
         case .needsServer:
             return area == .audiobooks
                 ? Text("Needs an Audiobookshelf server")
@@ -166,6 +166,7 @@ extension SourceMapFacts {
         let auth = AppSession.shared.authViewModel
         facts.absConnected = auth.isLoggedIn
         facts.absServer = auth.serverAddress
+        facts.absAccessUnread = auth.isLoggedIn && auth.accessUnknown
         facts.subsonicConfigured = AppStorageKeys.subsonicConfigured
         facts.subsonicServer = AppStorageKeys.subsonicServerURLValue
         facts.jellyfinConfigured = !AppStorageKeys.jellyfinServerURLValue.isEmpty

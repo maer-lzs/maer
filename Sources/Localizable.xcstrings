@@ -10874,6 +10874,16 @@
         }
       }
     },
+    "Sign-in will be read once the iPhone is unlocked" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung wird gelesen, sobald das iPhone entsperrt ist"
+          }
+        }
+      }
+    },
     "Signed in as %@." : {
       "localizations" : {
         "de" : {
