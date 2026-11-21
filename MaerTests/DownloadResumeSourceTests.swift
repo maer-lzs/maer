@@ -77,5 +77,27 @@ struct DownloadResumeSourceTests {
         #expect(manager.phase[book] == .failed(String(localized: "Not available on this device: the source is not set up here")),
                 "the title stays paused without a way on: \(String(describing: manager.phase[book]))")
     }
+
+    /// The resume clears the pause and starts the download in a task of its
+    /// own; a server left before that task runs cancels a control with no
+    /// transfer yet. The start takes that cancel over instead of replacing
+    /// the control and asking the old source.
+    @Test("a server left between a resume and its start ends the download; the start asks nothing")
+    func aLeaveBetweenResumeAndStartEndsTheDownload() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("resume-leave-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let manager = await Self.manager(in: directory)
+        let own = NotingSource()
+        let book = "resume-book-\(UUID().uuidString)"
+        manager._testHoldAsPaused(TrackFileSizeTests.book(book, path: "book.mp3", size: 10), provider: own)
+
+        manager.resumeDownload(itemId: book)
+        manager.forgetHeld(ownedBy: { $0 == book })
+        for _ in 0..<2_000 where own.asked.isEmpty { await Task.yield() }
+        #expect(own.asked.isEmpty, "the start asked the source of the left server: \(own.asked)")
+        #expect(manager.phase[book] == nil, "the title stands as \(String(describing: manager.phase[book]))")
+        #expect(!manager.isDownloading(itemId: book))
+    }
 }
 #endif
