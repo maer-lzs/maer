@@ -72,9 +72,4 @@ nonisolated enum AccessGuard {
             return .nothing
         }
     }
-
-    /// Whether a guard stands in front of the server (`ask`).
-    static func standsAhead(of base: URL) async -> Bool {
-        await ask(base) == .guardAhead
-    }
 }

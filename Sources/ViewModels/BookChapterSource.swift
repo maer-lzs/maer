@@ -76,7 +76,10 @@ final class BookChapterSource {
 
     /// The same, with the stand the surface that asks already holds (a card
     /// of the search or of a mixed page, outside the loaded lists). The
-    /// player's position still comes first.
+    /// player's position still comes first. A given `known` wins over the
+    /// lists' stand and the device's too, also for a book inside the loaded
+    /// lists: the surface's stand is the one the card shows, so the chapter
+    /// the menu names is the chapter the card's bar stands in.
     func position(of bookId: String, known: Double?) -> Double {
         if let held = playing(), held.bookId == bookId { return held.position }
         return known ?? position(of: bookId)

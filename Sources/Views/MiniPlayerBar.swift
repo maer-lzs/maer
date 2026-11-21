@@ -41,9 +41,7 @@ struct MiniPlayerBar: View {
     /// (`TabBarPlacement.sideMeasure`, with the search on its middle): a
     /// smaller cover and buttons, both lines of text.
     var slim: Bool = false
-    /// The height of the content inside the bar; the slim bar adds one point
-    /// above and below to reach the column's measure.
-    private var contentHeight: CGFloat { slim ? TabBarPlacement.sideMeasure - 2 : 48 }
+    private var contentHeight: CGFloat { MiniBarSurface.contentHeight(slim: slim) }
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -76,9 +74,6 @@ struct MiniPlayerBar: View {
         measuredWidth == 0 || measuredWidth >= extendedControlsThreshold
     }
 
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
-    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -153,13 +148,7 @@ struct MiniPlayerBar: View {
                 .takesInput(controlsLive)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, slim ? 1 : 6)
-        .modifier(AdaptiveGlassBackground(
-            // Beside the side column the bar is a system bar like the
-            // search next to it: the system's glass, no cover tint.
-            shape: shape, tier: slim ? SideColumnStyle.tier : .glass,
-            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
+        .modifier(MiniBarSurface(slim: slim, morphID: glassMorphID, morphNamespace: glassMorphNamespace))
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -179,6 +168,34 @@ struct MiniPlayerBar: View {
     }
 }
 
+/// The surface both mini players wear, the one with a session and the idle
+/// one (`IdleMiniBar`): their padding, shape and glass, the height of their
+/// content and the colour of their second line, in one place.
+struct MiniBarSurface: ViewModifier {
+    var slim: Bool
+    var morphID: String? = nil
+    var morphNamespace: Namespace.ID? = nil
+
+    /// The height of the content inside the bar; the slim bar adds one point
+    /// above and below to reach the column's measure.
+    static func contentHeight(slim: Bool) -> CGFloat { slim ? TabBarPlacement.sideMeasure - 2 : 48 }
+    static let shape = RoundedRectangle(cornerRadius: 30, style: .continuous)
+    /// The second line on glass: the main colour at 82 percent. Grey fell
+    /// under 4.5:1 in most pictures of the bar, down to 1.69:1.
+    static let secondLine = Color.primary.opacity(0.82)
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 12)
+            .padding(.vertical, slim ? 1 : 6)
+            .modifier(AdaptiveGlassBackground(
+                // Beside the side column the bar is a system bar like the
+                // search next to it: the system's glass, no cover tint.
+                shape: Self.shape, tier: slim ? SideColumnStyle.tier : .glass,
+                morphID: morphID, morphNamespace: morphNamespace))
+    }
+}
+
 /// The two text lines of the bar: the title, and the per-second second
 /// line (chapter or artist, remaining / time / sleep timer, or a held
 /// error once its pill is gone). The ONLY text
@@ -188,9 +205,7 @@ struct MiniPlayerBar: View {
 /// standby title instead of sitting under it, and both lines then read
 /// the same claim once.
 private struct MiniPlayerLines: View {
-    /// The second line on glass: the main colour at 82 percent. Grey fell
-    /// under 4.5:1 in most pictures of the bar, down to 1.69:1.
-    static let secondLine = Color.primary.opacity(0.82)
+    static let secondLine = MiniBarSurface.secondLine
     @ObservedObject var viewModel: PlayerViewModel
     /// The running time: this leaf shows it, so it observes the clock.
     @ObservedObject var clock: PlaybackClock

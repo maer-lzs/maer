@@ -39,6 +39,22 @@ struct CleanupThreeTests {
             }
         }
         #expect(readers.isEmpty, "the backup, else the flushed entry, is read on its own in \(readers)")
+        // Every other form of the same read goes through the flushed entry
+        // too: each reader of it outside the store tells the two apart,
+        // with why. A new one is a new reader of the entry.
+        let tellApart: [String: String] = [
+            "LibraryViewModel.swift": "the row Continue asks whether the flushed entry says started",
+            "PlayerViewModel.swift": "the start of the player weighs the flushed entry against the server",
+            "PlayerViewModel+Sync.swift": "the guard against its own echo knows the flushed time",
+            "BookProgressReport.swift": "the report names the backup and the flushed entry apart",
+        ]
+        var flushedReaders: Set<String> = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
+            if SyncContractFenceTests.stripped(try SourceTree.text(file)).contains("ListeningStore.flushed(") {
+                flushedReaders.insert(file.lastPathComponent)
+            }
+        }
+        #expect(flushedReaders == Set(tellApart.keys), "readers of the flushed entry: \(flushedReaders.sorted())")
         let menu = SyncContractFenceTests.stripped(
             try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TabContentLayout.swift"), encoding: .utf8))
         #expect(menu.contains("ListeningStore.storedEntry("), "the catalog's menu reads the entry on its own")

@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import os
 
 /// Whether a chapter's name already carries its count, in any form: a
 /// number in front ("01 - X", "1. X"), a word mark with a count ("Chapter
@@ -41,8 +42,14 @@ nonisolated enum ChapterCounting {
             ("^\\s*(?:\(enNum)|\(deNum))\\s*$", true, false),
         ]
         return patterns.compactMap { pattern, ignoresCase, roman in
-            (try? NSRegularExpression(pattern: pattern, options: ignoresCase ? [.caseInsensitive] : []))
-                .map { ($0, roman) }
+            do {
+                return (try NSRegularExpression(pattern: pattern, options: ignoresCase ? [.caseInsensitive] : []), roman)
+            } catch {
+                // A form that does not build counts nothing; the line says
+                // so instead of a count quietly missing a form.
+                Logger.library.error("CHAPTERS counting form not built: \(FailureReason.of(error), privacy: .public)")
+                return nil
+            }
         }
     }()
 

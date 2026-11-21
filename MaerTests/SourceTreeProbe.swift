@@ -134,9 +134,9 @@ nonisolated enum SourceTree {
 }
 
 /// The one walk is loud: over nothing it records its issue, over files it
-/// says nothing and returns each. Neither of these two reads the tree, so
-/// neither carries a condition; the count of walks reads the tests, the
-/// one read reads a source.
+/// says nothing and returns each. The two cases of the walk read no tree
+/// and carry no condition; the one read reads a source and the count of
+/// walks reads the tests, so these two carry theirs.
 struct SourceTreeWalkTests {
     @Test("a source of the repository is read once per run, a file outside it every time", .needsTheSources)
     func theSourcesAreReadOnce() throws {

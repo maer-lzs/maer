@@ -208,7 +208,8 @@ nonisolated enum ChapterEntryRules {
         case waitsAlready
         /// No chapter holds the book's position or begins after it.
         case noChapterLeft
-        /// The queue holds no entry of this book.
+        /// The book cannot go into Up Next chapter by chapter: it has fewer
+        /// than two chapters, or the queue cannot hold its entries.
         case notHeld
     }
 
