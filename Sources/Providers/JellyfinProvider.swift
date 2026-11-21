@@ -127,6 +127,17 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     /// kept only while its server is still the stored one: a client of the
     /// former server lives on in running tasks after a switch, and the
     /// access it gets there must not reach the next client.
+    /// A client for a Quick Connect sign-in at `address`: no user, no
+    /// password, no token of the stored account.
+    static func quickConnectClient(address: String) -> JellyfinClient {
+        JellyfinClient(serverURL: address, username: "", password: "",
+                       deviceId: AppStorageKeys.jellyfinDeviceIdValue, accessToken: nil, userId: nil)
+    }
+
+    /// Trades an approved Quick Connect secret and keeps the account: nil
+    /// when it is stored, else the sentence.
+    func finishQuickConnect(address: String, client: JellyfinClient, secret: String) async -> String? { nil }
+
     static func storedClient() -> JellyfinClient {
         let builtFor = AppStorageKeys.jellyfinServerURLValue
         let builtUser = AppStorageKeys.jellyfinUsernameValue

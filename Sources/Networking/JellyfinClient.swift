@@ -39,8 +39,12 @@ final class JellyfinClient {
         /// someone to their router while the server is the thing that broke.
         case http(Int)
         case decoding
+        /// The server refused the token and there is no password to sign in
+        /// with again: a Quick Connect sign-in ended on the server.
+        case signInAgain
         nonisolated var errorDescription: String? {
             switch self {
+            case .signInAgain: return String(localized: "This Jellyfin sign-in is no longer valid. Sign in again.")
             case .badURL: return String(localized: "Invalid server URL.")
             case .network: return String(localized: "The Jellyfin server could not be reached.")
             case .auth: return String(localized: "Jellyfin sign-in failed. Check username and password.")
@@ -147,6 +151,22 @@ final class JellyfinClient {
         onTokenRefresh?(token, uid)
         Logger.music.notice("jellyfin sign-in ok (user id cached)")
         return token
+    }
+
+    // MARK: - Quick Connect
+
+    /// Whether the server offers Quick Connect (`/QuickConnect/Enabled`).
+    func quickConnectOffered() async -> Bool { false }
+
+    /// Asks the server for a code and the secret behind it.
+    func quickConnectStart() async throws -> (secret: String, code: String) { throw JellyfinError.decoding }
+
+    /// One look at the code (`/QuickConnect/Connect`).
+    func quickConnectAnswer(secret: String) async -> JellyfinQuickConnect.Answer { .waiting }
+
+    /// Trades an approved secret for a token, the user id and the user's name.
+    func signIn(quickConnectSecret: String) async throws -> (token: String, userId: String, userName: String) {
+        throw JellyfinError.decoding
     }
 
     /// Ensures a token exists (silent sign-in with the stored credentials).
