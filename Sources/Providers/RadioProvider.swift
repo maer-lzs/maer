@@ -135,6 +135,8 @@ final class RadioProvider: AudioProvider {
     /// A failed catalog search is not "no stations": with no local hit it
     /// throws, so the search counts the source as failed; beside local hits
     /// it is logged and the local hits stand.
+    func searchStations(query: String, scope: RadioSearchRule.Scope) async throws -> [RadioStation] { [] }
+
     func searchStations(query: String) async throws -> [RadioStation] {
         let local = (RadioStore.favorites() + RadioStore.manualStations())
             .filter { $0.name.localizedCaseInsensitiveContains(query) }
