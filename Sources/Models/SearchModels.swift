@@ -36,6 +36,10 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     /// The catalog SENDER line of a catalogBook hit (LibriVox/Gutenberg/
     /// Internet Archive). Sources sign their hits.
     var sourceLabel: String? = nil
+
+    static func offlineKind(of itemId: String) -> Kind? {
+        itemId.contains(":song:") ? .song : .album
+    }
 }
 
 /// Which "no matches" line the results show, if any. While the search still

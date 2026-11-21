@@ -79,6 +79,10 @@ nonisolated struct SoundSetting: Codable, Hashable, Sendable {
         gain.isFinite ? min(max(gain, 1), Self.gainLimit) : 1
     }
 
+    static let boostCeilingDB: Double = 10
+
+    var playedGain: Double { clampedGain }
+
     /// Nothing to do: a flat preset and no gain. The player hangs no filter
     /// in for such a setting.
     var isOff: Bool { SoundPresets.preset(presetID).isFlat && clampedGain == 1 }

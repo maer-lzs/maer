@@ -633,6 +633,47 @@ struct ShortcutBooksTests {
         #expect(index.calls == ["remove", "add a,b", "remove"], "the sign out runs after the pass: \(index.calls)")
     }
 
+    /// The sign in and the sign out do not wait for the index: the removal
+    /// goes into the line and the caller goes on (measured on iOS 27: 0.6 to
+    /// 7 s, under load 37 s). A pass asked after it still runs after it.
+    @Test("the sign out queues the removal and does not wait for it; a pass asked after runs after it")
+    @available(iOS 27, *)
+    @MainActor
+    func theSignOutDoesNotWait() async {
+        let kept = SpotlightIndex.index
+        defer { SpotlightIndex.index = kept }
+        let index = SpotlightRecorder()
+        SpotlightIndex.index = index.index()
+        index.items = [item("a", title: "Alpha"), item("b", title: "Beta")]
+        let tagOf = self.tagOf
+        await SpotlightIndex.forget()
+        index.calls = []
+
+        index.holdNextRemoval = true
+        SpotlightIndex.forgetInLine()
+        // The caller is back while the removal is held.
+        let pass = Task { @MainActor in
+            await SpotlightIndex.reconcile(books: { BookQuery.books(from: index.items, tagOf: tagOf) }, signedIn: { true })
+        }
+        var waited = 0
+        while index.held == nil && waited < 200 { await Task.yield(); waited += 1 }
+        #expect(index.held != nil, "the removal was not queued")
+        index.held?.resume()
+        index.held = nil
+        await pass.value
+        #expect(index.calls == ["remove", "remove", "add a,b"], "the pass ran before the removal: \(index.calls)")
+    }
+
+    @Test("Fence: the one place a server leaves queues the removal of the books, it does not await it", .needsTheSources)
+    func theServerLeavesWithoutWaiting() throws {
+        let auth = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
+        let forget = try #require(auth.range(of: "static func forgetFormerServer("))
+        let body = auth[forget.upperBound...].prefix(600)
+        #expect(body.contains("SpotlightIndex.forgetInLine()"))
+        #expect(!body.contains("await SpotlightIndex.forget()"))
+    }
+
     /// A load still under way when the person signs out finishes later and
     /// asks a pass: no one is signed in, so it adds nothing.
     @Test("a pass after the sign out adds nothing")

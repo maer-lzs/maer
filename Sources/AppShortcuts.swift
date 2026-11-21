@@ -893,6 +893,8 @@ enum SpotlightIndex {
         }
     }
 
+    static func forgetInLine() {}
+
     /// Takes every book out of the index, in line: the sign out.
     static func forget() async {
         await inLine {
