@@ -113,12 +113,14 @@ nonisolated enum PlaybackClaimRules {
     /// validity window. Released or not, both carry the freshest stand
     /// that device knew.
     static func takeoverPosition(claim: PlaybackClaim?, itemId: String,
-                                 ownDeviceId: String, nowMs: Double) -> Double? {
+                                 ownDeviceId: String, nowMs: Double, receivedMs: Double? = nil) -> Double? {
         guard let claim, claim.deviceId != ownDeviceId, claim.itemId == itemId,
               let position = claim.position,
               nowMs - claim.t < positionValidSeconds * 1000 else { return nil }
         return position
     }
+
+    static func takesRelease(_ claim: PlaybackClaim, heldStandMs: Double?) -> Bool { true }
 
     /// The hint on a device that does not play: the foreign fresh claim,
     /// whatever it names. The old form needed the standby item to match

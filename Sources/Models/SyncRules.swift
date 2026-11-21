@@ -90,6 +90,11 @@ nonisolated enum SyncRules {
         return atMs > ownStandMs ? .newer : .older
     }
 
+    static func silentFollow(isPlaying: Bool, isLoaded: Bool, position: Double, atMs: Double,
+                             ownStandMs: Double?, currentTime: Double) -> Double? { nil }
+
+    static func hybridStamp(nowMs: Double, seenMs: Double?) -> Double { nowMs }
+
     /// Device reconcile: adopt the server state?
     /// With timestamp: newer entry + noticeable difference (also backwards).
     /// Without timestamp (old servers): forward only.
