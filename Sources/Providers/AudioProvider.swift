@@ -88,6 +88,10 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// default, so a source's real answer would be discarded in silence.
     func servingSignature(for type: MediaType) -> String
     var capabilities: ProviderCapabilities { get }
+    /// Whether this title may be kept on the device, beside the source's
+    /// capability to download at all. A requirement for the same reason as
+    /// `isAvailable`; default true.
+    func mayKeep(itemId: String) -> Bool
     /// Whether a "finished" mark for one of its titles lives in the local
     /// positions because this source writes no position anywhere (local
     /// files, catalogues, feeds, radio). A source whose `updateProgress`
@@ -169,6 +173,9 @@ extension AudioProvider {
 
     /// Default: item-independent source headers.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String]? { streamAuthHeaders }
+
+    /// Default: a source that downloads may keep every title of its own.
+    func mayKeep(itemId: String) -> Bool { true }
 
     /// Default: the item's answer for every address of it.
     func streamAuthHeaders(forItemId itemId: String, to url: URL) -> [String: String]? {

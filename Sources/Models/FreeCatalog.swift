@@ -409,6 +409,10 @@ nonisolated enum FreeCatalog {
         return !licenceURL.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    static func mayKeepOffline(itemId: String, statedLicence: Bool, gutenbergPublicDomain: Bool) -> Bool { false }
+
+    static func gutenbergIsPublicDomain(_ rights: String?) -> Bool { false }
+
     /// What the tile carries when the source states nothing. NEVER nothing
     /// at all. A missing statement is information rather than a gap, and it
     /// is explicitly NOT a claim about the rights situation.

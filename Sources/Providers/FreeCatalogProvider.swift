@@ -61,6 +61,7 @@ final class FreeCatalogProvider: AudioProvider {
     var keepsMarksOnDevice: Bool { true }
     var capabilities: ProviderCapabilities { [] }
     var streamAuthHeaders: [String: String] { [:] }
+    func mayKeep(itemId: String) -> Bool { false }
     /// Deliberately false. Discover-only surface, never a tab/search source.
     var isAvailable: Bool { false }
 

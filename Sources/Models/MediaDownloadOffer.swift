@@ -26,5 +26,9 @@ nonisolated enum MediaDownloadOffer {
     static func isPossible(_ capabilities: ProviderCapabilities) -> Bool {
         capabilities.contains(.downloadable)
     }
+
+    static func isPossible(_ capabilities: ProviderCapabilities, mayKeep: Bool) -> Bool {
+        capabilities.contains(.downloadable)
+    }
 }
 
