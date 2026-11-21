@@ -18,14 +18,14 @@ nonisolated enum CarPlayLayout {
     /// system allows one more; otherwise its favourites stand on Start.
     /// Never more tabs than `maximumTabCount`: the tab bar refuses more.
     static func tabs(audiobooks: Bool, podcasts: Bool, music: Bool, radio: Bool,
-                     maximumTabCount: Int) -> (tabs: [Tab], radioOnStart: Bool) {
+                     maximumTabCount: Int) -> (tabs: [Tab], radioOnStart: Bool, cut: [Tab]) {
         var tabs: [Tab] = [.start]
         if audiobooks { tabs.append(.audiobooks) }
         if podcasts { tabs.append(.podcasts) }
         if music { tabs.append(.music) }
         let radioTab = radio && tabs.count < maximumTabCount
         if radioTab { tabs.append(.radio) }
-        return (Array(tabs.prefix(max(1, maximumTabCount))), radio && !radioTab)
+        return (Array(tabs.prefix(max(1, maximumTabCount))), radio && !radioTab, [])
     }
 
     /// Whether an area carries a tab: it is on, and it holds something; or,

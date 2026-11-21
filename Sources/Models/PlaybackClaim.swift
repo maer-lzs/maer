@@ -136,7 +136,7 @@ nonisolated enum PlaybackClaimRules {
     /// whatever it names. The old form needed the standby item to match
     /// the claim, and no catalogue or radio item on the other device ever
     /// did, so those sources never showed the hint.
-    static func hintClaim(claim: PlaybackClaim?, ownDeviceId: String,
+    static func hintClaim(claim: PlaybackClaim?, ownDeviceId: String, ownLast: PlaybackClaim? = nil,
                           nowMs: Double) -> PlaybackClaim? {
         guard let claim, !claim.released, claim.deviceId != ownDeviceId,
               isFresh(claim, nowMs: nowMs) else { return nil }

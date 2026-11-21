@@ -181,6 +181,8 @@ enum PodcastAutoDownload {
     /// of the new keys wins over it. So an update moves nothing and writes
     /// nothing that could travel.
     private static func legacyKey(_ showId: String) -> String { "podcastAutoDownloadMode.\(showId)" }
+
+    static func forgetLocal(_ showId: String, defaults: UserDefaults = .standard) {}
     private static let generalLegacyKey = "podcastAutoDownloadModeAll"
 
     private static func legacyDirection(_ raw: String?) -> Direction? {

@@ -203,7 +203,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                 && !(RadioStore.favorites().isEmpty && RadioStore.recents().isEmpty),
             maximumTabCount: maximum)
         Logger.player.notice("CARPLAY tabs read=\(read, privacy: .public) max=\(maximum, privacy: .public) shown=\(layout.tabs.map(\.rawValue).joined(separator: ","), privacy: .public) radioOnStart=\(layout.radioOnStart, privacy: .public)")
-        return layout
+        return (layout.tabs, layout.radioOnStart)
     }
 
     /// The tab bar the moment the car connects, before anything is read:
