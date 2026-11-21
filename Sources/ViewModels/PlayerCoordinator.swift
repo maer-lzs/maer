@@ -753,8 +753,7 @@ final class PlayerCoordinator: ObservableObject {
     func playInOrder(items: [LibraryItem], contextSource: String? = nil, resuming: Set<String> = []) async {
         guard let first = items.first else { return }
         await open(item: first, restart: Self.restartsFirst(items, resuming: resuming), preservesContext: true)
-        context.replace(ids: items.dropFirst().map(\.id),
-                                       source: contextSource)
+        context.replace(ids: items.dropFirst().map(\.id), source: contextSource, whole: items.map(\.id))
     }
 
     /// The first item of a collection start begins from the beginning,
@@ -987,6 +986,10 @@ final class PlayerCoordinator: ObservableObject {
         // preserves the context: an advance is consumption, never a fresh
         // user intent.
         guard let next = resolveAdvance(after: finishedItemId) else { return }
+        // The list starts again: its rest is the whole list after its first title.
+        if context.ids.isEmpty, AppStorageKeys.musicRepeatModeValue == .all, next.id == context.whole.first {
+            context.replace(ids: Array(context.whole.dropFirst()), source: context.sourceTitle, whole: context.whole)
+        }
         Task { await self.advance(to: next) }
     }
 
@@ -1083,6 +1086,17 @@ final class PlayerCoordinator: ObservableObject {
                 memo[item.id] = item
                 return item.id
             })
+        // Repeat in music decides before the usual way on: the same song,
+        // or what was started from its first title when nothing follows.
+        let step = RepeatRule.step(
+            mode: AppStorageKeys.musicRepeatModeValue,
+            isMusic: RemoteCommandRule.kind(forItem: finishedId, markedForm: ListeningStore.startedForm(finishedId)) == .songs,
+            natural: natural, cascadeFound: hit != nil, wholeCount: context.whole.count)
+        switch step {
+        case .same: return inputs.item(finishedId) ?? (activeItem?.id == finishedId ? activeItem : nil)
+        case .restart: return context.whole.first.flatMap(inputs.item)
+        case .cascade: break
+        }
         guard let hit else {
             // The end has a REASON, and it is told apart: empty lists are
             // normal, entries that cannot start now are a finding.

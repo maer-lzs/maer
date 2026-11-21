@@ -32,7 +32,9 @@ final class PlaybackContext: ObservableObject {
     /// order again.
     @Published private(set) var orderBeforeShuffle: [String]?
     var isShuffled: Bool { orderBeforeShuffle != nil }
-    /// The whole list a start handed over, its first title included.
+    /// The whole list a start handed over, its first title included, for
+    /// repeat to start it again (`RepeatRule`). It stays when the rest has
+    /// run out; a single start or a new collection replaces it.
     private(set) var whole: [String] = []
 
     /// The context lives as ONE row (`context` in `playback_context`): it
@@ -47,7 +49,9 @@ final class PlaybackContext: ObservableObject {
         var whole: [String]?
     }
 
-    func replace(ids newIds: [String], source: String?, whole: [String]) {
+    /// A collection start hands over its rest and the whole list.
+    func replace(ids newIds: [String], source: String?, whole newWhole: [String]) {
+        whole = newWhole.filter { PlayQueue.canHold($0) }
         replace(ids: newIds, source: source)
     }
 
@@ -73,6 +77,7 @@ final class PlaybackContext: ObservableObject {
         let loaded = keeper.startNow()?[Self.rowKey]
         ids = loaded?.ids ?? []
         sourceTitle = loaded?.sourceTitle
+        whole = loaded?.whole ?? []
         // One row: a context this run wrote is the newer word over the row
         // read after a failed start, so nothing of that row goes into memory.
         // An empty memory writes only through `replace`, a start that hands
@@ -98,9 +103,10 @@ final class PlaybackContext: ObservableObject {
     /// (the medium's own continuation is cascade step 3, not a context).
     func clear() {
         orderBeforeShuffle = nil
-        guard !ids.isEmpty || sourceTitle != nil else { return }
+        guard !ids.isEmpty || sourceTitle != nil || !whole.isEmpty else { return }
         ids = []
         sourceTitle = nil
+        whole = []
         save()
     }
 
@@ -134,10 +140,12 @@ final class PlaybackContext: ObservableObject {
         if keeper?.startReadFailed == true { return nil }
         let changed = NavidromeRekey.changedCount(ids, map)
         let rekeyed = NavidromeRekey.rekeyed(ids, map)
-        guard rekeyed != ids else { return 0 }
+        let rekeyedWhole = NavidromeRekey.rekeyed(whole, map)
+        guard rekeyed != ids || rekeyedWhole != whole else { return 0 }
         ids = rekeyed
-        // The order before a shuffle names the same entries.
+        // The order before a shuffle and the whole list name the same entries.
         orderBeforeShuffle = orderBeforeShuffle.map { NavidromeRekey.rekeyed($0, map) }
+        whole = rekeyedWhole
         save()
         return changed
     }
@@ -184,7 +192,8 @@ final class PlaybackContext: ObservableObject {
     private func save() {
         guard persists else { return }
         keeper?.write(emptying: .refused) { [weak self] in
-            self.map { [Self.rowKey: Stored(version: 1, sourceTitle: $0.sourceTitle, ids: $0.ids)] }
+            self.map { [Self.rowKey: Stored(version: 1, sourceTitle: $0.sourceTitle, ids: $0.ids,
+                                            whole: $0.whole.isEmpty ? nil : $0.whole)] }
         }
     }
 }

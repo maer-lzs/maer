@@ -1093,7 +1093,23 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
                                        waitingInContext: context.ids.count) {
             buttons.append(shuffleButton())
         }
+        if RemoteCommandRule.kind(forItem: coordinator.activeItem?.id, markedForm: form) == .songs {
+            buttons.append(repeatButton())
+        }
         nowPlaying.updateNowPlayingButtons(buttons)
+    }
+
+    /// Repeat in music, the same state as the app's button: a tap goes
+    /// off, list, song; the button shows whether repeat is on.
+    private func repeatButton() -> CPNowPlayingButton {
+        let button = CPNowPlayingRepeatButton { [weak self] _ in
+            Task { @MainActor [weak self] in
+                PlayerViewModel.setRepeat(AppStorageKeys.musicRepeatModeValue.next)
+                self?.updatePlayerExtras()
+            }
+        }
+        button.isSelected = AppStorageKeys.musicRepeatModeValue != .off
+        return button
     }
 
     /// Mixes the rest of what was started, or puts it back in order; the

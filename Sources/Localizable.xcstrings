@@ -9983,12 +9983,32 @@
         }
       }
     },
+    "Repeat List" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liste wiederholen"
+          }
+        }
+      }
+    },
     "Repeat new password" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neues Passwort wiederholen"
+          }
+        }
+      }
+    },
+    "Repeat Song" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lied wiederholen"
           }
         }
       }

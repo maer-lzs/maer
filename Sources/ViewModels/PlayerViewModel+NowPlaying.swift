@@ -165,6 +165,39 @@ extension PlayerViewModel {
             Self.answeredOnMain { self?.handleTitleButton(forward: false) ?? false }
                 ? .success : .commandFailed
         }
+
+        // Repeat, music only: the system's command shows and sets the same
+        // state as the player's button (`AppStorageKeys.musicRepeatModeValue`).
+        let repeatCommand = commandCenter.changeRepeatModeCommand
+        repeatCommand.removeTarget(nil)
+        repeatCommand.isEnabled = RemoteCommandRule.kind(forItem: item?.id, markedForm: playingForm) == .songs
+        repeatCommand.currentRepeatType = Self.repeatType(AppStorageKeys.musicRepeatModeValue)
+        repeatCommand.addTarget { @Sendable event in
+            guard let change = event as? MPChangeRepeatModeCommandEvent else { return .commandFailed }
+            let mode: RepeatMode = switch change.repeatType {
+            case .one: .one
+            case .all: .all
+            default: .off
+            }
+            Task { @MainActor in Self.setRepeat(mode) }
+            return .success
+        }
+    }
+
+    /// Sets repeat on this device and shows it to the system: the one way
+    /// the player's button and the system's command change it.
+    static func setRepeat(_ mode: RepeatMode) {
+        AppStorageKeys.musicRepeatModeValue = mode
+        MPRemoteCommandCenter.shared().changeRepeatModeCommand.currentRepeatType = repeatType(mode)
+    }
+
+    /// The system's name for a repeat state.
+    nonisolated static func repeatType(_ mode: RepeatMode) -> MPRepeatType {
+        switch mode {
+        case .off: .off
+        case .all: .all
+        case .one: .one
+        }
     }
 
     private nonisolated static func answeredOnMain(_ body: @MainActor @Sendable () -> Bool) -> Bool {

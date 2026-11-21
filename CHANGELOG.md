@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Repeat in music.** The player's music row has a Repeat button beside
+the others: a tap goes from off to the list to one song. One song plays
+again at its end; the list starts again once nothing else follows, after
+what waits in Up Next. Repeat stays as you set it on this device, and the
+car and the lock screen show the same.
+
 **Radio Catalog.** The station directory has one switch, Radio Catalog, on
 the Radio card of your sources; the radio page keeps only Your Own
 Stations. With the catalog off, search still finds your saved and your own

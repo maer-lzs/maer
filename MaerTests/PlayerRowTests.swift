@@ -15,18 +15,21 @@ struct PlayerRowTests {
         SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
     }
 
-    @Test("the row holds speed (the queue for music), the sleep timer, the sound and the menu, and no skip interval",
+    @Test("the row holds speed (the queue and repeat for music), the sleep timer, the sound and the menu, and no skip interval",
           .needsTheSources)
     func fourButtons() throws {
         let player = try Self.read("Sources/Views/PlayerView.swift")
         let row = try #require(functionBody(of: "private var secondaryControls: some View {", in: player))
         for part in ["queueControl", "SpeedMenu(viewModel: viewModel, valueOnly: toolsAsSymbols)",
                      "SleepTimerMenu(viewModel: viewModel, columnCell: toolsAsSymbols, onPlayer: true)",
-                     "EffectsButton(viewModel: viewModel, iconOnly: toolsAsSymbols)", "moreMenu"] {
+                     "EffectsButton(viewModel: viewModel, iconOnly: toolsAsSymbols)", "moreMenu",
+                     "RepeatButton(iconOnly: toolsAsSymbols)"] {
             #expect(row.contains(part), "the row lacks \(part)")
         }
-        // Speed and queue are two branches, never both: five shares in the code, four on screen.
-        #expect(row.components(separatedBy: ".frame(maxWidth: .infinity)").count - 1 == 5, "the four do not share the width")
+        // Speed and queue are two branches, never both; repeat stands only
+        // for music: six shares in the code, four on screen for spoken
+        // word, five for music.
+        #expect(row.components(separatedBy: ".frame(maxWidth: .infinity)").count - 1 == 6, "the buttons do not share the width")
         for gone in ["setSkipInterval", "PlaybackSkip.options", "skipIntervalMenu", "symbolRow"] {
             #expect(!player.contains(gone), "the player still offers the skip interval or the old row: \(gone)")
         }

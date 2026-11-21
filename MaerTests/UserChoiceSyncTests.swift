@@ -1103,6 +1103,8 @@ struct UserChoiceGateTests {
             // Up Next stays on each device, so the moment its new episodes
             // count from is the device's own.
             "podcastUpNextAddAllSince",
+            // Repeat in music belongs to this device, like shuffle.
+            "musicRepeatMode",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

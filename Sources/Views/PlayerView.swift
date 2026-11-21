@@ -913,6 +913,10 @@ struct PlayerView: View {
                     queueControl
                         .frame(maxWidth: .infinity)
                 }
+                if viewModel.isMusicItem {
+                    RepeatButton(iconOnly: toolsAsSymbols)
+                        .frame(maxWidth: .infinity)
+                }
             }
             if !toolsAtSide {
                 SleepTimerMenu(viewModel: viewModel, columnCell: toolsAsSymbols, onPlayer: true)

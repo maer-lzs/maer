@@ -172,8 +172,10 @@ struct SharedGrowthFenceTests {
     /// (one fewer). 765: the coordinator's open and advance ask the session
     /// through two seams a witness replaces (`route`, `known`), one more line.
     /// 763: the radio page above, and the search bar asks the rule of radio
-    /// search instead of the provider (one fewer, `SearchDoor`).
-    nonisolated static let sourcesStock = 763
+    /// search instead of the provider (one fewer, `SearchDoor`). 764: repeat
+    /// shows its state to the system's command in one place
+    /// (`PlayerViewModel.setRepeat`, one more).
+    nonisolated static let sourcesStock = 764
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,
