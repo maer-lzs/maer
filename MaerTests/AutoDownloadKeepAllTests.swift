@@ -59,13 +59,18 @@ struct AutoDownloadKeepAllTests {
         #expect(!Rules.warnsOfArchive(direction: .newest, keep: 3))
     }
 
-    @Test("the show's sheet and the section for all shows ask the rule, and the sentence has its German words", .needsTheSources)
+    @Test("the show's sheet and the section for all shows ask the rule through one reading and say one sentence, with its German words", .needsTheSources)
     func theSentenceStands() throws {
-        for file in ["Sources/Views/Podcasts/PodcastShowSettingsSheet.swift", "Sources/Views/Podcasts/PodcastGeneralSection.swift"] {
-            let code = SyncContractFenceTests.stripped(
-                try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
-            #expect(code.contains("PodcastAutoDownloadRules.warnsOfArchive("), "\(file) does not ask the rule")
+        func code(_ file: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(file), encoding: .utf8))
         }
+        for file in ["Sources/Views/Podcasts/PodcastShowSettingsSheet.swift", "Sources/Views/Podcasts/PodcastGeneralSection.swift"] {
+            let surface = try code(file)
+            #expect(surface.contains("PodcastGeneralSettings.warnsOfArchive("), "\(file) does not ask the one reading")
+            #expect(surface.contains("Text(PodcastGeneralSettings.archiveWarning)"), "\(file) says a sentence of its own")
+        }
+        #expect(try code("Sources/ViewModels/PodcastGeneralSettings.swift").contains("PodcastAutoDownloadRules.warnsOfArchive("),
+                "the one reading does not ask the rule")
         let catalog = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"), encoding: .utf8)
         let json = try #require(try JSONSerialization.jsonObject(with: Data(catalog.utf8)) as? [String: Any])
         let strings = try #require(json["strings"] as? [String: Any])

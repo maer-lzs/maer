@@ -133,6 +133,22 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
 /// Changing a value for all shows: what it asks, and what it does.
 @MainActor
 enum PodcastGeneralSettings {
+    /// Whether the stored values a settings surface holds (all shows, or
+    /// one show's own) can load the whole archive
+    /// (`PodcastAutoDownloadRules.warnsOfArchive`); a field without a value
+    /// acts as all shows' default. The one reading for both surfaces.
+    static func warnsOfArchive(_ values: [PodcastGeneralField: String]) -> Bool {
+        let direction = PodcastAutoDownload.Direction(rawValue: values[.direction] ?? PodcastGeneralField.direction.general)
+        let keep = Int(values[.keepDownloaded] ?? PodcastGeneralField.keepDownloaded.general)
+        return PodcastAutoDownloadRules.warnsOfArchive(direction: direction ?? .newest,
+                                                       keep: keep ?? PodcastAutoDownloadRules.keepByDefault)
+    }
+
+    /// The line both surfaces show under the choice when it warns.
+    static var archiveWarning: String {
+        String(localized: "Loads every episode of the show from where you are, which can be the whole archive.")
+    }
+
     /// The question before a change, when there is something to say: shows
     /// with their own value.
     struct Question: Identifiable {

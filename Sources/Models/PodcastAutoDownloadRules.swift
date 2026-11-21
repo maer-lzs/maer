@@ -187,21 +187,6 @@ nonisolated enum PodcastAutoDownloadRules {
         direction == .inOrder && keep == keepAll
     }
 
-    /// The same question from the stored values a settings surface holds
-    /// (all shows, or one show's own); a field without a value acts as all
-    /// shows' default. The one reading for both surfaces.
-    @MainActor
-    static func warnsOfArchive(values: [PodcastGeneralField: String]) -> Bool {
-        let direction = Direction(rawValue: values[.direction] ?? PodcastGeneralField.direction.general)
-        let keep = Int(values[.keepDownloaded] ?? PodcastGeneralField.keepDownloaded.general)
-        return warnsOfArchive(direction: direction ?? .newest, keep: keep ?? keepByDefault)
-    }
-
-    /// The line both surfaces show under the choice when it warns.
-    static var archiveWarning: String {
-        String(localized: "Loads every episode of the show from where you are, which can be the whole archive.")
-    }
-
     /// One of the automatism's own downloads of a show. Protected is one
     /// that is begun or playing: it never goes because of a count.
     struct Owned: Equatable, Sendable {

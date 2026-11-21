@@ -82,7 +82,7 @@ struct PodcastShowSettingsSheet: View {
     /// In order with All the automatism can load the whole archive: the
     /// sheet says so from the values the show acts on, its own or those of
     /// all shows.
-    private var warnsOfArchive: Bool { PodcastAutoDownloadRules.warnsOfArchive(values: own) }
+    private var warnsOfArchive: Bool { PodcastGeneralSettings.warnsOfArchive(own) }
 
     /// One of the three values a show can take from all shows. The
     /// first choice is "As for all shows", the way back from its own value.
@@ -213,7 +213,7 @@ struct PodcastShowSettingsSheet: View {
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if warnsOfArchive {
-                            Text(PodcastAutoDownloadRules.archiveWarning)
+                            Text(PodcastGeneralSettings.archiveWarning)
                         }
                         Text("Automatic downloads only run on Wi-Fi, and are removed a day after you finished them. Episodes you downloaded yourself are never touched.")
                         // A background job that failed says so where
