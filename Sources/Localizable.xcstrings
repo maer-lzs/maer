@@ -1070,6 +1070,16 @@
         }
       }
     },
+    "A title" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Titel"
+          }
+        }
+      }
+    },
     "A track arrived incomplete. Try the download again." : {
       "localizations" : {
         "de" : {
@@ -4980,6 +4990,16 @@
         }
       }
     },
+    "Heard last" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gehört"
+          }
+        }
+      }
+    },
     "Held" : {
       "localizations" : {
         "de" : {
@@ -7855,6 +7875,16 @@
         }
       }
     },
+    "Nothing in Up Next" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts in Als Nächstes"
+          }
+        }
+      }
+    },
     "Nothing in progress." : {
       "localizations" : {
         "de" : {
@@ -8351,6 +8381,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Offene Kataloge"
+          }
+        }
+      }
+    },
+    "Opens Up Next" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet Als Nächstes"
           }
         }
       }
@@ -9551,12 +9591,12 @@
         }
       }
     },
-    "Raises the volume by up to 6 dB, about two steps of the volume buttons. A limiter keeps loud passages from distorting." : {
+    "Raises the volume by up to 6 dB, about two steps of the volume buttons, less with a strong sound preset. A limiter keeps loud passages from distorting." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hebt die Lautstärke um bis zu 6 dB an, etwa zwei Stufen der Lautstärketasten. Ein Begrenzer hält laute Stellen frei von Verzerrung."
+            "value" : "Hebt die Lautstärke um bis zu 6 dB an, etwa zwei Stufen der Lautstärketasten, bei starker Klangeinstellung weniger. Ein Begrenzer hält laute Stellen frei von Verzerrung."
           }
         }
       }
@@ -14271,6 +14311,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wartet auf das Netz …"
+          }
+        }
+      }
+    },
+    "Waiting in Up Next" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet in Als Nächstes"
           }
         }
       }

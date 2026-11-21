@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**The mini player always stays.** With nothing loaded it shows the first
+title waiting in Up Next, or the one you heard last; a tap opens Up Next.
+The line under the gain now says it does less with a strong sound preset.
+
 **Small things you see.** The second line of the mini player is easier to
 read on glass. When your sign-in cannot be read yet after a restart, the
 sources say it will be read once the iPhone is unlocked, instead of a

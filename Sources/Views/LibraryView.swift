@@ -738,7 +738,8 @@ struct LibraryView: View {
         // mini-player mount is a REAL composition change and may adjust it.
         // Never `collapsed`/the morph).
         .environment(\.bottomBarInset,
-                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil || miniContent == .held,
+                     // The mini player always stands (`IdleMiniBar` without a session).
+                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: true,
                                                                       tabsBelow: !tabBarPlacement.isSide))
         .task {
             // Series data lives here. Hand the coordinator a lookup for the
@@ -1092,6 +1093,22 @@ struct LibraryView: View {
             .matchedGeometryEffect(id: "player", in: barNS)
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { miniPlayerMidY = $0 }
             .onDisappear { miniPlayerMidY = nil }
+        } else {
+            // The mini player always stands: without a session it names
+            // what waits or what was heard last, and opens Up Next.
+            let fill = MiniBarFill.of(hasSession: false, waiting: PlayQueue.shared.shownIds,
+                                      lastPlayed: AppStorageKeys.lastPlayedItemIdValue)
+            IdleMiniBar(fill: fill, title: Self.idleTitle(fill), compact: barCollapsed,
+                        onOpenQueue: { showQueueSheet = true })
+                .matchedGeometryEffect(id: "player", in: barNS)
+        }
+    }
+
+    /// The title an idle bar names, from what this device knows of it.
+    private static func idleTitle(_ fill: MiniBarFill) -> String? {
+        switch fill {
+        case .waiting(let id), .lastPlayed(let id): return AppSession.shared.playableItem(forId: id)?.title
+        case .session, .empty: return nil
         }
     }
 

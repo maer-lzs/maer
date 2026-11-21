@@ -5,11 +5,19 @@
 
 import Foundation
 
+/// What the mini player shows, which always stands: the running session;
+/// without one the first order waiting in Up Next, else the title heard
+/// last, else that nothing waits. Without a session a tap opens Up Next.
 nonisolated enum MiniBarFill: Equatable, Sendable {
     case session
     case waiting(String)
     case lastPlayed(String)
     case empty
 
-    static func of(hasSession: Bool, waiting: [String], lastPlayed: String?) -> MiniBarFill { .session }
+    static func of(hasSession: Bool, waiting: [String], lastPlayed: String?) -> MiniBarFill {
+        if hasSession { return .session }
+        if let first = waiting.first { return .waiting(first) }
+        if let lastPlayed, !lastPlayed.isEmpty { return .lastPlayed(lastPlayed) }
+        return .empty
+    }
 }

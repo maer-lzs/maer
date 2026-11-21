@@ -106,7 +106,8 @@ struct SoundChoiceSections: View {
             }
             .opacity(locked ? 0.4 : 1)
         } footer: {
-            Text("Raises the volume by up to 6 dB, about two steps of the volume buttons. A limiter keeps loud passages from distorting.")
+            // The gain gives way where a strong preset already lifts the sound (`SoundSetting.playedGain`).
+            Text("Raises the volume by up to 6 dB, about two steps of the volume buttons, less with a strong sound preset. A limiter keeps loud passages from distorting.")
         }
         .disabled(locked)
     }
