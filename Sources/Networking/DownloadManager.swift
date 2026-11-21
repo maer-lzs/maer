@@ -1075,6 +1075,15 @@ final class DownloadManager {
         // for the exact track it was captured from (see resumeTrackIndex).
         var carriedResumeData = controls[itemId]?.resumeData
         let carriedResumeIndex = controls[itemId]?.resumeTrackIndex
+        // A cancel that met the control before any transfer (a server left
+        // between a resume and this start) ends the download here; a fresh
+        // control would drop it and ask the source of the left server.
+        if controls[itemId]?.pendingCancel == true {
+            Logger.library.notice("DOWNLOAD cancelled before its start: \(itemId, privacy: .public)")
+            controls[itemId] = nil
+            phase[itemId] = nil
+            return
+        }
         controls[itemId] = DownloadControl(detail: item, provider: provider, resumeData: nil)
         phase[itemId] = .downloading(0)
 
