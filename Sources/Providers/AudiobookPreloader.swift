@@ -20,9 +20,18 @@ enum AudiobookPreloader {
         set { AppStorageKeys.set(Array(newValue).sorted(), for: AppStorageKeys.audiobookAutoDownloadedIds) }
     }
 
-    /// Runs `body` as one run of the download while listening.
+    /// The runs form a chain, one at a time (`SendChain`). The entries start
+    /// each in a task of their own; a second run beside the first would not
+    /// see the books the first one is loading, neither in the space nor in
+    /// `owned`, and its write of `owned` would drop the first one's books.
+    private static let runs = SendChain()
+
+    /// Runs `body` after every run started before it.
     static func chained(_ body: @escaping @MainActor () async -> Void) async {
-        await body()
+        await runs.run {
+            await body()
+            return 0
+        }
     }
 
     /// One run: after a book starts (`started`), after one finished
@@ -30,6 +39,13 @@ enum AudiobookPreloader {
     static func run(started: String? = nil, finished: String? = nil,
                     library: LibraryViewModel = AppSession.shared.libraryViewModel,
                     router: ItemRouter = .live) async {
+        await chained {
+            await once(started: started, finished: finished, library: library, router: router)
+        }
+    }
+
+    private static func once(started: String?, finished: String?,
+                             library: LibraryViewModel, router: ItemRouter) async {
         let dm = DownloadManager.shared
         let enabled = AppStorageKeys.bool(AppStorageKeys.audiobookPreloadEnabled, default: false)
         let onWiFi = await NetworkStatus.isOnWiFi()
