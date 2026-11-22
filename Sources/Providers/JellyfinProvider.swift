@@ -122,11 +122,6 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return after.field
     }
 
-    /// The client the stored settings describe: address, user, password and
-    /// the access the server handed out, if any is kept. A fresh sign-in is
-    /// kept only while its server is still the stored one: a client of the
-    /// former server lives on in running tasks after a switch, and the
-    /// access it gets there must not reach the next client.
     /// A client for a Quick Connect sign-in at `address`: no user, no
     /// password, no token of the stored account.
     static func quickConnectClient(address: String) -> JellyfinClient {
@@ -155,6 +150,11 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return nil
     }
 
+    /// The client the stored settings describe: address, user, password and
+    /// the access the server handed out, if any is kept. A fresh sign-in is
+    /// kept only while its server is still the stored one: a client of the
+    /// former server lives on in running tasks after a switch, and the
+    /// access it gets there must not reach the next client.
     static func storedClient() -> JellyfinClient {
         let builtFor = AppStorageKeys.jellyfinServerURLValue
         let builtUser = AppStorageKeys.jellyfinUsernameValue
