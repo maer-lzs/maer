@@ -129,6 +129,10 @@ struct MusopenCatalogTests {
     func shownTitle() {
         #expect(MusopenCatalog.shownTitle(objectName: nil, fileTitle: "File:Nocturne No. 2.ogg") == "Nocturne No. 2")
         #expect(MusopenCatalog.shownTitle(objectName: "  ", fileTitle: "File:A.b.mp3") == "A.b")
+        // An object name that is the markup of a template is no name.
+        #expect(MusopenCatalog.shownTitle(objectName: "<div class=\"fn\"><i>Nocturne Eb major</i></div>",
+                                          fileTitle: "File:Nocturne in E flat major, Op. 9 no. 2.mp3")
+                == "Nocturne in E flat major, Op. 9 no. 2")
         #expect(MusopenCatalog.shownTitle(objectName: "Etude", fileTitle: "File:x.ogg") == "Etude")
     }
 }

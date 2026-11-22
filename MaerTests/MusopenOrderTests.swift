@@ -38,13 +38,29 @@ struct MusopenOrderTests {
                                          title: "x") == "glazunov")
         #expect(MusopenOrder.composerKey(author: nil, title: "Haydn - String Quartet") == "haydn")
         #expect(MusopenOrder.composerKey(author: nil, title: "Nocturne") == "")
+        // The name before the dash of the title comes first: the source
+        // names the performers in its artist field as often as the composer.
+        #expect(MusopenOrder.composerKey(author: "Musopen Symphony Orchestra",
+                                         title: "Grieg - Peer Gynt Suite No. 1, Op. 46") == "grieg")
+        // A performer, a sentence or a note is no composer.
+        #expect(MusopenOrder.composerKey(author: "European Archives", title: "A Midsummer Night's Dream") == "")
+        #expect(MusopenOrder.composerKey(author: "The Modena Chamber Orchestra", title: "x") == "")
+        #expect(MusopenOrder.composerKey(author: "Unknown authorUnknown author", title: "x") == "")
+        #expect(MusopenOrder.composerKey(
+            author: "Composed by Claude Joseph Rouget de Lisle; arranged by Hector Berlioz in April 1792.",
+            title: "Francia") == "")
+        #expect(MusopenOrder.composerKey(author: "Robert Schumann (1810-1856) (see Musopen for performance authors)",
+                                         title: "x") == "schumann")
+        // A work before the dash is no name; the artist field speaks then.
+        #expect(MusopenOrder.composerKey(author: "Mozart", title: "Symphony No. 5 in C minor - I. Allegro") == "mozart")
     }
 
-    @Test("composer, then work; the single parts last, in the same order among themselves")
+    @Test("composer, then work; recordings without a composer after them; the single parts last")
     func order() {
         let items: [(String, String?)] = [
             ("1st violin B 02", "Wolfgang Amadeus Mozart"),
             ("Symphony No. 40", "Mozart"),
+            ("A Midsummer Night's Dream", "European Archive"),
             ("Ballade No. 3", "Frédéric Chopin"),
             ("Viola B 02", "Mozart"),
             ("Antonin Dvorak - carnival overture, op. 92", "(See Musopen for author information)"),
@@ -52,7 +68,7 @@ struct MusopenOrderTests {
         ]
         let ordered = MusopenOrder.ordered(items, title: { $0.0 }, composer: { $0.1 }).map(\.0)
         #expect(ordered == ["Ballade No. 1", "Ballade No. 3", "Antonin Dvorak - carnival overture, op. 92",
-                            "Symphony No. 40", "1st violin B 02", "Viola B 02"])
+                            "Symphony No. 40", "A Midsummer Night's Dream", "1st violin B 02", "Viola B 02"])
     }
 
     @Test("the page shows its recordings in that order and reads every answer when it opens", .needsTheSources)
