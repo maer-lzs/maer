@@ -20,13 +20,14 @@ nonisolated enum MusopenCoverArt {
 
     static func applies(to itemId: String) -> Bool { itemId.hasPrefix(MusopenCatalog.prefix) }
 
-    /// The composer's place in the palette: FNV-1a over the name, trimmed,
-    /// in lower case and in its composed form. A hash of its own, because
-    /// the one of the standard library changes with every launch, and the
-    /// colour must not.
+    /// The composer's place in the palette: FNV-1a over the family name in
+    /// lower case and in its composed form. The source names one composer
+    /// as "Mozart", "Wolfgang Amadeus Mozart" or "Mozart, Wolfgang Amadeus";
+    /// the family name is the part before a comma, else the last word. A
+    /// hash of its own, because the one of the standard library changes
+    /// with every launch, and the colour must not.
     static func colourIndex(composer: String?) -> Int {
-        let name = (composer ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased().precomposedStringWithCanonicalMapping
+        let name = familyName(composer).lowercased().precomposedStringWithCanonicalMapping
         guard !name.isEmpty else { return 0 }
         var hash: UInt32 = 0x811c9dc5
         for byte in name.utf8 {
@@ -34,6 +35,12 @@ nonisolated enum MusopenCoverArt {
             hash = hash &* 0x01000193
         }
         return Int(hash % UInt32(palette.count))
+    }
+
+    static func familyName(_ composer: String?) -> String {
+        var name = (composer ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if let comma = name.firstIndex(of: ",") { name = String(name[..<comma]) }
+        return name.split(whereSeparator: \.isWhitespace).last.map(String.init) ?? ""
     }
 
     static func colour(composer: String?) -> [Double] { palette[colourIndex(composer: composer)] }
