@@ -52,7 +52,8 @@ struct MusopenRow: View {
     }
 }
 
-/// One recording as the catalogs' tile: a tap plays it.
+/// One recording as the catalogs' tile: a tap plays it; its menu carries
+/// the download entry of music, offered while online.
 struct MusopenItemTile: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     let item: LibraryItem
@@ -71,6 +72,7 @@ struct MusopenItemTile: View {
         .contextMenu {
             CatalogDetailsButton(itemId: item.id)
             CatalogQueueButtons(itemId: item.id)
+            MusicDownloadMenuItems(itemId: item.id)
         }
     }
 }

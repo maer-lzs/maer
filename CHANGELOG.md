@@ -5,8 +5,9 @@
 **Musopen recordings.** Classical recordings of the Musopen collection on
 Wikimedia Commons, public domain and CC0 only: a Musopen row in Browse, on
 the Music tab and on the Classical page, and a page with every recording
-behind its heading. A recording plays on tap, can be kept offline and names
-its licence on its page. Musopen has its own switch under the sources and
+behind its heading. A recording plays on tap, downloads from the menu of
+its tile or its page and names its licence on its page, where it counts as
+one track. Musopen has its own switch under the sources and
 under the rows.
 
 **Spanish, French and Italian.** Mär speaks Spanish, French and Italian,

@@ -127,7 +127,7 @@ struct MusopenSourceTests {
         #expect(!MediaFamily.booksTabMember("mso:1", markedForm: nil))
     }
 
-    @Test("A recording is one piece of music: its page counts it as a track, and a stored one may be offered for download")
+    @Test("A recording is a single track of music: its page counts it as a track, and it may be offered for download")
     func recordingIsATrack() throws {
         #expect(ArchiveSeriesPage.isTrack("mso:99430846"))
         #expect(ArchiveSeriesPage.isTrack(FreeCatalog.jamendoPrefix + "1"))

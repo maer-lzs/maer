@@ -1019,6 +1019,7 @@ struct ArchiveSeriesPage: View {
         .pageActions("album-actions") {
             CatalogQueueButtons(itemId: itemId, chain: Self.offersChain(effectiveFlavor) ? playerCoordinator : nil,
                                 title: shareContent?.facts.title ?? router.item(itemId)?.title)
+            if Self.isTrack(itemId) { MusicDownloadMenuItems(itemId: itemId) }
             if let shareOffer { SharedLinkButton(offer: shareOffer, title: shareContent?.facts.title) }
         }
         .sharedLink(shareContent, cover: router.coverURL(itemId), to: $shareOffer)
@@ -1089,9 +1090,9 @@ struct ArchiveSeriesPage: View {
                 Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
             }
             // The honest second line. The episode count the tile
-            // could not carry without a second fetch. A Jamendo title is a
-            // track, whatever flavour plays it.
-            Text(effectiveFlavor == .album || isJamendo
+            // could not carry without a second fetch. A single track of
+            // music counts as a track, whatever flavour plays it (`isTrack`).
+            Text(effectiveFlavor == .album || Self.isTrack(itemId)
                  ? "\(tracks.count) tracks"
                  : "\(tracks.count) episodes")
                 .font(.caption).foregroundStyle(.secondary)
@@ -1150,9 +1151,12 @@ struct ArchiveSeriesPage: View {
 
     private var isJamendo: Bool { itemId.hasPrefix(FreeCatalog.jamendoPrefix) }
 
-    /// Whether the title is one piece of music.
+    /// Whether the title is a single track of music, whatever flavour plays
+    /// it: a Jamendo title and a Musopen recording. Its page counts it as a
+    /// track and its menu carries the download entry of music, which asks
+    /// the source whether a copy is allowed.
     nonisolated static func isTrack(_ itemId: String) -> Bool {
-        itemId.hasPrefix(FreeCatalog.jamendoPrefix)
+        itemId.hasPrefix(FreeCatalog.jamendoPrefix) || itemId.hasPrefix(MusopenCatalog.prefix)
     }
 
     /// Where the title comes from, as the player names it: Jamendo's terms
