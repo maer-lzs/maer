@@ -1150,6 +1150,11 @@ struct ArchiveSeriesPage: View {
 
     private var isJamendo: Bool { itemId.hasPrefix(FreeCatalog.jamendoPrefix) }
 
+    /// Whether the title is one piece of music.
+    nonisolated static func isTrack(_ itemId: String) -> Bool {
+        itemId.hasPrefix(FreeCatalog.jamendoPrefix)
+    }
+
     /// Where the title comes from, as the player names it: Jamendo's terms
     /// ask for the provider and a backlink per track, and every other
     /// catalogue title links its page at the source.

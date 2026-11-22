@@ -127,6 +127,35 @@ struct MusopenSourceTests {
         #expect(!MediaFamily.booksTabMember("mso:1", markedForm: nil))
     }
 
+    @Test("A recording is one piece of music: its page counts it as a track, and a stored one may be offered for download")
+    func recordingIsATrack() throws {
+        #expect(ArchiveSeriesPage.isTrack("mso:99430846"))
+        #expect(ArchiveSeriesPage.isTrack(FreeCatalog.jamendoPrefix + "1"))
+        #expect(!ArchiveSeriesPage.isTrack(FreeCatalog.archivePrefix + "album"))
+        #expect(!ArchiveSeriesPage.isTrack("lv:1"))
+        let (provider, _, directory) = try makeProvider(allowed: true, answer: nil)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        _ = provider.remember(recording: Self.recording)
+        #expect(MediaDownloadOffer.isPossible(provider.capabilities, mayKeep: provider.mayKeep(itemId: "mso:99430846")),
+                "the menu entry would stay away for a recording")
+    }
+
+    @Test("The Musopen tile and the page of a recording carry the download entry of music", .needsTheSources)
+    func downloadIsOffered() throws {
+        let tile = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Views/Music/MusopenViews.swift") })
+        let tileText = try SourceTree.text(tile)
+        let menu = try #require(tileText.range(of: ".contextMenu {"), "the tile has no menu")
+        #expect(tileText[menu.upperBound...].prefix(300).contains("MusicDownloadMenuItems(itemId: item.id)"),
+                "the Musopen tile offers no download")
+        let page = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Views/CatalogSourcePage.swift") })
+        let pageText = try SourceTree.text(page)
+        let actions = try #require(pageText.range(of: ".pageActions(\"album-actions\") {"), "the page has no menu")
+        #expect(pageText[actions.upperBound...].prefix(500).contains("MusicDownloadMenuItems(itemId: itemId)"),
+                "the page of a recording offers no download")
+    }
+
     @Test("The Classical page carries the Musopen row, and the row opens the Musopen page", .needsTheSources)
     func classicalPageFence() throws {
         let page = try #require(ProjectFileIntegrityTests.sourceFiles()
