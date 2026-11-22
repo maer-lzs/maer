@@ -20,7 +20,7 @@ struct MusopenCatalogTests {
         try MusopenCatalog.page(from: CorpusFixture.data("musopen_category_page", ext: "json", subdirectory: "ServerAnswers/commons"))
     }
 
-    @Test("The licence per file: public domain and CC0 stay, everything else stays out")
+    @Test("The licence per file: public domain, CC0 and the owner's Public Domain Mark stay, everything else stays out")
     func licenceTable() {
         let table: [(String?, MusopenCatalog.Licence?)] = [
             ("pd", .publicDomain), ("PD", .publicDomain), (" pd ", .publicDomain),
@@ -31,16 +31,25 @@ struct MusopenCatalogTests {
         for (stated, expected) in table {
             #expect(MusopenCatalog.Licence(stated: stated) == expected, "\(stated ?? "nil")")
         }
+        // The mark leaves `License` empty and names itself in the short name.
+        #expect(MusopenCatalog.Licence(stated: nil, shortName: "PDM-owner") == .publicDomainMark)
+        #expect(MusopenCatalog.Licence(stated: "", shortName: " PDM-owner ") == .publicDomainMark)
+        #expect(MusopenCatalog.Licence(stated: nil, shortName: "CC BY 3.0") == nil)
+        // A stated licence decides before the short name.
+        #expect(MusopenCatalog.Licence(stated: "cc0", shortName: "PDM-owner") == .cc0)
+        #expect(MusopenCatalog.Licence.publicDomainMark.label == String(localized: "Public domain (per the source)"))
+        #expect(CatalogRightsLine.of(itemId: "mso:1", licence: MusopenCatalog.Licence.publicDomainMark.label, year: nil)
+                == .stated(String(localized: "Public domain (per the source)")))
     }
 
     @Test("One file of each kind: three recordings, five counted out by their reason")
     func eachKind() throws {
         let page = try kinds()
         // In the order of the file names, as the category lists them.
-        #expect(page.recordings.map(\.itemId) == ["mso:67816870", "mso:99430846", "mso:67535618"])
-        // A video, an Ogg video and a picture are no sound; the Public
-        // Domain Mark is no licence of the two; FLAC has no MP3.
-        #expect(page.dropped == [.notAudio: 3, .licence: 1, .noPlayableForm: 1])
+        #expect(page.recordings.map(\.itemId) == ["mso:67816870", "mso:99430846", "mso:67535618", "mso:176969078"])
+        #expect(page.recordings.last?.licence == .publicDomainMark)
+        // A video, an Ogg video and a picture are no sound; FLAC has no MP3.
+        #expect(page.dropped == [.notAudio: 3, .noPlayableForm: 1])
         #expect(page.token == nil)
     }
 

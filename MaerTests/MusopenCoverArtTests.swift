@@ -38,6 +38,46 @@ struct MusopenCoverArtTests {
         }
     }
 
+    @Test("two colours per composer from the same hash, never the same one, the same for every spelling")
+    func twoColours() {
+        #expect(MusopenCoverArt.colourIndices(composer: "Mozart") == (start: 10, end: 4))
+        #expect(MusopenCoverArt.colourIndices(composer: "Wolfgang Amadeus Mozart") == (start: 10, end: 4))
+        #expect(MusopenCoverArt.colourIndices(composer: "Frédéric Chopin") == (start: 10, end: 1))
+        #expect(MusopenCoverArt.colourIndices(composer: "Johannes Brahms") == (start: 8, end: 6))
+        for name in ["Bach", "Haydn", "Grieg", "Smetana", "", "x"] {
+            let pair = MusopenCoverArt.colourIndices(composer: name)
+            #expect(pair.start != pair.end, "\(name)")
+            #expect(pair.start == MusopenCoverArt.colourIndex(composer: name))
+        }
+    }
+
+    @Test("white text reaches 4.5:1 everywhere along every pair's diagonal, under the letter as well")
+    func contrastAlongTheGradient() {
+        let palette = MusopenCoverArt.palette
+        for (i, start) in palette.enumerated() {
+            for (j, end) in palette.enumerated() where i != j {
+                for step in 0...10 {
+                    let rgb = MusopenCoverArt.mix(start, end, at: Double(step) / 10)
+                    for shown in [rgb, MusopenCoverArt.underLetter(rgb)] {
+                        #expect(TextContrast.againstWhite(red: shown[0], green: shown[1], blue: shown[2]) >= 4.5,
+                                "\(i) to \(j) at \(step)")
+                    }
+                }
+            }
+        }
+        #expect(MusopenCoverArt.mix([0, 0, 0], [1, 1, 1], at: 0.5) == [0.5, 0.5, 0.5])
+        #expect(MusopenCoverArt.letterOpacity > 0.1 && MusopenCoverArt.letterOpacity < 0.5, "the letter is no shade")
+    }
+
+    @Test("the initial is the family name's first letter, else the work's")
+    func initial() {
+        #expect(MusopenCoverArt.initial(composer: "Wolfgang Amadeus Mozart", title: "1st violin B 02") == "M")
+        #expect(MusopenCoverArt.initial(composer: "Frédéric Chopin", title: "x") == "C")
+        #expect(MusopenCoverArt.initial(composer: "dvořák", title: "x") == "D")
+        #expect(MusopenCoverArt.initial(composer: nil, title: "nocturne") == "N")
+        #expect(MusopenCoverArt.initial(composer: "  ", title: "") == "")
+    }
+
     @Test("the composer above the work; without a composer the work alone")
     func lines() {
         let both = MusopenCoverArt.lines(title: "1st violin B 02", composer: "Wolfgang Amadeus Mozart")
@@ -59,6 +99,10 @@ struct MusopenCoverArtTests {
         let cover = try source("Sources/Views/Music/MusopenViews.swift")
         #expect(cover.contains("struct MusopenCover: View"))
         #expect(cover.contains(".minimumScaleFactor("), "the cover's text breaks off instead of fitting")
+        #expect(cover.contains("LinearGradient(colors: [colour(art.start), colour(art.end)], startPoint: .topLeading, endPoint: .bottomTrailing)"),
+                "the cover draws no diagonal of its two colours")
+        #expect(cover.contains("MusopenCoverArt.initial(composer: lines.composer, title: lines.work)"),
+                "the cover carries no initial")
         #expect(try source("Sources/Views/FeedArtwork.swift").contains("MusopenCover(title: item.title, composer: item.author)"),
                 "the catalogue tile draws no cover for a recording")
         #expect(try source("Sources/Views/CatalogSourcePage.swift").contains("MusopenCover(title:"),

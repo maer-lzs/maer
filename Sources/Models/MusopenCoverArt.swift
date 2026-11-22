@@ -50,4 +50,17 @@ nonisolated enum MusopenCoverArt {
         let name = composer?.trimmingCharacters(in: .whitespacesAndNewlines)
         return (name?.isEmpty == false ? name : nil, title)
     }
+
+    static func colourIndices(composer: String?) -> (start: Int, end: Int) { (0, 0) }
+
+    static func colours(composer: String?) -> (start: [Double], end: [Double]) { ([0, 0, 0], [0, 0, 0]) }
+
+    static func mix(_ start: [Double], _ end: [Double], at t: Double) -> [Double] { start }
+
+    static let letterShade: Double = 1
+    static let letterOpacity: Double = 0.5
+
+    static func underLetter(_ rgb: [Double]) -> [Double] { rgb }
+
+    static func initial(composer: String?, title: String) -> String { "" }
 }

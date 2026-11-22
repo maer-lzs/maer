@@ -32,12 +32,12 @@ nonisolated enum MusopenCatalog {
     /// The two licences the catalog keeps. Everything else stays out and
     /// is counted (`Dropped.licence`).
     enum Licence: String, Codable, Sendable, CaseIterable {
-        case publicDomain, cc0
+        case publicDomain, cc0, publicDomainMark
 
         /// From the file page's `License` field, which Commons fills from
         /// the licence template (`pd`, `cc0`, `cc-by-3.0`, …). A Public
         /// Domain Mark of the owner leaves that field empty and stays out.
-        init?(stated: String?) {
+        init?(stated: String?, shortName: String? = nil) {
             switch stated?.trimmingCharacters(in: .whitespaces).lowercased() {
             case "pd": self = .publicDomain
             case "cc0": self = .cc0
@@ -49,6 +49,7 @@ nonisolated enum MusopenCatalog {
             switch self {
             case .publicDomain: String(localized: "Public domain")
             case .cc0: "CC0"
+            case .publicDomainMark: ""
             }
         }
     }
