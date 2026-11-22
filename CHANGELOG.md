@@ -17,14 +17,18 @@ Labels in Tab Bar turns the names off on this device. A long press on a tab
 shows it large, and VoiceOver names every tab as before.
 
 **Musopen recordings.** Classical recordings of the Musopen collection on
-Wikimedia Commons, public domain and CC0 only: a Musopen row in Browse, on
-the Music tab and on the Classical page, and a page with every recording
-behind its heading. A recording plays on tap, downloads from the menu of
-its tile or its page and names its licence on its page, where it counts as
-one track. A recording has no picture, so its cover is drawn: a colour
-that belongs to its composer, the same on every device, with the composer
+Wikimedia Commons, public domain and CC0 only, and what its owner marked
+public domain, named so: a Musopen row in Browse, on the Music tab and on
+the Classical page, and a page with every recording behind its heading,
+ordered by composer and work, the single parts of an orchestra recording
+at the end. A recording plays on tap, downloads from the menu of its tile
+or its page and names its licence on its page, where it counts as one
+track. A recording has no picture, so its cover is drawn: a soft diagonal
+between two colours that belong to its composer, the same on every
+device, with the composer's initial large in a corner and the composer
 and the work on it, on its tile, its page and in the player. Musopen has
-its own switch under the sources and under the rows.
+its own switch under the sources and under the rows, and the map of the
+areas names it among what needs no account.
 
 **Spanish, French and Italian.** Mär speaks Spanish, French and Italian,
 in the app, in Siri's phrases and in the system's questions. The

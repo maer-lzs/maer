@@ -10,34 +10,48 @@ enum MusopenTile {
     static let placeholderSystemImage = "music.note"
 }
 
-/// The drawn cover of a recording (`MusopenCoverArt`): the composer's
-/// colour, the composer and the work in white. The text is sized by the
-/// picture, not by the reading size, like the print on a sleeve, and shrinks
-/// to fit instead of breaking off; the tile and the player name the
-/// recording in their own text, so the cover is hidden from VoiceOver.
+/// The drawn cover of a recording (`MusopenCoverArt`): a soft diagonal
+/// between the two colours of the composer's family name, its initial large
+/// and translucent, cut by the lower right corner, and over it the composer
+/// and the work in full white. The text is sized by the picture, not by the
+/// reading size, like the print on a sleeve, and shrinks to fit instead of
+/// breaking off; the tile and the player name the recording in their own
+/// text, so the cover is hidden from VoiceOver.
 struct MusopenCover: View {
     let title: String
     let composer: String?
 
+    private func colour(_ rgb: [Double]) -> Color { Color(red: rgb[0], green: rgb[1], blue: rgb[2]) }
+
     var body: some View {
         let lines = MusopenCoverArt.lines(title: title, composer: composer)
-        let rgb = MusopenCoverArt.colour(composer: lines.composer)
+        let art = MusopenCoverArt.colours(composer: lines.composer)
+        let initial = MusopenCoverArt.initial(composer: lines.composer, title: lines.work)
         GeometryReader { geo in
             let side = geo.size.width
-            VStack(alignment: .leading, spacing: side * 0.04) {
-                if let name = lines.composer {
-                    Text(verbatim: name)
-                        .font(.system(size: side * 0.10, weight: .semibold))
-                        .opacity(0.85)
+            ZStack(alignment: .topLeading) {
+                LinearGradient(colors: [colour(art.start), colour(art.end)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Text(verbatim: initial)
+                    .font(.system(size: side * 0.95, weight: .black))
+                    .foregroundStyle(Color(white: MusopenCoverArt.letterShade).opacity(MusopenCoverArt.letterOpacity))
+                    .fixedSize()
+                    .frame(width: side, height: side, alignment: .bottomTrailing)
+                    .offset(x: side * 0.12, y: side * 0.22)
+                VStack(alignment: .leading, spacing: side * 0.04) {
+                    if let name = lines.composer {
+                        Text(verbatim: name)
+                            .font(.system(size: side * 0.10, weight: .semibold))
+                    }
+                    Text(verbatim: lines.work)
+                        .font(.system(size: side * 0.15, weight: .bold))
                 }
-                Text(verbatim: lines.work)
-                    .font(.system(size: side * 0.15, weight: .bold))
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.35)
+                .padding(side * 0.09)
+                .frame(width: side, height: side, alignment: .topLeading)
             }
-            .foregroundStyle(.white)
-            .minimumScaleFactor(0.35)
-            .padding(side * 0.09)
-            .frame(width: side, height: side, alignment: .topLeading)
-            .background(Color(red: rgb[0], green: rgb[1], blue: rgb[2]))
+            .frame(width: side, height: side)
+            .clipped()
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityHidden(true)
@@ -132,7 +146,7 @@ struct MusopenPage: View {
                     LoadFailedView(form: .page(title: Text(verbatim: "Musopen"),
                                                systemImage: MusopenTile.placeholderSystemImage),
                                    sentence: "Could not load the catalog. Check your connection and try again.") {
-                        Task { await loadMore() }
+                        Task { await readAll() }
                     }
                 } else {
                     EmptyStateView(title: Text(verbatim: "Musopen"), systemImage: MusopenTile.placeholderSystemImage)
@@ -146,11 +160,8 @@ struct MusopenPage: View {
                             .padding(.horizontal)
                             .foldLeadingHalf()
                         CoverGrid(columns: columns) {
-                            ForEach(items) { item in
+                            ForEach(MusopenOrder.ordered(items, title: { $0.title }, composer: { $0.author })) { item in
                                 MusopenItemTile(item: item, playerCoordinator: playerCoordinator)
-                                    .onAppear {
-                                        if item.id == items.last?.id { Task { await loadMore() } }
-                                    }
                             }
                         }
                         .padding(.horizontal)
@@ -165,7 +176,19 @@ struct MusopenPage: View {
         }
         .navigationTitle(Text(verbatim: "Musopen"))
         .task {
-            if items.isEmpty { await loadMore() }
+            if items.isEmpty { await readAll() }
+        }
+    }
+
+    /// The order needs every recording, so the page reads every answer
+    /// when it opens (about seventeen) and shows what it has, in order,
+    /// after each one. It stops at a failure, at the end and when it no
+    /// longer moves on.
+    private func readAll() async {
+        while cursor != nil, !loadFailed, !Task.isCancelled {
+            let before = cursor
+            await loadMore()
+            if cursor == before { return }
         }
     }
 

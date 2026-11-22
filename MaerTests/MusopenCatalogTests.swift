@@ -37,9 +37,10 @@ struct MusopenCatalogTests {
         #expect(MusopenCatalog.Licence(stated: nil, shortName: "CC BY 3.0") == nil)
         // A stated licence decides before the short name.
         #expect(MusopenCatalog.Licence(stated: "cc0", shortName: "PDM-owner") == .cc0)
-        #expect(MusopenCatalog.Licence.publicDomainMark.label == String(localized: "Public domain (per the source)"))
+        // The words of archive.org's mark: one claim, one text.
+        #expect(MusopenCatalog.Licence.publicDomainMark.label == String(localized: "Public domain (per source)"))
         #expect(CatalogRightsLine.of(itemId: "mso:1", licence: MusopenCatalog.Licence.publicDomainMark.label, year: nil)
-                == .stated(String(localized: "Public domain (per the source)")))
+                == .stated(String(localized: "Public domain (per source)")))
     }
 
     @Test("One file of each kind: three recordings, five counted out by their reason")

@@ -20022,30 +20022,30 @@
         }
       }
     },
-    "No account needed: LibriVox, radio plays, netlabels, old records" : {
+    "No account needed: LibriVox, radio plays, netlabels, old records, Musopen" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ohne Konto: LibriVox, Hörspiele, Netlabels, alte Schallplatten"
+            "value" : "Ohne Konto: LibriVox, Hörspiele, Netlabels, alte Schallplatten, Musopen"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sin cuenta: LibriVox, radioteatro, netlabels, discos antiguos"
+            "value" : "Sin cuenta: LibriVox, radioteatro, netlabels, discos antiguos, Musopen"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Aucun compte nécessaire : LibriVox, pièces radiophoniques, netlabels, vieux disques"
+            "value" : "Aucun compte nécessaire : LibriVox, pièces radiophoniques, netlabels, vieux disques, Musopen"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Nessun account necessario: LibriVox, radiodrammi, netlabel, vecchi dischi"
+            "value" : "Nessun account necessario: LibriVox, radiodrammi, netlabel, vecchi dischi, Musopen"
           }
         }
       }

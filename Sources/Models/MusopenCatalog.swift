@@ -29,19 +29,23 @@ nonisolated enum MusopenCatalog {
         String(localized: "Recordings of the Musopen collection on Wikimedia Commons. Public domain and CC0 recordings only; each recording names its licence on its page.")
     }
 
-    /// The two licences the catalog keeps. Everything else stays out and
+    /// The three rights the catalog keeps. Everything else stays out and
     /// is counted (`Dropped.licence`).
     enum Licence: String, Codable, Sendable, CaseIterable {
         case publicDomain, cc0, publicDomainMark
 
         /// From the file page's `License` field, which Commons fills from
-        /// the licence template (`pd`, `cc0`, `cc-by-3.0`, …). A Public
-        /// Domain Mark of the owner leaves that field empty and stays out.
+        /// the licence template (`pd`, `cc0`, `cc-by-3.0`, …). The owner's
+        /// Public Domain Mark leaves that field empty and names itself in
+        /// the short name (`PDM-owner`); it is the owner's word, so its
+        /// label says whose.
         init?(stated: String?, shortName: String? = nil) {
             switch stated?.trimmingCharacters(in: .whitespaces).lowercased() {
             case "pd": self = .publicDomain
             case "cc0": self = .cc0
-            default: return nil
+            default:
+                guard shortName?.trimmingCharacters(in: .whitespaces) == "PDM-owner" else { return nil }
+                self = .publicDomainMark
             }
         }
 
@@ -49,7 +53,8 @@ nonisolated enum MusopenCatalog {
             switch self {
             case .publicDomain: String(localized: "Public domain")
             case .cc0: "CC0"
-            case .publicDomainMark: ""
+            // The words archive.org's mark carries as well (`FreeCatalog`).
+            case .publicDomainMark: String(localized: "Public domain (per source)")
             }
         }
     }
@@ -169,7 +174,8 @@ nonisolated enum MusopenCatalog {
               isSound(mime: info.mime, derivatives: info.derivatives ?? []) else {
             return .failure(.notAudio)
         }
-        guard let licence = Licence(stated: info.extmetadata?["License"]?.value) else {
+        guard let licence = Licence(stated: info.extmetadata?["License"]?.value,
+                                    shortName: info.extmetadata?["LicenseShortName"]?.value) else {
             return .failure(.licence)
         }
         guard let audioURL = playableURL(info) else { return .failure(.noPlayableForm) }

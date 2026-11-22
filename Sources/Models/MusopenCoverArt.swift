@@ -27,6 +27,11 @@ nonisolated enum MusopenCoverArt {
     /// hash of its own, because the one of the standard library changes
     /// with every launch, and the colour must not.
     static func colourIndex(composer: String?) -> Int {
+        Int(familyHash(composer) % UInt32(palette.count))
+    }
+
+    /// FNV-1a over the family name; no name hashes to 0.
+    private static func familyHash(_ composer: String?) -> UInt32 {
         let name = familyName(composer).lowercased().precomposedStringWithCanonicalMapping
         guard !name.isEmpty else { return 0 }
         var hash: UInt32 = 0x811c9dc5
@@ -34,7 +39,7 @@ nonisolated enum MusopenCoverArt {
             hash ^= UInt32(byte)
             hash = hash &* 0x01000193
         }
-        return Int(hash % UInt32(palette.count))
+        return hash
     }
 
     static func familyName(_ composer: String?) -> String {
@@ -51,16 +56,40 @@ nonisolated enum MusopenCoverArt {
         return (name?.isEmpty == false ? name : nil, title)
     }
 
-    static func colourIndices(composer: String?) -> (start: Int, end: Int) { (0, 0) }
+    /// The two colours of the diagonal, both from the hash of the family
+    /// name: the first as `colourIndex`, the second from the rest of the
+    /// hash among the other eleven, so they never match.
+    static func colourIndices(composer: String?) -> (start: Int, end: Int) {
+        let hash = familyHash(composer)
+        let count = UInt32(palette.count)
+        let start = Int(hash % count)
+        let step = Int((hash / count) % (count - 1)) + 1
+        return (start, (start + step) % palette.count)
+    }
 
-    static func colours(composer: String?) -> (start: [Double], end: [Double]) { ([0, 0, 0], [0, 0, 0]) }
+    static func colours(composer: String?) -> (start: [Double], end: [Double]) {
+        let pair = colourIndices(composer: composer)
+        return (palette[pair.start], palette[pair.end])
+    }
 
-    static func mix(_ start: [Double], _ end: [Double], at t: Double) -> [Double] { start }
+    /// The colour at `t` along the diagonal, as the gradient blends it.
+    static func mix(_ start: [Double], _ end: [Double], at t: Double) -> [Double] {
+        zip(start, end).map { $0 * (1 - t) + $1 * t }
+    }
 
-    static let letterShade: Double = 1
-    static let letterOpacity: Double = 0.5
+    /// The initial is a darker shade of the field: a dark letter can only
+    /// raise the contrast of the white text over it.
+    static let letterShade: Double = 0
+    static let letterOpacity: Double = 0.22
 
-    static func underLetter(_ rgb: [Double]) -> [Double] { rgb }
+    static func underLetter(_ rgb: [Double]) -> [Double] {
+        rgb.map { $0 * (1 - letterOpacity) + letterShade * letterOpacity }
+    }
 
-    static func initial(composer: String?, title: String) -> String { "" }
+    /// The first letter of the family name, else of the work.
+    static func initial(composer: String?, title: String) -> String {
+        let name = familyName(composer)
+        let source = name.isEmpty ? title.trimmingCharacters(in: .whitespacesAndNewlines) : name
+        return source.first.map { String($0).uppercased() } ?? ""
+    }
 }

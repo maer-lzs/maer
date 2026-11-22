@@ -131,7 +131,7 @@ struct SourceMapCard: View {
             switch area {
             case .podcasts: return Text("No account needed, feeds right away")
             case .radio: return Text("No account needed, stations worldwide")
-            default: return Text("No account needed: LibriVox, radio plays, netlabels, old records")
+            default: return Text("No account needed: LibriVox, radio plays, netlabels, old records, Musopen")
             }
         }
     }
