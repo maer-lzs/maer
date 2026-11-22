@@ -59,6 +59,10 @@ struct MediaTabBar: View {
     /// At accessibility sizes the caption labels truncated anyway.
     /// Icons only, the label lives on as the accessibility label.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// Landscape on the iPhone: the word stands beside its symbol.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// The switch under General (`TabBarWords`), per device.
+    @AppStorage(AppStorageKeys.tabBarWords) private var tabBarWords = TabBarWords.defaultOn
     /// Shared namespace so the active pill glides between tabs.
     @Namespace private var pillNS
 
@@ -108,7 +112,10 @@ struct MediaTabBar: View {
         // closures touch data only, never self.
         let cells = self.cells
         let selected = self.selectedID
-        let hideLabels = dynamicTypeSize.isAccessibilitySize
+        let accessibilitySize = dynamicTypeSize.isAccessibilitySize
+        let wordsOn = tabBarWords
+        let landscape = verticalSizeClass == .compact
+        let rungs = TabBarWords.rungs(Self.labelSizes, accessibilitySize: accessibilitySize, wordsOn: wordsOn)
         let namespace = pillNS
         let onSelect = self.onSelectID
         // MeasuredLadder, never ViewThatFits. Four device
@@ -123,16 +130,22 @@ struct MediaTabBar: View {
             SideCapsule {
                 TabRowCandidate(cells: collapsed ? cells.filter { $0.id == selected } : cells,
                                 selected: selected,
-                                labelSize: Self.baseLabelSize, hideLabels: true,
+                                labelSize: Self.baseLabelSize, form: .symbol,
                                 namespace: namespace, upright: true, onSelect: onSelect)
             }
             .animation(.snappy(duration: 0.3), value: selected)
             // The bottom bar's own spring, so column and bar move as one.
             .animation(.spring(response: 0.55, dampingFraction: 0.85), value: collapsed)
         } else {
-            MeasuredLadder(rungs: Self.labelSizes) { size, probing in
+            // The words at descending sizes, the symbols alone as the last
+            // rung: a word that does not fit whole at the smallest size
+            // gives way to the symbol (`TabBarWords`).
+            MeasuredLadder(rungs: rungs) { size, probing in
                 TabRowCandidate(cells: cells, selected: selected,
-                                labelSize: size, hideLabels: hideLabels,
+                                labelSize: size,
+                                form: TabBarWords.form(wordFits: size != TabBarWords.symbolRung,
+                                                       accessibilitySize: accessibilitySize,
+                                                       wordsOn: wordsOn, landscape: landscape),
                                 namespace: namespace, probing: probing,
                                 onSelect: onSelect)
             }
@@ -178,7 +191,8 @@ nonisolated private struct TabRowCandidate: View {
     let cells: [TabBarCell]
     let selected: String
     let labelSize: CGFloat
-    let hideLabels: Bool
+    /// Word below, word beside or the symbol alone (`TabBarWords`).
+    let form: TabBarWords.Form
     let namespace: Namespace.ID
     /// Probe rows must not mount the matched-geometry pill. Seven hidden
     /// copies of one geometry id would fight over it.
@@ -199,18 +213,23 @@ nonisolated private struct TabRowCandidate: View {
                 Button {
                     onSelect(cell.id)
                 } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: cell.systemImage)
-                            .font(.system(size: SideColumnStyle.glyphSize, weight: .semibold))
-                        if !hideLabels {
-                            Text(cell.label)
-                                .font(.system(size: labelSize))
-                                // Whole or not at all: a cut-off word is a
-                                // defect, a small word only a metric. Refusing
-                                // to compress is what lets the ladder's probe
-                                // see that this rung does not fit.
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
+                    let symbol = Image(systemName: cell.systemImage)
+                        .font(.system(size: form == .symbol && !upright ? TabBarMetrics.symbolOnlyGlyphSize
+                                                                         : SideColumnStyle.glyphSize,
+                                      weight: .semibold))
+                    // Whole or not at all: a cut-off word is a defect, a
+                    // small word only a metric. Refusing to compress is
+                    // what lets the ladder's probe see that this rung does
+                    // not fit.
+                    let word = Text(cell.label)
+                        .font(.system(size: labelSize))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Group {
+                        switch form {
+                        case .symbol: symbol
+                        case .wordBelow: VStack(spacing: 2) { symbol; word }
+                        case .wordBeside: HStack(spacing: 5) { symbol; word }
                         }
                     }
                     // Selected → the type's own tint; unselected → neutral. The
@@ -241,6 +260,11 @@ nonisolated private struct TabRowCandidate: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(cell.label))
+                // A long press shows the tab large, its word too, as the
+                // system's bars do.
+                .accessibilityShowsLargeContentViewer {
+                    Label(cell.label, systemImage: cell.systemImage)
+                }
                 // Locale-independent handle for the UI-test harness.
                 .accessibilityIdentifier(cell.id)
             }

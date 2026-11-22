@@ -131,6 +131,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.audiobookPreloadBudgetGB) private var preloadBudgetGB = AudiobookPreload.defaultBudgetGB
     @AppStorage(AppStorageKeys.audiobookPreloadNextInSeries) private var preloadNextInSeries = false
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
+    @AppStorage(AppStorageKeys.tabBarWords) private var tabBarWords = TabBarWords.defaultOn
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     // The key still says "podcast" although the switch now covers playlists
     // too. Renaming it would reset the setting of EVERY user to the default.
@@ -492,6 +493,13 @@ struct SettingsView: View {
                 Label("Appearance", systemImage: "circle.lefthalf.filled")
             }
             .pickerStyle(.segmented)
+            // The words under the tab symbols, where they fit whole and the
+            // text is below the accessibility sizes (`TabBarWords`); this
+            // device only.
+            Toggle(isOn: $tabBarWords) {
+                Label("Tab Names", systemImage: "textformat")
+            }
+            .accessibilityIdentifier("settings-tab-bar-words")
             // Which tile rows appear is a presentation question, so its
             // page lives here (the source question has its own entry).
             NavigationLink { RowsSettingsView() } label: {

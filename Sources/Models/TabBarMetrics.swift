@@ -19,6 +19,11 @@ import Foundation
 /// drift away from the truth. A metric that has to guess at geometry is one
 /// that will be wrong on the next screen size.
 nonisolated enum TabBarMetrics {
+    /// The symbol of a tab that stands without its word: larger than the
+    /// symbol above or beside a word (`SideColumnStyle.glyphSize`), so the
+    /// bar still reads at a glance.
+    static let symbolOnlyGlyphSize: CGFloat = 22
+
     enum Capsule {
         /// Vertical inset of the label inside its capsule. This is what grew.
         static let verticalPadding: CGFloat = 11
