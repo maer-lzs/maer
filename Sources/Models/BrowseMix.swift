@@ -55,7 +55,7 @@ nonisolated enum BrowseMix {
 /// is not part of it (it has its own tab).
 nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
     case recommendations, charts
-    case classical, netlabels, oldRecords, jamendo
+    case classical, netlabels, oldRecords, jamendo, musopen
     case librivox, gutenberg, archiveBooks, oldTimeRadio, publicFeeds, independentFeeds
 
     enum Group: String, CaseIterable, Identifiable, Sendable {
@@ -72,7 +72,7 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .recommendations, .charts, .publicFeeds, .independentFeeds: .podcasts
         case .classical, .netlabels, .oldRecords, .jamendo: .music
-        case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio: .books
+        case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio, .musopen: .books
         }
     }
 
@@ -84,6 +84,7 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
         case .charts: ["appleCatalog"]
         case .classical, .netlabels, .oldRecords, .archiveBooks, .oldTimeRadio: ["internetArchive"]
         case .jamendo: ["jamendo"]
+        case .musopen: []
         case .librivox: ["librivox"]
         case .gutenberg: ["gutenberg"]
         case .publicFeeds, .independentFeeds: []

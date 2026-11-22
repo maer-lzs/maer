@@ -193,7 +193,7 @@ nonisolated enum FreeCatalog {
     /// and the fence (`SourceMapAreasTests`) fails until its switch exists,
     /// so the list can no longer look complete while it is not.
     enum Area: String, CaseIterable, Sendable {
-        case freeAudiobooks, freeMusic, netlabels, oldRecords
+        case freeAudiobooks, freeMusic, netlabels, oldRecords, musopen
 
         /// The ROW that presents this area since the two-question rebuild.
         /// The completeness fence holds the enumeration against `AppRows`
@@ -204,6 +204,7 @@ nonisolated enum FreeCatalog {
             case .freeMusic:      return "music.jamendo"
             case .netlabels:      return "music.netlabels"
             case .oldRecords:     return "music.oldRecords"
+            case .musopen:        return ""
             }
         }
     }

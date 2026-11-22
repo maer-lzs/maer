@@ -21,6 +21,8 @@ final class FreeCatalogProvider: AudioProvider {
     var fetchLibriVoxBook: (String) async throws -> LibriVoxBook? = { try await LibriVoxClient.book(id: $0) }
     /// Whether Jamendo may be asked: the switch of the source.
     var jamendoAllowed: () -> Bool = { AppStorageKeys.jamendoActive }
+    var fetchMusopenRecording: (Int) async throws -> MusopenCatalog.Recording? = { _ in nil }
+    var musopenAllowed: () -> Bool = { false }
 
     /// The provider over a given home of its documents; one for the app,
     /// others for witnesses.
@@ -334,6 +336,8 @@ final class FreeCatalogProvider: AudioProvider {
         itemsById[id] = item
         return item
     }
+
+    func remember(recording: MusopenCatalog.Recording) -> LibraryItem? { nil }
 
     func libraryItem(forId id: String) -> LibraryItem? { itemsById[id] }
     func librivoxBook(forId id: String) -> LibriVoxBook? { librivoxBooks[id] }

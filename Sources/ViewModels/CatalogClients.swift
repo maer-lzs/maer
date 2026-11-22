@@ -69,11 +69,18 @@ nonisolated struct LibriVoxSeam: Sendable {
 }
 
 /// All four seams, as one argument for every catalogue loader.
+nonisolated struct MusopenSeam: Sendable {
+    var row: @Sendable (_ date: Date, _ limit: Int) async throws -> MusopenCatalog.Page
+
+    static let live = MusopenSeam(row: { _, _ in MusopenCatalog.Page() })
+}
+
 nonisolated struct CatalogClients: Sendable {
     var archive: ArchiveSeam
     var jamendo: JamendoSeam
     var gutenberg: GutenbergSeam
     var librivox: LibriVoxSeam
+    var musopen: MusopenSeam = .live
 
     static let live = CatalogClients(archive: .live, jamendo: .live, gutenberg: .live, librivox: .live)
 }
@@ -91,6 +98,7 @@ nonisolated struct CatalogGates: Sendable {
     var freeClassical: Bool
     var netlabels: Bool
     var languages: [String]
+    var musopen: Bool = false
 
     @MainActor static var live: CatalogGates {
         CatalogGates(librivox: AppStorageKeys.librivoxActive,

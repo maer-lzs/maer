@@ -27,13 +27,14 @@ enum FreeCatalogLoader {
         /// Netlabels (archive.org, CC). Its own row next to Jamendo; the
         /// source name at the heading keeps them apart.
         var netlabels: [LibraryItem] = []
+        var musopen: [LibraryItem] = []
         /// A FAILED row is an ANSWER too. Without this only Jamendo
         /// could ever be answered, so a failing LibriVox left the pass
         /// permanently incomplete. And the reopen turned that into three
         /// full network passes in a row.
         /// Cancellations never land here: a cancelled step is "not loaded
         /// yet" and must stay retryable.
-        enum Row: Hashable { case books, classical, netlabels, freeMusic }
+        enum Row: Hashable { case books, classical, netlabels, freeMusic, musopen }
         var problems: [Row: String] = [:]
 
         /// The Jamendo half's reason. Kept as its own name because the

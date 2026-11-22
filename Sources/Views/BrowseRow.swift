@@ -263,6 +263,8 @@ struct BrowsePage: View {
             return OERRLiveStore.feeds(for: .oerr, languages: languages).map { .catalog(.feed($0)) }
         case .independentFeeds:
             return OERRLiveStore.feeds(for: .independents, languages: languages).map { .catalog(.feed($0)) }
+        case .musopen:
+            return []
         }
     }
 
@@ -348,6 +350,8 @@ struct BrowsePage: View {
             RowHeading.entry(verbatim: CatalogSource.oerr.title, destination: FreeAudiobooksRoute.oerrCountries)
         case .independentFeeds:
             RowHeading.entry(verbatim: CatalogSource.independents.title, destination: FreeAudiobooksRoute.source(.independents))
+        case .musopen:
+            EmptyView()
         }
     }
 }
