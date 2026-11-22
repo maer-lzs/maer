@@ -113,6 +113,9 @@ struct FreeCatalogBookTile: View {
             // No rights capsule on a tile: the rights stand once at the top
             // of an archive.org surface and on the detail page.
             titleLineLimit: 1,
+            // A Musopen recording has no picture; its cover is drawn.
+            coverOverride: MusopenCoverArt.applies(to: item.id)
+                ? MusopenCover(title: item.title, composer: item.author) : nil,
             onTap: onTap,
             corner: { FreeCatalogImportBadge(itemId: item.id) }
         )

@@ -5,10 +5,43 @@
 
 import SwiftUI
 
-/// The Musopen recordings have no picture; their tiles show the symbol
-/// of every music tile without one, the same on Browse.
+/// The symbol of the Musopen page while it has no recording to show.
 enum MusopenTile {
     static let placeholderSystemImage = "music.note"
+}
+
+/// The drawn cover of a recording (`MusopenCoverArt`): the composer's
+/// colour, the composer and the work in white. The text is sized by the
+/// picture, not by the reading size, like the print on a sleeve, and shrinks
+/// to fit instead of breaking off; the tile and the player name the
+/// recording in their own text, so the cover is hidden from VoiceOver.
+struct MusopenCover: View {
+    let title: String
+    let composer: String?
+
+    var body: some View {
+        let lines = MusopenCoverArt.lines(title: title, composer: composer)
+        let rgb = MusopenCoverArt.colour(composer: lines.composer)
+        GeometryReader { geo in
+            let side = geo.size.width
+            VStack(alignment: .leading, spacing: side * 0.04) {
+                if let name = lines.composer {
+                    Text(verbatim: name)
+                        .font(.system(size: side * 0.10, weight: .semibold))
+                        .opacity(0.85)
+                }
+                Text(verbatim: lines.work)
+                    .font(.system(size: side * 0.15, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .minimumScaleFactor(0.35)
+            .padding(side * 0.09)
+            .frame(width: side, height: side, alignment: .topLeading)
+            .background(Color(red: rgb[0], green: rgb[1], blue: rgb[2]))
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .accessibilityHidden(true)
+    }
 }
 
 /// The Musopen row: its heading leads to the page of all recordings, the

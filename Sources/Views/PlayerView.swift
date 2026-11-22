@@ -393,14 +393,22 @@ struct PlayerView: View {
                 CachedAsyncImage(url: shownCoverURL) { image, pixels in
                     CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
                 } placeholder: {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.white.opacity(0.1))
-                        .aspectRatio(1, contentMode: .fit)
-                        // The item's own symbol; it said "book" for music too.
-                        .overlay(Image(systemName: MediaFamily.placeholderSymbol(
-                            for: viewModel.item?.id ?? "",
-                            markedForm: viewModel.item.flatMap { ListeningStore.startedForm($0.id) }))
-                            .font(.largeTitle))
+                    if let item = viewModel.item, MusopenCoverArt.applies(to: item.id) {
+                        // A Musopen recording has no picture; its cover is
+                        // drawn, as on its tile and its page.
+                        MusopenCover(title: item.media.metadata?.title ?? "",
+                                     composer: item.media.metadata?.authorName)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.white.opacity(0.1))
+                            .aspectRatio(1, contentMode: .fit)
+                            // The item's own symbol; it said "book" for music too.
+                            .overlay(Image(systemName: MediaFamily.placeholderSymbol(
+                                for: viewModel.item?.id ?? "",
+                                markedForm: viewModel.item.flatMap { ListeningStore.startedForm($0.id) }))
+                                .font(.largeTitle))
+                    }
                 }
             }
         }

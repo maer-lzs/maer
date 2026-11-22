@@ -1082,11 +1082,20 @@ struct ArchiveSeriesPage: View {
         DetailHeader(title: FreeCatalog.normalizedCollectionTitle(detail.media.metadata?.title ?? "")) { side in
             // An album takes the album page's measure, a series the show's.
             // The page is a large view: the release's original picture once
-            // its files were read (`AudioProvider.largeCoverURL`).
-            podcastArtwork(url: router.largeCoverURL(itemId),
-                           size: side ?? (effectiveFlavor == .album ? 240 : 150),
-                           corner: DetailCoverCard.cornerRadius)
-                .coverCard()
+            // its files were read (`AudioProvider.largeCoverURL`). A Musopen
+            // recording has no picture; its cover is drawn, as on its tile.
+            let coverSide = side ?? (effectiveFlavor == .album ? 240 : 150)
+            if MusopenCoverArt.applies(to: itemId) {
+                MusopenCover(title: detail.media.metadata?.title ?? "",
+                             composer: detail.media.metadata?.authorName)
+                    .frame(width: coverSide, height: coverSide)
+                    .clipShape(RoundedRectangle(cornerRadius: DetailCoverCard.cornerRadius, style: .continuous))
+                    .coverCard()
+            } else {
+                podcastArtwork(url: router.largeCoverURL(itemId), size: coverSide,
+                               corner: DetailCoverCard.cornerRadius)
+                    .coverCard()
+            }
         } lines: {
             if let author = detail.media.metadata?.authorName {
                 Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)

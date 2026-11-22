@@ -21,8 +21,10 @@ Wikimedia Commons, public domain and CC0 only: a Musopen row in Browse, on
 the Music tab and on the Classical page, and a page with every recording
 behind its heading. A recording plays on tap, downloads from the menu of
 its tile or its page and names its licence on its page, where it counts as
-one track. Musopen has its own switch under the sources and
-under the rows.
+one track. A recording has no picture, so its cover is drawn: a colour
+that belongs to its composer, the same on every device, with the composer
+and the work on it, on its tile, its page and in the player. Musopen has
+its own switch under the sources and under the rows.
 
 **Spanish, French and Italian.** Mär speaks Spanish, French and Italian,
 in the app, in Siri's phrases and in the system's questions. The
