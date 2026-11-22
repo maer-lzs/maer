@@ -6,7 +6,7 @@
 it fits whole and the text is below the accessibility sizes; otherwise
 the symbol stands alone and larger. In landscape the name stands beside
 its symbol, so the bar keeps one line and stays low. Settings, General,
-Tab Names turns the names off on this device. A long press on a tab
+Labels in Tab Bar turns the names off on this device. A long press on a tab
 shows it large, and VoiceOver names every tab as before.
 
 **Musopen recordings.** Classical recordings of the Musopen collection on

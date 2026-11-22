@@ -497,7 +497,7 @@ struct SettingsView: View {
             // text is below the accessibility sizes (`TabBarWords`); this
             // device only.
             Toggle(isOn: $tabBarWords) {
-                Label("Tab Names", systemImage: "textformat")
+                Label("Labels in Tab Bar", systemImage: "textformat")
             }
             .accessibilityIdentifier("settings-tab-bar-words")
             // Which tile rows appear is a presentation question, so its
