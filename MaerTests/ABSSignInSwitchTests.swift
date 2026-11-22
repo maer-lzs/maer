@@ -352,14 +352,7 @@ nonisolated final class ABSLoopback: @unchecked Sendable {
         self.libraries = libraries
         self.userId = userId
         self.singleSignOn = singleSignOn
-        // Bound to the address the witnesses ask (127.0.0.1) and nowhere
-        // else: bound to every address, the port of one witness could be
-        // the port of another listener on IPv4, and a sign-in reached that
-        // one (measured: an answer 401 from 127.0.0.1 while this host saw
-        // no request).
-        let parameters = NWParameters.tcp
-        parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
-        listener = try NWListener(using: parameters)
+        listener = try LoopbackListener.make()
     }
 
     static func start(login: Answer, libraries: Listing, userId: String? = nil,

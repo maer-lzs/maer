@@ -56,7 +56,7 @@ struct HeaderRedirectMeasureTests {
             self.body = body
             self.contentType = contentType
             self.delay = delay
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
 
         func redirect(to url: URL, status code: Int = 302) {

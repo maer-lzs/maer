@@ -330,7 +330,7 @@ struct BulkImportTests {
 
         private init(mode: Mode) throws {
             self.mode = mode
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
 
         static func start(_ mode: Mode) async throws -> Stand {

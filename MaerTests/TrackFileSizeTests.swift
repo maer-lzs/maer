@@ -71,7 +71,7 @@ struct TrackFileSizeTests {
 
         init(head: String, body: Data) throws {
             answer = Data(head.utf8) + body
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
 
         func start() async throws {

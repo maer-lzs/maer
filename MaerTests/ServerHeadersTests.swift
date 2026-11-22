@@ -383,7 +383,7 @@ struct ServerHeadersWayTests {
         let closed = OSAllocatedUnfairLock(initialState: false)
         private(set) var port: UInt16 = 0
 
-        init() throws { listener = try NWListener(using: .tcp, on: .any) }
+        init() throws { listener = try LoopbackListener.make() }
 
         func start() async throws {
             listener.newConnectionHandler = { [self] connection in

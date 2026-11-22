@@ -200,7 +200,7 @@ struct FailedLoadTests {
 
         private init(delay: Double) throws {
             self.delay = delay
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
 
         static func start(delay: Double) async throws -> SlowFailHost {

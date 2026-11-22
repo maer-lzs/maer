@@ -362,7 +362,7 @@ nonisolated final class Loopback: @unchecked Sendable {
     private init(offersKey: Bool, key: String) throws {
         self.offersKey = offersKey
         self.key = key
-        listener = try NWListener(using: .tcp, on: .any)
+        listener = try LoopbackListener.make()
     }
 
     static func start(offersKey: Bool, key: String) async throws -> Loopback {

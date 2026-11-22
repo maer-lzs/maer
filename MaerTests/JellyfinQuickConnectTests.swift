@@ -241,7 +241,7 @@ nonisolated final class JellyfinLoopback: @unchecked Sendable {
     private init(enabled: Bool, waitingLooks: Int) throws {
         self.enabled = enabled
         self.waitingLooks = waitingLooks
-        listener = try NWListener(using: .tcp, on: .any)
+        listener = try LoopbackListener.make()
     }
 
     static func start(enabled: Bool = true, waitingLooks: Int = 0) async throws -> JellyfinLoopback {

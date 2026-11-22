@@ -141,7 +141,7 @@ struct WidgetLineTests {
 
         init(chunk: Data) throws {
             self.chunk = chunk
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
 
         func start() async throws {

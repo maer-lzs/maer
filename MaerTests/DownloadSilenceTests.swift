@@ -96,7 +96,7 @@ struct DownloadSilenceTests {
         private(set) var port: UInt16 = 0
         init(reply: @escaping @Sendable (String) -> Reply) throws {
             self.reply = reply
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
         func start() async throws {
             listener.newConnectionHandler = { [reply, ranges, arrivals, started] connection in

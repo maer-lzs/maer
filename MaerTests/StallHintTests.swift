@@ -136,7 +136,7 @@ struct StallHintTests {
         init(body: Data, sendBytes: Int) throws {
             self.body = body
             self.sendBytes = sendBytes
-            listener = try NWListener(using: .tcp, on: .any)
+            listener = try LoopbackListener.make()
         }
 
         func start() async throws {
