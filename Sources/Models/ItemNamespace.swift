@@ -58,6 +58,9 @@ nonisolated enum ItemNamespace {
     /// podcast episodes. Signing out of the server forgets what shows it.
     static func isAudiobookshelf(_ itemId: String) -> Bool { of(itemId) == nil || isABSPodcast(itemId) }
     static func isSubsonic(_ itemId: String) -> Bool { itemId.hasPrefix("sub:") }
+    /// The id a kept Subsonic cover carries in the server stamps: its file
+    /// name is its server's cover id, which two servers can share.
+    static func subsonicCoverStampId(fileKey: String) -> String { "sub:cover:" + fileKey }
     /// A title of the Jellyfin server; an address switch forgets what shows it.
     static func isJellyfin(_ itemId: String) -> Bool { itemId.hasPrefix("jf:") }
 

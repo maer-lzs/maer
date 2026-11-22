@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Switching between two music servers of one kind.** When you move from
+one Subsonic server to another, what this device kept for a title under
+the first one (position, downloads with their covers, Up Next, the rest of
+a started album, history) no longer shows for a title of the second that
+happens to have the same id; back on the first server it is all there
+again. A playlist that travels from another device shows a title only
+where its music server is set up here; the title stays in the list.
+
 **Folders for podcast shows.** Podcast playlists are folders of shows now.
 A folder stands in the Folders row of the Podcasts tab with the covers of
 its shows, the number of new episodes and a play button; its page plays or

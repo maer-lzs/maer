@@ -84,9 +84,9 @@ struct PlayQueueView: View {
             // and where it comes from. A display of the truth (the advance
             // rule reads the same lists in the same order); not orderable,
             // not part of the plan; a new start replaces it.
-            if !context.ids.isEmpty {
+            if !context.shownIds.isEmpty {
                 Section {
-                    ForEach(context.ids, id: \.self) { id in
+                    ForEach(context.shownIds, id: \.self) { id in
                         if let item = router.item(id)
                             ?? router.playable(id) {
                             PlayQueueRow(item: item, playerCoordinator: playerCoordinator)

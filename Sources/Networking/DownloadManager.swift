@@ -681,9 +681,14 @@ final class DownloadManager {
         // either, so they counted as offline available while nothing of them
         // plays without a network.
         if source(of: itemId).capabilities.contains(.alwaysLocal) { return true }
+        // A download made under another music server is another title's
+        // file: it is not here for this server (`MusicServerStampBook`).
+        if MusicServerStampBook.isElsewhere(itemId, kind: .download) { return false }
         // A server song that lies here as a track of a downloaded album or
         // playlist is here too. The player and the tile both ask this line.
-        if songPlace(itemId) != nil { return true }
+        if let place = songPlace(itemId) {
+            return !MusicServerStampBook.isElsewhere(place.downloadId, kind: .download)
+        }
         return downloadedItemIds.contains(itemId)
     }
 
@@ -1222,6 +1227,7 @@ final class DownloadManager {
             }
             noteSessionCovers(of: itemId, grid: grid, large: large)
 
+            MusicServerStampBook.stamp(itemId, kind: .download)
             downloadedItemIds.insert(itemId)
             phase[itemId] = nil
             controls[itemId] = nil

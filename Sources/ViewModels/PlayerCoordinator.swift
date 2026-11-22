@@ -1117,7 +1117,7 @@ final class PlayerCoordinator: ObservableObject {
         let offline = !NetworkMonitor.shared.isConnected
         let session = self.session
         let downloads = DownloadManager.shared
-        return (orders.shownIds, context.ids, offline,
+        return (orders.shownIds, context.shownIds, offline,
                 // A stream that failed before it played is passed for the process.
                 { !self.unstartable.contains($0)
                     && MediaAvailability.canPlayNow(isConnected: !offline,

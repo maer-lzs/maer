@@ -38,6 +38,9 @@ nonisolated enum AppStorageKeys {
     static let podcastFoldersEnqueued = "podcastFoldersEnqueued"
     /// Lists became folders on this device and the notice has not shown yet.
     static let podcastFoldersNoticePending = "podcastFoldersNoticePending"
+    /// The Subsonic server each device row of a Subsonic title was written
+    /// under (`MusicServerStampBook`).
+    static let musicServerStamps = "musicServerStamps"
     /// Bookmark create/delete ops that have not reached the server yet.
     static let pendingBookmarkOps = "pendingBookmarkOps"
     /// Optional PodcastIndex key for podcast search (the iTunes catalog needs

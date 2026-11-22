@@ -33,8 +33,13 @@ final class PlayQueue: ObservableObject {
     @Published var running: String? {
         didSet { if persists, running != oldValue { writeWidgetSnapshot() } }
     }
-    /// The entries a person sees and the advance may start.
-    var shownIds: [String] { ChapterEntryRules.shown(ids, running: running) }
+    /// The entries a person sees and the advance may start. A song queued
+    /// under another music server waits, unseen, until its server is back
+    /// (`MusicServerStampBook`); a test queue has no device register.
+    var shownIds: [String] {
+        let shown = ChapterEntryRules.shown(ids, running: running)
+        return persists ? MusicServerStampBook.shown(shown, kind: .queue) : shown
+    }
 
     /// The queue lives as ONE row (`upNext` in `play_queue`): it is one
     /// ordered list, replaced whole on every change, so a row per entry
@@ -142,6 +147,7 @@ final class PlayQueue: ObservableObject {
         guard Self.canHold(id) else { return }
         removeMatching(id)
         ids.insert(id, at: 0)
+        if persists { MusicServerStampBook.stamp(id, kind: .queue) }
         save()
     }
 
@@ -159,6 +165,7 @@ final class PlayQueue: ObservableObject {
         guard Self.canHold(id) else { return }
         guard !contains(id) else { return }
         ids.append(id)
+        if persists { MusicServerStampBook.stamp(id, kind: .queue) }
         save()
     }
 

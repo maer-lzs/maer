@@ -902,8 +902,11 @@ struct MaerPlaylistPage: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                // A title whose server is not set up here is hidden, not
+                // removed; edits name places in the whole list.
+                let shown = PlaylistShown.entries(playlist.itemIds) { store.resolution(of: $0, in: playlist).reason }
                 Section {
-                    ForEach(playlist.itemIds, id: \.self) { id in
+                    ForEach(shown, id: \.self) { id in
                         if let line = held?.lines[id] {
                             RoutineRuleRow(line: line, carried: playlist.carried(for: id),
                                            cover: PlaylistCardSource.deviceCover(of: id, in: playlist, router: router))
@@ -912,10 +915,12 @@ struct MaerPlaylistPage: View {
                         }
                     }
                     .onDelete { offsets in
-                        for index in offsets { store.remove(itemId: playlist.itemIds[index], from: playlistId) }
+                        for index in offsets { store.remove(itemId: shown[index], from: playlistId) }
                     }
                     .onMove { source, destination in
-                        store.move(playlistId: playlistId, from: source, to: destination)
+                        store.move(playlistId: playlistId,
+                                   from: PlaylistShown.wholeOffsets(source, shown: shown, all: playlist.itemIds),
+                                   to: PlaylistShown.wholeDestination(destination, shown: shown, all: playlist.itemIds))
                     }
                 } footer: {
                     // Explained once, calmly, not on every add.
@@ -978,7 +983,8 @@ struct MaerPlaylistPage: View {
                 .frame(maxWidth: side ?? 240)
                 .coverCard()
         } lines: {
-            Text("\(playlist.itemIds.count) tracks").font(.caption).foregroundStyle(.secondary)
+            Text("\(PlaylistShown.entries(playlist.itemIds) { store.resolution(of: $0, in: playlist).reason }.count) tracks")
+                .font(.caption).foregroundStyle(.secondary)
         } actions: {
             HStack(spacing: 12) {
                 DetailMainButton(title: String(localized: "Play"), systemImage: "play.fill") {

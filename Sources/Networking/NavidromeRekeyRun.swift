@@ -107,6 +107,8 @@ enum NavidromeRekeyRun {
                 return result
             },
             Step(name: "playlists", missedRows: { MaerPlaylists.shared.startIncomplete }) { MaerPlaylists.shared.rekey($0) },
+            // The server stamps of the rows above move with their ids.
+            Step(name: "stamps") { map in MusicServerStampBook.rekey(map) },
             downloadsStep(),
         ]
     }

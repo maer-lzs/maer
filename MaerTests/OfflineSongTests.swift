@@ -113,7 +113,8 @@ struct OfflineSongTests {
     func theFileIsTheAlbumsTrack() throws {
         let flat = try FetchAnswerTests.squeezedSource("Sources/Networking/DownloadManager.swift")
         #expect(flat.contains("let dir = itemDirectory(place.downloadId), let file = Self.trackMap(in: dir)[place.trackIndex] else { return [:] } return [0: file]"))
-        #expect(flat.contains("if songPlace(itemId) != nil { return true }"), "the one question")
+        #expect(flat.contains("if let place = songPlace(itemId) { return !MusicServerStampBook.isElsewhere(place.downloadId, kind: .download) }"),
+                "the one question, for the download of this server")
     }
 }
 #endif

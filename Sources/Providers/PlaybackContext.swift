@@ -89,6 +89,14 @@ final class PlaybackContext: ObservableObject {
 
     var isEmpty: Bool { ids.isEmpty }
 
+    /// The rest a person sees and the advance may start: a song of a context
+    /// started under another music server waits, unseen, until its server
+    /// is back (`MusicServerStampBook`); a test context has no device
+    /// register.
+    var shownIds: [String] {
+        persists ? MusicServerStampBook.shown(ids, kind: .context) : ids
+    }
+
     /// A collection start hands over its rest. Radio never queues anywhere
     /// (play only replaces the active playback), and a routine's rule is
     /// never anything to play: same rule as the queue (`PlayQueue.canHold`).
@@ -96,6 +104,7 @@ final class PlaybackContext: ObservableObject {
         orderBeforeShuffle = nil
         ids = newIds.filter { PlayQueue.canHold($0) }
         sourceTitle = ids.isEmpty ? nil : source
+        if persists { MusicServerStampBook.stamp(ids + whole, kind: .context) }
         save()
     }
 

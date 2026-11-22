@@ -430,6 +430,13 @@ final class ImageCache {
         return nil
     }
 
+    /// The stamp a kept Subsonic cover carries in `MusicServerStampBook`:
+    /// its name is its server's cover id, which two servers of one kind can
+    /// share; nil for every other cover.
+    nonisolated static func coverStamp(_ fileKey: String) -> String? {
+        ServerImageKind.subsonic.names(fileKey) ? ItemNamespace.subsonicCoverStampId(fileKey: fileKey) : nil
+    }
+
     /// The kinds of server a picture is named by, the first part of its name.
     nonisolated enum ServerImageKind: String, Sendable {
         case audiobookshelf = "abs"
@@ -589,11 +596,16 @@ final class ImageCache {
     /// nothing stands under today's name, and the network gate never sees
     /// it, so the new cover is still asked for.
     private func readCandidates(_ fileKey: String, allowKept: Bool, former: [String] = []) -> [URL] {
-        let tiers: [URL]
+        var tiers: [URL]
         if !refreshing.contains(fileKey) {
             tiers = [persistentDirectory, diskDirectory]
         } else {
             tiers = allowKept ? [diskDirectory, persistentDirectory] : [diskDirectory]
+        }
+        // A cover kept for a download of another music server is not read
+        // under this one (`MusicServerStampBook`).
+        if let stamp = Self.coverStamp(fileKey), MusicServerStampBook.isElsewhere(stamp, kind: .download) {
+            tiers.removeAll { $0 == persistentDirectory }
         }
         var candidates = tiers.map { $0.appendingPathComponent(fileKey) }
         if allowKept {
@@ -1079,6 +1091,18 @@ final class ImageCache {
         guard let coverURL else { return }
         let cacheKey = key(for: coverURL)
         let target = persistentDirectory.appendingPathComponent(cacheKey)
+        // A kept cover of another music server under the same name is
+        // another title's picture: it gives way to this server's.
+        let stamp = Self.coverStamp(cacheKey)
+        if let stamp, MusicServerStampBook.isElsewhere(stamp, kind: .download),
+           FileManager.default.fileExists(atPath: target.path) {
+            do {
+                try FileManager.default.removeItem(at: target)
+            } catch {
+                Logger.library.error("COVERCACHE other server's kept cover stays: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        if let stamp { MusicServerStampBook.stamp(stamp, kind: .download) }
         guard !FileManager.default.fileExists(atPath: target.path) else { return }
         let cached = diskDirectory.appendingPathComponent(cacheKey)
         // A waiting address's cache file may be the picture from before its
@@ -1100,6 +1124,7 @@ final class ImageCache {
     /// hand in a picture without a network.
     func makePersistent(coverURL: URL, data: Data) async {
         let target = persistentDirectory.appendingPathComponent(key(for: coverURL))
+        if let stamp = Self.coverStamp(key(for: coverURL)) { MusicServerStampBook.stamp(stamp, kind: .download) }
         let maxSize = maxPixelSize
         // Downsampling + write in the background, await completion (the caller
         // relies on the cover being persistent afterwards).

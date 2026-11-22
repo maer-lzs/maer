@@ -1108,6 +1108,8 @@ struct UserChoiceGateTests {
             // What this device did when podcast lists became folders: its
             // own Up Next and its own notice.
             "podcastFoldersEnqueued", "podcastFoldersNoticePending",
+            // The server stamps of this device's own rows.
+            "musicServerStamps",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

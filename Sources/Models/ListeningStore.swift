@@ -439,12 +439,16 @@ nonisolated enum ListeningStore {
 
     /// The raw entry. For the sync paths that hand the array on unchanged
     /// (iCloud blob, gpodder). Reading surfaces use `mark(_:)` instead.
+    /// A stand written under another music server reads as absent
+    /// (`MusicServerStampBook`); back on its server it is there again.
     static func backup(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {
-        withStock(defaults) { $0.backups[itemId] }
+        guard !MusicServerStampBook.isElsewhere(itemId, kind: .stand, in: defaults) else { return nil }
+        return withStock(defaults) { $0.backups[itemId] }
     }
 
     static func flushed(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {
-        withStock(defaults) { $0.flushed[itemId] }
+        guard !MusicServerStampBook.isElsewhere(itemId, kind: .stand, in: defaults) else { return nil }
+        return withStock(defaults) { $0.flushed[itemId] }
     }
 
     static func mark(from stored: [Double], source: Mark.Source) -> Mark? {
@@ -472,18 +476,22 @@ nonisolated enum ListeningStore {
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         // Heard here: an imported position becomes this device's own.
         ForeignMarks.clearImported(itemId, in: defaults)
+        // The stand of the same id on another music server is another
+        // title's: nothing of it is carried forward.
+        let elsewhere = MusicServerStampBook.isElsewhere(itemId, kind: .stand, in: defaults)
         let entry = withStock(defaults) { stock -> [Double]? in
             // Asked again under the stock's lock, the one the change of
             // account swaps the stock and moves the epoch under: a writer on
             // another thread cannot slip between the question and the write.
             guard holds(epoch, in: defaults) else { return nil }
-            let entry = ProgressMark.advancing(stock.backups[itemId],
+            let entry = ProgressMark.advancing(elsewhere ? nil : stock.backups[itemId],
                                                position: position, duration: duration,
                                                nowMs: atMs)
             stock.backups[itemId] = entry
             return entry
         }
         guard let entry else { return }
+        MusicServerStampBook.stamp(itemId, kind: .stand, in: defaults)
         announce(itemId, entry, in: defaults)
     }
 
@@ -519,6 +527,7 @@ nonisolated enum ListeningStore {
             return true
         }
         guard wrote else { return }
+        MusicServerStampBook.stamp(itemId, kind: .stand, in: defaults)
         stored(itemId, entry, in: defaults)
     }
 
@@ -780,9 +789,10 @@ nonisolated enum ListeningStore {
     /// `localPosition.` keys. The class filter belongs here, so no surface
     /// has to remember that a live stream writes nothing worth reading.
     static func positions(in defaults: UserDefaults = .standard) -> [String: [Double]] {
-        withStock(defaults) { stock in
+        let held = withStock(defaults) { stock in
             stock.backups.filter { $0.value.count >= 2 && ListeningClasses.keepsPosition($0.key) }
         }
+        return held.filter { !MusicServerStampBook.isElsewhere($0.key, kind: .stand, in: defaults) }
     }
 
     /// The position entries of a passed dictionary in the defaults' shape,
@@ -799,6 +809,6 @@ nonisolated enum ListeningStore {
 
     /// Every pushed witness, for the row copy.
     static func allFlushed(in defaults: UserDefaults = .standard) -> [String: [Double]] {
-        withStock(defaults) { $0.flushed }
+        withStock(defaults) { $0.flushed }.filter { !MusicServerStampBook.isElsewhere($0.key, kind: .stand, in: defaults) }
     }
 }

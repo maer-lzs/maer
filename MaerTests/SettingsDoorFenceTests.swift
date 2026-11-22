@@ -21,6 +21,7 @@ struct SettingsDoorFenceTests {
         ("/Sources/Storage/", "die Zeilen-Schicht, die ihren eigenen Bestand haelt"),
         ("/Ablage.swift", "die Datei-Naht, die neben den Zeilen steht"),
         ("/ListeningStore.swift", "der Hoerbestand, der eigene Schluessel fuehrt"),
+        ("/MusicServerStamps.swift", "the register of server stamps beside the stand, read under the stand's own defaults"),
         ("AppStorageKeys", "die Tuer selbst, ueber ihre Dateien verteilt"),
     ]
 

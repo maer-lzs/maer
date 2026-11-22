@@ -333,6 +333,7 @@ final class ListenHistory {
         let next = entries[id].map { Self.merged(read: $0, run: heard) } ?? heard
         guard next != entries[id] else { return }
         entries[id] = next
+        MusicServerStampBook.stamp(id, kind: .history)
         persist()
     }
 
@@ -359,7 +360,13 @@ final class ListenHistory {
     /// The page of one family.
     func history(_ family: Family) -> [Entry] {
         loadIfNeeded()
-        return Self.historyList(entries, family: family)
+        return Self.historyList(Self.ofThisServer(entries), family: family)
+    }
+
+    /// A song heard under another music server leaves the page until its
+    /// server is back (`MusicServerStampBook`).
+    private static func ofThisServer(_ entries: [String: Entry]) -> [String: Entry] {
+        entries.filter { !MusicServerStampBook.isElsewhere($0.key, kind: .history) }
     }
 
     /// The page of one family for the screen: the list sorted on a
@@ -388,7 +395,7 @@ final class ListenHistory {
                 }
             }
         }
-        let snapshot = entries
+        let snapshot = Self.ofThisServer(entries)
         // detached because sorting the history is CPU work off the MainActor
         return await Task.detached(priority: .userInitiated) { Self.historyList(snapshot, family: family) }.value
     }

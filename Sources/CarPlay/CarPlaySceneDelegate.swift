@@ -1084,13 +1084,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let form = coordinator.viewModel?.playingForm
         let spoken = CarPlayLayout.playerExtras(for: coordinator.activeItem?.id, markedForm: form)
         nowPlaying.isUpNextButtonEnabled = CarPlayLayout.offersUpNext(
-            for: coordinator.activeItem?.id, markedForm: form, waiting: queue.shownIds.count + context.ids.count)
+            for: coordinator.activeItem?.id, markedForm: form, waiting: queue.shownIds.count + context.shownIds.count)
         var buttons: [CPNowPlayingButton] = []
         if spoken, let rate = coordinator.viewModel?.playbackRate {
             buttons.append(rateButton(showing: Double(rate)))
         }
         if CarPlayLayout.offersShuffle(for: coordinator.activeItem?.id, markedForm: form,
-                                       waitingInContext: context.ids.count) {
+                                       waitingInContext: context.shownIds.count) {
             buttons.append(shuffleButton())
         }
         if RemoteCommandRule.kind(forItem: coordinator.activeItem?.id, markedForm: form) == .songs {
@@ -1170,7 +1170,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             sections.append(await section(String(localized: "Up Next"),
                                           orders.prefix(Int(CPListTemplate.maximumItemCount))))
         }
-        let rest = context.ids.compactMap { session.playableItem(forId: $0) }
+        let rest = context.shownIds.compactMap { session.playableItem(forId: $0) }
         if !rest.isEmpty {
             let header = context.sourceTitle.map { String(localized: "Continuing from \($0)") }
                 ?? String(localized: "Continuing")

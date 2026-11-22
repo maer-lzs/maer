@@ -223,7 +223,7 @@ struct CarPlayLayoutTests {
     @Test("the car's shuffle mixes the context through its one door and shows its state", .needsTheSources)
     func theCarShufflesThroughTheContext() throws {
         let car = try FetchAnswerTests.squeezedSource("Sources/CarPlay/CarPlaySceneDelegate.swift")
-        #expect(car.contains("CarPlayLayout.offersShuffle(for: coordinator.activeItem?.id, markedForm: form, waitingInContext: context.ids.count)"),
+        #expect(car.contains("CarPlayLayout.offersShuffle(for: coordinator.activeItem?.id, markedForm: form, waitingInContext: context.shownIds.count)"),
                 "the car offers the shuffle by a rule of its own")
         #expect(car.contains("self.context.setShuffled(!self.context.isShuffled)"), "the button mixes past the context")
         #expect(car.contains("button.isSelected = context.isShuffled"), "the button does not show the state")

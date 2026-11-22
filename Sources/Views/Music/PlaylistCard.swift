@@ -343,7 +343,9 @@ extension PlaylistCardSource {
             title: list.name,
             // The store keeps seconds; the card speaks milliseconds.
             changedAtMs: list.updatedAt * 1000,
-            songCount: list.itemIds.count,
+            // A title whose server is not set up here is not counted: the
+            // page does not show it either.
+            songCount: PlaylistShown.entries(list.itemIds) { store.resolution(of: $0, in: list).reason }.count,
             // A running time would mean resolving every entry across every
             // provider. The count stands alone instead of guessing.
             durationSeconds: nil,

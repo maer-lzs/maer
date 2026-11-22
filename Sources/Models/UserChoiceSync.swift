@@ -77,6 +77,9 @@ nonisolated enum UserChoiceCatalog {
         // Up Next and its own notice.
         "podcastFoldersEnqueued": .device,
         "podcastFoldersNoticePending": .device,
+        // Which server this device wrote its own rows of a Subsonic title
+        // under; another device reaches the server by another address.
+        "musicServerStamps": .device,
         // The sound filter per output device. A Bluetooth device is paired
         // with one phone, and its id there names it for that phone only.
         "soundBook": .device,
