@@ -496,7 +496,7 @@ struct SettingsView: View {
             // The words under the tab symbols, where they fit whole and the
             // text is below the accessibility sizes (`TabBarWords`); this
             // device only.
-            Toggle(isOn: $tabBarWords) {
+            AppSwitch(isOn: $tabBarWords) {
                 Label("Labels in Tab Bar", systemImage: "textformat")
             }
             .accessibilityIdentifier("settings-tab-bar-words")

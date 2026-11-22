@@ -1115,6 +1115,8 @@ struct UserChoiceGateTests {
             // Downloading audiobooks while you listen, on the device that
             // downloads.
             "audiobookPreloadEnabled", "audiobookPreloadBudgetGB", "audiobookPreloadNextInSeries",
+            // The names in the tab bar fit the screen of this device.
+            "tabBarWords",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.
