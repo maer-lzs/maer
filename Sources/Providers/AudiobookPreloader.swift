@@ -20,6 +20,11 @@ enum AudiobookPreloader {
         set { AppStorageKeys.set(Array(newValue).sorted(), for: AppStorageKeys.audiobookAutoDownloadedIds) }
     }
 
+    /// Runs `body` as one run of the download while listening.
+    static func chained(_ body: @escaping @MainActor () async -> Void) async {
+        await body()
+    }
+
     /// One run: after a book starts (`started`), after one finished
     /// (`finished`, for the next of its series) and at the app's start.
     static func run(started: String? = nil, finished: String? = nil,
