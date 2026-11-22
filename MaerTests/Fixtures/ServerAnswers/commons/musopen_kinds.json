@@ -1,0 +1,291 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 27437274,
+    "title": "File:A Walk down Main Street, Delta PA.webm",
+    "videoinfo": [
+     {
+      "duration": 170.911,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_Walk_down_Main_Street,_Delta_PA.webm",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "A Walk down Main Street, Delta PA"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Smallbones\" title=\"User:Smallbones\">Smallbones</a>"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0"
+       },
+       "License": {
+        "value": "cc-by-sa-3.0"
+       }
+      },
+      "mime": "video/webm",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm/A_Walk_down_Main_Street%2C_Delta_PA.webm.240p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "240p.vp9.webm"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm/A_Walk_down_Main_Street%2C_Delta_PA.webm.360p.mpeg4.mov",
+        "type": "video/quicktime; codecs=\"mp4v\"",
+        "transcodekey": "360p.mpeg4.mov"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm/A_Walk_down_Main_Street%2C_Delta_PA.webm.480p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "480p.vp9.webm"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 30892410,
+    "title": "File:Iridescence in soapy water.ogv",
+    "videoinfo": [
+     {
+      "duration": 81.50115646258503,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/0/08/Iridescence_in_soapy_water.ogv?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Iridescence_in_soapy_water.ogv",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Iridescence in soapy water"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Pixelmaniac_pictures\" title=\"User:Pixelmaniac pictures\">Pixelmaniac pictures</a> (<a href=\"//commons.wikimedia.org/wiki/User_talk:Pixelmaniac_pictures\" title=\"User talk:Pixelmaniac pictures\"><span class=\"signature-talk\">Leave a reply</span></a>)"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/08/Iridescence_in_soapy_water.ogv/Iridescence_in_soapy_water.ogv.240p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "240p.vp9.webm"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/08/Iridescence_in_soapy_water.ogv/Iridescence_in_soapy_water.ogv.360p.mpeg4.mov",
+        "type": "video/quicktime; codecs=\"mp4v\"",
+        "transcodekey": "360p.mpeg4.mov"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/08/Iridescence_in_soapy_water.ogv/Iridescence_in_soapy_water.ogv.480p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "480p.vp9.webm"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/08/Iridescence_in_soapy_water.ogv/Iridescence_in_soapy_water.ogv.1080p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "1080p.vp9.webm"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 67535618,
+    "title": "File:Allegro de Concert Op. 46 in A Major.mp3",
+    "videoinfo": [
+     {
+      "duration": 760.037980548091,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Allegro_de_Concert_Op._46_in_A_Major.mp3?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Allegro_de_Concert_Op._46_in_A_Major.mp3",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Allegro de Concert Op. 46 in A Major"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/Frederic_Chopin\" class=\"mw-redirect\" title=\"Frederic Chopin\">Frederic Chopin</a>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       }
+      },
+      "mime": "audio/mpeg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/Allegro_de_Concert_Op._46_in_A_Major.mp3/Allegro_de_Concert_Op._46_in_A_Major.mp3.ogg",
+        "type": "audio/ogg; codecs=\"vorbis\"",
+        "transcodekey": "ogg"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 67816870,
+    "title": "File:1st violin B 02.wav",
+    "videoinfo": [
+     {
+      "duration": 245.6950138888889,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/34/1st_violin_B_02.wav?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:1st_violin_B_02.wav",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "1st violin B 02"
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Wolfgang_Amadeus_Mozart\" class=\"extiw\" title=\"w:en:Wolfgang Amadeus Mozart\"><span title=\"Austrian composer of the Classical period (1756–1791)\">Wolfgang Amadeus Mozart</span></a></bdi>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       }
+      },
+      "mime": "audio/wav",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/34/1st_violin_B_02.wav/1st_violin_B_02.wav.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/34/1st_violin_B_02.wav/1st_violin_B_02.wav.ogg",
+        "type": "audio/ogg; codecs=\"vorbis\"",
+        "transcodekey": "ogg"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 76199056,
+    "title": "File:Home page screen capture of Musopen.org.png",
+    "videoinfo": [
+     {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Home_page_screen_capture_of_Musopen.org.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Home_page_screen_capture_of_Musopen.org.png",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Home page screen capture of Musopen.org"
+       },
+       "Artist": {
+        "value": "<b>Website:</b> <a href=\"//commons.wikimedia.org/w/index.php?title=User:Ajdunn83&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Ajdunn83 (page does not exist)\">Aaron Dunn</a><br><b>Screenshot:</b> <a href=\"//commons.wikimedia.org/wiki/User:VulcanSphere\" title=\"User:VulcanSphere\">VulcanSphere</a> (Original screenshot was taken by Aaron Dunn)"
+       },
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0"
+       },
+       "License": {
+        "value": "cc-by-sa-4.0"
+       }
+      },
+      "mime": "image/png",
+      "derivatives": []
+     }
+    ]
+   },
+   {
+    "pageid": 99430846,
+    "title": "File:A Midsummer Night's Dream Op. 61 Dance of Clowns (Mendelssohn) European Archive.ogg",
+    "videoinfo": [
+     {
+      "duration": 120.27936507936508,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/4f/A_Midsummer_Night%27s_Dream_Op._61_Dance_of_Clowns_%28Mendelssohn%29_European_Archive.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_Midsummer_Night%27s_Dream_Op._61_Dance_of_Clowns_(Mendelssohn)_European_Archive.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "A Midsummer Night's Dream Op. 61 Dance of Clowns (Mendelssohn) European Archive"
+       },
+       "Artist": {
+        "value": "European Archive"
+       },
+       "LicenseShortName": {
+        "value": "Public domain"
+       },
+       "License": {
+        "value": "pd"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4f/A_Midsummer_Night%27s_Dream_Op._61_Dance_of_Clowns_%28Mendelssohn%29_European_Archive.ogg/A_Midsummer_Night%27s_Dream_Op._61_Dance_of_Clowns_%28Mendelssohn%29_European_Archive.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 155173321,
+    "title": "File:Chopin - Ballade No. 3 in A-flat major, Op. 47 (Frank Levy).flac",
+    "videoinfo": [
+     {
+      "duration": 507.0451145833333,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Chopin_-_Ballade_No._3_in_A-flat_major%2C_Op._47_%28Frank_Levy%29.flac?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Chopin_-_Ballade_No._3_in_A-flat_major,_Op._47_(Frank_Levy).flac",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Chopin - Ballade No. 3 in A-flat major, Op. 47 (Frank Levy)"
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Fr%C3%A9d%C3%A9ric_Chopin\" class=\"extiw\" title=\"w:en:Frédéric Chopin\"><span title=\"Polish composer and pianist (1810–1849)\">Frédéric Chopin</span></a></bdi> / <bdi><a href=\"https://en.wikipedia.org/wiki/en:Frank_L%C3%A9vy\" class=\"extiw\" title=\"w:en:Frank Lévy\"><span title=\"Swiss-American musician\">Frank Lévy</span></a></bdi>"
+       },
+       "LicenseShortName": {
+        "value": "Public domain"
+       },
+       "License": {
+        "value": "pd"
+       }
+      },
+      "mime": "audio/flac",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/b/bf/Chopin_-_Ballade_No._3_in_A-flat_major%2C_Op._47_%28Frank_Levy%29.flac/Chopin_-_Ballade_No._3_in_A-flat_major%2C_Op._47_%28Frank_Levy%29.flac.ogg",
+        "type": "audio/ogg; codecs=\"vorbis\"",
+        "transcodekey": "ogg"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 176969078,
+    "title": "File:Antonio Vivaldi, Mandolin Concerto in C major, RV 425.ogg",
+    "videoinfo": [
+     {
+      "duration": 499.93142857142857,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/60/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Antonio_Vivaldi,_Mandolin_Concerto_in_C_major,_RV_425.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Antonio Vivaldi, Mandolin Concerto in C major, RV 425"
+       },
+       "Artist": {
+        "value": "The Milan Baroque Soloists"
+       },
+       "LicenseShortName": {
+        "value": "PDM-owner"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/60/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,87 @@
+{
+ "batchcomplete": true,
+ "continue": {
+  "gcmcontinue": "file|3153542056494f4c494e20462030322e574156|67816866",
+  "continue": "gcmcontinue||"
+ },
+ "query": {
+  "pages": [
+   {
+    "pageid": 67816860,
+    "title": "File:1st violin B 03.wav",
+    "videoinfo": [
+     {
+      "duration": 82.81422916666666,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/e/e9/1st_violin_B_03.wav?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:1st_violin_B_03.wav",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "1st violin B 03"
+       },
+       "Artist": {
+        "value": "Mozart"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       }
+      },
+      "mime": "audio/wav",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/e/e9/1st_violin_B_03.wav/1st_violin_B_03.wav.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/e/e9/1st_violin_B_03.wav/1st_violin_B_03.wav.ogg",
+        "type": "audio/ogg; codecs=\"vorbis\"",
+        "transcodekey": "ogg"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 67816870,
+    "title": "File:1st violin B 02.wav",
+    "videoinfo": [
+     {
+      "duration": 245.6950138888889,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/34/1st_violin_B_02.wav?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:1st_violin_B_02.wav",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "1st violin B 02"
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Wolfgang_Amadeus_Mozart\" class=\"extiw\" title=\"w:en:Wolfgang Amadeus Mozart\"><span title=\"Austrian composer of the Classical period (1756–1791)\">Wolfgang Amadeus Mozart</span></a></bdi>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       }
+      },
+      "mime": "audio/wav",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/34/1st_violin_B_02.wav/1st_violin_B_02.wav.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3"
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/34/1st_violin_B_02.wav/1st_violin_B_02.wav.ogg",
+        "type": "audio/ogg; codecs=\"vorbis\"",
+        "transcodekey": "ogg"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

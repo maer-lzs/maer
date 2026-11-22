@@ -18,6 +18,10 @@ struct ServerAnswersFenceTests {
     static let origins: [String: String] = [
         "abs/podcast_feed.json":
             "Audiobookshelf 2.37 on the test server, the answer to POST api/podcasts/feed (APIClient.fetchPodcastFeed) for a synthetic feed",
+        "commons/musopen_kinds.json":
+            "Wikimedia Commons API, eight files of the Musopen category by page id (one of each kind: Ogg with MP3, WAV, MP3 original, FLAC without MP3, Public Domain Mark, video, Ogg video, picture), metadata cut to the four fields the reader reads",
+        "commons/musopen_category_page.json":
+            "Wikimedia Commons API, the first answer of Category:Musopen with two files and its continue token, metadata cut to the four fields the reader reads",
     ]
 
     /// Every answer file, by its path below `ServerAnswers`.
