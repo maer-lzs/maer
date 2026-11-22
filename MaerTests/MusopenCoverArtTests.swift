@@ -13,16 +13,19 @@ import Testing
 /// large on it in white. A recording without a composer shows its work.
 /// The tile, the page and the player draw the same cover.
 struct MusopenCoverArtTests {
-    @Test("a composer has one colour, the same on every device and in every spelling of case and space")
+    @Test("a composer has one colour, the same on every device and in every spelling the source uses: the family name decides")
     func oneColourPerComposer() {
-        #expect(MusopenCoverArt.colourIndex(composer: "Wolfgang Amadeus Mozart") == 7)
-        #expect(MusopenCoverArt.colourIndex(composer: "Ludwig van Beethoven") == 4)
-        #expect(MusopenCoverArt.colourIndex(composer: "Frédéric Chopin") == 10)
-        #expect(MusopenCoverArt.colourIndex(composer: "Franz Schubert") == 2)
-        #expect(MusopenCoverArt.colourIndex(composer: "  wolfgang amadeus MOZART ") == 7)
-        #expect(MusopenCoverArt.colourIndex(composer: "Johannes Brahms") == 6)
-        #expect(MusopenCoverArt.palette.indices.contains(6)
-                && MusopenCoverArt.colour(composer: "Johannes Brahms") == MusopenCoverArt.palette[6])
+        #expect(MusopenCoverArt.colourIndex(composer: "Wolfgang Amadeus Mozart") == 10)
+        // The source names one composer in several ways.
+        #expect(MusopenCoverArt.colourIndex(composer: "Mozart") == 10)
+        #expect(MusopenCoverArt.colourIndex(composer: "Mozart, Wolfgang Amadeus") == 10)
+        #expect(MusopenCoverArt.colourIndex(composer: "  wolfgang amadeus MOZART ") == 10)
+        #expect(MusopenCoverArt.colourIndex(composer: "Ludwig van Beethoven") == 9)
+        #expect(MusopenCoverArt.colourIndex(composer: "Franz Schubert") == 11)
+        #expect(MusopenCoverArt.colourIndex(composer: "Antonín Dvořák") == 7)
+        #expect(MusopenCoverArt.colourIndex(composer: "Johannes Brahms") == 8)
+        #expect(MusopenCoverArt.palette.indices.contains(8)
+                && MusopenCoverArt.colour(composer: "Johannes Brahms") == MusopenCoverArt.palette[8])
         #expect(MusopenCoverArt.colourIndex(composer: nil) == 0)
         #expect(MusopenCoverArt.colourIndex(composer: "") == 0)
     }
