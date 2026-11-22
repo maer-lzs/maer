@@ -44,7 +44,7 @@ struct MediaFamilyTests {
 
     @Test("the catalogue families are books to nobody")
     func catalogIsNotABook() {
-        for id in ["lv:176", "lva:x", "jam:1", "gut:2"] {
+        for id in ["lv:176", "lva:x", "jam:1", "gut:2", "mso:3"] {
             #expect(!PlayerSourceTargets.isBook(id))
             #expect(PlayerSourceTargets.isCatalog(id))
         }
@@ -54,7 +54,8 @@ struct MediaFamilyTests {
     func catalogPrefixesStayInSync() {
         let mapped = Set(MediaFamily.prefixes(for: .catalog))
         let owned: Set<String> = [FreeCatalog.librivoxPrefix, FreeCatalog.archivePrefix,
-                                  FreeCatalog.jamendoPrefix, FreeCatalog.gutenbergPrefix]
+                                  FreeCatalog.jamendoPrefix, FreeCatalog.gutenbergPrefix,
+                                  MusopenCatalog.prefix]
         #expect(mapped == owned, "a new catalogue namespace must be assigned here too")
     }
 

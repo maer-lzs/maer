@@ -27,6 +27,8 @@ enum FreeCatalogLoader {
         /// Netlabels (archive.org, CC). Its own row next to Jamendo; the
         /// source name at the heading keeps them apart.
         var netlabels: [LibraryItem] = []
+        /// The Musopen recordings on Wikimedia Commons; they carry no
+        /// cover, so the cover rule of the other rows does not apply.
         var musopen: [LibraryItem] = []
         /// A FAILED row is an ANSWER too. Without this only Jamendo
         /// could ever be answered, so a failing LibriVox left the pass
@@ -103,6 +105,8 @@ enum FreeCatalogLoader {
                         rows.netlabels, rows.problems[.netlabels])
             && answered(AppStorageKeys.jamendoActive,
                         rows.freeMusic, rows.problems[.freeMusic])
+            && answered(AppStorageKeys.musopenActive,
+                        rows.musopen, rows.problems[.musopen])
     }
 
     /// `clients`, `gates` and `dayStore` (where the day's Jamendo answer is
@@ -175,6 +179,23 @@ enum FreeCatalogLoader {
                 guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
                 rows.problems[.netlabels] = await CatalogPageFailure.sentence(for: error, at: "discover-netlabels") ?? String(localized: "The catalogs could not be loaded.")
+            }
+        }
+        if gates.musopen {
+            do {
+                // Twice the row, so the row stays full after the files
+                // the licence rule and the player leave out.
+                let page = try await clients.musopen.row(Date(), RowPreview.limit * 2)
+                let dropped = MusopenCatalog.Dropped.allCases.map { "\($0.rawValue)=\(page.dropped[$0] ?? 0)" }.joined(separator: " ")
+                Logger.library.notice("FREECAT musopen loaded=\(page.recordings.count) \(dropped, privacy: .public)")
+                rows.musopen = Array(page.recordings.prefix(RowPreview.limit)).compactMap { provider.remember(recording: $0) }
+                if rows.musopen.isEmpty {
+                    rows.problems[.musopen] = String(localized: "Nothing new here right now.")
+                }
+            } catch {
+                guard !error.isCancellation else { return rows }
+                Logger.library.error("FREECAT musopen FAILED: \(String(describing: error), privacy: .public)")
+                rows.problems[.musopen] = await CatalogPageFailure.sentence(for: error, at: "discover-musopen") ?? String(localized: "The catalogs could not be loaded.")
             }
         }
         if jamendoOn {

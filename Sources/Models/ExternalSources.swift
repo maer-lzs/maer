@@ -107,6 +107,18 @@ nonisolated enum ExternalSources {
         hosts: ["api.jamendo.com"],
         storageKey: "jamendoRowEnabled")
 
+    static let musopen = ExternalSource(
+        key: "musopen", group: .catalogs,
+        title: "Musopen (Wikimedia Commons)",
+        effectLine: String(localized: "The Musopen rows then load nothing new; anything you started stays and keeps playing."),
+        staysLine: String(localized: "anything you started stays and keeps playing"),
+        // The same hosts as the station logos: the API and the files of
+        // Commons. A source of its own, so the logos and the recordings
+        // are switched apart.
+        hosts: ["commons.wikimedia.org", "upload.wikimedia.org"],
+        storageKey: AppStorageKeys.musopenSourceEnabled,
+        rightsNotice: MusopenCatalog.rightsNotice)
+
     static let podcastIndex = ExternalSource(
         key: "podcastIndex", group: .directories,
         title: "Podcast Index",
@@ -178,7 +190,7 @@ nonisolated enum ExternalSources {
     /// Every source, in the order the page shows them: by group, and
     /// inside a group by weight of what one loses.
     static let all: [ExternalSource] = [
-        librivox, gutenberg, internetArchive, jamendo,
+        librivox, gutenberg, internetArchive, jamendo, musopen,
         podcastIndex, appleCatalog, radioBrowser,
         wikimedia, musicBrainz, lrclib, feedArtwork,
     ]

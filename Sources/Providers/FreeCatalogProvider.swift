@@ -7,8 +7,8 @@ import Foundation
 import OSLog
 
 /// Playback resolution for the free-catalog rows. Owns the
-/// `lv:` (LibriVox book), `lva:` (archive.org item) and `jam:` (Jamendo
-/// track) namespaces. NOT a library source: `isAvailable` stays false (no
+/// `lv:` (LibriVox book), `lva:` (archive.org item), `jam:` (Jamendo
+/// track) and `mso:` (Musopen recording) namespaces. NOT a library source: `isAvailable` stays false (no
 /// tab, no search fan-out). The Discover rows remember their items here and
 /// the player routes by prefix like everywhere else.
 @MainActor
@@ -21,8 +21,10 @@ final class FreeCatalogProvider: AudioProvider {
     var fetchLibriVoxBook: (String) async throws -> LibriVoxBook? = { try await LibriVoxClient.book(id: $0) }
     /// Whether Jamendo may be asked: the switch of the source.
     var jamendoAllowed: () -> Bool = { AppStorageKeys.jamendoActive }
-    var fetchMusopenRecording: (Int) async throws -> MusopenCatalog.Recording? = { _ in nil }
-    var musopenAllowed: () -> Bool = { false }
+    /// Asks Commons for one Musopen recording by its page id; the app's client, a witness's own.
+    var fetchMusopenRecording: (Int) async throws -> MusopenCatalog.Recording? = { try await MusopenClient.recording(pageId: $0) }
+    /// Whether Commons may be asked for the recordings: the switch of the source.
+    var musopenAllowed: () -> Bool = { ExternalSources.isAllowed(ExternalSources.musopen) }
 
     /// The provider over a given home of its documents; one for the app,
     /// others for witnesses.
@@ -99,6 +101,7 @@ final class FreeCatalogProvider: AudioProvider {
     /// Session caches the rows fill (id → source object).
     private var librivoxBooks: [String: LibriVoxBook] = [:]
     private var jamendoTracks: [String: JamendoTrack] = [:]
+    private var musopenRecordings: [String: MusopenCatalog.Recording] = [:]
     private var itemsById: [String: LibraryItem] = [:]
 
     func remember(book: LibriVoxBook) -> LibraryItem {
@@ -337,7 +340,28 @@ final class FreeCatalogProvider: AudioProvider {
         return item
     }
 
-    func remember(recording: MusopenCatalog.Recording) -> LibraryItem? { nil }
+    /// A Musopen recording as a catalog title. The artist comes as the
+    /// file page states it, with links; it becomes text here like every
+    /// catalog name. The licence is the file's own.
+    @discardableResult
+    func remember(recording: MusopenCatalog.Recording) -> LibraryItem? {
+        let id = recording.itemId
+        musopenRecordings[id] = recording
+        licences[id] = recording.licence.label
+        let artist = recording.artistHTML.map(htmlPlainText).flatMap { $0.isEmpty ? nil : $0 }
+        let item = LibraryItem(
+            id: id,
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: FreeCatalog.shownTitle(recording.title, itemId: id),
+                    authorName: artist,
+                    narratorName: nil,
+                    seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                duration: recording.duration, chapters: nil, tracks: nil),
+            addedAt: nil)
+        itemsById[id] = item
+        return item
+    }
 
     func libraryItem(forId id: String) -> LibraryItem? { itemsById[id] }
     func librivoxBook(forId id: String) -> LibriVoxBook? { librivoxBooks[id] }
@@ -362,6 +386,9 @@ final class FreeCatalogProvider: AudioProvider {
         if id.hasPrefix(FreeCatalog.gutenbergPrefix) {
             let bookId = String(id.dropFirst(FreeCatalog.gutenbergPrefix.count))
             return URL(string: "https://www.gutenberg.org/ebooks/\(bookId)")
+        }
+        if id.hasPrefix(MusopenCatalog.prefix) {
+            return musopenRecordings[id]?.pageURL
         }
         return nil
     }
@@ -711,6 +738,9 @@ final class FreeCatalogProvider: AudioProvider {
         if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
             return try await gutenbergDetail(itemId: itemId)
         }
+        if let pageId = MusopenCatalog.pageId(of: itemId) {
+            return try await musopenDetail(itemId: itemId, pageId: pageId)
+        }
         throw URLError(.resourceUnavailable)
     }
 
@@ -754,6 +784,30 @@ final class FreeCatalogProvider: AudioProvider {
                                          authorName: meta.metadata?.creator?.joined.map(FreeCatalog.repairedMojibake),
                                          description: meta.metadata?.description?.joined),
                 duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
+            userMediaProgress: nil)
+        rememberResolved(detail)
+        return detail
+    }
+
+    /// A Musopen recording plays as one track from its MP3. One no row
+    /// showed this run (kept, linked) is asked once by its page id, while
+    /// the source is on; a file that is gone or no longer passes the
+    /// licence rule does not open.
+    private func musopenDetail(itemId: String, pageId: Int) async throws -> LibraryItemDetail {
+        if musopenRecordings[itemId] == nil, musopenAllowed(),
+           let fetched = try await fetchMusopenRecording(pageId), fetched.itemId == itemId {
+            remember(recording: fetched)
+        }
+        guard let recording = musopenRecordings[itemId] else { throw URLError(.resourceUnavailable) }
+        let detail = LibraryItemDetail(
+            id: itemId,
+            media: LibraryItemMedia(
+                metadata: detailMetadata(itemId: itemId, title: recording.title,
+                                         authorName: libraryItem(forId: itemId)?.author),
+                duration: recording.duration, chapters: nil,
+                tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: recording.duration,
+                                       contentUrl: recording.audioURL.absoluteString,
+                                       metadata: ABSFileMetadata(size: nil, title: recording.title))]),
             userMediaProgress: nil)
         rememberResolved(detail)
         return detail

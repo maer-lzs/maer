@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Musopen recordings.** Classical recordings of the Musopen collection on
+Wikimedia Commons, public domain and CC0 only: a Musopen row in Browse, on
+the Music tab and on the Classical page, and a page with every recording
+behind its heading. A recording plays on tap, can be kept offline and names
+its licence on its page. Musopen has its own switch under the sources and
+under the rows.
+
 **Spanish, French and Italian.** Mär speaks Spanish, French and Italian,
 in the app, in Siri's phrases and in the system's questions. The
 translations wait for a native speaker's review; until then they come with

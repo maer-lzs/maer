@@ -1020,6 +1020,8 @@ struct UserChoiceGateTests {
             "gutenbergSourceEnabled", "podcastIndexSourceEnabled", "feedArtworkSourceEnabled",
             "rowHomeDiscoverMusicVisible", "rowHomeRecentlyAddedVisible", "rowBooksRecentVisible",
             "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
+            // The Musopen source and its row, like every catalog's two.
+            "musopenSourceEnabled", "musopenRowVisible",
             "rowRadioCatalogVisible", "rowHomeDiscoverBooksVisible", "rowHomeRediscoverVisible",
             "rowBooksChartsVisible", "podcastsPinchflatInSubscriptions", "podcastsPremiumInSubscriptions",
             "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",

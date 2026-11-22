@@ -29,7 +29,7 @@ struct CatalogPlainSentenceTests {
             doors += code.components(separatedBy: "CatalogPageFailure.sentence(for:").count - 1
         }
         #expect(beside.isEmpty, "a page asks the sentence without the log line: \(beside.sorted())")
-        #expect(doors == 10, "the pages that show a catalog failure are not the ten measured: \(doors)")
+        #expect(doors == 11, "the pages that show a catalog failure are not the eleven measured: \(doors)")
         let door = try code("Sources/ViewModels/CatalogPageFailure.swift")
         #expect(door.contains("FreeCatalog.failureReason(error, online: online)") && door.contains("FreeCatalog.logReason(error)"),
                 "the door does not give the sentence and log the measured reason")

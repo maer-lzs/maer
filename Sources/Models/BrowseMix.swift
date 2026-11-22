@@ -71,8 +71,8 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
     var group: Group {
         switch self {
         case .recommendations, .charts, .publicFeeds, .independentFeeds: .podcasts
-        case .classical, .netlabels, .oldRecords, .jamendo: .music
-        case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio, .musopen: .books
+        case .classical, .netlabels, .oldRecords, .jamendo, .musopen: .music
+        case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio: .books
         }
     }
 
@@ -84,7 +84,7 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
         case .charts: ["appleCatalog"]
         case .classical, .netlabels, .oldRecords, .archiveBooks, .oldTimeRadio: ["internetArchive"]
         case .jamendo: ["jamendo"]
-        case .musopen: []
+        case .musopen: ["musopen"]
         case .librivox: ["librivox"]
         case .gutenberg: ["gutenberg"]
         case .publicFeeds, .independentFeeds: []

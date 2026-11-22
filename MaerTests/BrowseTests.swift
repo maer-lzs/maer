@@ -47,7 +47,7 @@ struct BrowseTests {
     func thePageSplitsAtTheFold() {
         let all: (String) -> Bool = { _ in true }
         let music = BrowseSection.columns(BrowseSection.shown(in: .music, isAllowed: all))
-        #expect(music.leading == [.classical, .netlabels] && music.trailing == [.oldRecords, .jamendo])
+        #expect(music.leading == [.classical, .netlabels, .oldRecords] && music.trailing == [.jamendo, .musopen])
         let three = BrowseSection.columns([.librivox, .gutenberg, .archiveBooks])
         #expect(three.leading == [.librivox, .gutenberg] && three.trailing == [.archiveBooks])
         let start = BrowseSection.columns(BrowseSection.allCases)
@@ -152,7 +152,7 @@ struct BrowseTests {
         #expect(TabBrowse.area(for: .home) == nil)
         let all: (String) -> Bool = { _ in true }
         #expect(BrowseSection.shown(in: .books, isAllowed: all) == [.librivox, .gutenberg, .archiveBooks, .oldTimeRadio])
-        #expect(BrowseSection.shown(in: .music, isAllowed: all) == [.classical, .netlabels, .oldRecords, .jamendo])
+        #expect(BrowseSection.shown(in: .music, isAllowed: all) == [.classical, .netlabels, .oldRecords, .jamendo, .musopen])
         #expect(BrowseSection.shown(in: .podcasts, isAllowed: all)
                 == [.recommendations, .charts, .publicFeeds, .independentFeeds],
                 "the feeds of broadcasters and studios are shows to subscribe to")
@@ -243,6 +243,7 @@ struct BrowseTests {
             .netlabels: ("destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))", "freeCatalogStore.rows.netlabels"),
             .oldRecords: ("destination: MusicRoute.shellacArea)", "oldRecords.map(BrowseTile.music)"),
             .jamendo: ("destination: MusicRoute.freeJamendo)", "freeCatalogStore.rows.freeMusic"),
+            .musopen: ("destination: MusicRoute.musopen)", "freeCatalogStore.rows.musopen"),
             .librivox: ("destination: FreeAudiobooksRoute.source(.librivox))", "sourceRows.librivoxPopular"),
             .gutenberg: ("destination: FreeAudiobooksRoute.source(.gutenberg))", "sourceRows.gutenberg"),
             .archiveBooks: ("destination: FreeAudiobooksRoute.source(.archiveBooks))", "sourceRows.archiveBooks"),

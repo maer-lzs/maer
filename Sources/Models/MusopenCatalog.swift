@@ -6,20 +6,28 @@
 import Foundation
 
 /// The Musopen recordings on Wikimedia Commons as a catalog. The category
-/// and its two subcategories are read page by page; each file is decided
+/// and its Chopin subcategory are read page by page; each file is decided
 /// on its own from what its file page states: a sound, public domain or
-/// CC0, and a form the player takes (the MP3 Commons derives, or an MP3
+/// the Creative Commons zero waiver, and a form the player takes (the MP3 Commons derives, or an MP3
 /// original). Pure: an answer goes in, recordings and the counted rest
 /// come out.
 nonisolated enum MusopenCatalog {
     /// `mso:<pageid>`: the file page's number, which a rename keeps.
     static let prefix = "mso:"
     static let apiURL = URL(string: "https://commons.wikimedia.org/w/api.php")!
-    /// The category and its two subcategories, read in this order.
-    static let categories = ["Category:Musopen", "Category:Musopen Kickstarter Project", "Category:Set Chopin Free"]
+    /// The category and the subcategory whose files it does not list
+    /// itself, read in this order. The third subcategory, the Kickstarter
+    /// project, lists only files the category lists too.
+    static let categories = ["Category:Musopen", "Category:Set Chopin Free"]
     /// Files per answer; the file pages' metadata keeps an answer of 50
     /// at a size a phone reads in one go.
     static let pageSize = 50
+
+    /// The rights of the catalog, once at the top of its surfaces and under
+    /// its switch; each recording names its own licence on its page.
+    static var rightsNotice: String {
+        String(localized: "Recordings of the Musopen collection on Wikimedia Commons. Public domain and CC0 recordings only; each recording names its licence on its page.")
+    }
 
     /// The two licences the catalog keeps. Everything else stays out and
     /// is counted (`Dropped.licence`).
@@ -49,7 +57,7 @@ nonisolated enum MusopenCatalog {
     enum Dropped: String, CaseIterable, Sendable, Error {
         /// A picture, a video.
         case notAudio
-        /// Neither public domain nor CC0.
+        /// Neither public domain nor the Creative Commons zero waiver.
         case licence
         /// No MP3, neither derived nor original.
         case noPlayableForm

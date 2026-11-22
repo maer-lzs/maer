@@ -68,6 +68,8 @@ struct AppRowsCompletenessFenceTests {
                              Site(owner: "MusicView", name: "browseRow")],
         "music.jamendo": [Site(owner: "MusicView", name: "catalogSections", anchor: "\"Music (Jamendo)\""),
                           Site(owner: "MusicView", name: "browseRow")],
+        "music.musopen": [Site(owner: "MusicView", name: "catalogSections", anchor: "MusopenRow("),
+                          Site(owner: "MusicView", name: "browseRow")],
         "music.playlists": [Site(owner: "MusicView", name: "playlistRow")],
         "music.recentlyPlayed": [Site(owner: "MusicView", name: "recentlyPlayedRow")],
         // The shelf function draws only this row now; its call is counted below.
@@ -106,7 +108,7 @@ struct AppRowsCompletenessFenceTests {
     /// What heads a row: the shared heading, a heading set by hand, and
     /// the parts that carry their own heading.
     static let heading = try! NSRegularExpression(
-        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\(|PlaylistHomeSection\(|PodcastFolderRow\("#)
+        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\(|PlaylistHomeSection\(|PodcastFolderRow\(|MusopenRow\("#)
     static let declaration = try! NSRegularExpression(
         pattern: #"^\s*(?:@\w+\s+)*(?:(?:private|fileprivate|static|nonisolated)\s+)*(?:var|func)\s+(\w+)"#)
 
@@ -254,7 +256,8 @@ struct AppRowsCompletenessFenceTests {
                       ("ListeningHistoryRow(route: MusicRoute.history", nil),
                       // The sections in their own declaration, below the tab's body.
                       ("\"Netlabels\"", "music.netlabels"),
-                      ("ShellacSection(", "music.oldRecords"), ("\"Music (Jamendo)\"", "music.jamendo")]),
+                      ("ShellacSection(", "music.oldRecords"), ("\"Music (Jamendo)\"", "music.jamendo"),
+                      ("MusopenRow(", "music.musopen")]),
         Order(file: "Sources/Views/PodcastsView.swift",
               from: "VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {",
               steps: [("nextUpSection", "podcasts.continue"), ("needsSignInSection", "podcasts.notFollowed"),

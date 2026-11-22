@@ -27222,6 +27222,34 @@
         }
       }
     },
+    "Recordings of the Musopen collection on Wikimedia Commons. Public domain and CC0 recordings only; each recording names its licence on its page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufnahmen der Musopen-Sammlung auf Wikimedia Commons. Nur gemeinfreie und CC0-Aufnahmen; jede Aufnahme nennt ihre Lizenz auf ihrer Seite."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Grabaciones de la colección Musopen en Wikimedia Commons. Solo grabaciones de dominio público y CC0; cada grabación indica su licencia en su página."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Enregistrements de la collection Musopen sur Wikimedia Commons. Uniquement des enregistrements du domaine public et CC0 ; chaque enregistrement indique sa licence sur sa page."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Registrazioni della raccolta Musopen su Wikimedia Commons. Solo registrazioni di pubblico dominio e CC0; ogni registrazione indica la sua licenza nella sua pagina."
+          }
+        }
+      }
+    },
     "Rediscover" : {
       "localizations" : {
         "de" : {
@@ -34715,6 +34743,34 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Le statistiche di ascolto non sono leggibili, quindi il tempo di ascolto di questa sessione non viene salvato."
+          }
+        }
+      }
+    },
+    "The Musopen rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Musopen-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Las filas de Musopen ya no cargan nada nuevo; lo que hayas empezado se queda y sigue sonando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Les rangées Musopen ne chargent alors plus rien de nouveau ; ce que vous avez commencé reste et continue d’être lu."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le righe di Musopen non caricano più nulla di nuovo; ciò che hai iniziato resta e si può continuare ad ascoltare."
           }
         }
       }

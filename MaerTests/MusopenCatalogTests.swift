@@ -91,7 +91,7 @@ struct MusopenCatalogTests {
     @Test("The reader goes on in a category with its token, then to the next category, and ends after the last")
     func cursor() {
         let last = MusopenCatalog.categories.count - 1
-        #expect(MusopenCatalog.categories.count == 3)
+        #expect(MusopenCatalog.categories.count == 2)
         #expect(MusopenCatalog.cursor(after: .init(category: 0, token: nil), token: "t1") == .init(category: 0, token: "t1"))
         #expect(MusopenCatalog.cursor(after: .init(category: 0, token: "t1"), token: nil) == .init(category: 1, token: nil))
         #expect(MusopenCatalog.cursor(after: .init(category: last, token: "t9"), token: nil) == nil)

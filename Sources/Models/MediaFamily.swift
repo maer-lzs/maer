@@ -37,7 +37,8 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         case .music:   return ["sub:", "jf:"]
         case .radio:   return ["radio:"]
         case .catalog: return [FreeCatalog.librivoxPrefix, FreeCatalog.archivePrefix,
-                               FreeCatalog.jamendoPrefix, FreeCatalog.gutenbergPrefix]
+                               FreeCatalog.jamendoPrefix, FreeCatalog.gutenbergPrefix,
+                               MusopenCatalog.prefix]
         case .book:    return ["local:"]
         case .unknown: return []
         }
@@ -62,7 +63,7 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
     /// shows "my audiobook library" asks HERE, never re-derives).
     ///
     /// The catalog family is one family, its members are not: `lv:`/`gut:`
-    /// are readings (books), `jam:` is music by type, `lva:` is mixed and
+    /// are readings (books), `jam:` and `mso:` are music by type, `lva:` is mixed and
     /// decides per item. A song-addressed id (`lva:x#i`) is a track (music),
     /// a whole work follows its started FORM; without a form the book side is
     /// the honest home (the catalog's origin). `.unknown` is never quietly
@@ -73,7 +74,7 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         case .book: return true
         case .podcast, .music, .radio, .unknown: return false
         case .catalog:
-            if id.hasPrefix(FreeCatalog.jamendoPrefix) { return false }
+            if id.hasPrefix(FreeCatalog.jamendoPrefix) || id.hasPrefix(MusopenCatalog.prefix) { return false }
             if id.hasPrefix(FreeCatalog.archivePrefix) {
                 if CatalogSongID.isSong(id) { return false }
                 return markedForm != .album

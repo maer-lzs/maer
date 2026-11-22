@@ -9,7 +9,8 @@ import Foundation
 /// audiobooks, keyless), archive.org (popularity + streams, keyless) and
 /// Jamendo (CC music, client_id via build injection or user key).
 /// Id namespaces: `lv:<bookId>` (LibriVox book) · `lva:<identifier>`
-/// (archive.org item) · `jam:<trackId>` (Jamendo track).
+/// (archive.org item) · `jam:<trackId>` (Jamendo track) · `mso:<pageId>`
+/// (Musopen recording on Wikimedia Commons, `MusopenCatalog`).
 
 // MARK: - LibriVox wire
 
@@ -184,7 +185,7 @@ nonisolated enum FreeCatalog {
     /// access token in the query string) for a title that does not exist there.
     /// 41 × 404 later CrowdSec read it as an attack and locked the user out of
     /// his own server. A new source now only has to appear in THIS list.
-    static let allPrefixes = [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
+    static let allPrefixes = [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix, MusopenCatalog.prefix]
 
     /// The ONE enumeration of the catalog AREAS. Every area steers a
     /// visible surface and therefore MUST have its own switch in the areas
@@ -204,7 +205,7 @@ nonisolated enum FreeCatalog {
             case .freeMusic:      return "music.jamendo"
             case .netlabels:      return "music.netlabels"
             case .oldRecords:     return "music.oldRecords"
-            case .musopen:        return ""
+            case .musopen:        return "music.musopen"
             }
         }
     }
@@ -420,6 +421,9 @@ nonisolated enum FreeCatalog {
         if itemId.hasPrefix(librivoxPrefix) { return true }
         if itemId.hasPrefix(gutenbergPrefix) { return gutenbergPublicDomain }
         if itemId.hasPrefix(archivePrefix) { return statedLicence }
+        // Every recording passed the licence rule: public domain or the
+        // Creative Commons zero waiver, both of which allow a copy.
+        if itemId.hasPrefix(MusopenCatalog.prefix) { return true }
         return false
     }
 
@@ -660,8 +664,7 @@ nonisolated enum FreeCatalog {
     /// failure be recorded as gone. A book on a server is the server's
     /// business.
     static func isCatalogId(_ id: String) -> Bool {
-        [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
-            .contains { id.hasPrefix($0) }
+        allPrefixes.contains { id.hasPrefix($0) }
     }
 
     /// Does this failure say the entry is gone, or only that it could not be
@@ -1265,7 +1268,7 @@ nonisolated enum FreeCatalog {
     /// title and its date into the broadcast.
     static func trackRowTitle(itemId: String, stated: String?, contentUrl: String, series: Bool,
                               fallback: String) -> (title: String, airDate: String?) {
-        if itemId.hasPrefix(jamendoPrefix) {
+        if itemId.hasPrefix(jamendoPrefix) || itemId.hasPrefix(MusopenCatalog.prefix) {
             let name = stated?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return (name.isEmpty ? fallback : name, nil)
         }

@@ -57,6 +57,7 @@ struct StatusMeaningFenceTests {
         "MaerSyncClient.swift": "the translation MaerSyncAnswer: 404 is not yet, 412 stale, 409 refused, 410 session ended, 503 with a sentence",
         "CatalogStockFetch.swift": "416 is the end of a range and 200 the whole file; both are meanings the rule has no word for",
         "FreeCatalogClients.swift": "a decode failure keeps the status as evidence, the dead-item ladder needs the body, a 429 must be measurable with Retry-After",
+        "MusopenClient.swift": "a non-2xx answer of Commons travels with its number and Retry-After to the log line; the row and the page say only that the catalog could not be loaded",
         "PodcastRecommendationsStore.swift": "a HEAD probe reduced to a Bool that orders tiles; a transport failure keeps the tile usable",
         "FileDownloader.swift": "non-2xx bytes are not a track; there is no reader for a meaning on that path",
         "RadioLogoReport.swift": "the diagnosis label names the status on purpose, for the clipboard",

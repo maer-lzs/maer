@@ -264,14 +264,16 @@ struct BrowsePage: View {
         case .independentFeeds:
             return OERRLiveStore.feeds(for: .independents, languages: languages).map { .catalog(.feed($0)) }
         case .musopen:
-            return []
+            return AppStorageKeys.musopenActive ? freeCatalogStore.rows.musopen.map(BrowseTile.music) : []
         }
     }
 
     /// Why a lane stands empty, where its store says so. Start drops the
     /// free music silently (with a log line); the page says why.
     private func problem(_ section: BrowseSection) -> String? {
-        section == .jamendo && AppStorageKeys.jamendoActive ? freeCatalogStore.rows.freeMusicProblem : nil
+        if section == .jamendo && AppStorageKeys.jamendoActive { return freeCatalogStore.rows.freeMusicProblem }
+        if section == .musopen && AppStorageKeys.musopenActive { return freeCatalogStore.rows.problems[.musopen] }
+        return nil
     }
 
     /// The line under a show: the recommendation's reason, none for the
@@ -351,7 +353,7 @@ struct BrowsePage: View {
         case .independentFeeds:
             RowHeading.entry(verbatim: CatalogSource.independents.title, destination: FreeAudiobooksRoute.source(.independents))
         case .musopen:
-            EmptyView()
+            RowHeading.entry(verbatim: "Musopen", destination: MusicRoute.musopen)
         }
     }
 }

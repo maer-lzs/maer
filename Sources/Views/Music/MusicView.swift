@@ -190,6 +190,7 @@ struct MusicView: View {
             case .jamendo:
                 jamendoArea && jamendoRowIsVisible
                     ? CatalogMix.ordered(rows.freeMusic, for: .musicTab).map(BrowseTile.music) : []
+            case .musopen: AppStorageKeys.musopenActive ? rows.musopen.map(BrowseTile.music) : []
             default: []
             }
         }
@@ -210,7 +211,7 @@ struct MusicView: View {
     /// The music sections of the Browse page, each with its tiles.
     @ViewBuilder
     private var catalogSections: some View {
-        if netlabelsArea || shellacArea || (jamendoArea && jamendoRowIsVisible) {
+        if netlabelsArea || shellacArea || (jamendoArea && jamendoRowIsVisible) || AppStorageKeys.musopenActive {
             OpenCatalogsHeading()
         }
         // The free-music areas are REACHABLE from the music
@@ -254,6 +255,9 @@ struct MusicView: View {
                 }
             }
         }
+        // The recordings of Musopen on Wikimedia Commons, after the
+        // catalogs of the archive and Jamendo.
+        MusopenRow(playerCoordinator: playerCoordinator)
     }
 
     /// The library entries as the SAME deck of tiles the search page shows

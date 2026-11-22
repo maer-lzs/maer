@@ -107,8 +107,8 @@ struct CatalogKeptItemsTests {
         #expect(provider.contains("static let shared = FreeCatalogProvider(ablage: .documents)"))
         #expect(provider.contains("resolved: LibraryItem(id: detail.id, media: detail.media, addedAt: nil))\n        keep(item)\n        itemsById[detail.id] = item"))
         // Each resolve goes through `rememberResolved`: LibriVox, the archive
-        // item, its song, Jamendo and Gutenberg, beside the declaration.
-        #expect(provider.components(separatedBy: "rememberResolved(").count - 1 == 6)
+        // item, its song, Jamendo, Gutenberg and Musopen, beside the declaration.
+        #expect(provider.components(separatedBy: "rememberResolved(").count - 1 == 7)
         let library = try read("Sources/ViewModels/LibraryViewModel.swift")
         #expect(library.contains("let extras = Self.continueExtras()\n        nameUnnamedCatalogTitles(extras)"))
     }

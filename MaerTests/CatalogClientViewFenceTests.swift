@@ -13,7 +13,7 @@ import Foundation
 /// folder: half of what first looked like calls from views sat in loader
 /// enums that only live in the views folder.
 struct CatalogClientViewFenceTests {
-    nonisolated static let clients = ["LibriVoxClient", "ArchiveOrgClient", "GutenbergClient", "JamendoClient"]
+    nonisolated static let clients = ["LibriVoxClient", "ArchiveOrgClient", "GutenbergClient", "JamendoClient", "MusopenClient"]
     /// Calls that answer without the network.
     nonisolated static let offline = ["archiveBaseQuery", "clientId"]
 
@@ -27,7 +27,7 @@ struct CatalogClientViewFenceTests {
         // Every hit carries a client's name, and the joining below never
         // forms one, so a file without any of them has none.
         guard clients.contains(where: text.contains) else { return [:] }
-        let call = #/\b(LibriVoxClient|ArchiveOrgClient|GutenbergClient|JamendoClient)\.(\w+)\s*\(/#
+        let call = #/\b(LibriVoxClient|ArchiveOrgClient|GutenbergClient|JamendoClient|MusopenClient)\.(\w+)\s*\(/#
         return viewHits(in: text) { line in
             line.matches(of: call).filter { !offline.contains(String($0.output.2)) }.count
         }

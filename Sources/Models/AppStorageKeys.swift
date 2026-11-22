@@ -484,6 +484,10 @@ nonisolated enum AppStorageKeys {
     /// stored meaning was "may the app ask Jamendo", which is the privacy
     /// question); the presentation question gets its own fresh key.
     static let jamendoRowVisible = "jamendoRowVisible"
+    /// The Musopen source (may the app ask Commons for the recordings)
+    /// and its row, two questions like every other catalog.
+    static let musopenSourceEnabled = "musopenSourceEnabled"
+    static let musopenRowVisible = "musopenRowVisible"
     static let rowPodcastsRadioPlaysVisible = "rowPodcastsRadioPlaysVisible"
     static let rowPodcastsRecommendedVisible = "rowPodcastsRecommendedVisible"
     static let rowRadioCatalogVisible = "rowRadioCatalogVisible"
@@ -746,6 +750,10 @@ nonisolated enum AppStorageKeys {
     nonisolated static var netlabelsActive: Bool {
         ExternalSources.isAllowed(ExternalSources.internetArchive)
             && AppRows.row(key: "music.netlabels").map { AppRows.isVisible($0) } ?? true
+    }
+    nonisolated static var musopenActive: Bool {
+        ExternalSources.isAllowed(ExternalSources.musopen)
+            && AppRows.row(key: "music.musopen").map { AppRows.isVisible($0) } ?? true
     }
     nonisolated static var shellacActive: Bool {
         ExternalSources.isAllowed(ExternalSources.internetArchive)

@@ -49,6 +49,8 @@ enum MusicRoute: Hashable {
     case freeJamendo
     /// One Jamendo genre shelf (server-paged grid).
     case jamendoShelf(String)
+    /// Every Musopen recording on Wikimedia Commons (paged grid).
+    case musopen
     /// A genre shelf of an archive music area. The same shape as the Jamendo
     /// shelf, only with the archive query behind it.
     case archiveMusicShelf(area: String, shelf: String)
@@ -67,7 +69,7 @@ enum MusicRoute: Hashable {
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
              (.genres, .genres), (.shellacArea, .shellacArea),
-             (.freeJamendo, .freeJamendo), (.history, .history):
+             (.freeJamendo, .freeJamendo), (.history, .history), (.musopen, .musopen):
             return true
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.archiveMusicShelf(a1, s1), .archiveMusicShelf(a2, s2)):
@@ -106,6 +108,7 @@ enum MusicRoute: Hashable {
             hasher.combine(17); hasher.combine(a); hasher.combine(sh)
         case .archiveMusicPopular(let a): hasher.combine(18); hasher.combine(a)
         case .history:          hasher.combine(19)
+        case .musopen:          hasher.combine(21)
         }
     }
 
@@ -133,6 +136,7 @@ enum MusicRoute: Hashable {
         case .archiveMusicShelf: return "music-route-archive-music-shelf"
         case .archiveMusicPopular: return "music-route-archive-music-popular"
         case .history: return "music-route-history"
+        case .musopen: return "music-route-musopen"
         }
     }
 }
@@ -203,6 +207,8 @@ extension View {
                                   playerCoordinator: playerCoordinator)
             case .jamendoShelf(let key):
                 JamendoShelfPage(shelfKey: key, playerCoordinator: playerCoordinator)
+            case .musopen:
+                MusopenPage(playerCoordinator: playerCoordinator)
             case .archiveMusicShelf(let areaKey, let shelfKey):
                 ArchiveMusicShelfPage(areaKey: areaKey, shelfKey: shelfKey,
                                       playerCoordinator: playerCoordinator)

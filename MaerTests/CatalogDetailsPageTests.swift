@@ -57,8 +57,9 @@ struct CatalogDetailsPageTests {
         }
         // The album and playlist menu (`CollectionMenuItems`, for the music
         // tiles of BrowseRow and the music tab), the area, popular row, genre rows and shelf of an archive
-        // music area, the shellac rows, the Jamendo page and shelf.
-        #expect(buttons == 8)
+        // music area, the shellac rows, the Jamendo page and shelf, the
+        // Musopen tile.
+        #expect(buttons == 9)
         let row = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
         #expect(row.contains("CatalogDetailsPage.open(itemId: item.id, unstartedForm: .album,"))

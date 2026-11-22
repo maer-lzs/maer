@@ -81,12 +81,17 @@ struct ArchiveMusicPage: View {
                                 ShelfPlaceholderRow(title: String(localized: "Loading genres…"))
                             }
                         } else {
+                            // The Classical page carries the Musopen
+                            // recordings above its 78s: classical music
+                            // from another collection, with its own rights.
+                            if area.key == ArchiveMusicCatalog.classical.key {
+                                MusopenRow(playerCoordinator: playerCoordinator)
+                            }
                             CoverGrid(columns: columns) {
                             ForEach(items) { item in
-                                // Shared catalog tile: carries the
-                                // licence capsule. Which is what
-                                // makes the CC-licensed netlabel releases
-                                // honest at a glance.
+                                // Shared catalog tile. The rights stand
+                                // once at the top of the page
+                                // (`ArchiveRightsNote`), not on a tile.
                                 FreeCatalogBookTile(
                                     item: item,
                                     placeholderSystemImage: area.placeholderSystemImage,

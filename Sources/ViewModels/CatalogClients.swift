@@ -70,9 +70,13 @@ nonisolated struct LibriVoxSeam: Sendable {
 
 /// All four seams, as one argument for every catalogue loader.
 nonisolated struct MusopenSeam: Sendable {
+    /// The row of the day: one answer from the day's letter.
     var row: @Sendable (_ date: Date, _ limit: Int) async throws -> MusopenCatalog.Page
+    /// The next answer of the whole catalog from where the reader stands.
+    var next: @Sendable (_ cursor: MusopenCatalog.Cursor) async throws -> (page: MusopenCatalog.Page, next: MusopenCatalog.Cursor?) = { _ in (MusopenCatalog.Page(), nil) }
 
-    static let live = MusopenSeam(row: { _, _ in MusopenCatalog.Page() })
+    static let live = MusopenSeam(row: { try await MusopenClient.row(on: $0, limit: $1) },
+                                  next: { try await MusopenClient.next(from: $0) })
 }
 
 nonisolated struct CatalogClients: Sendable {
@@ -108,6 +112,7 @@ nonisolated struct CatalogGates: Sendable {
                      freeAudiobooksArea: AppStorageKeys.freeAudiobooksAreaActive,
                      freeClassical: AppStorageKeys.freeClassicalActive,
                      netlabels: AppStorageKeys.netlabelsActive,
-                     languages: SuggestionLanguages.current())
+                     languages: SuggestionLanguages.current(),
+                     musopen: AppStorageKeys.musopenActive)
     }
 }

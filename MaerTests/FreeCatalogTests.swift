@@ -514,7 +514,7 @@ struct FreeCatalogTests {
     func theProviderTakesTheNameAtEveryIntake() throws {
         let provider = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/FreeCatalogProvider.swift"), encoding: .utf8))
-        #expect(provider.components(separatedBy: "title: FreeCatalog.shownTitle(").count - 1 == 6,
+        #expect(provider.components(separatedBy: "title: FreeCatalog.shownTitle(").count - 1 == 7,
                 "an intake shows the source's title unchecked")
         #expect(!provider.contains("String(localized: \"Unknown Title\")"))
         let page = SyncContractFenceTests.stripped(try String(

@@ -180,6 +180,10 @@ nonisolated enum AppRows {
                title: String(localized: "Music (Jamendo)"),
                sourceKeys: ["jamendo"],
                storageKey: AppStorageKeys.jamendoRowVisible),
+        AppRow(key: "music.musopen", tab: .music,
+               title: "Musopen",
+               sourceKeys: ["musopen"],
+               storageKey: AppStorageKeys.musopenRowVisible),
 
         // MARK: Podcasts
         AppRow(key: "podcasts.continue", tab: .podcasts,

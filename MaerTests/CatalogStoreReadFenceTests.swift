@@ -106,8 +106,9 @@ struct CatalogStoreReadFenceTests {
         rows.problems[.classical] = "URLError -1001"
         rows.problems[.netlabels] = "URLError -1001"
         rows.problems[.freeMusic] = "URLError -1001"
+        rows.problems[.musopen] = "URLError -1001"
         #expect(FreeCatalogLoader.passIsComplete(rows),
-                "vier gebuchte Fehlschlaege sind vier Antworten")
+                "fuenf gebuchte Fehlschlaege sind fuenf Antworten")
         // Nothing booked and nothing loaded = the cancelled shape: incomplete,
         // so the gate may reopen (bounded) instead of freezing the session.
         #expect(!FreeCatalogLoader.passIsComplete(FreeCatalogLoader.Rows()))

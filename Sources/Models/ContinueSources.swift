@@ -153,7 +153,7 @@ nonisolated enum ContinueSources {
             // by construction. Pre-form stock (started before the form
             // existed) must reach the music row instead of vanishing when
             // the books tab rightly refuses it.
-            let isMusicById = id.hasPrefix(FreeCatalog.jamendoPrefix)
+            let isMusicById = id.hasPrefix(FreeCatalog.jamendoPrefix) || id.hasPrefix(MusopenCatalog.prefix)
                 || (id.hasPrefix(FreeCatalog.archivePrefix) && CatalogSongID.isSong(id))
             guard ProgressMark.markedForm(stored) == .album || isMusicById else { continue }
             // A nameless tile that does not play: the dead mark used to be
