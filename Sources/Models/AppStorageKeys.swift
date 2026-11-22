@@ -33,6 +33,8 @@ nonisolated enum AppStorageKeys {
     /// Start the next unfinished book of the series when one ends (default OFF).
     static let autoPlayNextInSeries = "autoPlayNextInSeries"
     static let musicRepeatMode = "musicRepeatMode"
+    /// The words of the tab bar (`TabBarWords`), on by default; per device.
+    static let tabBarWords = "tabBarWords"
     /// The podcast lists whose unheard episodes this device put in Up Next
     /// when they became folders (`PodcastFolderMigration`).
     static let podcastFoldersEnqueued = "podcastFoldersEnqueued"
