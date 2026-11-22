@@ -728,6 +728,10 @@ final class PlayerCoordinator: ObservableObject {
             // resolving a detail must never count, because the same resolution
             // also serves restore, refresh and the bounded server check.
             provider.notePlaybackStarted(itemId: item.id)
+            // A book heard now downloads while it plays, on its switch.
+            if MediaFamily.of(item.id) == .book {
+                Task { await AudiobookPreloader.run(started: item.id) }
+            }
         }
     }
 
@@ -961,6 +965,10 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     private func advanceAfterFinish(finishedItemId: String) {
+        // The next book of a finished series downloads on its switch.
+        if MediaFamily.of(finishedItemId) == .book {
+            Task { await AudiobookPreloader.run(finished: finishedItemId) }
+        }
         dropHeardChapters()
         // Invariant "heard = flies out": the finished item leaves both lists.
         // It was already removed when it started, but a restored-session item

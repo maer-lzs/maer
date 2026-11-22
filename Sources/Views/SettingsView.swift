@@ -127,6 +127,9 @@ struct SettingsView: View {
     @State private var warnCellular: Bool =
         AppStorageKeys.warnCellularDownloadValue
     @State private var autoPlayNext: Bool = AppStorageKeys.autoPlayNextInSeriesValue
+    @AppStorage(AppStorageKeys.audiobookPreloadEnabled) private var preloadEnabled = false
+    @AppStorage(AppStorageKeys.audiobookPreloadBudgetGB) private var preloadBudgetGB = AudiobookPreload.defaultBudgetGB
+    @AppStorage(AppStorageKeys.audiobookPreloadNextInSeries) private var preloadNextInSeries = false
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     // The key still says "podcast" although the switch now covers playlists
@@ -266,6 +269,7 @@ struct SettingsView: View {
         // copies. The behaviour comes first, the sources second.
         case .audiobooks:
             audiobooksSection
+            preloadSection
         case .podcasts:
             // What every show follows unless it has its own, and the shows
             // that do.
@@ -819,7 +823,7 @@ struct SettingsView: View {
     private var audiobooksSection: some View {
         Section {
             AppSwitch(isOn: $autoPlayNext) {
-                Label("Auto-Play Next in Series", systemImage: "play.circle")
+                Label("Start Next Book in Series Automatically", systemImage: "play.circle")
             }
             .onChange(of: autoPlayNext) { _, newValue in
                 AppStorageKeys.autoPlayNextInSeriesValue = newValue
@@ -828,6 +832,35 @@ struct SettingsView: View {
             Text("Books")
         } footer: {
             Text("When a series book ends, the next unfinished one starts automatically.")
+        }
+    }
+
+    /// Download while you listen; the space and the series only while it
+    /// is on (`AudiobookPreloader`).
+    private var preloadSection: some View {
+        Section {
+            AppSwitch(isOn: $preloadEnabled) {
+                Label("Download While You Listen", systemImage: "arrow.down.circle")
+            }
+            .onChange(of: preloadEnabled) { _, on in
+                if on { Task { await AudiobookPreloader.run() } }
+            }
+            if preloadEnabled {
+                Picker(selection: $preloadBudgetGB) {
+                    ForEach(AudiobookPreload.budgetsGB, id: \.self) { gb in
+                        Text("\(gb) GB").tag(gb)
+                    }
+                } label: {
+                    Label("Space for It", systemImage: "internaldrive")
+                }
+                AppSwitch(isOn: $preloadNextInSeries) {
+                    Label("Download Next Book in Series Automatically", systemImage: "books.vertical")
+                }
+            }
+        } header: {
+            Text("Download Automatically")
+        } footer: {
+            Text("An audiobook you start and the books in Continue Listening download in full on Wi-Fi. When the space is full, the book you have not listened to for longest is removed. A book is removed a day after you finish it. With less than 2 GB free, Mär downloads nothing. Books you downloaded yourself never count and stay.")
         }
     }
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+**Audiobooks download while you listen.** A new setting under Audiobooks,
+Download While You Listen (off by default): an audiobook you start and the
+books in Continue Listening download in full on Wi-Fi, within the space you
+choose (2, 5 or 10 GB). When the space is full, the book you have not
+listened to for longest is removed; a book is removed a day after you
+finish it; with less than 2 GB free nothing downloads; books you
+downloaded yourself never count and stay. With Download Next Book in
+Series Automatically, the next book of a series follows when you finish
+one. The switch that starts the next book is now called Start Next Book in
+Series Automatically.
+
 **Switching between two music servers of one kind.** When you move from
 one Subsonic server to another, what this device kept for a title under
 the first one (position, downloads with their covers, Up Next, the rest of

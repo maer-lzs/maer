@@ -183,7 +183,10 @@ struct SharedGrowthFenceTests {
     /// (`PlayerViewModel.setRepeat`, one more). 772: the seven of podcast
     /// folders in the views above, and the move of the lists, which reads
     /// the store and the queue of the device (one, `PodcastFolderMigration`).
-    nonisolated static let sourcesStock = 772
+    /// 774: the download while listening reads the downloader and the
+    /// session's library for Continue Listening and the series (two,
+    /// `AudiobookPreloader`).
+    nonisolated static let sourcesStock = 774
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

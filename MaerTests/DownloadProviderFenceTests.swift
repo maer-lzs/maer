@@ -89,6 +89,8 @@ struct DownloadProviderFenceTests {
                 "zweimal: die Album-Seite haelt ihr Detail, der Anbieter kommt aus der Kennung",
             "Sources/Views/Podcasts/PodcastHelpers.swift":
                 "die Auto-Download-Schleife: eine Massenhandlung mit eigener Fehlermeldung je Folge",
+            "Sources/Providers/AudiobookPreloader.swift":
+                "the download while listening: it fetched the detail itself for the file sizes the space rule needs, and hands on the provider that fetched it",
         ]
         // `DownloadManager` is NOT in the list: its own call in
         // `startDownload` has no receiver („download(item:" without a dot)

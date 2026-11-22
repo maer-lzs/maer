@@ -1110,6 +1110,9 @@ struct UserChoiceGateTests {
             "podcastFoldersEnqueued", "podcastFoldersNoticePending",
             // The server stamps of this device's own rows.
             "musicServerStamps",
+            // Downloading audiobooks while you listen, on the device that
+            // downloads.
+            "audiobookPreloadEnabled", "audiobookPreloadBudgetGB", "audiobookPreloadNextInSeries",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

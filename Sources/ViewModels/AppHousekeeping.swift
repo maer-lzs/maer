@@ -55,6 +55,9 @@ enum AppHousekeeping {
         ListeningStatsStore.shared.start()
         // Podcast lists become folders on this device, with or without sync.
         PodcastFolderMigration.run()
+        // Books of Continue Listening download on Wi-Fi when the switch is
+        // on; finished automatic books go a day later either way.
+        Task { await AudiobookPreloader.run() }
         // Same switch, same store, same moment. The playlists travel with the
         // podcast progress or not at all.
         MaerPlaylistCloudSync.shared.start()

@@ -651,8 +651,9 @@ final class DownloadManager {
     private(set) var sizeMeasurements = 0
 
     /// Free space iOS would grant for user-important data (more generous
-    /// than plain free space. Includes purgeable caches).
-    private func freeDiskBytes() -> Int64? {
+    /// than plain free space. Includes purgeable caches). The download while
+    /// listening keeps its reserve by it (`AudiobookPreloader`).
+    func freeDiskBytes() -> Int64? {
         let values = try? downloadsDirectory.resourceValues(
             forKeys: [.volumeAvailableCapacityForImportantUsageKey]
         )

@@ -381,6 +381,9 @@
         }
       }
     },
+    "%lld GB" : {
+      "shouldTranslate" : false
+    },
     "%lld hr" : {
       "localizations" : {
         "de" : {
@@ -1616,6 +1619,16 @@
         }
       }
     },
+    "An audiobook you start and the books in Continue Listening download in full on Wi-Fi. When the space is full, the book you have not listened to for longest is removed. A book is removed a day after you finish it. With less than 2 GB free, Mär downloads nothing. Books you downloaded yourself never count and stay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Hörbuch, das du startest, und die Bücher in Weiterhören lädt Mär im WLAN ganz. Ist der Platz voll, wird das am längsten nicht gehörte Buch gelöscht. Einen Tag nach dem Fertighören wird es gelöscht. Unter 2 GB freiem Speicher lädt Mär nichts. Von Hand geladene Bücher zählen nicht mit und bleiben."
+          }
+        }
+      }
+    },
     "and %lld more" : {
       "localizations" : {
         "de" : {
@@ -2149,16 +2162,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Automatisch laden"
-          }
-        }
-      }
-    },
-    "Auto-Play Next in Series" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nächstes Buch der Serie automatisch"
           }
         }
       }
@@ -3924,6 +3927,16 @@
         }
       }
     },
+    "Download Next Book in Series Automatically" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes Buch der Serie automatisch laden"
+          }
+        }
+      }
+    },
     "download unreadable" : {
       "localizations" : {
         "de" : {
@@ -3950,6 +3963,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Download nicht lesbar. Mit Netz läuft er vom Server."
+          }
+        }
+      }
+    },
+    "Download While You Listen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laden, wenn du hörst"
           }
         }
       }
@@ -11468,6 +11491,16 @@
         }
       }
     },
+    "Space for It" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Platz dafür"
+          }
+        }
+      }
+    },
     "Spain" : {
       "localizations" : {
         "de" : {
@@ -11575,6 +11608,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fang an zu hören. Deine Bücher, Podcasts und Musik erscheinen hier."
+          }
+        }
+      }
+    },
+    "Start Next Book in Series Automatically" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes Buch der Serie automatisch starten"
           }
         }
       }

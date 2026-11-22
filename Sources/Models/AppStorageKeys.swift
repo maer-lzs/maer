@@ -41,6 +41,13 @@ nonisolated enum AppStorageKeys {
     /// The Subsonic server each device row of a Subsonic title was written
     /// under (`MusicServerStampBook`).
     static let musicServerStamps = "musicServerStamps"
+    /// Download audiobooks while you listen (default OFF), the space for
+    /// them in GB, the next book of a finished series, and the ids the
+    /// automatism downloaded itself (`AudiobookPreloader`).
+    static let audiobookPreloadEnabled = "audiobookPreloadEnabled"
+    static let audiobookPreloadBudgetGB = "audiobookPreloadBudgetGB"
+    static let audiobookPreloadNextInSeries = "audiobookPreloadNextInSeries"
+    static let audiobookAutoDownloadedIds = "audiobookAutoDownloadedIds"
     /// Bookmark create/delete ops that have not reached the server yet.
     static let pendingBookmarkOps = "pendingBookmarkOps"
     /// Optional PodcastIndex key for podcast search (the iTunes catalog needs

@@ -74,6 +74,9 @@ struct DeletableDownloadTests {
                     + "Raeumen ueber der Anzahl, die beide NICHT von einem Knopf kommen: ihre Listen "
                     + "stammen aus PodcastAutoDownloadRules.expired und .hold, also entscheidet die "
                     + "Regel und kein Tor, und beide fassen nur eigene Downloads an"),
+            "Sources/Providers/AudiobookPreloader.swift":
+                (1, "the download while listening: its list comes from AudiobookPreload.plan over its own "
+                    + "downloads only (owned, held to isDeletableDownload), so the rule decides and no button"),
             "Sources/Views/SettingsView.swift":
                 (1, "Loeschen je Sorte in den Einstellungen. Fragt gar kein Tor, sondern zaehlt "
                     + "downloadedItemIds selbst auf, also die richtige Menge: lokale Dateien "

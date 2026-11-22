@@ -182,6 +182,13 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoDownloadDirectionAll": .travels,
         "playedTailSeconds": .travels,
         "podcastAutoDownloadedIds": .machine,
+        // Downloading audiobooks while you listen stays on the device that
+        // downloads, as the podcast downloads for all shows do; what it
+        // downloaded itself is that device's own record.
+        "audiobookPreloadEnabled": .device,
+        "audiobookPreloadBudgetGB": .device,
+        "audiobookPreloadNextInSeries": .device,
+        "audiobookAutoDownloadedIds": .machine,
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
