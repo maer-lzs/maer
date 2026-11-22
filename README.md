@@ -51,24 +51,24 @@ One app, one player and one design for four kinds of audio. Every feature in det
 ### Audiobooks
 
 - Audiobookshelf libraries as an adaptive cover grid, with series, authors, filters and sorting that stay as you left them
-- Books split across several files play as one, with chapters, bookmarks and a sleep timer
-- Download whole books for offline listening; the library stays usable when the server is out of reach
-- Free audiobooks from LibriVox, Project Gutenberg and the Internet Archive, without a server
+- Books split across several files play as one, with chapters, bookmarks and a sleep timer; single chapters can take turns with episodes in Up Next
+- Download whole books for offline listening, by hand or automatically while you listen, within a space you choose; the library stays usable when the server is out of reach
+- Free audiobooks from LibriVox, Project Gutenberg and the Internet Archive, without a server, kept offline where the source allows a copy
 - Booksonic and Jellyfin audiobook libraries in the same tab
 
 ### Podcasts
 
 - Subscribe by RSS, Audiobookshelf podcast libraries or a gpodder server, all reconciled into one list
 - Import from Apple Podcasts, Overcast, AntennaPod, Pocket Casts and OPML, with your listening states; export them again
-- Up Next, routines, per-show settings, new-episode notifications, chapters, transcripts and premium feeds
+- Up Next, routines, folders of shows, per-show settings, new-episode notifications, chapters, transcripts and premium feeds
 - Usage-driven recommendations from your own library and listening time
 
 ### Music
 
 - Subsonic and OpenSubsonic servers (Navidrome, gonic, Airsonic) and Jellyfin, side by side
-- Playlists you can create and edit, artist pages, album downloads, favorites and scrobbling
+- Playlists you can create and edit, artist pages, album downloads, favorites, repeat and scrobbling
 - Lyrics in the player, from the server or from LRCLIB
-- Free music from Jamendo and the netlabels of the Internet Archive
+- Free music from Jamendo and the netlabels of the Internet Archive, and classical recordings of the Musopen collection on Wikimedia Commons (public domain and CC0 only)
 
 ### Radio
 
@@ -84,6 +84,7 @@ One app, one player and one design for four kinds of audio. Every feature in det
 - CarPlay, widgets, Siri and Shortcuts, lock screen and Dynamic Island
 - Share a podcast, episode, station, free audiobook or Jamendo track as a link
 - iPhone, iPad and the iPhone Duo, Dynamic Type and VoiceOver
+- In English and German; Spanish, French and Italian go to TestFlight first and reach the App Store once a native speaker has read them
 
 ## Works with
 
@@ -142,7 +143,7 @@ Background audio, the widget extension target, the CarPlay scene, and iPhone/iPa
 ## Log in inside the app
 
 - Server: `your-server.example.com`; `https://` is added automatically
-- Then either username and password, an API token, or the single sign-on button when your server offers one
+- Then either username and password, an API token, or the single sign-on button when your server offers one; Jellyfin also signs in with Quick Connect, a code you confirm where you are already signed in
 
 Where to find a token and how the sign-in keeps your session: [docs/sync-and-sign-in.md](docs/sync-and-sign-in.md#sign-in-options).
 

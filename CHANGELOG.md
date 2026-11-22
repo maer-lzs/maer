@@ -82,7 +82,7 @@ after the last added. A chapter name without a number of its own gets its
 place in front ("9. He Did It"), never a second one. A chapter you have
 heard past in the meantime leaves Up Next. Books whose chapters follow
 their files now show the chapter names the server gives instead of
-"Part N of M". This replaces "Chapter by Chapter in Up Next".
+"Part N of M".
 
 **No hint about this device's own playback.** After leaving the app
 while it played, the mini player could name this very device as another
@@ -174,23 +174,10 @@ before the position your server holds asks before it moves that position
 back. Podcast episodes do not offer their chapters. The chapter list in
 the player offers the same. A chapter that plays stays in Up Next until
 its end, out of sight, so the app continues it after a restart; Next
-never starts it again, and a jump out of the chapter takes it out. A
-book's menu has Chapter by Chapter in Up Next, also for a free reading
-from LibriVox, Project Gutenberg or archive.org (a music album from
-archive.org does not offer it): the book goes in at the
-end, one chapter at a time, and when a chapter ends the next one joins the
-end of Up Next, so a book and your podcasts take turns. It picks up at the
-chapter you are in, also when you listened on in between, and its line in
-Up Next names that chapter. A book from your server shows its chapter
-names there too: the app reads them once from the book. When the book is
-already waiting chapter by chapter, or no chapter follows where you are,
-the app says so. When the last chapter of a book heard chapter by chapter
-ends, the book counts as heard, as at its own end; a single chapter never
-marks it heard. A downloaded book goes in chapter by chapter offline too.
+never starts it again, and a jump out of the chapter takes it out.
 Marking a book as heard after its last chapter played as an entry keeps
-it heard. A free reading you heard to its end no longer offers to go in
-chapter by chapter, and the parts of a LibriVox book carry the names of
-its sections instead of Part 2 of 17.
+it heard. The parts of a LibriVox book carry the names of its sections
+instead of Part 2 of 17.
 
 ## v3.8 (Build 66)
 

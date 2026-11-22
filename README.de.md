@@ -51,24 +51,24 @@ Eine App, ein Player und eine Gestaltung für vier Arten von Audio. Jede Funktio
 ### Hörbücher
 
 - Audiobookshelf-Bibliotheken als anpassbares Cover-Raster, mit Serien, Autoren, Filtern und Sortierung, die bleiben, wie du sie verlassen hast
-- Bücher aus mehreren Dateien spielen als eines, mit Kapiteln, Lesezeichen und Schlaftimer
-- Ganze Bücher zum Hören ohne Netz laden; die Bibliothek bleibt nutzbar, wenn der Server nicht erreichbar ist
-- Freie Hörbücher von LibriVox, Project Gutenberg und dem Internet Archive, ohne Server
+- Bücher aus mehreren Dateien spielen als eines, mit Kapiteln, Lesezeichen und Schlaftimer; einzelne Kapitel wechseln sich in Als Nächstes mit Folgen ab
+- Ganze Bücher zum Hören ohne Netz laden, von Hand oder automatisch, während du hörst, im Platz, den du wählst; die Bibliothek bleibt nutzbar, wenn der Server nicht erreichbar ist
+- Freie Hörbücher von LibriVox, Project Gutenberg und dem Internet Archive, ohne Server, ohne Netz gespeichert, wo die Quelle eine Kopie erlaubt
 - Hörbuch-Bibliotheken aus Booksonic und Jellyfin im selben Reiter
 
 ### Podcasts
 
 - Abos über RSS, Podcast-Bibliotheken von Audiobookshelf oder einen gpodder-Server, abgeglichen in einer Liste
 - Import aus Apple Podcasts, Overcast, AntennaPod, Pocket Casts und OPML, mit deinen Hörständen; Export ebenso
-- Als Nächstes, Routinen, Einstellungen je Sendung, Mitteilungen bei neuen Folgen, Kapitel, Transkripte und Premium-Feeds
+- Als Nächstes, Routinen, Ordner für Sendungen, Einstellungen je Sendung, Mitteilungen bei neuen Folgen, Kapitel, Transkripte und Premium-Feeds
 - Empfehlungen aus deiner eigenen Bibliothek und Hörzeit
 
 ### Musik
 
 - Subsonic- und OpenSubsonic-Server (Navidrome, gonic, Airsonic) und Jellyfin, nebeneinander
-- Playlisten zum Anlegen und Bearbeiten, Künstlerseiten, Alben zum Laden, Favoriten und Scrobbeln
+- Playlisten zum Anlegen und Bearbeiten, Künstlerseiten, Alben zum Laden, Favoriten, Wiederholen und Scrobbeln
 - Liedtexte im Player, vom Server oder von LRCLIB
-- Freie Musik von Jamendo und den Netlabels des Internet Archive
+- Freie Musik von Jamendo und den Netlabels des Internet Archive, dazu klassische Aufnahmen der Sammlung Musopen auf Wikimedia Commons (nur gemeinfrei und CC0)
 
 ### Radio
 
@@ -84,6 +84,7 @@ Eine App, ein Player und eine Gestaltung für vier Arten von Audio. Jede Funktio
 - CarPlay, Widgets, Siri und Kurzbefehle, Sperrbildschirm und Dynamic Island
 - Eine Sendung, Folge, einen Sender, ein freies Hörbuch oder einen Titel von Jamendo als Link teilen
 - iPhone, iPad und das iPhone Duo, Dynamic Type und VoiceOver
+- Auf Englisch und Deutsch; Spanisch, Französisch und Italienisch gehen zuerst nach TestFlight und kommen in den App Store, sobald jemand, der die Sprache spricht, sie gelesen hat
 
 ## Kompatibel mit
 
@@ -142,7 +143,7 @@ Hintergrund-Audio, das Widget-Ziel, die CarPlay-Szene und iPhone/iPad sind im Pr
 ## In der App anmelden
 
 - Server: `dein-server.example.com`; `https://` wird automatisch ergänzt
-- Dann entweder Benutzername und Passwort, ein API-Token oder die Schaltfläche für die Einmalanmeldung, wenn dein Server sie anbietet
+- Dann entweder Benutzername und Passwort, ein API-Token oder die Schaltfläche für die Einmalanmeldung, wenn dein Server sie anbietet; Jellyfin meldet sich auch mit Quick Connect an, einem Code, den du dort bestätigst, wo du schon angemeldet bist
 
 Wo du ein Token findest und wie die Anmeldung deine Sitzung hält: [docs/sync-and-sign-in.de.md](docs/sync-and-sign-in.de.md#anmelde-optionen).
 
