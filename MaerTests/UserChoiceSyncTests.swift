@@ -1105,6 +1105,9 @@ struct UserChoiceGateTests {
             "podcastUpNextAddAllSince",
             // Repeat in music belongs to this device, like shuffle.
             "musicRepeatMode",
+            // What this device did when podcast lists became folders: its
+            // own Up Next and its own notice.
+            "podcastFoldersEnqueued", "podcastFoldersNoticePending",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

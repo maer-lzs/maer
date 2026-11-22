@@ -203,8 +203,10 @@ nonisolated enum AppRows {
                title: String(localized: "Subscriptions"),
                // The subscription grid, in the sort chosen on its page.
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        // The podcast playlists are folders of shows; the key stays, so no
+        // stored choice resets.
         AppRow(key: "podcasts.playlists", tab: .podcasts,
-               title: String(localized: "Playlists"),
+               title: String(localized: "Folders"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.downloaded", tab: .podcasts,
                title: String(localized: "Downloads list"),

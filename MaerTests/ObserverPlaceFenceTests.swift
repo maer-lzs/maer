@@ -38,7 +38,12 @@ struct ObserverPlaceFenceTests {
     /// step; the progress notifier sits in no container. Measured on one
     /// download of 100 steps: the stock notifies 3 times, the progress 102,
     /// where the single notifier before woke everyone 104 times.
-    static let stock = ["DownloadStock": 3, "DownloadProgress": 0, "PodcastSubscriptions": 10, "ABSPodcastProvider": 3]
+    ///
+    /// **The subscription store rose by one, with its page:** the page of a
+    /// podcast folder hosts a grid of show tiles and asks their locks while
+    /// observing the store, as the subscriptions page does; the premium
+    /// fence beside this one lets a host read the lock only so.
+    static let stock = ["DownloadStock": 3, "DownloadProgress": 0, "PodcastSubscriptions": 11, "ABSPodcastProvider": 3]
     /// How an observation of a publisher is spelled where it is not
     /// `<Name>.shared`: the downloader's two notifiers are reached through it.
     static let spelling = ["DownloadStock": "DownloadManager.stock", "DownloadProgress": "ItemDownloadProgress"]

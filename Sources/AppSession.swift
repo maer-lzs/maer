@@ -209,8 +209,9 @@ final class AppSession: ObservableObject {
     /// Cover URL of any item via ITS source. Views must never assume a fixed
     /// provider (else wrong/no cover for local files and podcast episodes).
     func coverURL(forItemId itemId: String) -> URL? {
-        // A routine's rule shows its show's picture; it has no source to ask.
-        if ItemNamespace.isRoutineRule(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
+        // A routine's rule or a show in a folder shows its show's picture;
+        // it has no source to ask.
+        if ItemNamespace.standsForShow(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
         if let entry = ItemNamespace.chapterEntry(itemId) { return coverURL(forItemId: entry.bookId) }
         // An id from an unknown namespace must NEVER turn
         // into a request to the library server. This is the path that produced
@@ -227,7 +228,7 @@ final class AppSession: ObservableObject {
     /// The cover of a large view via the item's source, behind the same
     /// namespace guard as `coverURL`.
     func largeCoverURL(forItemId itemId: String) -> URL? {
-        if ItemNamespace.isRoutineRule(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
+        if ItemNamespace.standsForShow(itemId) { return RoutinePlayback.coverURL(forRule: itemId) }
         // A chapter entry shows its book's cover.
         let id = ItemNamespace.bookOrSelf(itemId)
         guard ItemNamespace.isKnown(id) else { return nil }
@@ -273,9 +274,9 @@ final class AppSession: ObservableObject {
         if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared.libraryItem(forId: itemId)
         }
-        // An unknown namespace is nobody's, and a routine's rule is no
-        // title. Do not look either up in the library.
-        guard ItemNamespace.isKnown(itemId), !ItemNamespace.isRoutineRule(itemId) else { return nil }
+        // An unknown namespace is nobody's, and a routine's rule or a show
+        // in a folder is no title. Do not look either up in the library.
+        guard ItemNamespace.isKnown(itemId), !ItemNamespace.standsForShow(itemId) else { return nil }
         // Audiobooks / local titles from the loaded library list.
         return libraryViewModel.libraryItem(forId: itemId)
     }
@@ -301,7 +302,7 @@ final class AppSession: ObservableObject {
     /// What an item carries when it travels: taken from what this device
     /// knows about it right now. Nil when it cannot name it.
     func carried(forId itemId: String) -> CarriedItem? {
-        if ItemNamespace.isRoutineRule(itemId) { return RoutinePlayback.carried(forRule: itemId) }
+        if ItemNamespace.standsForShow(itemId) { return RoutinePlayback.carried(forRule: itemId) }
         return SyncCarried.snapshot(forId: itemId, known: libraryItem(forId: itemId),
                                     coverURL: coverURL(forItemId: itemId))
     }

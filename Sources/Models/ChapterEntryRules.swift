@@ -95,7 +95,7 @@ nonisolated enum ChapterEntryRules {
         return !ItemNamespace.isPodcastEpisode(itemId)
             && (shownAsBook || MediaFamily.of(itemId) == .book)
             && !ItemNamespace.isRadio(itemId)
-            && !ItemNamespace.isRoutineRule(itemId)
+            && !ItemNamespace.standsForShow(itemId)
             && ItemNamespace.chapterEntry(itemId) == nil
     }
 

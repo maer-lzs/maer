@@ -53,6 +53,8 @@ enum AppHousekeeping {
         // Reconcile podcast progress via iCloud (across devices).
         pot.start()
         ListeningStatsStore.shared.start()
+        // Podcast lists become folders on this device, with or without sync.
+        PodcastFolderMigration.run()
         // Same switch, same store, same moment. The playlists travel with the
         // podcast progress or not at all.
         MaerPlaylistCloudSync.shared.start()

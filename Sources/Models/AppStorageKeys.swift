@@ -33,6 +33,11 @@ nonisolated enum AppStorageKeys {
     /// Start the next unfinished book of the series when one ends (default OFF).
     static let autoPlayNextInSeries = "autoPlayNextInSeries"
     static let musicRepeatMode = "musicRepeatMode"
+    /// The podcast lists whose unheard episodes this device put in Up Next
+    /// when they became folders (`PodcastFolderMigration`).
+    static let podcastFoldersEnqueued = "podcastFoldersEnqueued"
+    /// Lists became folders on this device and the notice has not shown yet.
+    static let podcastFoldersNoticePending = "podcastFoldersNoticePending"
     /// Bookmark create/delete ops that have not reached the server yet.
     static let pendingBookmarkOps = "pendingBookmarkOps"
     /// Optional PodcastIndex key for podcast search (the iTunes catalog needs

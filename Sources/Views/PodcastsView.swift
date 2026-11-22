@@ -19,6 +19,20 @@ nonisolated struct RecentShowInfo: Identifiable {
     /// Total unplayed episodes (drives "Most Unplayed" sort + filter).
     var unplayedCount: Int = 0
     var id: String { show.id }
+
+    /// The shows of the loose grid: a show in a folder of `lists` stands
+    /// in its folder, not here (`PodcastFolder.loose`).
+    static func loose(_ infos: [RecentShowInfo], lists: [[String]]) -> [RecentShowInfo] {
+        let keys = infos.map { PodcastIdentity.feedKey($0.show.feedURL) }
+        let kept = Set(PodcastFolder.loose(keys, folded: PodcastFolder.foldedShows(in: lists)))
+        return infos.filter { kept.contains(PodcastIdentity.feedKey($0.show.feedURL)) }
+    }
+
+    /// The shows of a folder in the folder's order.
+    static func inFolder(_ infos: [RecentShowInfo], entries: [String]) -> [RecentShowInfo] {
+        let byKey = Dictionary(infos.map { (PodcastIdentity.feedKey($0.show.feedURL), $0) }, uniquingKeysWith: { first, _ in first })
+        return entries.compactMap(PodcastFolder.feedKey(of:)).compactMap { byKey[$0] }
+    }
 }
 
 /// Podcast tab in Apple Podcasts style: at the top a row of large "Up Next"
@@ -65,7 +79,12 @@ struct PodcastsView: View {
     // stuttered on tab switch) but filled in a `.task`. The tab appears
     // immediately, the sections come a frame later.
     @State private var nextUp: [LibraryItem] = []           // "Continue" (large cards)
-    @State private var recentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
+    @State private var allRecentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
+    /// The folders: a show in one leaves the loose grid, at once.
+    @ObservedObject private var playlistStore = MaerPlaylists.shared
+    private var recentShows: [RecentShowInfo] {
+        RecentShowInfo.loose(allRecentShows, lists: playlistStore.playlists.map(\.itemIds))
+    }
     /// The mirrored group's shows (their OWN row; split in compute).
     @State private var mirroredShows: [RecentShowInfo] = []
     @State private var downloaded: [LibraryItem] = []
@@ -97,6 +116,9 @@ struct PodcastsView: View {
     /// in the subscriptions and their own rows fall away.
     @AppStorage(AppStorageKeys.podcastsPinchflatInSubscriptions) private var pinchflatFolded = false
     @AppStorage(AppStorageKeys.podcastsPremiumInSubscriptions) private var premiumFolded = false
+    /// The podcast playlists became folders on this device and the notice
+    /// has not shown yet.
+    @AppStorage(AppStorageKeys.podcastFoldersNoticePending) private var foldersNoticePending = false
     /// The sort chosen on the subscriptions page; the preview follows it.
     @AppStorage(AppStorageKeys.podcastSortOption) private var subscriptionSort = PodcastSortOption.zuletztAktualisiert
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -187,6 +209,12 @@ struct PodcastsView: View {
                 .labelStyle(RowLabelStyle())
                 .followsAppearanceChoice()
         }
+        // Once on this device, after its podcast playlists became folders.
+        .alert("Podcast playlists are now folders", isPresented: $foldersNoticePending) {
+            Button("OK") {}
+        } message: {
+            Text("Each folder holds the shows of a playlist. Episodes you had not heard yet are in Up Next.")
+        }
         .alert("Enter new link", isPresented: Binding(
             get: { newLinkTarget != nil }, set: { if !$0 { newLinkTarget = nil } })) {
             TextField("Feed link", text: $newLinkText)
@@ -274,7 +302,7 @@ struct PodcastsView: View {
             let apply: @MainActor () -> Void = {
                 withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) {
                     nextUp = sections.nextUp
-                    recentShows = sections.recentShows
+                    allRecentShows = sections.recentShows
                     mirroredShows = sections.mirroredShows
                     downloaded = sections.downloaded
                     latestItems = latest
@@ -483,9 +511,16 @@ RowHeading(title: "Recommended",
 
     // MARK: - Latest episodes (the SHARED grid, identical on Home)
 
-    /// The device lists that hold only podcasts, as the one name list.
+    /// The folders of shows, with the new episodes of each show as the
+    /// subscription grid counts them; it stands once there is a show to
+    /// put in one or a folder.
+    @ViewBuilder
     private var playlistsSection: some View {
-        PlaylistHomeSection(home: .podcasts, playerCoordinator: playerCoordinator)
+        if !allRecentShows.isEmpty || !SharedRows.playlists(at: .podcasts).isEmpty {
+            PodcastFolderRow(newCounts: Dictionary(allRecentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.newCount) },
+                                                   uniquingKeysWith: { first, _ in first }),
+                             playerCoordinator: playerCoordinator)
+        }
     }
 
     @ViewBuilder
@@ -1163,7 +1198,12 @@ struct PodcastSubscriptionsPage: View {
     /// The folds change which shows stand here; observed so the page follows.
     @AppStorage(AppStorageKeys.podcastsPinchflatInSubscriptions) private var pinchflatFolded = false
     @AppStorage(AppStorageKeys.podcastsPremiumInSubscriptions) private var premiumFolded = false
-    @State private var infos: [RecentShowInfo] = []
+    /// The folders: a show in one leaves the loose grid, at once.
+    @ObservedObject private var playlistStore = MaerPlaylists.shared
+    @State private var allInfos: [RecentShowInfo] = []
+    private var infos: [RecentShowInfo] {
+        RecentShowInfo.loose(allInfos, lists: playlistStore.playlists.map(\.itemIds))
+    }
 
     private var allShows: [PodcastShow] { PodcastShowSources.active() }
 
@@ -1229,7 +1269,7 @@ struct PodcastSubscriptionsPage: View {
             let sections = await PodcastSections.computeDetached(
                 shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
             )
-            infos = sections.recentShows
+            allInfos = sections.recentShows
             PodcastsView.logRecentShows(infos, surface: "all")
         }
     }

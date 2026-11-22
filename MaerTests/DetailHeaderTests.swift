@@ -157,6 +157,7 @@ struct DetailHeaderTests {
         "Sources/Views/CatalogSourcePage.swift": 2,
         "Sources/Views/BookDetailScreen.swift": 1,
         "Sources/Views/Radio/RadioStationDetailView.swift": 1,
+        "Sources/Views/Podcasts/PodcastFolderViews.swift": 1,
     ]
 
     /// The modifier a catalogue area page calls (`catalogShuffleActions`)

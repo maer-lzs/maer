@@ -381,10 +381,11 @@ final class MaerPlaylists: ObservableObject {
     }
 
     /// The entries of a list that lack a snapshot and name a title. A
-    /// routine's rule is no title, also in a form this build does not read:
-    /// no source knows it, it becomes episodes when the list plays.
+    /// routine's rule or a show in a folder is no title, also in a form this
+    /// build does not read: no source knows it, it becomes episodes when the
+    /// list plays.
     nonisolated static func untitled(_ list: Playlist) -> [String] {
-        list.itemIds.filter { list.snapshots[$0] == nil && !ItemNamespace.isRoutineRule($0) }
+        list.itemIds.filter { list.snapshots[$0] == nil && !ItemNamespace.standsForShow($0) }
     }
 
     /// Resolve entries the session cache does not carry (catalogue ids are
@@ -458,6 +459,57 @@ final class MaerPlaylists: ObservableObject {
         save(emptying: .refused)
     }
 
+    /// A show goes into a folder, and out of any other folder it stood in:
+    /// a show stands in one folder. Each list it leaves or joins carries the
+    /// fact with its clock, as `add` and `remove` do.
+    func file(show feedKey: String, into folderId: String) {
+        let entry = PodcastFolder.entry(feedKey: feedKey)
+        let now = Date().timeIntervalSince1970
+        var emptied: [String] = []
+        var changed = false
+        for index in playlists.indices {
+            if playlists[index].id == folderId {
+                guard !playlists[index].itemIds.contains(entry) else { continue }
+                playlists[index].itemIds.append(entry)
+                playlists[index].added[entry] = now
+                playlists[index].removed[entry] = nil
+                // The show's name travels, so a device that does not follow
+                // it still names it.
+                if let carried = Self.snapshots(for: [entry])[entry] {
+                    playlists[index].snapshots[entry] = carried
+                    playlists[index].titles[entry] = carried.title
+                }
+            } else if PodcastFolder.isFolder(playlists[index].itemIds), playlists[index].itemIds.contains(entry) {
+                playlists[index].itemIds.removeAll { $0 == entry }
+                playlists[index].removed[entry] = now
+                playlists[index].added[entry] = nil
+                if playlists[index].itemIds.isEmpty { emptied.append(playlists[index].id) }
+            } else {
+                continue
+            }
+            playlists[index].updatedAt = now
+            changed = true
+        }
+        guard changed else { return }
+        save(emptying: .refused)
+        emptied.forEach { delete(playlistId: $0) }
+    }
+
+    /// A show leaves its folder; a folder left without a show goes, since
+    /// an empty list would stand in the music tab.
+    func unfile(show feedKey: String, from folderId: String) {
+        remove(itemId: PodcastFolder.entry(feedKey: feedKey), from: folderId)
+        if playlist(id: folderId)?.itemIds.isEmpty == true { delete(playlistId: folderId) }
+    }
+
+    /// A new folder with its first show; a folder is never empty.
+    @discardableResult
+    func createFolder(name: String, show feedKey: String) -> Playlist {
+        let folder = create(name: name)
+        file(show: feedKey, into: folder.id)
+        return playlist(id: folder.id) ?? folder
+    }
+
     func delete(playlistId: String) {
         playlists.removeAll { $0.id == playlistId }
         // The deletion needs to be a FACT, not the absence of one. Otherwise
@@ -495,6 +547,45 @@ final class MaerPlaylists: ObservableObject {
         // The merge carries the removal marks of the account: a list deleted
         // on another device leaves here as well, the last one too.
         save(emptying: .allowed)
+    }
+
+    /// Every list of podcast episodes becomes the folder of their shows
+    /// (`PodcastFolder.migrated`), the same on every device; the list clock
+    /// stays, so two devices that move the same list write the same folder
+    /// and settle on it. The unheard episodes of each list go
+    /// to Up Next (`enqueue`) once on this device, remembered by list id in
+    /// `enqueuedBefore`. Answers the ids of the lists that moved.
+    @discardableResult
+    func foldPodcastLists(isHeard: (String) -> Bool, enqueue: ([String]) -> Void,
+                          enqueuedBefore: inout Set<String>) -> [String] {
+        guard !keeper.startReadFailed else { return [] }
+        // A show goes into the first folder it lands in, in the lists' order.
+        var folded = PodcastFolder.foldedShows(in: playlists.map(\.itemIds))
+        var moved: [String] = []
+        let next = playlists.map { list -> Playlist in
+            guard !list.isRescue, PodcastFolder.needsMigration(list.itemIds) else { return list }
+            let migration = PodcastFolder.migrated(list.itemIds,
+                                                   feedKeyOf: { PlayerCoordinator.showId(forEpisodeId: $0).map { String($0.dropFirst("feed:".count)) } },
+                                                   isHeard: isHeard, inOtherFolders: folded)
+            folded.formUnion(migration.entries.compactMap(PodcastFolder.feedKey(of:)))
+            if enqueuedBefore.insert(list.id).inserted { enqueue(migration.toUpNext) }
+            // The marks carry the list clock, so every device writes the
+            // same folder; an episode was added before the clock, so its
+            // mark holds and the merge does not bring it back.
+            var folder = list
+            folder.itemIds = migration.entries
+            for episode in list.itemIds { folder.removed[episode] = list.updatedAt }
+            folder.added = Dictionary(migration.entries.map { ($0, list.updatedAt) }, uniquingKeysWith: { first, _ in first })
+            folder.snapshots = [:]
+            folder.titles = [:]
+            moved.append(list.id)
+            return folder
+        }
+        guard !moved.isEmpty else { return [] }
+        playlists = next
+        save(emptying: .refused)
+        Logger.library.notice("PLAYLIST podcast lists became folders: \(moved.count)")
+        return moved
     }
 
     /// Every list with its entries in the form `map` gives (Navidrome's new

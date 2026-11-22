@@ -168,11 +168,12 @@ enum RoutinePlayback {
         return Held(start: start, lines: lines)
     }
 
-    /// The snapshot a rule entry travels with: its show's title and, when
-    /// the address carries no access, its picture. The rule in words is not
-    /// part of it; every device says it in its own language from the id.
+    /// The snapshot a rule entry or a show in a folder travels with: its
+    /// show's title and, when the address carries no access, its picture.
+    /// The rule in words is not part of it; every device says it in its own
+    /// language from the id.
     static func carried(forRule itemId: String) -> CarriedItem? {
-        guard let rule = RoutineRule(id: itemId), let show = show(feedKey: rule.feedKey) else { return nil }
+        guard let key = showKey(of: itemId), let show = show(feedKey: key) else { return nil }
         return snapshot(itemId, show: show, premium: PodcastSubscriptions.premiumAnswer(show.feedURL))
     }
 
@@ -209,13 +210,20 @@ enum RoutinePlayback {
         return nil
     }
 
-    /// A rule's cover: its show's picture as this device knows it. It
+    /// The feed key behind an entry that stands for a show: a routine's rule
+    /// or a show in a folder; nil for a title.
+    nonisolated static func showKey(of itemId: String) -> String? {
+        RoutineRule(id: itemId)?.feedKey ?? PodcastFolder.feedKey(of: itemId)
+    }
+
+    /// The cover of a rule or a show in a folder: its show's picture as this
+    /// device knows it. It
     /// stays on this device, so a picture address that carries access is fine
     /// here; what travels goes through `snapshot`, which keeps such an
     /// address home.
     static func coverURL(forRule itemId: String) -> URL? {
-        guard let rule = RoutineRule(id: itemId) else { return nil }
-        return show(feedKey: rule.feedKey)?.artworkURL.flatMap(URL.init(string:))
+        guard let key = showKey(of: itemId) else { return nil }
+        return show(feedKey: key)?.artworkURL.flatMap(URL.init(string:))
     }
 
     /// The start of a list. With rules and a connection, the feeds of their
@@ -230,9 +238,12 @@ enum RoutinePlayback {
     static func start(_ list: MaerPlaylists.Playlist, in store: MaerPlaylists,
                       on coordinator: PlayerCoordinator, shuffled: Bool = false) async -> Bool {
         let online = await Reachability.isConnected()
-        let fresh = online ? await refreshed(list.itemIds.compactMap(RoutineRule.init(id:))) : [:]
+        // A folder starts the newest episode of each of its shows, by the
+        // rule a routine uses for it.
+        let itemIds = PodcastFolder.isFolder(list.itemIds) ? PodcastFolder.ruleIds(list.itemIds) : list.itemIds
+        let fresh = online ? await refreshed(itemIds.compactMap(RoutineRule.init(id:))) : [:]
         await DownloadManager.shared.ensureScanned()
-        let start = expand(list.itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
+        let start = expand(itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
             let said = answer(rule, in: fresh[rule.feedKey] ?? show(feedKey: rule.feedKey), online: online)
             logAbsence(rule, said)
             return said.items

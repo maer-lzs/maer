@@ -34,6 +34,8 @@ enum PodcastRoute: Hashable {
     case subscriptions
     /// The mirrored group's full channel grid.
     case pinchflatGroup
+    /// A folder of shows: its page with start, shuffle and its shows.
+    case folder(id: String)
     /// X²·5: the book-category charts (1482) as a full grid. Measured: no
 
     /// H: the two-stage chart form. Charts page (genres as tile
@@ -69,6 +71,8 @@ extension View {
                 PodcastDownloadsPage(playerCoordinator: playerCoordinator)
             case .subscriptions:
                 PodcastSubscriptionsPage(playerCoordinator: playerCoordinator)
+            case .folder(let id):
+                PodcastFolderPage(folderId: id, playerCoordinator: playerCoordinator)
             case .pinchflatGroup:
                 PinchflatGroupPage(playerCoordinator: playerCoordinator)
             case .charts:

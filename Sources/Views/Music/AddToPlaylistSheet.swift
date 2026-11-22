@@ -469,11 +469,14 @@ struct AddToPlaylistSheet: View {
                     }
                 }
 
+                // A folder holds shows only; it takes a show from the show's
+                // page, never a title here.
+                let lists = devicePlaylists.playlists.filter { !PodcastFolder.isFolder($0.itemIds) }
                 Section {
-                    if devicePlaylists.playlists.isEmpty {
+                    if lists.isEmpty {
                         Text("No playlists yet.").foregroundStyle(.secondary)
                     } else {
-                        ForEach(devicePlaylists.playlists) { list in
+                        ForEach(lists) { list in
                             row(title: list.name, count: list.itemIds.count) {
                                 await PlaylistPresenter.shared
                                     .addToDevice(request.ids, titles: request.titles,

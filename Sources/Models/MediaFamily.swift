@@ -106,6 +106,9 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
     /// placeholder and the kind mark of a mixed row (`KindGlyph`) ask
     /// here, so they never disagree. nil for an id no family knows.
     static func kind(for id: String, markedForm: ProgressMark.StartedForm? = nil) -> MediaType? {
+        // A show in a folder is no episode and no family of its own; it
+        // shows as podcasts, so its folder stands in the Podcasts tab.
+        if id.hasPrefix(ItemNamespace.folderShowPrefix) { return .podcasts }
         switch of(id) {
         case .radio: return .radio
         case .podcast: return .podcasts

@@ -56,6 +56,7 @@ struct PodcastShowView: View {
     @State private var loadingHistory = false
     @State private var historyResult: String?
     @State private var showSettings = false
+    @State private var addingToFolder = false
     /// The link on maer.fm for this show; nil when it is not shared.
     @State private var shareOffer: SharedLinkOffer?
     /// The freshly parsed feed of a show nobody subscribed to. It lives for
@@ -298,7 +299,14 @@ struct PodcastShowView: View {
                     Label("Add to Routine", systemImage: "text.badge.plus")
                 }
                 .accessibilityIdentifier("add-to-routine")
+                Button { addingToFolder = true } label: {
+                    Label("Add to Folder", systemImage: "folder.badge.plus")
+                }
+                .accessibilityIdentifier("add-to-folder")
             }
+        }
+        .sheet(isPresented: $addingToFolder) {
+            AddShowToFolderSheet(show: routineShow).followsAppearanceChoice()
         }
         .sharedLink(liveShow.flatMap { SharedLink.content(show: $0) },
                     cover: (liveShow?.artworkURL ?? catalogSeed?.artworkURL).flatMap { URL(string: $0) },

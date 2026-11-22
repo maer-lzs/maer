@@ -601,6 +601,46 @@
         }
       }
     },
+    "%lld shows" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Sendung"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Sendungen"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld show"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld shows"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld shows, %lld episodes with a state" : {
       "localizations" : {
         "de" : {
@@ -1260,6 +1300,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sender hinzufügen"
+          }
+        }
+      }
+    },
+    "Add to Folder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu Ordner hinzufügen"
           }
         }
       }
@@ -3468,6 +3518,16 @@
         }
       }
     },
+    "Delete Folder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner löschen"
+          }
+        }
+      }
+    },
     "Delete Music Downloads…" : {
       "localizations" : {
         "de" : {
@@ -3977,6 +4037,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "z. B. audio.example.com"
+          }
+        }
+      }
+    },
+    "Each folder holds the shows of a playlist. Episodes you had not heard yet are in Up Next." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder Ordner enthält die Sendungen einer Playlist. Folgen, die du noch nicht gehört hattest, stehen in Als Nächstes."
           }
         }
       }
@@ -4582,6 +4652,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erste Quelle"
+          }
+        }
+      }
+    },
+    "Folders" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner"
           }
         }
       }
@@ -6911,6 +6991,16 @@
         }
       }
     },
+    "New Folder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Ordner"
+          }
+        }
+      }
+    },
     "New password" : {
       "localizations" : {
         "de" : {
@@ -9004,6 +9094,16 @@
         }
       }
     },
+    "Plays the newest unheard episode of each show, by date." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spielt je Sendung die neueste ungehörte Folge, nach Datum."
+          }
+        }
+      }
+    },
     "Please enter a valid server address, e.g. https://audio.example.com" : {
       "localizations" : {
         "de" : {
@@ -9113,6 +9213,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcast-Charts und Apple-Suchergebnisse bleiben dann aus. Deine Abos sind nicht betroffen."
+          }
+        }
+      }
+    },
+    "Podcast playlists are now folders" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Playlisten sind jetzt Ordner"
           }
         }
       }
@@ -9507,6 +9617,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gemeinfreie Aufnahme von LibriVox."
+          }
+        }
+      }
+    },
+    "Put shows together in a folder and start them in one tap." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fasse Sendungen in einem Ordner zusammen und starte sie mit einem Tippen."
           }
         }
       }
@@ -9907,6 +10027,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Frei-Abo entfernen, Fortschritt wird übernommen"
+          }
+        }
+      }
+    },
+    "Remove from Folder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Ordner entfernen"
           }
         }
       }
@@ -12840,6 +12970,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
+    "The shows stay subscribed and return to Subscriptions." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sendungen bleiben abonniert und stehen wieder unter Abos."
           }
         }
       }

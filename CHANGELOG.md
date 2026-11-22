@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Folders for podcast shows.** Podcast playlists are folders of shows now.
+A folder stands in the Folders row of the Podcasts tab with the covers of
+its shows, the number of new episodes and a play button; its page plays or
+shuffles the newest unheard episode of each show. A show goes into a
+folder from its page, and "+" makes a new one. A show in a folder leaves
+the subscription grid. A playlist of podcast episodes becomes the folder of
+their shows once, the same on every device, and the episodes you had not
+heard yet go to Up Next.
+
 **Repeat in music.** The player's music row has a Repeat button beside
 the others: a tap goes from off to the list to one song. One song plays
 again at its end; the list starts again once nothing else follows, after

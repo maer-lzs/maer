@@ -123,11 +123,11 @@ final class PlayQueue: ObservableObject {
     }
 
     /// What the queue and the context hold: what a list may hold, without
-    /// a routine's rule. A rule is a list entry, never something to play;
-    /// it becomes episodes at the routine's start (`RoutinePlayback`), so
-    /// no saved order or context names one.
+    /// a routine's rule or a show in a folder. Either is a list entry, never
+    /// something to play; it becomes episodes at the list's start
+    /// (`RoutinePlayback`), so no saved order or context names one.
     nonisolated static func canHold(_ id: String) -> Bool {
-        canEnqueue(id) && !ItemNamespace.isRoutineRule(id)
+        canEnqueue(id) && !ItemNamespace.standsForShow(id)
     }
 
     /// Text-only rss episodes never enter the queue.

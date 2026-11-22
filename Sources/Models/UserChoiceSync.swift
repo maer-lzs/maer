@@ -73,6 +73,10 @@ nonisolated enum UserChoiceCatalog {
         "sleepTimerLastMinutes": .device,
         // Repeat in music belongs to this device, like shuffle.
         "musicRepeatMode": .device,
+        // What this device did when podcast lists became folders: its own
+        // Up Next and its own notice.
+        "podcastFoldersEnqueued": .device,
+        "podcastFoldersNoticePending": .device,
         // The sound filter per output device. A Bluetooth device is paired
         // with one phone, and its id there names it for that phone only.
         "soundBook": .device,

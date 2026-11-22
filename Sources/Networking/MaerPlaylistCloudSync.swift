@@ -16,7 +16,7 @@ import OSLog
 /// type only orchestrates.
 @MainActor
 final class MaerPlaylistCloudSync {
-    static let shared = AccessFollowers.enrolled(MaerPlaylistCloudSync())
+    static let shared = AccessFollowers.enrolled(MaerPlaylistCloudSync(afterMerge: { PodcastFolderMigration.run(store: $0) }))
 
     private var carrier: any PlaylistCarrier
     private var generation = CarrierGeneration()
@@ -36,6 +36,11 @@ final class MaerPlaylistCloudSync {
     /// Whether rounds that carry the music server's ids may run
     /// (`SubsonicProvider.idFormSettled`).
     private let idFormSettled: () -> Bool
+    /// Runs after a merge changed the lists: on the device's store, a list of
+    /// episodes from a device before folders becomes a folder
+    /// (`PodcastFolderMigration`). A witness's store of its own runs nothing,
+    /// so its lists and this device's Up Next stay as they are.
+    private let afterMerge: (MaerPlaylists) -> Void
     private var didStart = false
     private var reconciling = false
     private var sendScheduled = false
@@ -48,7 +53,9 @@ final class MaerPlaylistCloudSync {
          itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) },
          deviceName: @escaping () -> String = { DeviceIdentity.name },
          identity: @escaping () -> String? = { MaerSyncCarriers.session.identity?.scope },
-         idFormSettled: @escaping () -> Bool = { SubsonicProvider.idFormSettled() }) {
+         idFormSettled: @escaping () -> Bool = { SubsonicProvider.idFormSettled() },
+         afterMerge: @escaping (MaerPlaylists) -> Void = { _ in }) {
+        self.afterMerge = afterMerge
         self.carrier = carrier
         self.playlists = playlists
         self.itemIdMap = itemIdMap
@@ -161,6 +168,7 @@ final class MaerPlaylistCloudSync {
             playlists.apply(merged: outcome.lists, rescued: outcome.rescued,
                             tombstones: outcome.tombstones, rescueName: Self.rescueName,
                             rescueReason: Self.rescueReason)
+            afterMerge(playlists)
         }
 
         // Hand the merged state back only when it differs from what the

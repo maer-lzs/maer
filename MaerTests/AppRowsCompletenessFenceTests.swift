@@ -106,7 +106,7 @@ struct AppRowsCompletenessFenceTests {
     /// What heads a row: the shared heading, a heading set by hand, and
     /// the parts that carry their own heading.
     static let heading = try! NSRegularExpression(
-        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\(|PlaylistHomeSection\("#)
+        pattern: #"RowHeading|\.font\(\.title3\)\.bold\(\)|LatestEpisodesGrid\(|ShellacSection\(|FreeCatalogRows\(|RadioFeaturedCardRow\(|RadioCardRow\(|BrowseRow\(|PlaylistHomeSection\(|PodcastFolderRow\("#)
     static let declaration = try! NSRegularExpression(
         pattern: #"^\s*(?:@\w+\s+)*(?:(?:private|fileprivate|static|nonisolated)\s+)*(?:var|func)\s+(\w+)"#)
 

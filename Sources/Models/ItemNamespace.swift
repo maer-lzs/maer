@@ -17,7 +17,7 @@ import Foundation
 nonisolated enum ItemNamespace {
     /// Every namespace the app knows. Library ids (no namespace) are NOT here.
     static let known: Set<String> = {
-        var all: Set<String> = ["local:", "abspod:", "rss:", "sub:", "jf:", "radio:", routinePrefix]
+        var all: Set<String> = ["local:", "abspod:", "rss:", "sub:", "jf:", "radio:", routinePrefix, folderShowPrefix]
         for prefix in FreeCatalog.allPrefixes { all.insert(prefix) }
         return all
     }()
@@ -93,6 +93,14 @@ nonisolated enum ItemNamespace {
     /// (`RoutinePlayback`); it never reaches a source.
     static let routinePrefix = "rule:"
     static func isRoutineRule(_ itemId: String) -> Bool { itemId.hasPrefix(routinePrefix) }
+    /// A show as the entry of a podcast folder (`PodcastFolder`), not a
+    /// title: a start turns it into its newest unheard episode.
+    static let folderShowPrefix = "show:"
+    /// An entry that stands for a show and reaches no source: a routine's
+    /// rule or a show in a folder. Its cover and snapshot are its show's.
+    static func standsForShow(_ itemId: String) -> Bool {
+        isRoutineRule(itemId) || itemId.hasPrefix(folderShowPrefix)
+    }
     /// One chapter of a book as an entry of Up Next
     /// (`chapter:<start in ms>:<book id>`), not a title of its own: every
     /// question about its source, cover or download is the book's. The start

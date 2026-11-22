@@ -79,8 +79,14 @@ struct SharedGrowthFenceTests {
     /// without a title names the first waiting order (one, `LibraryView`),
     /// and the hint asks the claim this device wrote last (one, `PlayingNow`).
     /// 371: the radio page carries no switch, so it no longer tells the
-    /// session of a change (one fewer, `RadioSourceView`).
-    nonisolated static let stock = 371
+    /// session of a change (one fewer, `RadioSourceView`). 378: podcast
+    /// folders, seven more: the tab and the subscriptions page observe the
+    /// lists to keep a show of a folder out of the loose grid (two,
+    /// `PodcastsView`), the row and the folder page observe the lists and
+    /// the page the subscriptions for the tiles' locks (three,
+    /// `PodcastFolderViews`), the sheet observes the lists and reads the
+    /// subscriptions once (two, `AddShowToFolderSheet`).
+    nonisolated static let stock = 378
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -174,8 +180,10 @@ struct SharedGrowthFenceTests {
     /// 763: the radio page above, and the search bar asks the rule of radio
     /// search instead of the provider (one fewer, `SearchDoor`). 764: repeat
     /// shows its state to the system's command in one place
-    /// (`PlayerViewModel.setRepeat`, one more).
-    nonisolated static let sourcesStock = 764
+    /// (`PlayerViewModel.setRepeat`, one more). 772: the seven of podcast
+    /// folders in the views above, and the move of the lists, which reads
+    /// the store and the queue of the device (one, `PodcastFolderMigration`).
+    nonisolated static let sourcesStock = 772
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,
