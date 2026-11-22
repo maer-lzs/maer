@@ -8,9 +8,9 @@ import Foundation
 /// The Musopen recordings on Wikimedia Commons as a catalog. The category
 /// and its Chopin subcategory are read page by page; each file is decided
 /// on its own from what its file page states: a sound, public domain or
-/// the Creative Commons zero waiver, and a form the player takes (the MP3 Commons derives, or an MP3
-/// original). Pure: an answer goes in, recordings and the counted rest
-/// come out.
+/// the Creative Commons zero waiver, and a form the player takes (the
+/// MP3 Commons derives, or an MP3 original). Pure: an answer goes in,
+/// recordings and the counted rest come out.
 nonisolated enum MusopenCatalog {
     /// `mso:<pageid>`: the file page's number, which a rename keeps.
     static let prefix = "mso:"

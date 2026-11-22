@@ -73,6 +73,7 @@ struct ShellacSection: View {
                             Task { await playerCoordinator.open(item: item) }
                         } label: { Label("Play", systemImage: "play.fill") }
                         CatalogQueueButtons(itemId: item.id)
+                        MusicDownloadMenuItems(itemId: item.id)
                     }
                 }
             }

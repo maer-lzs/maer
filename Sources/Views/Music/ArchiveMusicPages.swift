@@ -111,8 +111,8 @@ struct ArchiveMusicPage: View {
                                 )
                                 .contextMenu {
                                     CatalogDetailsButton(itemId: item.id)
-                        CatalogQueueButtons(itemId: item.id)
-                        MusicDownloadMenuItems(itemId: item.id)
+                                    CatalogQueueButtons(itemId: item.id)
+                                    MusicDownloadMenuItems(itemId: item.id)
                                 }
                                 .onAppear {
                                     if item.id == items.last?.id { Task { await loadMore() } }

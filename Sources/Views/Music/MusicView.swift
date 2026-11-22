@@ -627,6 +627,9 @@ struct CollectionMenuItems: View {
     /// A catalogue title's id: Details is the one catalogue button
     /// (`CatalogDetailsButton`), which opens the title's page.
     var catalogDetails: String? = nil
+    /// A music title's id: the download entry of music
+    /// (`MusicDownloadMenuItems`), which asks the title's source.
+    var musicDownload: String? = nil
     /// The global Up-Next queue both queue entries write to.
     private let queue = PlayQueue.shared
 
@@ -655,6 +658,9 @@ struct CollectionMenuItems: View {
                 details()
             } label: { Label("Details", systemImage: "info.circle") }
         }
+        if let musicDownload {
+            MusicDownloadMenuItems(itemId: musicDownload)
+        }
     }
 }
 
@@ -664,7 +670,8 @@ extension CollectionMenuItems {
     /// no songs come, as a drawn title does (`CatalogShuffleSongs`);
     /// anything else (an archive track, a Jamendo title) offers no shuffle.
     /// The queue and the playlist take the title as its one entry, as for a
-    /// server album; Details opens the title's page.
+    /// server album; Details opens the title's page, and the download
+    /// entry of music offers what the source lets the device keep.
     static func catalog(_ item: LibraryItem, playerCoordinator: PlayerCoordinator,
                         albumSongs: @escaping CatalogShuffleSongs.AlbumSongs = {
                             await ArchiveMusicLoader.albumSongs(albumId: $0)
@@ -676,7 +683,8 @@ extension CollectionMenuItems {
             songs: { .fetched(await CatalogShuffleSongs.songs(of: item, albumSongs: albumSongs)) },
             knownTitles: [item.id: item.title],
             offersShuffle: shuffles(catalog: item.id),
-            catalogDetails: item.id)
+            catalogDetails: item.id,
+            musicDownload: item.id)
     }
 
     /// Whether a catalogue title has songs to shuffle: an archive album.

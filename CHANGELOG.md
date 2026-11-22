@@ -67,7 +67,8 @@ saved for offline listening where their source allows a copy: LibriVox
 recordings, Project Gutenberg readings marked public domain, and Internet
 Archive items with a stated licence. Netlabel releases and 78s with a
 stated licence download from the menu of their tile or their page, as
-Musopen recordings do. Jamendo music stays streaming only. A page with
+Musopen recordings do, also in the 78s row of the Music tab and in
+Browse. Jamendo music stays streaming only. A page with
 one episode or one track now says so in the singular.
 
 **Jellyfin with Quick Connect.** When your Jellyfin server offers Quick
