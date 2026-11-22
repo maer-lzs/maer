@@ -81,6 +81,40 @@ struct CatalogLanguagesFenceTests {
         #expect(regions == Self.regions, "knownRegions: \(regions)")
     }
 
+    /// The texts with a counted number that a language says in one form
+    /// for every count, measured. A text that gains its forms leaves the
+    /// stock, a new one without forms grows it; both show here.
+    nonisolated static let countsWithOneForm = 71
+
+    /// The keys with a counted number whose value in `language` has no
+    /// plural forms.
+    nonisolated static func countsWithOneForm(_ values: [CatalogValues.Value], language: String) -> Set<String> {
+        let mine = values.filter { $0.catalog == "Localizable" && $0.language == language && $0.key.contains("%lld") }
+        return Set(mine.filter { $0.part.isEmpty }.map(\.key))
+            .subtracting(mine.filter { !$0.part.isEmpty }.map(\.key))
+    }
+
+    @Test("a count of episodes or tracks has its plural forms in English and every translation; the other counts with one form are a measured stock", .needsTheSources)
+    func countsCarryTheirForms() throws {
+        let values = try CatalogValues.all()
+        for language in ["de", "es", "fr", "it"] {
+            let oneForm = Self.countsWithOneForm(values, language: language)
+            #expect(!oneForm.contains("%lld episodes") && !oneForm.contains("%lld tracks"),
+                    "\(language) says every count of episodes or tracks in one form")
+            #expect(oneForm.count == Self.countsWithOneForm,
+                    "\(language): \(oneForm.count) counts with one form, the stock says \(Self.countsWithOneForm)")
+        }
+        for key in ["%lld episodes", "%lld tracks"] {
+            let forms = Set(values.filter { $0.catalog == "Localizable" && $0.key == key && $0.language == "en" }.map(\.part))
+            #expect(forms.isSuperset(of: ["one", "other"]), "English says 1 of \(key)")
+        }
+        // Calibration: a plain text counts, a text with forms does not.
+        let probe = [CatalogValues.Value(catalog: "Localizable", key: "%lld a", language: "de", part: "", text: "%lld A"),
+                     CatalogValues.Value(catalog: "Localizable", key: "%lld b", language: "de", part: "one", text: "%lld B"),
+                     CatalogValues.Value(catalog: "Localizable", key: "%lld b", language: "de", part: "other", text: "%lld Bs")]
+        #expect(Self.countsWithOneForm(probe, language: "de") == ["%lld a"])
+    }
+
     @Test("every text in every language carries the placeholders of its English text, and every Siri phrase the app's name", .needsTheSources)
     func everyLanguageKeepsThePlaceholders() throws {
         let values = try CatalogValues.all()
