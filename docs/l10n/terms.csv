@@ -1,23 +1,30 @@
 en;de;es;fr;it;note
 Mär;Mär;Mer;Mère;Mer;The app's name stays Mär in every language. The cells of es, fr and it propose how Siri hears it; the translator confirms or changes the proposal.
-Up Next;Als Nächstes;;;;The list of what plays after the current title.
-Continue Listening;Weiter hören;;;;The row of started titles on the home page.
-Listen Again;Wieder anhören;;;;The row of finished titles on the home page.
-Audiobooks;Hörbücher;;;;A tab and a kind of title.
-Podcasts;Podcasts;;;;A tab and a kind of title.
-Shows;Sendungen;;;;Podcast shows, not episodes.
-Episodes;Folgen;;;;The episodes of a show.
-New Episodes;Neue Folgen;;;;
-Music;Musik;;;;A tab.
-Radio;Radio;;;;A tab.
-Library;Bibliothek;;;;
-Routines;Routinen;;;;A list with a rule that starts playback.
-Playlists;Playlists;;;;
-Chapters;Kapitel;;;;The chapters of an audiobook.
-Bookmarks;Lesezeichen;;;;
-Downloads;Downloads;;;;
-Subscribe;Abonnieren;;;;
-Mark as Played;Als gehört markieren;;;;
-Home;Start;;;;A tab.
-Search;Suchen;;;;A tab.
-Settings;Einstellungen;;;;
+Up Next;Als Nächstes;A continuación;À suivre;Prossimi;The list of what plays after the current title.
+Continue Listening;Weiter hören;Seguir escuchando;Reprendre l’écoute;Continua ad ascoltare;The row of started titles on the home page.
+Listen Again;Wieder anhören;Volver a escuchar;Réécouter;Ascolta di nuovo;The row of finished titles on the home page.
+Audiobooks;Hörbücher;Audiolibros;Livres audio;Audiolibri;A tab and a kind of title.
+Podcasts;Podcasts;Podcasts;Podcasts;Podcast;A tab and a kind of title.
+Shows;Sendungen;Programas;Émissions;Programmi;Podcast shows, not episodes.
+Episodes;Folgen;Episodios;Épisodes;Episodi;The episodes of a show.
+New Episodes;Neue Folgen;Episodios nuevos;Nouveaux épisodes;Nuovi episodi;
+Music;Musik;Música;Musique;Musica;A tab.
+Radio;Radio;Radio;Radio;Radio;A tab.
+Library;Bibliothek;Biblioteca;Bibliothèque;Libreria;
+Routines;Routinen;Rutinas;Routines;Routine;A list with a rule that starts playback.
+Playlists;Playlists;Listas;Playlists;Playlist;
+Chapters;Kapitel;Capítulos;Chapitres;Capitoli;The chapters of an audiobook.
+Bookmarks;Lesezeichen;Marcadores;Signets;Segnalibri;
+Downloads;Downloads;Descargas;Téléchargements;Download;
+Subscribe;Abonnieren;Suscribirse;S’abonner;Iscriviti;
+Mark as Played;Als gehört markieren;Marcar como escuchado;Marquer comme écouté;Segna come ascoltato;
+Home;Start;Inicio;Accueil;Home;A tab.
+Search;Suchen;Buscar;Rechercher;Cerca;A tab.
+Settings;Einstellungen;Ajustes;Réglages;Impostazioni;
+Folders;Ordner;Carpetas;Dossiers;Cartelle;Folders of podcast shows.
+Subscriptions;Abos;Suscripciones;Abonnements;Iscrizioni;The followed podcast shows.
+Radio Catalog;Radio-Katalog;Catálogo de radio;Catalogue radio;Catalogo radio;The station directory switch.
+Repeat;Wiederholen;Repetir;Répéter;Ripeti;In music.
+Shuffle;Zufall;Aleatorio;Aléatoire;Casuale;
+Download While You Listen;Laden, wenn du hörst;Descargar mientras escuchas;Télécharger pendant l’écoute;Scarica mentre ascolti;Audiobooks setting.
+Address;du;tú;vous;tu;How the app speaks to the person.

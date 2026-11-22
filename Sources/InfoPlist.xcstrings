@@ -15,6 +15,24 @@
             "state" : "translated",
             "value" : "mair"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mère"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mer"
+          }
         }
       }
     },
@@ -25,6 +43,24 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
+            "value" : "Mär"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
             "value" : "Mär"
           }
         }
@@ -43,6 +79,24 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Mär"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
             "value" : "Mär"
           }
         }
@@ -70,6 +124,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mär connects to your self-hosted audio servers, which are often only reachable on your home network."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär se conecta a tus servidores de audio autoalojados, a los que a menudo solo se puede acceder desde tu red doméstica."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär se connecte à vos serveurs audio auto-hébergés, souvent joignables uniquement sur votre réseau domestique."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mär si connette ai tuoi server audio self-hosted, che spesso sono raggiungibili solo sulla rete di casa."
           }
         }
       }

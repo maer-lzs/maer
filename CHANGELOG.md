@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Spanish, French and Italian.** Mär speaks Spanish, French and Italian,
+in the app, in Siri's phrases and in the system's questions. The
+translations wait for a native speaker's review; until then they come with
+TestFlight only.
+
 **Audiobooks download while you listen.** A new setting under Audiobooks,
 Download While You Listen (off by default): an audiobook you start and the
 books in Continue Listening download in full on Wi-Fi, within the space you

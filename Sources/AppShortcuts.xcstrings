@@ -35,6 +35,54 @@
               "Höre mein Hörbuch in der ${applicationName}-App weiter"
             ]
           }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Seguir escuchando en ${applicationName}",
+              "Seguir escuchando en la app ${applicationName}",
+              "Reanudar mi audiolibro en ${applicationName}",
+              "Reanudar mi audiolibro en la app ${applicationName}",
+              "Continuar en ${applicationName}",
+              "Continuar en la app ${applicationName}",
+              "Seguir escuchando con la app ${applicationName}",
+              "Continúa mi audiolibro en ${applicationName}",
+              "Continúa mi audiolibro en la app ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Reprendre l’écoute dans ${applicationName}",
+              "Reprendre l’écoute dans l’app ${applicationName}",
+              "Reprendre mon livre audio dans ${applicationName}",
+              "Reprendre mon livre audio dans l’app ${applicationName}",
+              "Continuer l’écoute dans ${applicationName}",
+              "Continuer l’écoute dans l’app ${applicationName}",
+              "Continuer l’écoute avec l’app ${applicationName}",
+              "Continuer mon livre audio dans ${applicationName}",
+              "Continuer mon livre audio dans l’app ${applicationName}"
+            ]
+          }
+        },
+        "it" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Continua ad ascoltare in ${applicationName}",
+              "Continua ad ascoltare nell'app ${applicationName}",
+              "Riprendi il mio audiolibro in ${applicationName}",
+              "Riprendi il mio audiolibro nell'app ${applicationName}",
+              "Continua l'ascolto in ${applicationName}",
+              "Continua l'ascolto nell'app ${applicationName}",
+              "Continua l'ascolto con l'app ${applicationName}",
+              "Riprendi l'audiolibro in ${applicationName}",
+              "Riprendi l'audiolibro nell'app ${applicationName}"
+            ]
+          }
         }
       }
     },
@@ -72,6 +120,54 @@
               "Spiel ${book} in der ${applicationName}-App"
             ]
           }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Reproducir ${book} en ${applicationName}",
+              "Reproducir ${book} en la app ${applicationName}",
+              "Reproducir ${book} con la app ${applicationName}",
+              "Reproduce ${book} en ${applicationName}",
+              "Reproduce ${book} en la app ${applicationName}",
+              "Reproduce ${book} con la app ${applicationName}",
+              "Pon ${book} en ${applicationName}",
+              "Pon ${book} en la app ${applicationName}",
+              "Escuchar ${book} en ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Lire ${book} dans ${applicationName}",
+              "Lire ${book} dans l’app ${applicationName}",
+              "Lire ${book} avec l’app ${applicationName}",
+              "Écouter ${book} dans ${applicationName}",
+              "Écouter ${book} dans l’app ${applicationName}",
+              "Écouter ${book} avec l’app ${applicationName}",
+              "Écouter ${book} avec ${applicationName}",
+              "Lire ${book} avec ${applicationName}",
+              "Mets ${book} dans ${applicationName}"
+            ]
+          }
+        },
+        "it" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Riproduci ${book} in ${applicationName}",
+              "Riproduci ${book} nell'app ${applicationName}",
+              "Riproduci ${book} con l'app ${applicationName}",
+              "Ascolta ${book} in ${applicationName}",
+              "Ascolta ${book} nell'app ${applicationName}",
+              "Ascolta ${book} con l'app ${applicationName}",
+              "Riproduci ${book} dall'app ${applicationName}",
+              "Ascolta ${book} dall'app ${applicationName}",
+              "Fai partire ${book} nell'app ${applicationName}"
+            ]
+          }
         }
       }
     },
@@ -103,6 +199,48 @@
               "Starte ${routine} in der ${applicationName}-App",
               "Starte ${routine} mit der App ${applicationName}",
               "Starte ${routine} von der App ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Iniciar ${routine} en ${applicationName}",
+              "Iniciar ${routine} en la app ${applicationName}",
+              "Iniciar ${routine} con la app ${applicationName}",
+              "Inicia ${routine} en ${applicationName}",
+              "Inicia ${routine} en la app ${applicationName}",
+              "Inicia ${routine} con la app ${applicationName}",
+              "Empieza ${routine} en ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Lancer ${routine} dans ${applicationName}",
+              "Lancer ${routine} dans l’app ${applicationName}",
+              "Lancer ${routine} avec l’app ${applicationName}",
+              "Démarrer ${routine} dans ${applicationName}",
+              "Démarrer ${routine} dans l’app ${applicationName}",
+              "Démarrer ${routine} avec l’app ${applicationName}",
+              "Lancer ${routine} avec ${applicationName}"
+            ]
+          }
+        },
+        "it" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Avvia ${routine} in ${applicationName}",
+              "Avvia ${routine} nell'app ${applicationName}",
+              "Avvia ${routine} con l'app ${applicationName}",
+              "Inizia ${routine} in ${applicationName}",
+              "Inizia ${routine} nell'app ${applicationName}",
+              "Inizia ${routine} con l'app ${applicationName}",
+              "Avvia ${routine} dall'app ${applicationName}"
             ]
           }
         }
