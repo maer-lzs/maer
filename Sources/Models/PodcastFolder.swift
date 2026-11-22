@@ -34,6 +34,10 @@ nonisolated enum PodcastFolder {
         !itemIds.isEmpty && itemIds.allSatisfy { MediaFamily.of($0) == .podcast }
     }
 
+    static func migrates(_ itemIds: [String], feedKeyOf: (String) -> String?) -> Bool {
+        needsMigration(itemIds)
+    }
+
     /// The folder of a list of episodes: its shows in the order they first
     /// appear, each once, without a show that stands in another folder (it
     /// stays there). The unheard episodes go to Up Next, those of a show

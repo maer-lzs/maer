@@ -48,6 +48,19 @@ struct PodcastFolderTests {
         #expect(!PodcastFolder.needsMigration(["rss:a:1", "sub:song:1"]), "a mixed list is no podcast list")
     }
 
+    @Test("a list with an episode whose show is not known stays a list: no folder, nothing to Up Next")
+    func episodeWithoutShowStays() {
+        let rssOnly: (String) -> String? = { PlayerCoordinator.showId(forEpisodeId: $0).map { String($0.dropFirst("feed:".count)) } }
+        for ids in [["abspod:li_1:ep_1", "abspod:li_1:ep_2"], ["rss:a:1", "abspod:li_1:ep_1"]] {
+            #expect(PodcastFolder.needsMigration(ids), "the precondition: a list of podcast episodes")
+            #expect(!PodcastFolder.migrates(ids, feedKeyOf: rssOnly), "\(ids)")
+            let migrated = PodcastFolder.migrated(ids, feedKeyOf: rssOnly, isHeard: { _ in false }, inOtherFolders: [])
+            #expect(migrated.entries == ids, "\(ids)")
+            #expect(migrated.toUpNext.isEmpty, "\(ids)")
+        }
+        #expect(PodcastFolder.migrates(["rss:a:1", "rss:b:2"], feedKeyOf: rssOnly))
+    }
+
     @Test("a show in a folder leaves the loose grid; the tile counts the new episodes of all its shows")
     func gridAndCount() {
         let folded = PodcastFolder.foldedShows(in: [["show:a", "show:b"], ["rss:x:1"], ["show:c"]])
@@ -161,6 +174,41 @@ struct PodcastFolderSyncTests {
         c.fold()
         #expect(c.store.playlist(id: list.id)?.itemIds == folder)
         #expect(c.upNext.isEmpty, "a device that never held the list fills its Up Next")
+    }
+
+    @Test("a list of Audiobookshelf episodes and a mixed one stay as they are on both devices: no removal mark travels, nothing goes to Up Next")
+    func episodesWithoutShowStayOnEveryDevice() throws {
+        let restore = SyncSwitchProbe.armOn()
+        defer { restore() }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("folder-abspod-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let carrier = RecordingCarrier()
+        let a = device("Geraet-A", on: carrier, in: directory)
+        let b = device("Geraet-B", on: carrier, in: directory)
+        let server = a.store.create(name: "Server")
+        _ = a.store.add(itemId: "abspod:li_1:ep_1", to: server.id)
+        _ = a.store.add(itemId: "abspod:li_1:ep_2", to: server.id)
+        let mixed = a.store.create(name: "Gemischt")
+        _ = a.store.add(itemId: "rss:f:e1", to: mixed.id)
+        _ = a.store.add(itemId: "abspod:li_1:ep_3", to: mixed.id)
+        a.runner.reconcile()
+        a.fold()
+        b.runner.reconcile()
+        for _ in 0..<3 {
+            a.runner.reconcile()
+            b.runner.reconcile()
+        }
+        for store in [a.store, b.store] {
+            #expect(store.playlist(id: server.id)?.itemIds == ["abspod:li_1:ep_1", "abspod:li_1:ep_2"])
+            #expect(store.playlist(id: mixed.id)?.itemIds == ["rss:f:e1", "abspod:li_1:ep_3"])
+            #expect(store.playlist(id: server.id)?.removed.isEmpty == true, "a removal mark for an episode that lands in no folder")
+            #expect(store.playlist(id: mixed.id)?.removed.isEmpty == true, "a removal mark for an episode that lands in no folder")
+        }
+        #expect(carrier.snapshot.lists[server.id]?.itemIds == ["abspod:li_1:ep_1", "abspod:li_1:ep_2"])
+        #expect(carrier.snapshot.lists[mixed.id]?.removed.isEmpty == true)
+        #expect(a.upNext.isEmpty && b.upNext.isEmpty, "a list that stays sends nothing to Up Next")
     }
 
     @Test("a sync without the hook leaves a list of episodes as it is: a witness's own store never folds")
