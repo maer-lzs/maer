@@ -112,6 +112,7 @@ struct ArchiveMusicPage: View {
                                 .contextMenu {
                                     CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
+                        MusicDownloadMenuItems(itemId: item.id)
                                 }
                                 .onAppear {
                                     if item.id == items.last?.id { Task { await loadMore() } }
@@ -167,6 +168,7 @@ struct ArchiveMusicPage: View {
                         .contextMenu {
                             CatalogDetailsButton(itemId: item.id)
                             CatalogQueueButtons(itemId: item.id)
+                            MusicDownloadMenuItems(itemId: item.id)
                         }
                         .cardRowSlot(spacing: 14)
                     }
@@ -226,6 +228,7 @@ struct ArchiveMusicPage: View {
                         .contextMenu {
                             CatalogDetailsButton(itemId: item.id)
                             CatalogQueueButtons(itemId: item.id)
+                            MusicDownloadMenuItems(itemId: item.id)
                         }
                         .cardRowSlot(spacing: 14)
                     }
@@ -374,6 +377,7 @@ struct ArchiveMusicShelfPage: View {
                     .contextMenu {
                         CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
+                        MusicDownloadMenuItems(itemId: item.id)
                     }
                     .onAppear {
                         if item.id == items.last?.id { Task { await load() } }
@@ -538,6 +542,7 @@ struct ShellacShelvesPage: View {
                     .contextMenu {
                         CatalogDetailsButton(itemId: item.id)
                         CatalogQueueButtons(itemId: item.id)
+                        MusicDownloadMenuItems(itemId: item.id)
                     }
                 }
             }

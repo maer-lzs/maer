@@ -1019,7 +1019,9 @@ struct ArchiveSeriesPage: View {
         .pageActions("album-actions") {
             CatalogQueueButtons(itemId: itemId, chain: Self.offersChain(effectiveFlavor) ? playerCoordinator : nil,
                                 title: shareContent?.facts.title ?? router.item(itemId)?.title)
-            if Self.isTrack(itemId) { MusicDownloadMenuItems(itemId: itemId) }
+            if Self.offersMusicDownload(itemId, isAlbum: effectiveFlavor == .album) {
+                MusicDownloadMenuItems(itemId: itemId)
+            }
             if let shareOffer { SharedLinkButton(offer: shareOffer, title: shareContent?.facts.title) }
         }
         .sharedLink(shareContent, cover: router.coverURL(itemId), to: $shareOffer)
@@ -1159,9 +1161,12 @@ struct ArchiveSeriesPage: View {
         itemId.hasPrefix(FreeCatalog.jamendoPrefix) || itemId.hasPrefix(MusopenCatalog.prefix)
     }
 
-    /// Whether the page's menu carries the download entry of music.
+    /// Whether the page's menu carries the download entry of music: for a
+    /// release of the archive's music and for a single track. The entry
+    /// itself asks the source, so a release without a stated licence and
+    /// every Jamendo title show none; a reading is no music and has none.
     nonisolated static func offersMusicDownload(_ itemId: String, isAlbum: Bool) -> Bool {
-        isTrack(itemId)
+        isAlbum || isTrack(itemId)
     }
 
     /// Where the title comes from, as the player names it: Jamendo's terms
