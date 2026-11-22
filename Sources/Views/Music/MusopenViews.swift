@@ -5,18 +5,20 @@
 
 import SwiftUI
 
-/// The Musopen recordings have no picture; their tiles show this symbol.
+/// The Musopen recordings have no picture; their tiles show the symbol
+/// of every music tile without one, the same on Browse.
 enum MusopenTile {
-    static let placeholderSystemImage = "music.quarternote.3"
+    static let placeholderSystemImage = "music.note"
 }
 
 /// The Musopen row: its heading leads to the page of all recordings, the
 /// tiles come from the store's row of the day. It stands on the Music tab
 /// among the open catalogs and on the Classical page; with its switch off
-/// it is not there, and a row that stayed empty says why.
+/// it is not there, and a row that stayed empty says why. On a page whose
+/// own rights sentence speaks of another source, the row carries its own.
 struct MusopenRow: View {
-    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    var showsRights = false
     @ObservedObject private var store = FreeCatalogStore.shared
 
     var body: some View {
@@ -24,6 +26,12 @@ struct MusopenRow: View {
             let rows = store.rows
             VStack(alignment: .leading, spacing: 8) {
                 RowHeading.entry(verbatim: "Musopen", destination: MusicRoute.musopen)
+                if showsRights {
+                    Text(MusopenCatalog.rightsNotice)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                }
                 if !rows.musopen.isEmpty {
                     ScrollView(.horizontal) {
                         LazyHStack(alignment: .top, spacing: 14) {

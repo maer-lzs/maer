@@ -51,6 +51,14 @@ struct ArchiveMusicPage: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
+                        // The Classical page opens with the Musopen
+                        // recordings: classical music from another
+                        // collection, under its own rights sentence, before
+                        // the archive's sentences that belong to the 78s.
+                        if area.key == ArchiveMusicCatalog.classical.key {
+                            MusopenRow(playerCoordinator: playerCoordinator, showsRights: true)
+                                .padding(.bottom, 12)
+                        }
                         // Clear external-catalog marking (Katalog ≠ Bibliothek).
                         Text(area.headerNote)
                             .font(.caption)
@@ -81,12 +89,6 @@ struct ArchiveMusicPage: View {
                                 ShelfPlaceholderRow(title: String(localized: "Loading genres…"))
                             }
                         } else {
-                            // The Classical page carries the Musopen
-                            // recordings above its 78s: classical music
-                            // from another collection, with its own rights.
-                            if area.key == ArchiveMusicCatalog.classical.key {
-                                MusopenRow(playerCoordinator: playerCoordinator)
-                            }
                             CoverGrid(columns: columns) {
                             ForEach(items) { item in
                                 // Shared catalog tile. The rights stand
