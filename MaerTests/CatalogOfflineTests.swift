@@ -63,6 +63,35 @@ struct CatalogOfflineTests {
         #expect(provider.capabilities.contains(.downloadable), "the catalog can download, title by title")
     }
 
+    @Test("a netlabel or 78 release with a stated licence offers its download, one without does not; its page carries the entry as an album")
+    func archiveMusicOffersItsDownload() throws {
+        let provider = Self.provider()
+        let licensed = try #require(provider.remember(popular: Self.archive("netlabel-with-licence", licence: "https://creativecommons.org/licenses/by-nc-sa/3.0/")))
+        #expect(MediaDownloadOffer.isPossible(provider.capabilities, mayKeep: provider.mayKeep(itemId: licensed.id)))
+        let unstated = try #require(provider.remember(popular: Self.archive("78-without-licence", licence: nil, year: "1928")))
+        #expect(!MediaDownloadOffer.isPossible(provider.capabilities, mayKeep: provider.mayKeep(itemId: unstated.id)),
+                "a record without a stated licence offers its download")
+        #expect(ArchiveSeriesPage.offersMusicDownload(licensed.id, isAlbum: true), "the page of a release has no download entry")
+        #expect(!ArchiveSeriesPage.offersMusicDownload(licensed.id, isAlbum: false), "a reading of the archive is no music")
+        #expect(ArchiveSeriesPage.offersMusicDownload("mso:1", isAlbum: false))
+    }
+
+    @Test("every tile menu of the archive's music carries the download entry of music", .needsTheSources)
+    func archiveMusicTilesCarryTheEntry() throws {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Views/Music/ArchiveMusicPages.swift") })
+        let text = try SourceTree.text(file)
+        let menus = text.components(separatedBy: ".contextMenu {").dropFirst().map { String($0.prefix(260)) }
+        let tileMenus = menus.filter { $0.contains("CatalogDetailsButton(itemId: item.id)") }
+        #expect(tileMenus.count >= 5, "the fence sees \(tileMenus.count) tile menus")
+        #expect(tileMenus.allSatisfy { $0.contains("MusicDownloadMenuItems(itemId: item.id)") },
+                "\(tileMenus.filter { !$0.contains("MusicDownloadMenuItems") }.count) tile menus without the download entry")
+        let page = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Views/CatalogSourcePage.swift") })
+        #expect(try SourceTree.text(page).contains("Self.offersMusicDownload(itemId, isAlbum: effectiveFlavor == .album)"),
+                "the page asks another rule for its download entry")
+    }
+
     @Test("an offer needs a source that downloads and a title it may keep; a server title is kept as before")
     func offer() {
         #expect(MediaDownloadOffer.isPossible([.downloadable], mayKeep: true))

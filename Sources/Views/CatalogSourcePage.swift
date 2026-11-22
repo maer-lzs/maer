@@ -1159,6 +1159,11 @@ struct ArchiveSeriesPage: View {
         itemId.hasPrefix(FreeCatalog.jamendoPrefix) || itemId.hasPrefix(MusopenCatalog.prefix)
     }
 
+    /// Whether the page's menu carries the download entry of music.
+    nonisolated static func offersMusicDownload(_ itemId: String, isAlbum: Bool) -> Bool {
+        isTrack(itemId)
+    }
+
     /// Where the title comes from, as the player names it: Jamendo's terms
     /// ask for the provider and a backlink per track, and every other
     /// catalogue title links its page at the source.
