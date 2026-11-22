@@ -5,68 +5,94 @@
 
 import SwiftUI
 
-/// The rights capsule + source backlink of a catalog title. ONE truth for
-/// the book detail page and the music sheet: the licence the source
-/// states, else the computed rights note; never a blanket badge (an
-/// Old-Time-Radio item can be CC-BY-NC-ND, and a checkmark IS an
-/// assertion).
+/// The rights line + source backlink of a catalog title. ONE truth for
+/// the book page, the page of an album or a recording and the player
+/// (`CatalogRightsLine`); the tiles name no rights.
 struct CatalogRightsSection: View {
     @Environment(\.catalogFacts) private var catalogFacts
-    let item: LibraryItem
-    /// The licence the source states, read by the page that shows it: the
-    /// register learns a Gutenberg title's rights only when its detail
-    /// loads, and the page draws again then; read inside the section, it
+    let itemId: String
+    /// The recording or publishing year the source states.
+    let year: String?
+    /// The licence the source states, read by the surface that shows it:
+    /// the register learns a Gutenberg title's rights only when its detail
+    /// loads, and the surface draws again then; read inside the section, it
     /// would keep the first, empty answer.
     let licence: String?
+    /// The player's lines are footnotes, a page's are captions.
+    var font: Font = .caption
+    var alignment: HorizontalAlignment = .center
+    /// A page or the player that links the source itself leaves it out.
+    var linksSource = true
+
+    init(itemId: String, year: String?, licence: String?, font: Font = .caption,
+         alignment: HorizontalAlignment = .center, linksSource: Bool = true) {
+        self.itemId = itemId
+        self.year = year
+        self.licence = licence
+        self.font = font
+        self.alignment = alignment
+        self.linksSource = linksSource
+    }
+
+    init(item: LibraryItem, licence: String?) {
+        self.init(itemId: item.id, year: item.media?.metadata?.publishedYear?.value, licence: licence)
+    }
 
     private var librivoxURL: URL? {
-        catalogFacts.librivoxBook(item.id)?.url_librivox
+        catalogFacts.librivoxBook(itemId)?.url_librivox
             .flatMap { URL(string: $0) }
     }
 
     var body: some View {
-        VStack(spacing: 6) {
-            // A seal only on a statement: "Rights not stated" is none, and a
-            // checkmark beside it would be a claim of its own. Without one
-            // the year speaks (`FreeCatalog.rightsNote`).
-            if let licence, licence != FreeCatalog.unstatedRights {
-                Label(licence, systemImage: "checkmark.seal")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                switch FreeCatalog.rightsNote(
-                    year: item.media?.metadata?.publishedYear?.value) {
-                case .publicDomain:
-                    Label("Public domain", systemImage: "checkmark.seal")
-                        .font(.caption).foregroundStyle(.secondary)
-                case .termsApply(let year):
-                    // A fact about TERMS, never a verdict about this title:
-                    // the answer differs by country, and the device region
-                    // is not the listener's jurisdiction.
-                    Label(String(localized: "Recording from \(year). Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA."),
-                          systemImage: "clock")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                case .unknown:
-                    Label("Rights status not stated by the source",
-                          systemImage: "questionmark.circle")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            if let url = librivoxURL {
-                Link(destination: url) {
-                    Label("View on LibriVox", systemImage: "arrow.up.right.square")
-                        .font(.caption)
-                }
-            } else if item.id.hasPrefix(FreeCatalog.archivePrefix),
-                      let identifier = FreeCatalog.archiveIdentifier(of: item.id),
-                      let url = URL(string: "https://archive.org/details/\(FreeCatalog.encodedPathSegment(identifier))") {
-                Link(destination: url) {
-                    Label("View on Internet Archive", systemImage: "arrow.up.right.square")
-                        .font(.caption)
+        VStack(alignment: alignment, spacing: 6) {
+            line
+            if linksSource {
+                if let url = librivoxURL {
+                    Link(destination: url) {
+                        Label("View on LibriVox", systemImage: "arrow.up.right.square")
+                            .font(font)
+                    }
+                } else if itemId.hasPrefix(FreeCatalog.archivePrefix),
+                          let identifier = FreeCatalog.archiveIdentifier(of: itemId),
+                          let url = URL(string: "https://archive.org/details/\(FreeCatalog.encodedPathSegment(identifier))") {
+                    Link(destination: url) {
+                        Label("View on Internet Archive", systemImage: "arrow.up.right.square")
+                            .font(font)
+                    }
                 }
             }
         }
-        .frame(maxWidth: .infinity)
+        // Centred on a page across its width; leading, it keeps the block
+        // the surface places (the player centres its lines).
+        .frame(maxWidth: alignment == .center ? .infinity : nil)
+    }
+
+    @ViewBuilder
+    private var line: some View {
+        let rights = CatalogRightsLine.of(itemId: itemId, licence: licence, year: year)
+        switch rights {
+        case .jamendo:
+            Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
+                .font(font).foregroundStyle(.secondary)
+        case .stated(let licence):
+            Label(licence, systemImage: "checkmark.seal")
+                .font(font).foregroundStyle(.secondary)
+        case .publicDomain:
+            Label("Public domain", systemImage: "checkmark.seal")
+                .font(font).foregroundStyle(.secondary)
+        case .termsApply(let year):
+            // A fact about TERMS, never a verdict about this title: the
+            // answer differs by country, and the device region is not the
+            // listener's jurisdiction.
+            Label(String(localized: "Recording from \(year). Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA."),
+                  systemImage: "clock")
+                .font(font).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        case .unknown:
+            Label("Rights status not stated by the source",
+                  systemImage: "questionmark.circle")
+                .font(font).foregroundStyle(.secondary)
+        }
     }
 }
 

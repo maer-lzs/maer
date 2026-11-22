@@ -69,7 +69,9 @@ struct CatalogDetailsPageTests {
     func aJamendoPageNamesItsProvider() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
-        #expect(page.contains("Label(\"Creative Commons, via Jamendo\", systemImage: \"checkmark.seal\")"))
+        // The provider stands in the one rights line the page draws.
+        #expect(page.contains("CatalogRightsSection(itemId: itemId,"))
+        #expect(CatalogRightsLine.of(itemId: FreeCatalog.jamendoPrefix + "1", licence: nil, year: nil) == .jamendo)
         #expect(page.contains("if let source = catalogFacts.sourceURL(itemId) {"))
         #expect(page.contains("sourceLines\n        } actions: {"))
     }

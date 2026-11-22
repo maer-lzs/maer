@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Rights with their seal everywhere.** The page of an album or a
+recording and the player name a catalogue title's rights as the
+audiobook page does: a stated licence or public domain with a seal,
+otherwise the terms by the year of the recording, or that the source
+states no rights. Before, the page showed a grey capsule and the player
+a seal only beside a stated licence. Tiles stay without rights.
+
 **Tab names where they fit.** The tab bar shows a tab's name only where
 it fits whole and the text is below the accessibility sizes; otherwise
 the symbol stands alone and larger. In landscape the name stands beside

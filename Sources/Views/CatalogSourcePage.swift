@@ -1098,13 +1098,10 @@ struct ArchiveSeriesPage: View {
                  ? "\(tracks.count) tracks"
                  : "\(tracks.count) episodes")
                 .font(.caption).foregroundStyle(.secondary)
-            // Rights capsule: the existing graded truth, never guessed.
-            if let licence = catalogFacts.licence(itemId) {
-                Text(verbatim: licence)
-                    .font(.caption2.weight(.medium))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
-            }
+            // The rights as the book page names them; the source link
+            // stands under the description.
+            CatalogRightsSection(itemId: itemId, year: detail.media.metadata?.publishedYear?.value,
+                                 licence: catalogFacts.licence(itemId), linksSource: false)
         } facts: {
             if let description = detail.media.metadata?.description, !description.isEmpty {
                 // The leading heading repeats the title and leaves a
@@ -1151,8 +1148,6 @@ struct ArchiveSeriesPage: View {
         .padding(.horizontal)
     }
 
-    private var isJamendo: Bool { itemId.hasPrefix(FreeCatalog.jamendoPrefix) }
-
     /// Whether the title is a single track of music, whatever flavour plays
     /// it: a Jamendo title and a Musopen recording. Its page counts it as a
     /// track and its menu carries the download entry of music, which asks
@@ -1170,14 +1165,10 @@ struct ArchiveSeriesPage: View {
     }
 
     /// Where the title comes from, as the player names it: Jamendo's terms
-    /// ask for the provider and a backlink per track, and every other
-    /// catalogue title links its page at the source.
+    /// ask for a backlink per track (the provider stands in the rights
+    /// line), and every other catalogue title links its page at the source.
     @ViewBuilder
     private var sourceLines: some View {
-        if isJamendo {
-            Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
-                .font(.caption).foregroundStyle(.secondary)
-        }
         if let source = catalogFacts.sourceURL(itemId) {
             Link(destination: source) {
                 Label("View source", systemImage: "arrow.up.right.square")

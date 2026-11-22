@@ -56,7 +56,7 @@ struct CatalogRightsLineTests {
         #expect(page.contains("CatalogRightsSection(itemId: itemId, year: detail.media.metadata?.publishedYear?.value,"),
                 "the page of an album or a recording draws another rights line")
         let player = try source("Sources/Views/PlayerView.swift")
-        #expect(player.contains("CatalogRightsSection(itemId: id, year: viewModel.item?.media?.metadata?.publishedYear?.value,"),
+        #expect(player.contains("CatalogRightsSection(itemId: id, year: viewModel.item?.media.metadata?.publishedYear?.value,"),
                 "the player draws another rights line")
         // Stock: the seal stands in the section alone.
         var sealed: [String] = []
