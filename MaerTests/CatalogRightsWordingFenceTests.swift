@@ -50,7 +50,8 @@ struct CatalogRightsWordingFenceTests {
     @Test("no rights statement without a claim carries a seal, the note of the archive has a wording", .needsTheSources)
     func noSealWithoutAStatement() throws {
         let detail = try source("Sources/Views/CatalogDetailExtras.swift")
-        #expect(detail.contains("if let licence, licence != FreeCatalog.unstatedRights {"))
+        let rule = try source("Sources/Models/CatalogRightsLine.swift")
+        #expect(rule.contains("if let licence, licence != FreeCatalog.unstatedRights {"))
         // The page that shows the section reads the licence, so it follows
         // the register once the detail has loaded (book page and player agree).
         let page = try source("Sources/Views/BookDetailScreen.swift")
