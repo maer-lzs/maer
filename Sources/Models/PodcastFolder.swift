@@ -34,8 +34,12 @@ nonisolated enum PodcastFolder {
         !itemIds.isEmpty && itemIds.allSatisfy { MediaFamily.of($0) == .podcast }
     }
 
+    /// A list of episodes moves only when every episode names its show.
+    /// An episode whose show is not known here (one of the own
+    /// Audiobookshelf server) would fall out of the folder and leave a
+    /// removal mark that travels to every device; such a list stays a list.
     static func migrates(_ itemIds: [String], feedKeyOf: (String) -> String?) -> Bool {
-        needsMigration(itemIds)
+        needsMigration(itemIds) && itemIds.allSatisfy { feedKeyOf($0) != nil }
     }
 
     /// The folder of a list of episodes: its shows in the order they first
@@ -45,7 +49,7 @@ nonisolated enum PodcastFolder {
     /// the same folder on every device; a folder stays as it is.
     static func migrated(_ itemIds: [String], feedKeyOf: (String) -> String?, isHeard: (String) -> Bool,
                          inOtherFolders: Set<String>) -> Migration {
-        guard needsMigration(itemIds) else { return Migration(entries: itemIds, toUpNext: []) }
+        guard migrates(itemIds, feedKeyOf: feedKeyOf) else { return Migration(entries: itemIds, toUpNext: []) }
         var seen: Set<String> = []
         var entries: [String] = []
         for id in itemIds {

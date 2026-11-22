@@ -549,8 +549,9 @@ final class MaerPlaylists: ObservableObject {
         save(emptying: .allowed)
     }
 
-    /// Every list of podcast episodes becomes the folder of their shows
-    /// (`PodcastFolder.migrated`), the same on every device; the list clock
+    /// Every list of podcast episodes whose shows are all known becomes the
+    /// folder of their shows (`PodcastFolder.migrated`), the same on every
+    /// device; the list clock
     /// stays, so two devices that move the same list write the same folder
     /// and settle on it. The unheard episodes of each list go
     /// to Up Next (`enqueue`) once on this device, remembered by list id in
@@ -562,10 +563,10 @@ final class MaerPlaylists: ObservableObject {
         // A show goes into the first folder it lands in, in the lists' order.
         var folded = PodcastFolder.foldedShows(in: playlists.map(\.itemIds))
         var moved: [String] = []
+        let feedKeyOf: (String) -> String? = { PlayerCoordinator.showId(forEpisodeId: $0).map { String($0.dropFirst("feed:".count)) } }
         let next = playlists.map { list -> Playlist in
-            guard !list.isRescue, PodcastFolder.needsMigration(list.itemIds) else { return list }
-            let migration = PodcastFolder.migrated(list.itemIds,
-                                                   feedKeyOf: { PlayerCoordinator.showId(forEpisodeId: $0).map { String($0.dropFirst("feed:".count)) } },
+            guard !list.isRescue, PodcastFolder.migrates(list.itemIds, feedKeyOf: feedKeyOf) else { return list }
+            let migration = PodcastFolder.migrated(list.itemIds, feedKeyOf: feedKeyOf,
                                                    isHeard: isHeard, inOtherFolders: folded)
             folded.formUnion(migration.entries.compactMap(PodcastFolder.feedKey(of:)))
             if enqueuedBefore.insert(list.id).inserted { enqueue(migration.toUpNext) }
