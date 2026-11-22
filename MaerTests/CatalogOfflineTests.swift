@@ -86,6 +86,28 @@ struct CatalogOfflineTests {
         #expect(tileMenus.count >= 5, "the fence sees \(tileMenus.count) tile menus")
         #expect(tileMenus.allSatisfy { $0.contains("MusicDownloadMenuItems(itemId: item.id)") },
                 "\(tileMenus.filter { !$0.contains("MusicDownloadMenuItems") }.count) tile menus without the download entry")
+        // The 78s row on the Music tab.
+        let shellac = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Views/Music/ShellacSection.swift") })
+        let shellacMenus = try SourceTree.text(shellac).components(separatedBy: ".contextMenu {").dropFirst()
+            .map { String($0.prefix(320)) }
+        #expect(!shellacMenus.isEmpty, "the fence sees no menu in the 78s row")
+        #expect(shellacMenus.allSatisfy { $0.contains("MusicDownloadMenuItems(itemId: item.id)") },
+                "a 78s tile menu without the download entry")
+        // The catalogue music tiles of Browse and of the Music tab's rows share one menu.
+        let music = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.path.hasSuffix("/Sources/Views/Music/MusicView.swift") })
+        let musicText = try SourceTree.text(music)
+        #expect(musicText.contains("if let musicDownload {\n            MusicDownloadMenuItems(itemId: musicDownload)"),
+                "the shared collection menu draws no download entry")
+        let catalogMenu = try #require(musicText.components(separatedBy: "static func catalog(_ item: LibraryItem").dropFirst().first)
+        #expect(String(catalogMenu.prefix(900)).contains("musicDownload: item.id"),
+                "the catalogue music tile menu passes no download entry")
+        for path in ["/Sources/Views/BrowseRow.swift", "/Sources/Views/Music/MusicView.swift"] {
+            let tiles = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.path.hasSuffix(path) })
+            #expect(try SourceTree.text(tiles).contains("CollectionMenuItems.catalog(item, playerCoordinator: playerCoordinator)"),
+                    "\(path) draws its catalogue music tiles with another menu")
+        }
         let page = try #require(ProjectFileIntegrityTests.sourceFiles()
             .first { $0.path.hasSuffix("/Sources/Views/CatalogSourcePage.swift") })
         #expect(try SourceTree.text(page).contains("Self.offersMusicDownload(itemId, isAlbum: effectiveFlavor == .album)"),
