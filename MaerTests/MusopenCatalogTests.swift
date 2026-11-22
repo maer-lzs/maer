@@ -36,7 +36,8 @@ struct MusopenCatalogTests {
     @Test("One file of each kind: three recordings, five counted out by their reason")
     func eachKind() throws {
         let page = try kinds()
-        #expect(page.recordings.map(\.itemId) == ["mso:67535618", "mso:67816870", "mso:99430846"])
+        // In the order of the file names, as the category lists them.
+        #expect(page.recordings.map(\.itemId) == ["mso:67816870", "mso:99430846", "mso:67535618"])
         // A video, an Ogg video and a picture are no sound; the Public
         // Domain Mark is no licence of the two; FLAC has no MP3.
         #expect(page.dropped == [.notAudio: 3, .licence: 1, .noPlayableForm: 1])
