@@ -211,9 +211,11 @@ nonisolated enum MusopenCatalog {
     }
 
     /// The object name the file page states, else the file name without
-    /// its namespace and extension.
+    /// its namespace and extension. An object name with markup is the
+    /// rendering of a template, not a name.
     static func shownTitle(objectName: String?, fileTitle: String?) -> String {
-        if let name = objectName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty { return name }
+        if let name = objectName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty,
+           !name.contains("<") { return name }
         var name = fileTitle ?? ""
         if name.hasPrefix("File:") { name.removeFirst("File:".count) }
         if let dot = name.lastIndex(of: ".") { name = String(name[..<dot]) }

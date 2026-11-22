@@ -30,27 +30,52 @@ nonisolated enum MusopenOrder {
         return words.first.map(partWords.contains) ?? false
     }
 
-    /// The family name the source states; where it states none or only a
-    /// note in brackets, the name before the dash of the title. "Composer:"
-    /// and a bracketed rest fall away; accents and case do not count.
+    /// Words that tell a performer, a work or a sentence from a name.
+    static let notNameWords: Set<String> = [
+        "orchestra", "archive", "archives", "musopen", "unknown", "quartet", "ensemble", "symphony",
+        "choir", "trio", "band", "philharmonic", "by", "author", "no", "op", "minor", "major", "sonata",
+        "concerto", "suite", "prelude", "nocturne", "waltz", "etude", "overture", "mazurka", "in", "of", "the",
+    ]
+
+    /// The composer: the name before the dash of the title, as the file
+    /// names of the collection put it, else the artist field the source
+    /// states, which names the performers as often. Either counts only
+    /// where it reads as a name. Accents and case do not count; no name
+    /// gives an empty key.
     static func composerKey(author: String?, title: String) -> String {
-        var name = (author ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        if name.hasPrefix("(") { name = "" }
-        if let bracket = name.firstIndex(of: "(") { name = String(name[..<bracket]) }
-        if let colon = name.firstIndex(of: ":") { name = String(name[name.index(after: colon)...]) }
-        if name.trimmingCharacters(in: .whitespaces).isEmpty, let dash = title.range(of: " - ") {
-            name = String(title[..<dash.lowerBound])
-        }
-        return folded(MusopenCoverArt.familyName(name))
+        var key = ""
+        if let dash = title.range(of: " - ") { key = familyName(String(title[..<dash.lowerBound])) }
+        if key.isEmpty { key = familyName(author ?? "") }
+        return folded(key)
     }
 
+    /// The family name of a name: "Composer:" and a bracketed rest fall
+    /// away; four words at most, no digit, no word of a performer or a
+    /// work; else none.
+    private static func familyName(_ raw: String) -> String {
+        var name = raw
+        if let bracket = name.firstIndex(of: "(") { name = String(name[..<bracket]) }
+        if let colon = name.firstIndex(of: ":") { name = String(name[name.index(after: colon)...]) }
+        name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = name.lowercased().split(whereSeparator: { $0.isWhitespace || $0 == "," })
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".;")) }
+        guard !words.isEmpty, words.count <= 4, !name.contains(where: \.isNumber),
+              !words.contains(where: notNameWords.contains),
+              !name.lowercased().contains("unknown") else { return "" }
+        return MusopenCoverArt.familyName(name)
+    }
+
+    /// Named composers first, then the recordings without one, then the
+    /// single parts; within each, by composer and work.
     static func ordered<T>(_ items: [T], title: (T) -> String, composer: (T) -> String?) -> [T] {
-        let keyed = items.map { item -> (part: Bool, composer: String, work: String, item: T) in
+        let keyed = items.map { item -> (rank: Int, composer: String, work: String, item: T) in
             let name = title(item)
-            return (isSinglePart(name), composerKey(author: composer(item), title: name), folded(name), item)
+            let key = composerKey(author: composer(item), title: name)
+            let rank = isSinglePart(name) ? 2 : (key.isEmpty ? 1 : 0)
+            return (rank, key, folded(name), item)
         }
         return keyed.sorted { a, b in
-            if a.part != b.part { return !a.part }
+            if a.rank != b.rank { return a.rank < b.rank }
             if a.composer != b.composer { return a.composer < b.composer }
             return a.work < b.work
         }.map(\.item)
