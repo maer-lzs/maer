@@ -848,8 +848,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// screen read.
     var musicArtist: String? {
         let track = tracks.indices.contains(currentTrackIndex) ? tracks[currentTrackIndex] : nil
-        return NowPlayingPresentation.song(inPlaylist: false, songArtist: track?.metadata?.artist, songCoverArt: nil,
-                                           entryArtist: item?.media.metadata?.authorName).artist
+        let artist = NowPlayingPresentation.song(inPlaylist: false, songArtist: track?.metadata?.artist, songCoverArt: nil,
+                                                 entryArtist: item?.media.metadata?.authorName).artist
+        // A Musopen recording names its composer as its cover and the page's order do.
+        return MusopenOrder.artistLine(itemId: item?.id ?? "", title: item?.media.metadata?.title, author: artist)
     }
 
     /// The cover of the playing song where it differs from the entry's

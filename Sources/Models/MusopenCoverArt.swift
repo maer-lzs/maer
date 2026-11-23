@@ -50,10 +50,12 @@ nonisolated enum MusopenCoverArt {
 
     static func colour(composer: String?) -> [Double] { palette[colourIndex(composer: composer)] }
 
-    /// The composer above the work; a name of blanks is no composer.
+    /// The composer above the work. The composer is the one the page's
+    /// order sorts by (`MusopenOrder.composer`), so a field that is no name
+    /// does not stand on the cover nor give it its colour and letter; the
+    /// work is the whole title.
     static func lines(title: String, composer: String?) -> (composer: String?, work: String) {
-        let name = composer?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (name?.isEmpty == false ? name : nil, title)
+        (MusopenOrder.composer(author: composer, title: title), title)
     }
 
     /// The two colours of the diagonal, both from the hash of the family

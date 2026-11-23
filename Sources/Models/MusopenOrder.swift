@@ -37,43 +37,75 @@ nonisolated enum MusopenOrder {
         "concerto", "suite", "prelude", "nocturne", "waltz", "etude", "overture", "mazurka", "in", "of", "the",
     ]
 
-    /// The composer: the name before the dash of the title, as the file
-    /// names of the collection put it, else the artist field the source
-    /// states, which names the performers as often. Either counts only
-    /// where it reads as a name. Accents and case do not count; no name
-    /// gives an empty key.
+    /// The order's key: the family name of the composer (`composer`).
+    /// Accents and case do not count; no name gives an empty key.
     static func composerKey(author: String?, title: String) -> String {
-        var key = ""
-        if let dash = title.range(of: " - ") { key = familyName(String(title[..<dash.lowerBound])) }
-        if key.isEmpty { key = familyName(author ?? "") }
-        return folded(key)
+        folded(MusopenCoverArt.familyName(composer(author: author, title: title)))
     }
 
-    /// The composer as the cover and the player name him.
+    /// The composer, the one answer the order, the drawn cover (its colour
+    /// and letter) and the player ask. The name before the dash of the
+    /// title, as the file names of the collection put it, decides who;
+    /// where the artist field names the same family, its fuller spelling
+    /// shows ("Johann Sebastian Bach" over "Bach, J S"). Without a name
+    /// before the dash the field speaks, which names the performers as
+    /// often. Either counts only where it reads as a name; "Family, Given"
+    /// shows as it is spoken.
     static func composer(author: String?, title: String) -> String? {
-        let name = author?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name?.isEmpty == false ? name : nil
+        let field = readableName(author ?? "").map(spoken)
+        guard let dash = title.range(of: " - "), let named = readableName(String(title[..<dash.lowerBound])) else {
+            return field
+        }
+        let fromTitle = spoken(named)
+        let sameFamily = field.map { folded(MusopenCoverArt.familyName($0)) == folded(MusopenCoverArt.familyName(fromTitle)) }
+        return sameFamily == true ? field : fromTitle
     }
 
-    /// The line under the title in the player.
+    /// The line under the title in the player, the mini player and the lock
+    /// screen: for a Musopen recording its composer (`composer`), else what
+    /// the source states; another source keeps its own line.
     static func artistLine(itemId: String, title: String?, author: String?) -> String? {
-        author
+        guard MusopenCoverArt.applies(to: itemId) else { return author }
+        return composer(author: author, title: title ?? "") ?? author
     }
 
-    /// The family name of a name: "Composer:" and a bracketed rest fall
-    /// away; four words at most, no digit, no word of a performer or a
-    /// work; else none.
-    private static func familyName(_ raw: String) -> String {
-        var name = raw
-        if let bracket = name.firstIndex(of: "(") { name = String(name[..<bracket]) }
-        if let colon = name.firstIndex(of: ":") { name = String(name[name.index(after: colon)...]) }
-        name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let words = name.lowercased().split(whereSeparator: { $0.isWhitespace || $0 == "," })
-            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".;")) }
-        guard !words.isEmpty, words.count <= 4, !name.contains(where: \.isNumber),
-              !words.contains(where: notNameWords.contains),
-              !name.lowercased().contains("unknown") else { return "" }
-        return MusopenCoverArt.familyName(name)
+    /// The labels under which a field names the composer.
+    static let composerLabels: Set<String> = ["composer", "author"]
+
+    /// A name as the source writes it, if it reads as one. The field may
+    /// hold several parts (split at a semicolon or a line); the first part
+    /// that is not labelled as something else decides. A label "Composer:"
+    /// or "Author:" falls away, any other label ("Performer:") rules the
+    /// part out, as does "(performer)"; a bracketed rest falls away. Four
+    /// words at most, no digit, no word of a performer or a work; else nil.
+    private static func readableName(_ raw: String) -> String? {
+        for part in raw.split(whereSeparator: { $0 == ";" || $0.isNewline }) {
+            var name = String(part)
+            if let colon = name.firstIndex(of: ":") {
+                let label = name[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+                guard composerLabels.contains(label) else { continue }
+                name = String(name[name.index(after: colon)...])
+            }
+            guard !name.lowercased().contains("(performer") else { continue }
+            if let bracket = name.firstIndex(of: "(") { name = String(name[..<bracket]) }
+            name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { continue }
+            let words = name.lowercased().split(whereSeparator: { $0.isWhitespace || $0 == "," })
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: ".;")) }
+            guard words.count <= 4, !name.contains(where: \.isNumber),
+                  !words.contains(where: notNameWords.contains),
+                  !name.lowercased().contains("unknown") else { return nil }
+            return name
+        }
+        return nil
+    }
+
+    /// "Bach, J S" as it is spoken: "J S Bach".
+    private static func spoken(_ name: String) -> String {
+        guard let comma = name.firstIndex(of: ",") else { return name }
+        let family = name[..<comma].trimmingCharacters(in: .whitespaces)
+        let given = name[name.index(after: comma)...].trimmingCharacters(in: .whitespaces)
+        return given.isEmpty ? family : given + " " + family
     }
 
     /// Named composers first, then the recordings without one, then the
