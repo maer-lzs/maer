@@ -140,10 +140,13 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     /// The first progress of a title: an order waiting for it leaves the
-    /// list now, and a passed stream is asked again.
+    /// list now, and a passed stream is asked again. An order whose stream
+    /// failed before it played (passed, no longer waiting) and which then
+    /// plays in the same player on a second try (a tap on play, the
+    /// network's return) leaves too: no new open took it as an order again.
     private func titleProgressed(_ id: String) {
-        unstartable.remove(id)
-        guard pendingOrder?.id == id else { return }
+        let failedOrder = unstartable.remove(id) != nil && orders.contains(id)
+        guard pendingOrder?.id == id || failedOrder else { return }
         pendingOrder = nil
         orders.remove(id)
     }
