@@ -3170,6 +3170,7 @@
       }
     },
     "Account" : {
+      "comment" : "Sign-in field for the Maer Sync service: the user's account name (not a bank account).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3198,6 +3199,7 @@
       }
     },
     "Actions" : {
+      "comment" : "Accessibility label of the button that opens a menu of actions on a detail page header.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3620,6 +3622,7 @@
       }
     },
     "Address" : {
+      "comment" : "Label of the server address (URL) field for an Audiobookshelf server; not a postal address.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3676,6 +3679,7 @@
       }
     },
     "Adventure" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3818,6 +3822,7 @@
       }
     },
     "All" : {
+      "comment" : "Filter/option value: all titles (library filter, search chip), all new episodes, keep all downloads.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4322,6 +4327,7 @@
       }
     },
     "Ambient" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4521,6 +4527,7 @@
       }
     },
     "Anthology" : {
+      "comment" : "Form label of an audio drama: a collection of separate pieces, magazine-style (vs Serial, Reading).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4837,6 +4844,7 @@
       }
     },
     "Archived" : {
+      "comment" : "Section title: podcast shows archived on the server, each with a Reactivate button.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4865,6 +4873,7 @@
       }
     },
     "Areas" : {
+      "comment" : "Section header on the source map: the media areas (audiobooks, podcasts, music, radio...).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5119,6 +5128,7 @@
       }
     },
     "Ascending" : {
+      "comment" : "Sort order of the library grid (sort direction), paired with Descending.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6019,6 +6029,7 @@
       }
     },
     "Bass" : {
+      "comment" : "Left label under the sound (EQ) curve: low frequencies. Labels read Bass, Voice, Treble.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6187,6 +6198,7 @@
       }
     },
     "Best" : {
+      "comment" : "Marks the best-quality stream among a radio station's stream variants (adjective).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6243,6 +6255,7 @@
       }
     },
     "Biographies" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6271,6 +6284,7 @@
       }
     },
     "Blues" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6357,6 +6371,7 @@
       }
     },
     "Book" : {
+      "comment" : "Shortcuts/Siri parameter: the audiobook to open or play (noun).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6581,6 +6596,7 @@
       }
     },
     "Bottom" : {
+      "comment" : "Podcast setting 'New Episodes to Up Next': add them at the bottom (end) of the queue.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6637,6 +6653,7 @@
       }
     },
     "Browse" : {
+      "comment" : "Row heading and page title: browse by category (verb as a section name), not a web browser.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6665,6 +6682,7 @@
       }
     },
     "Browse Everything" : {
+      "comment" : "Shelf of the free audiobooks that holds every title, also those without a genre.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6721,6 +6739,7 @@
       }
     },
     "Business" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7033,6 +7052,7 @@
       }
     },
     "Catalogs" : {
+      "comment" : "Settings group of external sources: free audiobook catalogs (collections of titles).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7061,6 +7081,7 @@
       }
     },
     "Change" : {
+      "comment" : "Confirm button (verb) in the alert 'Change for all shows?' for a podcast setting.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7513,6 +7534,7 @@
       }
     },
     "Classical" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7711,6 +7733,7 @@
       }
     },
     "Co-listened" : {
+      "comment" : "Podcasts row: shows nobody subscribed to whose episodes were played here.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7739,6 +7762,7 @@
       }
     },
     "Comedy" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7767,6 +7791,7 @@
       }
     },
     "Comedy Fiction" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7795,6 +7820,7 @@
       }
     },
     "Completed" : {
+      "comment" : "Status line of an audiobook: listened to the end.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7907,6 +7933,7 @@
       }
     },
     "Connected" : {
+      "comment" : "State: a source area has a server connected; also a pill on the audio output device in use.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8019,6 +8046,7 @@
       }
     },
     "Content" : {
+      "comment" : "Widget setting: what the medium Continue widget shows (Last Heard or Two Sources).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8243,6 +8271,7 @@
       }
     },
     "Continuing" : {
+      "comment" : "Play queue section header: the titles that follow after Up Next (from the source).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9140,6 +9169,7 @@
       }
     },
     "Crime" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9168,6 +9198,7 @@
       }
     },
     "Culture" : {
+      "comment" : "Radio genre (stations about culture).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9252,6 +9283,7 @@
       }
     },
     "Dark" : {
+      "comment" : "Appearance option: dark mode.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9870,6 +9902,7 @@
       }
     },
     "Descending" : {
+      "comment" : "Sort order of the library grid (sort direction), paired with Ascending.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9956,6 +9989,7 @@
       }
     },
     "Device" : {
+      "comment" : "gpodder settings row: this device's ID as registered with the gpodder sync service.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9984,6 +10018,7 @@
       }
     },
     "Devices" : {
+      "comment" : "Sound settings section: audio output devices the app has played on (each with its own sound).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10180,6 +10215,7 @@
       }
     },
     "Directories" : {
+      "comment" : "Settings group of external sources: podcast/radio directories (listings), not file folders.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10884,6 +10920,7 @@
       }
     },
     "Downloaded" : {
+      "comment" : "Library filter option and badge: title is downloaded for offline use.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11227,6 +11264,7 @@
       }
     },
     "Education" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11283,6 +11321,7 @@
       }
     },
     "Effects" : {
+      "comment" : "Player button opening the sound settings (EQ presets, volume boost); sound effects, not visual.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11311,6 +11350,7 @@
       }
     },
     "Electronic" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11367,6 +11407,7 @@
       }
     },
     "Emotional" : {
+      "comment" : "Music mood filter: tracks with an emotional mood.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11423,6 +11464,7 @@
       }
     },
     "Energetic" : {
+      "comment" : "Music mood filter: tracks with an energetic mood.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11987,6 +12029,7 @@
       }
     },
     "Experimental" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12015,6 +12058,7 @@
       }
     },
     "Explicit" : {
+      "comment" : "Accessibility label of the badge marking a podcast/episode as explicit content.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12155,6 +12199,7 @@
       }
     },
     "Fairy Tales" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12183,6 +12228,7 @@
       }
     },
     "Fast" : {
+      "comment" : "Music tempo filter: fast tracks.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12211,6 +12257,7 @@
       }
     },
     "Favorite" : {
+      "comment" : "Accessibility label/badge: this title or station is a favorite (state, not a button).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12576,6 +12623,7 @@
       }
     },
     "Fiction" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12716,6 +12764,7 @@
       }
     },
     "Finished" : {
+      "comment" : "Library filter option and badge: titles listened to the end.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12856,6 +12905,7 @@
       }
     },
     "Folk" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12912,6 +12962,7 @@
       }
     },
     "Follow" : {
+      "comment" : "Button in the 'Enter new link' alert: follow the podcast at the new feed link.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12968,6 +13019,7 @@
       }
     },
     "For Children" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13332,6 +13384,7 @@
       }
     },
     "Fuller" : {
+      "comment" : "Name of a sound preset that makes the sound fuller/louder (comparative adjective).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13360,6 +13413,7 @@
       }
     },
     "General" : {
+      "comment" : "Settings tab with general settings (adjective used as a tab name).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13668,6 +13722,7 @@
       }
     },
     "Gothic & Industrial" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13840,6 +13895,7 @@
       }
     },
     "Happy" : {
+      "comment" : "Music mood filter: tracks that sound happy.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13924,6 +13980,7 @@
       }
     },
     "Health & Fitness" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14008,6 +14065,7 @@
       }
     },
     "Held" : {
+      "comment" : "Sync key change: the key this device holds (shown next to Offered).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14122,6 +14180,7 @@
       }
     },
     "Hip-Hop" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14150,6 +14209,7 @@
       }
     },
     "History" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14172,7 +14232,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cronologia"
+            "value" : "Storia"
           }
         }
       }
@@ -14236,6 +14296,7 @@
       }
     },
     "Horror" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14435,6 +14496,7 @@
       }
     },
     "Import" : {
+      "comment" : "Section header and alert title: importing podcast subscriptions from other apps (noun).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14603,6 +14665,7 @@
       }
     },
     "Imported" : {
+      "comment" : "Section of imported local audio files; a11y of a checkmark: this import guide was done.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15259,6 +15322,7 @@
       }
     },
     "Indie" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15287,6 +15351,7 @@
       }
     },
     "Instrumental" : {
+      "comment" : "Music filter switch: only instrumental tracks (no vocals).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15569,6 +15634,7 @@
       }
     },
     "Jazz" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16300,6 +16366,7 @@
       }
     },
     "Libraries" : {
+      "comment" : "Settings section: which media types (audiobooks, podcasts, music, radio) appear as tabs.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16328,6 +16395,7 @@
       }
     },
     "Library" : {
+      "comment" : "Search scope: the user's own content; also the picker of the server's library (collection).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16356,6 +16424,7 @@
       }
     },
     "Light" : {
+      "comment" : "Appearance option: light mode (not lightweight).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16580,6 +16649,7 @@
       }
     },
     "Literature" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16608,6 +16678,7 @@
       }
     },
     "Live" : {
+      "comment" : "Shown in the widget instead of time left for a live radio station (live broadcast).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17002,6 +17073,7 @@
       }
     },
     "Locked" : {
+      "comment" : "Accessibility label of a lock icon: the iCloud option is not available (locked).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17994,6 +18066,7 @@
       }
     },
     "Marked" : {
+      "comment" : "Label of a podcast feed the user marked as premium by hand (vs Private, Members).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18134,6 +18207,7 @@
       }
     },
     "Measurements" : {
+      "comment" : "Diagnostics page of recorded performance metrics.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18191,6 +18265,7 @@
       }
     },
     "Medium" : {
+      "comment" : "Music tempo filter: medium tempo (not a size or a medium type).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18645,6 +18720,7 @@
       }
     },
     "Music & Variety" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19125,6 +19201,7 @@
       }
     },
     "Netlabels" : {
+      "comment" : "Music row: free netlabel releases from the Internet Archive (netlabels = online record labels).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19687,6 +19764,7 @@
       }
     },
     "News" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22535,6 +22613,7 @@
       }
     },
     "Notices" : {
+      "comment" : "Settings page listing the app's in-app notices/messages (a log), not legal notices.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22619,6 +22698,7 @@
       }
     },
     "Novels" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22647,6 +22727,7 @@
       }
     },
     "Off" : {
+      "comment" : "Setting value: switched off (podcast settings, repeat mode, tile count).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22731,6 +22812,7 @@
       }
     },
     "Offered" : {
+      "comment" : "Sync key change: the different key the server now offers (shown next to Held).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -23123,6 +23205,7 @@
       }
     },
     "On" : {
+      "comment" : "Setting value: auto-download switched on.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -23638,6 +23721,7 @@
       }
     },
     "Original" : {
+      "comment" : "Sound preset name: the sound as recorded, unchanged (no EQ).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -23722,6 +23806,7 @@
       }
     },
     "Overwrite" : {
+      "comment" : "Destructive button in 'Lower progress?' alert: overwrite the server's further position.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -23890,6 +23975,7 @@
       }
     },
     "Parts" : {
+      "comment" : "Title of the selector listing an audiobook's files/parts when it has no real chapters.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -24115,6 +24201,7 @@
       }
     },
     "Paused" : {
+      "comment" : "Rediscover section of started-then-paused books; a paused download; a11y of stopped bars.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -24199,6 +24286,7 @@
       }
     },
     "People" : {
+      "comment" : "Heading of an episode's people: hosts and guests named in the podcast feed.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -24227,6 +24315,7 @@
       }
     },
     "Philosophy" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -24710,6 +24799,7 @@
       }
     },
     "Played" : {
+      "comment" : "State of a podcast episode: heard to the end.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25050,6 +25140,7 @@
       }
     },
     "Plays" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25066,7 +25157,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Écoutes"
+            "value" : "Théâtre"
           }
         },
         "it" : {
@@ -25674,6 +25765,7 @@
       }
     },
     "Poetry" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25702,6 +25794,7 @@
       }
     },
     "Pop" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25730,6 +25823,7 @@
       }
     },
     "Popular" : {
+      "comment" : "Row heading and page title: popular titles of a free catalog or music archive.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25954,6 +26048,7 @@
       }
     },
     "Positions" : {
+      "comment" : "Import guide row: what the import carries - listening positions (playback progress).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -26775,6 +26870,7 @@
       }
     },
     "Radio Play" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -26943,6 +27039,7 @@
       }
     },
     "Reactivate" : {
+      "comment" : "Button next to an archived podcast show: unarchive it.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -26971,6 +27068,7 @@
       }
     },
     "Reading" : {
+      "comment" : "Form label of an audio drama: a recited text read aloud (vs Anthology, Serial).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27279,6 +27377,7 @@
       }
     },
     "Recommended" : {
+      "comment" : "Row heading and page title: recommended podcasts.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27363,6 +27462,7 @@
       }
     },
     "Rediscover" : {
+      "comment" : "Home row/page (imperative): local picks to listen to again - paused, unheard, next in series.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27447,6 +27547,7 @@
       }
     },
     "Released" : {
+      "comment" : "Audiobook info row: release year.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27475,6 +27576,7 @@
       }
     },
     "Religion" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27925,6 +28027,7 @@
       }
     },
     "Repeat" : {
+      "comment" : "Repeat-mode button of the player (and Shortcuts option), paired with Shuffle.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28179,6 +28282,7 @@
       }
     },
     "Resume" : {
+      "comment" : "Button: resume playback (book/episode) or resume a paused download.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28321,6 +28425,7 @@
       }
     },
     "Rock" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28349,6 +28454,7 @@
       }
     },
     "Romance" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28377,6 +28483,7 @@
       }
     },
     "Romantic" : {
+      "comment" : "Music mood filter: tracks with a romantic mood.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28433,6 +28540,7 @@
       }
     },
     "Routine" : {
+      "comment" : "Shortcuts entity/parameter: a routine, a playlist made of rules (e.g. a show's newest episode).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28461,6 +28569,7 @@
       }
     },
     "Routines" : {
+      "comment" : "Title for a list of routines: playlists made of rules (e.g. a show's newest episode).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28517,6 +28626,7 @@
       }
     },
     "Rows" : {
+      "comment" : "Settings page: which rows (horizontal shelves) the start pages show.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28714,6 +28824,7 @@
       }
     },
     "Science" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28742,6 +28853,7 @@
       }
     },
     "Science Fiction" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -29078,6 +29190,7 @@
       }
     },
     "Serial" : {
+      "comment" : "Form label of an audio drama: one continuing story in episodes (vs Anthology, Reading).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -29106,6 +29219,7 @@
       }
     },
     "Series" : {
+      "comment" : "Book series: library sort option, search category and audiobook info row.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -29867,6 +29981,7 @@
       }
     },
     "Short Stories" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -30175,6 +30290,7 @@
       }
     },
     "Shows" : {
+      "comment" : "Podcast shows (programs): CarPlay page, search category, import count.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -30371,6 +30487,7 @@
       }
     },
     "Shuffle" : {
+      "comment" : "Button: play in random order; also the queue's source name when shuffled.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31046,6 +31163,7 @@
       }
     },
     "Sleep" : {
+      "comment" : "Sleep timer button label: stops playback after a time; shows the countdown while running.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31074,6 +31192,7 @@
       }
     },
     "Slow" : {
+      "comment" : "Music tempo filter: slow tracks.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31188,6 +31307,7 @@
       }
     },
     "Society & Culture" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31356,6 +31476,7 @@
       }
     },
     "Sort" : {
+      "comment" : "Section header in a podcast show's settings: sort order of its episode list (noun).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31468,6 +31589,7 @@
       }
     },
     "Soul & Funk" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31496,6 +31618,7 @@
       }
     },
     "Sound" : {
+      "comment" : "Settings page/section for the sound: EQ presets, strength and volume boost.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31608,6 +31731,7 @@
       }
     },
     "Soundtrack" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31636,6 +31760,7 @@
       }
     },
     "Source" : {
+      "comment" : "Widget setting type: which media source (Audiobooks, Podcasts, Music, Radio) a row shows.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31832,6 +31957,7 @@
       }
     },
     "Spoken Word" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31860,6 +31986,7 @@
       }
     },
     "Sport" : {
+      "comment" : "Radio genre (sports stations).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -31888,6 +32015,7 @@
       }
     },
     "Sports" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32393,6 +32521,7 @@
       }
     },
     "Steps" : {
+      "comment" : "Section header of an import guide: the steps to export the file from another app.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32477,6 +32606,7 @@
       }
     },
     "Stream" : {
+      "comment" : "Fallback name of a radio stream variant without bitrate/codec info.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32589,6 +32719,7 @@
       }
     },
     "Streams" : {
+      "comment" : "Heading on a radio station page: its stream variants (quality choices).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32617,6 +32748,7 @@
       }
     },
     "Strength" : {
+      "comment" : "Picker for how strongly the sound preset shapes the audio (levels 1..n).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32813,6 +32945,7 @@
       }
     },
     "Subscribed" : {
+      "comment" : "State on a podcast button: you are subscribed to this show.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33067,6 +33200,7 @@
       }
     },
     "Support" : {
+      "comment" : "Link to a podcast's funding page (support the show with money); fallback label.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33599,6 +33733,7 @@
       }
     },
     "Synced" : {
+      "comment" : "Progress sync state: the listening position reached the server.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33683,6 +33818,7 @@
       }
     },
     "System" : {
+      "comment" : "Appearance option: follow the system's light/dark setting.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33739,6 +33875,7 @@
       }
     },
     "Talk" : {
+      "comment" : "Radio genre: talk/spoken-word stations (noun), not the verb.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33795,6 +33932,7 @@
       }
     },
     "Technology" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38028,6 +38166,7 @@
       }
     },
     "Title" : {
+      "comment" : "Sort option by title; widget parameter (which title, i.e. item); bookmark name field.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38168,6 +38307,7 @@
       }
     },
     "Today" : {
+      "comment" : "Statistics row: listening time today.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38366,6 +38506,7 @@
       }
     },
     "Top" : {
+      "comment" : "Podcast setting 'New Episodes to Up Next': add them at the top (start) of the queue.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38394,6 +38535,7 @@
       }
     },
     "Total" : {
+      "comment" : "Statistics row: total listening time overall.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38536,6 +38678,7 @@
       }
     },
     "tracks" : {
+      "comment" : "Lowercase count unit after a number: '12 tracks' on a playlist card; also a selector word.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38564,6 +38707,7 @@
       }
     },
     "Tracks" : {
+      "comment" : "Title of the selector listing an album's tracks (music), instead of Chapters.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38650,6 +38794,7 @@
       }
     },
     "Treble" : {
+      "comment" : "Right label under the sound (EQ) curve: high frequencies. Labels read Bass, Voice, Treble.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38734,6 +38879,7 @@
       }
     },
     "True Crime" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -39071,6 +39217,7 @@
       }
     },
     "Unfinished" : {
+      "comment" : "Library filter option: titles not yet listened to the end.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -39605,6 +39752,7 @@
       }
     },
     "Untitled" : {
+      "comment" : "Fallback title of a catalog work that has no title.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -39717,6 +39865,7 @@
       }
     },
     "Upbeat" : {
+      "comment" : "Music mood filter: upbeat, cheerful tracks.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -40025,6 +40174,7 @@
       }
     },
     "Value" : {
+      "comment" : "Secure field for the value of a custom HTTP header (next to Header Name).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -40165,6 +40315,7 @@
       }
     },
     "Voice" : {
+      "comment" : "Middle label under the sound (EQ) curve: the mid frequencies of speech. Labels read Bass, Voice, Treble.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -40447,6 +40598,7 @@
       }
     },
     "Western" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -40757,6 +40909,7 @@
       }
     },
     "Where" : {
+      "comment" : "Section header when creating a playlist: where to save it (on which server or device).",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -41075,6 +41228,7 @@
       }
     },
     "World" : {
+      "comment" : "Genre of books, podcasts or music",
       "localizations" : {
         "de" : {
           "stringUnit" : {
