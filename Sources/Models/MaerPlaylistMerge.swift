@@ -116,9 +116,19 @@ nonisolated enum MaerPlaylistMerge {
     /// title ever removed. Ninety days, in seconds.
     static let removalMarkMaxAge: Double = 90 * 86_400
 
-    /// The removal marks a list keeps after a merge.
+    /// The removal marks a list keeps after a merge: those younger than the
+    /// age of a mark, and in a folder every mark of an episode. A folder
+    /// holds only shows, so a mark of an episode in it is one of its move
+    /// from a list (`MaerPlaylists.foldPodcastLists`). Those marks carry the
+    /// list clock, which may be older than the age of a mark; without them
+    /// the old list of a device that has not folded yet brings its
+    /// episodes back. They are as many as the old list held, so the blob
+    /// does not grow with them.
     static func aged(_ removed: [String: Double], itemIds: [String], oldest: Double) -> [String: Double] {
-        removed.filter { $0.value >= oldest }
+        let folder = PodcastFolder.isFolder(itemIds)
+        return removed.filter { item, at in
+            at >= oldest || (folder && MediaFamily.of(item) == .podcast)
+        }
     }
 
     static func merge(local: Snapshot, cloud: Snapshot,
@@ -138,13 +148,13 @@ nonisolated enum MaerPlaylistMerge {
                 var united = unite(m, t, list: id)
                 // A list stays deleted unless it was touched AFTER the deletion.
                 if let deletedAt = outcome.tombstones[id], deletedAt >= united.updatedAt { continue }
-                united.removed = united.removed.filter { $0.value >= oldest }
+                united.removed = Self.aged(united.removed, itemIds: united.itemIds, oldest: oldest)
                 outcome.lists[id] = united
             case let (one?, nil), let (nil, one?):
                 if let deletedAt = outcome.tombstones[id], deletedAt >= one.updatedAt { continue }
-                var aged = one
-                aged.removed = aged.removed.filter { $0.value >= oldest }
-                outcome.lists[id] = aged
+                var kept = one
+                kept.removed = Self.aged(one.removed, itemIds: one.itemIds, oldest: oldest)
+                outcome.lists[id] = kept
             case (nil, nil):
                 continue
             }
