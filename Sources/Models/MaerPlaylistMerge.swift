@@ -116,6 +116,11 @@ nonisolated enum MaerPlaylistMerge {
     /// title ever removed. Ninety days, in seconds.
     static let removalMarkMaxAge: Double = 90 * 86_400
 
+    /// The removal marks a list keeps after a merge.
+    static func aged(_ removed: [String: Double], itemIds: [String], oldest: Double) -> [String: Double] {
+        removed.filter { $0.value >= oldest }
+    }
+
     static func merge(local: Snapshot, cloud: Snapshot,
                       now: Double = Date().timeIntervalSince1970) -> Outcome {
         var outcome = Outcome()
