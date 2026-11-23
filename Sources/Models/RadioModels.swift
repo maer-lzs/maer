@@ -885,12 +885,16 @@ nonisolated enum RadioCountryList {
     }
 }
 
-/// The title of the national row: the popular stations of one country.
+/// The title of the national row: the popular stations of one country,
+/// "Popular: Switzerland". The country stands as a value after a colon in
+/// every language: a fixed preposition before it broke where the name
+/// wants an article or another case ("Beliebt in Schweiz", "Populaire en
+/// Canada").
 nonisolated enum RadioPopularTitle {
     /// The title in `locale`, nil without a name for the country.
     static func text(code: String, locale: Locale) -> String? {
         guard let name = locale.localizedString(forRegionCode: code) else { return nil }
-        var resource = LocalizedStringResource("Popular in \(name)")
+        var resource = LocalizedStringResource("Popular: \(name)")
         resource.locale = locale
         return String(localized: resource)
     }

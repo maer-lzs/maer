@@ -25794,18 +25794,19 @@
         }
       }
     },
-    "Popular in %@" : {
+    "Popular: %@" : {
+      "comment" : "Title of the radio row with the popular stations of one country; %@ is the country's name.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beliebt in %@"
+            "value" : "Beliebt: %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Populares en %@"
+            "value" : "Popular: %@"
           }
         },
         "fr" : {
@@ -25817,7 +25818,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Popolari in %@"
+            "value" : "Popolari: %@"
           }
         }
       }

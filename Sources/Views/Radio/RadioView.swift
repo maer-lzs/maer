@@ -98,7 +98,7 @@ struct RadioView: View {
         return Locale(identifier: "en_US").localizedString(forRegionCode: code)
     }
 
-    /// "Popular in Switzerland". Follows the NATIONAL row's country, the same
+    /// "Popular: Switzerland" (`RadioPopularTitle`). Follows the NATIONAL row's country, the same
     /// one the row's CONTENT follows; reading the shared cascade here put
     /// Germany over Swiss stations.
     private var nationalTitle: String {
