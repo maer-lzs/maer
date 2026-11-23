@@ -5668,62 +5668,6 @@
         }
       }
     },
-    "Australia" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Australien"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Australia"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Australie"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Australia"
-          }
-        }
-      }
-    },
-    "Austria" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Österreich"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Austria"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Autriche"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Austria"
-          }
-        }
-      }
-    },
     "Author" : {
       "localizations" : {
         "de" : {
@@ -6113,34 +6057,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Perché ascolti molto %@"
-          }
-        }
-      }
-    },
-    "Belgium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Belgien"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Bélgica"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Belgique"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Belgio"
           }
         }
       }
@@ -6739,34 +6655,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Per genere"
-          }
-        }
-      }
-    },
-    "Canada" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kanada"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Canadá"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Canada"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Canada"
           }
         }
       }
@@ -9820,34 +9708,6 @@
         }
       }
     },
-    "Denmark" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dänemark"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Dinamarca"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Danemark"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Danimarca"
-          }
-        }
-      }
-    },
     "Descending" : {
       "comment" : "Sort order of the library grid (sort direction), paired with Ascending.",
       "localizations" : {
@@ -12766,34 +12626,6 @@
         }
       }
     },
-    "Finland" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finnland"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Finlandia"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finlande"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Finlandia"
-          }
-        }
-      }
-    },
     "First Source" : {
       "localizations" : {
         "de" : {
@@ -13101,34 +12933,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Si trova nell'interfaccia web di Audiobookshelf in Impostazioni → Utenti → apri il tuo account (oppure Impostazioni → Chiavi API nelle versioni più recenti)."
-          }
-        }
-      }
-    },
-    "France" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frankreich"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Francia"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "France"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Francia"
           }
         }
       }
@@ -13495,34 +13299,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "I generi mostrano le stazioni dei paesi selezionati. Puoi sceglierne più di uno."
-          }
-        }
-      }
-    },
-    "Germany" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deutschland"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Alemania"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allemagne"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Germania"
           }
         }
       }
@@ -15438,34 +15214,6 @@
         }
       }
     },
-    "Italy" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Italien"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Italia"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Italie"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Italia"
-          }
-        }
-      }
-    },
     "Its tracks load once this device is online again. Download it to have it offline." : {
       "localizations" : {
         "de" : {
@@ -15546,34 +15294,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Jamendo non è configurato in questa build. Puoi inserire il tuo client_id in Fonti esterne."
-          }
-        }
-      }
-    },
-    "Japan" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Japan"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Japón"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Japon"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Giappone"
           }
         }
       }
@@ -15942,34 +15662,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Conserva i podcast e i loro progressi sul tuo server."
-          }
-        }
-      }
-    },
-    "Korea" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korea"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Corea"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Corée du Sud"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Corea"
           }
         }
       }
@@ -19089,34 +18781,6 @@
         }
       }
     },
-    "Netherlands" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Niederlande"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Países Bajos"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pays-Bas"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Paesi Bassi"
-          }
-        }
-      }
-    },
     "Netlabel releases under Creative Commons licences, from the Internet Archive." : {
       "localizations" : {
         "de" : {
@@ -19564,34 +19228,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nuovo valore per tutti: %@."
-          }
-        }
-      }
-    },
-    "New Zealand" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neuseeland"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nueva Zelanda"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nouvelle-Zélande"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nuova Zelanda"
           }
         }
       }
@@ -21105,34 +20741,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nessun Wi-Fi rilevato"
-          }
-        }
-      }
-    },
-    "Norway" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Norwegen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Noruega"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Norvège"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Norvegia"
           }
         }
       }
@@ -25959,34 +25567,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Popolari tra gli altri ascoltatori"
-          }
-        }
-      }
-    },
-    "Portugal" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Portugal"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Portugal"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Portugal"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Portogallo"
           }
         }
       }
@@ -31816,34 +31396,6 @@
         }
       }
     },
-    "Spain" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spanien"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "España"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Espagne"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Spagna"
-          }
-        }
-      }
-    },
     "Speed" : {
       "localizations" : {
         "de" : {
@@ -33172,34 +32724,6 @@
         }
       }
     },
-    "Sweden" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schweden"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Suecia"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suède"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Svezia"
-          }
-        }
-      }
-    },
     "Swing (78s)" : {
       "localizations" : {
         "de" : {
@@ -33280,34 +32804,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Se attivato, questi programmi compaiono tra le tue iscrizioni con il loro simbolo e vengono contati con esse; la loro riga separata scompare."
-          }
-        }
-      }
-    },
-    "Switzerland" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schweiz"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Suiza"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suisse"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Svizzera"
           }
         }
       }
@@ -39212,34 +38708,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Non ascoltato dal %@"
-          }
-        }
-      }
-    },
-    "United Kingdom" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Großbritannien"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Reino Unido"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Royaume-Uni"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Regno Unito"
           }
         }
       }

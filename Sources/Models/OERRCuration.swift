@@ -45,31 +45,10 @@ nonisolated enum OERRCuration {
             }
         }
 
-        /// The country's name in `locale`.
-        func title(in locale: Locale) -> String { title }
-
-        var title: String {
-            switch self {
-            case .germany: String(localized: "Germany")
-            case .austria: String(localized: "Austria")
-            case .switzerland: String(localized: "Switzerland")
-            case .uk: String(localized: "United Kingdom")
-            case .australia: String(localized: "Australia")
-            case .canada: String(localized: "Canada")
-            case .newZealand: String(localized: "New Zealand")
-            case .france: String(localized: "France")
-            case .belgium: String(localized: "Belgium")
-            case .italy: String(localized: "Italy")
-            case .spain: String(localized: "Spain")
-            case .netherlands: String(localized: "Netherlands")
-            case .sweden: String(localized: "Sweden")
-            case .norway: String(localized: "Norway")
-            case .denmark: String(localized: "Denmark")
-            case .finland: String(localized: "Finland")
-            case .portugal: String(localized: "Portugal")
-            case .japan: String(localized: "Japan")
-            case .korea: String(localized: "Korea")
-            }
+        /// The country's name in `locale`, as the system names it: no
+        /// language translates the countries a second time.
+        func title(in locale: Locale) -> String {
+            locale.localizedString(forRegionCode: code) ?? code
         }
     }
 

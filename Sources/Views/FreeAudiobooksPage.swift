@@ -428,7 +428,7 @@ struct OERRCountriesPage: View {
                     let rows = entries.filter { $0.country == country }
                     if !rows.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
-                            RowHeading.plain(verbatim: country.title)
+                            RowHeading.plain(verbatim: country.title(in: .current))
                             ScrollView(.horizontal) {
                                 LazyHStack(alignment: .top, spacing: 12) {
                                     ForEach(rows) { entry in
