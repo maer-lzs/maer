@@ -38,14 +38,19 @@ nonisolated enum MusopenCatalog {
         /// the licence template (`pd`, `cc0`, `cc-by-3.0`, …). The owner's
         /// Public Domain Mark leaves that field empty and names itself in
         /// the short name (`PDM-owner`); it is the owner's word, so its
-        /// label says whose.
+        /// label says whose. The mark counts only where the field states no
+        /// licence: a file that names another one (`cc-by-3.0`) is under
+        /// that licence, whatever its short name says.
         init?(stated: String?, shortName: String? = nil) {
-            switch stated?.trimmingCharacters(in: .whitespaces).lowercased() {
+            let named = stated?.trimmingCharacters(in: .whitespaces).lowercased() ?? ""
+            switch named {
             case "pd": self = .publicDomain
             case "cc0": self = .cc0
-            default:
+            case "":
                 guard shortName?.trimmingCharacters(in: .whitespaces) == "PDM-owner" else { return nil }
                 self = .publicDomainMark
+            default:
+                return nil
             }
         }
 
