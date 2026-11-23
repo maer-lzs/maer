@@ -129,20 +129,21 @@ struct MusopenItemTile: View {
 /// on its page.
 struct MusopenPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @State private var items: [LibraryItem] = []
-    /// Where the next answer starts; nil once every category is read.
-    @State private var cursor: MusopenCatalog.Cursor? = MusopenCatalog.Cursor()
+    /// What the page holds, where it reads on and whether it failed
+    /// (`MusopenPageReading`).
+    @State private var reading = MusopenPageReading()
     @State private var isLoading = false
-    @State private var loadFailed = false
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
+    private var items: [LibraryItem] { reading.items }
+
     var body: some View {
         Group {
-            if items.isEmpty && (isLoading || (cursor != nil && !loadFailed)) {
+            if items.isEmpty && (isLoading || (reading.cursor != nil && !reading.failed)) {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
             } else if items.isEmpty {
-                if loadFailed {
+                if reading.failed {
                     LoadFailedView(form: .page(title: Text(verbatim: "Musopen"),
                                                systemImage: MusopenTile.placeholderSystemImage),
                                    sentence: "Could not load the catalog. Check your connection and try again.") {
@@ -167,6 +168,11 @@ struct MusopenPage: View {
                         .padding(.horizontal)
                         if isLoading {
                             ProgressView().frame(maxWidth: .infinity).padding()
+                        } else if reading.showsFailedLine {
+                            // A failure in the middle: what was read stays,
+                            // and the retry reads on from where it stood.
+                            LoadFailedView(form: .line) { Task { await readAll() } }
+                                .padding()
                         }
                     }
                     .padding(.top, TabContentLayout.topInset)
@@ -180,41 +186,13 @@ struct MusopenPage: View {
         }
     }
 
-    /// The order needs every recording, so the page reads every answer
-    /// when it opens (about seventeen) and shows what it has, in order,
-    /// after each one. It stops at a failure, at the end and when it no
-    /// longer moves on.
+    /// Every answer in turn through the one reading, the page updated after
+    /// each; also "Try Again", which reads on from where it stood. One run
+    /// at a time.
     private func readAll() async {
-        while cursor != nil, !loadFailed, !Task.isCancelled {
-            let before = cursor
-            await loadMore()
-            if cursor == before { return }
-        }
-    }
-
-    /// The next answer from where the reader stands. An answer whose files
-    /// all stay out is read past, a few at most, so a scroll always brings
-    /// recordings when there are any further on.
-    private func loadMore() async {
-        guard !isLoading, var from = cursor else { return }
+        guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        for _ in 0..<3 {
-            let answer = await MusopenLoader.next(from: from)
-            switch answer.outcome {
-            case .loaded(let found, _):
-                loadFailed = false
-                let known = Set(items.map(\.id))
-                items += found.filter { !known.contains($0.id) }
-                cursor = answer.next
-                guard found.isEmpty, let next = answer.next else { return }
-                from = next
-            case .failed:
-                loadFailed = true
-                return
-            case .cancelled:
-                return
-            }
-        }
+        reading = await MusopenPageReading.readAll(reading, fetch: { await MusopenLoader.next(from: $0) }) { reading = $0 }
     }
 }

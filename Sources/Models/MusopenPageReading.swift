@@ -6,7 +6,10 @@
 import Foundation
 
 /// The reading of the Musopen page as a value: what it holds, where the
-/// next answer starts and whether the last one failed.
+/// next answer starts and whether the last one failed. The page's order
+/// needs every recording, so the page reads every answer when it opens
+/// (about seventeen) and shows what it has after each one. The fetch is
+/// handed in, so the run itself has its witness.
 @MainActor
 struct MusopenPageReading {
     typealias Answer = (outcome: CatalogLoadOutcome, next: MusopenCatalog.Cursor?)
@@ -16,12 +19,18 @@ struct MusopenPageReading {
     var cursor: MusopenCatalog.Cursor? = MusopenCatalog.Cursor()
     var failed = false
 
-    /// Whether a failure stands below rows already read.
-    var showsFailedLine: Bool { false }
+    /// A failure below rows already read stands as a line with its retry
+    /// at the end of the list; with nothing read, the page itself fails.
+    var showsFailedLine: Bool { failed && !items.isEmpty }
 
+    /// Every answer in turn from where the reading stands, until the end,
+    /// a failure or a reader that no longer moves. A failure kept from
+    /// before is cleared first: this is also "Try Again", which reads on
+    /// from where it stood. `show` gets the state after every answer.
     static func readAll(_ start: Self, fetch: (MusopenCatalog.Cursor) async -> Answer,
                         show: (Self) -> Void) async -> Self {
         var state = start
+        state.failed = false
         while state.cursor != nil, !state.failed, !Task.isCancelled {
             let before = state.cursor
             state = await state.nextAnswer(fetch)
@@ -31,6 +40,10 @@ struct MusopenPageReading {
         return state
     }
 
+    /// The next answer. One whose files all stay out is read past, a few
+    /// at most, so every step brings recordings when there are any
+    /// further on; an answer that points back where it was read from ends
+    /// the step.
     func nextAnswer(_ fetch: (MusopenCatalog.Cursor) async -> Answer) async -> Self {
         var state = self
         guard var from = state.cursor else { return state }
@@ -42,7 +55,7 @@ struct MusopenPageReading {
                 let known = Set(state.items.map(\.id))
                 state.items += found.filter { !known.contains($0.id) }
                 state.cursor = answer.next
-                guard found.isEmpty, let next = answer.next else { return state }
+                guard found.isEmpty, let next = answer.next, next != from else { return state }
                 from = next
             case .failed:
                 state.failed = true

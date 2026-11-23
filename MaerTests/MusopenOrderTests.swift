@@ -76,7 +76,9 @@ struct MusopenOrderTests {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusopenViews.swift"), encoding: .utf8))
         #expect(page.contains("MusopenOrder.ordered(items, title: { $0.title }, composer: { $0.author })"))
-        #expect(page.contains("while cursor != nil"), "the page reads on only while scrolling")
+        // The reading of every answer has its witness at the run
+        // (`MusopenPageReadingTests`); the page reads through it.
+        #expect(page.contains("MusopenPageReading.readAll(reading"), "the page reads on only while scrolling")
     }
 
     @Test("the map of the areas names Musopen among what needs no account, in both languages", .needsTheSources)
