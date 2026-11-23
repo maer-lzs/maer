@@ -29,6 +29,11 @@ nonisolated enum PodcastFolder {
         !itemIds.isEmpty && itemIds.allSatisfy { feedKey(of: $0) != nil }
     }
 
+    /// The lists of a home that stand in the name list.
+    static func nameLists<List>(_ lists: [List], itemIds: (List) -> [String]) -> [List] {
+        lists
+    }
+
     /// A list of podcast episodes only, the form before folders.
     static func needsMigration(_ itemIds: [String]) -> Bool {
         !itemIds.isEmpty && itemIds.allSatisfy { MediaFamily.of($0) == .podcast }
