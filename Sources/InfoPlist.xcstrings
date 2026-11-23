@@ -24,7 +24,7 @@
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mère"
           }
         },
@@ -54,7 +54,7 @@
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mär"
           }
         },
@@ -90,7 +90,7 @@
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mär"
           }
         },
@@ -134,7 +134,7 @@
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "value" : "Mär se connecte à vos serveurs audio auto-hébergés, souvent joignables uniquement sur votre réseau domestique."
           }
         },

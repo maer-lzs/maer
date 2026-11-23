@@ -54,7 +54,7 @@
         },
         "fr" : {
           "stringSet" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "values" : [
               "Reprendre l’écoute dans ${applicationName}",
               "Reprendre l’écoute dans l’app ${applicationName}",
@@ -139,7 +139,7 @@
         },
         "fr" : {
           "stringSet" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "values" : [
               "Lire ${book} dans ${applicationName}",
               "Lire ${book} dans l’app ${applicationName}",
@@ -149,7 +149,7 @@
               "Écouter ${book} avec l’app ${applicationName}",
               "Écouter ${book} avec ${applicationName}",
               "Lire ${book} avec ${applicationName}",
-              "Mets ${book} dans ${applicationName}"
+              "Mets ${book} sur ${applicationName}"
             ]
           }
         },
@@ -218,7 +218,7 @@
         },
         "fr" : {
           "stringSet" : {
-            "state" : "needs_review",
+            "state" : "translated",
             "values" : [
               "Lancer ${routine} dans ${applicationName}",
               "Lancer ${routine} dans l’app ${applicationName}",
