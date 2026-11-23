@@ -83,6 +83,25 @@ struct MusopenPageReadingTests {
         #expect(page.contains("MusopenPageReading.readAll(reading, fetch: { await MusopenLoader.next(from: $0) })"))
         #expect(page.contains("if reading.showsFailedLine {"))
         #expect(page.contains("LoadFailedView(form: .line"))
+        #expect(page.contains("if reading.readsOnAppear { await readAll() }"), "the page does not read on when it appears again")
+    }
+
+    /// Left in the middle of the reading, the page stands half read when it
+    /// appears again; it reads on from where it stood. A failure waits for
+    /// Try Again, the end reads nothing more.
+    @Test("a page that appears again reads on while its reading is open and not failed")
+    func readsOnWhenItAppearsAgain() {
+        var halfway = MusopenPageReading()
+        halfway.items = [item("1")]
+        halfway.cursor = Cursor(category: 0, token: "b")
+        #expect(halfway.readsOnAppear, "the page left in the middle stays half read")
+        #expect(MusopenPageReading().readsOnAppear, "a new page reads")
+        var failed = halfway
+        failed.failed = true
+        #expect(!failed.readsOnAppear, "a failure waits for Try Again")
+        var done = halfway
+        done.cursor = nil
+        #expect(!done.readsOnAppear, "a page read to its end reads nothing more")
     }
 }
 #endif
