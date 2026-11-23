@@ -87,6 +87,28 @@ struct OrdersWaitForProgressTests {
         #expect(!PlayQueue.shared.contains(id), "the order stays after its title played")
     }
 
+    /// The same model plays the title again after a failure in its load
+    /// ("Tap play to try again", or the network's return): no new open, so
+    /// no new order is taken. Its first progress still lets the order go.
+    @Test("an order that failed before it played and then plays on a second try leaves Up Next")
+    func anOrderLeavesAfterItsRetryPlays() async throws {
+        let file = try Self.silence()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let coordinator = Self.coordinator(file)
+        let id = "retry-\(UUID().uuidString)"
+        PlayQueue.shared.playLast(id)
+        defer { PlayQueue.shared.remove(id); coordinator.viewModel?.stop() }
+        await Reachability.$assumed.withValue(true) {
+            await coordinator.open(item: Self.title(id), autoplay: false)
+        }
+        #expect(coordinator.activeItem?.id == id, "the precondition: the open stands")
+        coordinator.viewModel?.failedBeforeProgress.send(id)
+        #expect(PlayQueue.shared.contains(id), "the failed order left Up Next")
+        coordinator.viewModel?.firstProgress.send(id)
+        #expect(!PlayQueue.shared.contains(id), "the order stays in Up Next after its title played on the second try")
+        #expect(!coordinator.unstartable.contains(id), "the title that played still counts as dead")
+    }
+
     @Test("a stream that fails before it progresses stays in Up Next, the advance passes it and opens the next order")
     func aDeadStreamStaysAndIsPassed() async throws {
         let file = try Self.silence()
