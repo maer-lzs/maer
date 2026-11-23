@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v3.9 (Build 67)
 
 **Rights with their seal everywhere.** The page of an album or a
 recording and the player name a catalogue title's rights as the
