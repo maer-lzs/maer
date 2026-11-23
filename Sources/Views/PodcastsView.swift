@@ -513,7 +513,9 @@ RowHeading(title: "Recommended",
 
     /// The folders of shows, with the new episodes of each show as the
     /// subscription grid counts them; it stands once there is a show to
-    /// put in one or a folder.
+    /// put in one or a folder. Under it the podcast lists that stay lists
+    /// (episodes of the own Audiobookshelf, a mixed list, a rescued
+    /// version), in the one name list, only when there is one.
     @ViewBuilder
     private var playlistsSection: some View {
         if !allRecentShows.isEmpty || !SharedRows.playlists(at: .podcasts).isEmpty {
@@ -521,6 +523,7 @@ RowHeading(title: "Recommended",
                                                    uniquingKeysWith: { first, _ in first }),
                              playerCoordinator: playerCoordinator)
         }
+        PlaylistHomeSection(home: .podcasts, playerCoordinator: playerCoordinator)
     }
 
     @ViewBuilder

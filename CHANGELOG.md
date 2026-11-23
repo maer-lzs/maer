@@ -62,7 +62,8 @@ folder from its page, and "+" makes a new one. A show in a folder leaves
 the subscription grid. A playlist of podcast episodes becomes the folder of
 their shows once, the same on every device, and the episodes you had not
 heard yet go to Up Next. A playlist with an episode from your own
-Audiobookshelf server stays a playlist with all its episodes.
+Audiobookshelf server stays a playlist with all its episodes, and stands
+on the Podcasts tab under the folders.
 
 **Repeat in music.** The player's music row has a Repeat button beside
 the others: a tap goes from off to the list to one song. One song plays

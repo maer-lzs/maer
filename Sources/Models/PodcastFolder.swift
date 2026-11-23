@@ -29,9 +29,12 @@ nonisolated enum PodcastFolder {
         !itemIds.isEmpty && itemIds.allSatisfy { feedKey(of: $0) != nil }
     }
 
-    /// The lists of a home that stand in the name list.
+    /// The lists of a home that stand in the name list: every list that is
+    /// no folder. A folder stands in the folder row of the Podcasts tab; a
+    /// podcast list that stays a list (episodes of the own Audiobookshelf,
+    /// a mixed list, a rescued version) stands here.
     static func nameLists<List>(_ lists: [List], itemIds: (List) -> [String]) -> [List] {
-        lists
+        lists.filter { !isFolder(itemIds($0)) }
     }
 
     /// A list of podcast episodes only, the form before folders.

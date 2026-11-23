@@ -27,8 +27,9 @@ struct PlaylistHomeSection: View {
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
 
     var body: some View {
-        // The observed store redraws this on every change of the lists.
-        let lists = SharedRows.playlists(at: home)
+        // The observed store redraws this on every change of the lists. A
+        // folder of shows stands in its own row, never here.
+        let lists = PodcastFolder.nameLists(SharedRows.playlists(at: home), itemIds: \.itemIds)
         // Start shows routines under their own name until a mixed list joins
         // them; the page of all lists carries the same name.
         let title: LocalizedStringKey = lists.allSatisfy(\.isRoutine) ? "Routines" : "Playlists"
