@@ -49,6 +49,17 @@ nonisolated enum MusopenOrder {
         return folded(key)
     }
 
+    /// The composer as the cover and the player name him.
+    static func composer(author: String?, title: String) -> String? {
+        let name = author?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name?.isEmpty == false ? name : nil
+    }
+
+    /// The line under the title in the player.
+    static func artistLine(itemId: String, title: String?, author: String?) -> String? {
+        author
+    }
+
     /// The family name of a name: "Composer:" and a bracketed rest fall
     /// away; four words at most, no digit, no word of a performer or a
     /// work; else none.
