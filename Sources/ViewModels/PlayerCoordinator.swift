@@ -125,6 +125,12 @@ final class PlayerCoordinator: ObservableObject {
     /// them for the rest of the process, until the person opens one (that
     /// one) or the network changes (all).
     private(set) var unstartable: Set<String> = []
+    /// Orders of Up Next whose stream failed before they played. When the
+    /// title plays after all in the same player (a tap on play, the
+    /// network's return), the order leaves. Apart from `unstartable`,
+    /// which only steers the advance: a change of the network clears that
+    /// one, not this.
+    private var failedOrders: Set<String> = []
     /// An order of Up Next whose title opened and has not played yet: it
     /// stays in the list until the first progress; `byAdvance` when the end
     /// of a title opened it, which then goes on past it if it fails.
@@ -141,11 +147,12 @@ final class PlayerCoordinator: ObservableObject {
 
     /// The first progress of a title: an order waiting for it leaves the
     /// list now, and a passed stream is asked again. An order whose stream
-    /// failed before it played (passed, no longer waiting) and which then
-    /// plays in the same player on a second try (a tap on play, the
-    /// network's return) leaves too: no new open took it as an order again.
+    /// failed before it played (no longer waiting) and which then plays in
+    /// the same player on a second try (a tap on play, the network's
+    /// return) leaves too: no new open took it as an order again.
     private func titleProgressed(_ id: String) {
-        let failedOrder = unstartable.remove(id) != nil && orders.contains(id)
+        unstartable.remove(id)
+        let failedOrder = failedOrders.remove(id) != nil && orders.contains(id)
         guard pendingOrder?.id == id || failedOrder else { return }
         pendingOrder = nil
         orders.remove(id)
@@ -158,6 +165,7 @@ final class PlayerCoordinator: ObservableObject {
         guard let pending = pendingOrder, pending.id == id else { return }
         pendingOrder = nil
         unstartable.insert(id)
+        failedOrders.insert(id)
         Logger.player.notice("ADVANCE passes item=\(id, privacy: .private(mask: .hash)): its stream failed before it played, it stays in Up Next")
         guard pending.byAdvance, let next = resolveAdvance(after: id) else { return }
         Task { await self.advance(to: next) }
