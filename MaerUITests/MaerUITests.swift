@@ -361,22 +361,28 @@ nonisolated final class MaerUITests: XCTestCase {
         var app = launchSeeded(extra: ["-uitest-keeptab"])
         let podcasts = app.buttons["tab-podcasts"].firstMatch
         XCTAssertTrue(podcasts.waitForExistence(timeout: 15))
-        // In landscape the bar keeps one line: the word beside the symbol
-        // (`TabBarWords.Form.wordBeside`), the name kept for VoiceOver.
+        // In landscape the bar keeps one line: a word that fits stands beside
+        // the symbol (`TabBarWords.Form.wordBeside`), never below it. The
+        // side column (the tabs stacked) carries the symbols alone. The
+        // name stays for VoiceOver in every form.
         addTeardownBlock { XCUIDevice.shared.orientation = .portrait }
         XCUIDevice.shared.orientation = .landscapeLeft
         let home = app.buttons["tab-home"].firstMatch
+        let next = app.buttons["tab-audiobooks"].firstMatch
         let besideDeadline = Date().addingTimeInterval(10)
         while Date() < besideDeadline, !(home.staticTexts.firstMatch.exists
                                           && home.staticTexts.firstMatch.frame.minX >= home.images.firstMatch.frame.maxX - 1) {
             usleep(300_000)
         }
-        let word = home.staticTexts.firstMatch, symbol = home.images.firstMatch
-        XCTAssertTrue(word.exists, "in landscape the word is gone")
         XCTAssertFalse(home.label.isEmpty, "the tab lost its name for VoiceOver in landscape")
-        XCTAssertEqual(word.label, home.label, "the word is not the tab's name")
-        XCTAssertGreaterThanOrEqual(word.frame.minX, symbol.frame.maxX - 1, "in landscape the word does not stand beside the symbol")
-        XCTAssertLessThan(abs(word.frame.midY - symbol.frame.midY), 4, "in landscape word and symbol are not on one line")
+        let word = home.staticTexts.firstMatch, symbol = home.images.firstMatch
+        if next.frame.minY >= home.frame.maxY - 1 {
+            XCTAssertEqual(home.staticTexts.count, 0, "the side column shows a word")
+        } else if word.exists {
+            XCTAssertEqual(word.label, home.label, "the word is not the tab's name")
+            XCTAssertGreaterThanOrEqual(word.frame.minX, symbol.frame.maxX - 1, "in landscape the word does not stand beside the symbol")
+            XCTAssertLessThan(abs(word.frame.midY - symbol.frame.midY), 4, "in landscape word and symbol are not on one line")
+        }
         XCUIDevice.shared.orientation = .portrait
         podcasts.tap()
         XCTAssertTrue(app.navigationBars["Podcasts"].firstMatch.waitForExistence(timeout: 15))

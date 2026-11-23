@@ -40,19 +40,25 @@ nonisolated final class RowLabelAccessibilityJourney: XCTestCase {
         app.terminate()
     }
 
-    /// A cell of the tab bar (`TabBarWords`): at the standard size its word
-    /// stands below the symbol; at an accessibility size the symbol stands
-    /// alone. In both the tab keeps its name for VoiceOver.
+    /// A cell of the tab bar (`TabBarWords`). The side column (the tabs
+    /// stacked, a window too low for a bar) carries the symbols alone. In
+    /// the bar, at an accessibility size the symbol stands alone; at the
+    /// standard size a word that fits stands below the symbol (one that
+    /// does not fit gives way to the symbol). In every form the tab keeps
+    /// its name for VoiceOver.
     private func checkTabCell(_ app: XCUIApplication, accessibilitySize: Bool) {
         let tab = app.buttons["tab-home"].firstMatch
-        XCTAssertTrue(tab.waitForExistence(timeout: 15), "the tab bar")
+        let next = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 15) && next.exists, "the tab bar")
         XCTAssertEqual(tab.label, "Home", "the tab lost its name for VoiceOver")
-        if accessibilitySize {
+        let column = next.frame.minY >= tab.frame.maxY - 1
+        let word = tab.staticTexts.firstMatch
+        if column || accessibilitySize {
             // The symbol alone is the button's own content, no child of it.
-            XCTAssertEqual(tab.staticTexts.count, 0, "at an accessibility size the word still stands")
-        } else {
-            let word = tab.staticTexts.firstMatch, symbol = tab.images.firstMatch
-            XCTAssertTrue(word.exists && symbol.exists, "at the standard size the word or the symbol is gone")
+            XCTAssertEqual(tab.staticTexts.count, 0, column ? "the side column shows a word" : "at an accessibility size the word still stands")
+        } else if word.exists {
+            let symbol = tab.images.firstMatch
+            XCTAssertTrue(symbol.exists, "the word stands without its symbol")
             XCTAssertGreaterThanOrEqual(word.frame.minY, symbol.frame.maxY - 1, "the word does not stand below the symbol")
         }
     }
