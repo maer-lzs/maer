@@ -103,10 +103,10 @@ struct RadioView: View {
     /// Germany over Swiss stations.
     private var nationalTitle: String {
         guard let code = nationalEffectiveCode,
-              let name = Locale.current.localizedString(forRegionCode: code) else {
+              let title = RadioPopularTitle.text(code: code, locale: .current) else {
             return String(localized: "Popular Stations")
         }
-        return String(localized: "Popular in \(name)")
+        return title
     }
 
     /// The catalog ROW switch: the browse layer (popular, region, genres)

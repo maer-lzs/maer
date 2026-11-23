@@ -20,6 +20,34 @@ nonisolated enum OERRCuration {
              france, belgium, italy, spain, netherlands, sweden, norway,
              denmark, finland, portugal, japan, korea
 
+        /// The country's ISO 3166 code.
+        var code: String {
+            switch self {
+            case .germany: "DE"
+            case .austria: "AT"
+            case .switzerland: "CH"
+            case .uk: "GB"
+            case .australia: "AU"
+            case .canada: "CA"
+            case .newZealand: "NZ"
+            case .france: "FR"
+            case .belgium: "BE"
+            case .italy: "IT"
+            case .spain: "ES"
+            case .netherlands: "NL"
+            case .sweden: "SE"
+            case .norway: "NO"
+            case .denmark: "DK"
+            case .finland: "FI"
+            case .portugal: "PT"
+            case .japan: "JP"
+            case .korea: "KR"
+            }
+        }
+
+        /// The country's name in `locale`.
+        func title(in locale: Locale) -> String { title }
+
         var title: String {
             switch self {
             case .germany: String(localized: "Germany")

@@ -885,6 +885,17 @@ nonisolated enum RadioCountryList {
     }
 }
 
+/// The title of the national row: the popular stations of one country.
+nonisolated enum RadioPopularTitle {
+    /// The title in `locale`, nil without a name for the country.
+    static func text(code: String, locale: Locale) -> String? {
+        guard let name = locale.localizedString(forRegionCode: code) else { return nil }
+        var resource = LocalizedStringResource("Popular in \(name)")
+        resource.locale = locale
+        return String(localized: resource)
+    }
+}
+
 /// Which country feeds "Popular in …" and the region list.
 /// USER CHOICE BEATS GUESSING. Pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
