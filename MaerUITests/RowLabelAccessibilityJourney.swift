@@ -20,6 +20,8 @@ nonisolated final class RowLabelAccessibilityJourney: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come up")
         let settings = app.buttons["open-settings"].firstMatch
         XCTAssertTrue(settings.waitForExistence(timeout: 30), "the seeded start page")
+        XCUIDevice.shared.orientation = .portrait
+        checkTabCell(app, accessibilitySize: sizeCategory != nil)
         settings.tap()
 
         let toggle = app.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Wi-Fi'")).firstMatch
@@ -36,6 +38,23 @@ nonisolated final class RowLabelAccessibilityJourney: XCTestCase {
         XCTAssertEqual(app.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Wi-Fi'")).count, 1,
                        "the switch row is more than one element at \(size)")
         app.terminate()
+    }
+
+    /// A cell of the tab bar (`TabBarWords`): at the standard size its word
+    /// stands below the symbol; at an accessibility size the symbol stands
+    /// alone. In both the tab keeps its name for VoiceOver.
+    private func checkTabCell(_ app: XCUIApplication, accessibilitySize: Bool) {
+        let tab = app.buttons["tab-home"].firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 15), "the tab bar")
+        XCTAssertEqual(tab.label, "Home", "the tab lost its name for VoiceOver")
+        if accessibilitySize {
+            // The symbol alone is the button's own content, no child of it.
+            XCTAssertEqual(tab.staticTexts.count, 0, "at an accessibility size the word still stands")
+        } else {
+            let word = tab.staticTexts.firstMatch, symbol = tab.images.firstMatch
+            XCTAssertTrue(word.exists && symbol.exists, "at the standard size the word or the symbol is gone")
+            XCTAssertGreaterThanOrEqual(word.frame.minY, symbol.frame.maxY - 1, "the word does not stand below the symbol")
+        }
     }
 
     /// One way, both sizes: the standard size first, then the
