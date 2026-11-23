@@ -23,8 +23,12 @@ struct MusopenPageReading {
     /// at the end of the list; with nothing read, the page itself fails.
     var showsFailedLine: Bool { failed && !items.isEmpty }
 
-    /// Whether the page reads when it appears.
-    var readsOnAppear: Bool { items.isEmpty }
+    /// Whether the page reads when it appears: while its reading is open
+    /// and not failed. A page left in the middle of the reading (its task
+    /// ends with the page) reads on from where it stood when it appears
+    /// again; a failure waits for Try Again, a page read to its end reads
+    /// nothing more.
+    var readsOnAppear: Bool { cursor != nil && !failed }
 
     /// Every answer in turn from where the reading stands, until the end,
     /// a failure or a reader that no longer moves. A failure kept from

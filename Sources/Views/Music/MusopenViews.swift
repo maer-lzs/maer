@@ -182,7 +182,9 @@ struct MusopenPage: View {
         }
         .navigationTitle(Text(verbatim: "Musopen"))
         .task {
-            if items.isEmpty { await readAll() }
+            // Also when the page appears again after being left in the
+            // middle of its reading (`readsOnAppear`).
+            if reading.readsOnAppear { await readAll() }
         }
     }
 
