@@ -232,6 +232,7 @@
 				CF1170F02FF99D9D00DA1AC5 /* Frameworks */,
 				CF1170F12FF99D9D00DA1AC5 /* Resources */,
 				CF68E6653002599B00C97B74 /* Embed Foundation Extensions */,
+				CFAB10022026112400000001 /* Store languages */,
 				CFAB10012026072500000001 /* Stamp git SHA */,
 			);
 			buildRules = (
@@ -256,6 +257,7 @@
 				CF68E64A3002599A00C97B74 /* Sources */,
 				CF68E64B3002599A00C97B74 /* Frameworks */,
 				CF68E64C3002599A00C97B74 /* Resources */,
+				CFAB10022026112400000002 /* Store languages */,
 			);
 			buildRules = (
 			);
@@ -394,6 +396,38 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# The stamp is only worth anything if it CANNOT go missing. This phase\n# declares the BUILT Info.plist as its input — that is the edge that orders\n# it after ProcessInfoPlistFile. Without it Xcode was free to schedule the\n# phase earlier, and on an incremental build the regenerated plist dropped\n# the key: the device then showed a version line without its commit, which\n# is worse than none because it still looks trustworthy.\nSHA=$(cd \"${SRCROOT}\" && /usr/bin/git rev-parse --short HEAD 2>/dev/null || echo dev)\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n# A missing plist used to mean 'do nothing quietly' — the very silence that\n# hid this for months. It is a build error now.\nif [ ! -f \"$PLIST\" ]; then\n  echo \"error: Info.plist missing at stamp time: $PLIST\"\n  exit 1\nfi\n/usr/libexec/PlistBuddy -c \"Set :GitSHA $SHA\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GitSHA string $SHA\" \"$PLIST\"\nmkdir -p \"${DERIVED_FILE_DIR}\" && touch \"${DERIVED_FILE_DIR}/gitsha.stamp\"\n# A Release build must come from a pushed commit. A build from a dirty\n# tree once reached TestFlight without any commit to name it. Untracked\n# files are probes and do not count.\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  DIRTY=$(cd \"${SRCROOT}\" && /usr/bin/git status --porcelain 2>/dev/null | grep -v '^??' | head -1)\n  if [ -n \"$DIRTY\" ]; then\n    echo \"error: Release build from a dirty tree; commit first: $DIRTY\"\n    exit 1\n  fi\n  if ! (cd \"${SRCROOT}\" && /usr/bin/git merge-base --is-ancestor HEAD origin/dev 2>/dev/null); then\n    echo \"error: HEAD is not on origin/dev; push before a Release build\"\n    exit 1\n  fi\nfi\n";
+		};
+		CFAB10022026112400000001 /* Store languages */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/store-languages.sh",
+			);
+			name = "Store languages";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# A language waiting for its review leaves a Release build (MAER_STORE_LANGUAGES_OUT).\n/bin/sh \"${SRCROOT}/scripts/store-languages.sh\"\n";
+		};
+		CFAB10022026112400000002 /* Store languages */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/store-languages.sh",
+			);
+			name = "Store languages";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# A language waiting for its review leaves a Release build (MAER_STORE_LANGUAGES_OUT).\n/bin/sh \"${SRCROOT}/scripts/store-languages.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -597,6 +631,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MAER_STORE_LANGUAGES_OUT = "es it";
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
