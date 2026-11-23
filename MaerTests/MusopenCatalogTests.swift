@@ -37,6 +37,11 @@ struct MusopenCatalogTests {
         #expect(MusopenCatalog.Licence(stated: nil, shortName: "CC BY 3.0") == nil)
         // A stated licence decides before the short name.
         #expect(MusopenCatalog.Licence(stated: "cc0", shortName: "PDM-owner") == .cc0)
+        // The owner's mark counts only where no other licence is stated: a
+        // file that names cc-by-3.0 is not public domain, whatever its short
+        // name says, and stays out.
+        #expect(MusopenCatalog.Licence(stated: "cc-by-3.0", shortName: "PDM-owner") == nil)
+        #expect(MusopenCatalog.Licence(stated: " cc-by-sa-4.0 ", shortName: "PDM-owner") == nil)
         // The words of archive.org's mark: one claim, one text.
         #expect(MusopenCatalog.Licence.publicDomainMark.label == String(localized: "Public domain (per source)"))
         #expect(CatalogRightsLine.of(itemId: "mso:1", licence: MusopenCatalog.Licence.publicDomainMark.label, year: nil)
