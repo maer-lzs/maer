@@ -299,11 +299,11 @@ struct ForeignImportSheet: View {
     private var sourceNote: LocalizedStringKey {
         switch pending.source {
         case .opml:
-            "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished."
+            "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a timestamp only fills gaps; a newer one wins; a finished episode stays finished."
         case .applePodcasts:
             "Apple's database carries subscriptions, positions, played marks and when they were recorded. A newer state wins; a finished episode stays finished."
         case .antennaPod:
-            "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished."
+            "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no timestamp and only fills gaps. A newer state wins; a finished episode stays finished."
         case .pocketCasts:
             "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Archived episodes count as finished and come back out as archived. Every state only fills gaps; what this device already knows stays. A finished episode stays finished."
         }

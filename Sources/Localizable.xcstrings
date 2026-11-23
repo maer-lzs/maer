@@ -2778,7 +2778,7 @@
         }
       }
     },
-    "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished." : {
+    "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a timestamp only fills gaps; a newer one wins; a finished episode stays finished." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2789,7 +2789,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Un OPML simple solo contiene suscripciones. El OPML ampliado de Overcast también contiene posiciones, marcas de escuchado y cuándo se registraron. Un estado sin momento solo rellena huecos; uno más reciente gana; un episodio terminado sigue terminado."
+            "value" : "Un OPML simple solo contiene suscripciones. El OPML ampliado de Overcast también contiene posiciones, marcas de escuchado y cuándo se registraron. Un estado sin marca de tiempo solo rellena huecos; uno más reciente gana; un episodio terminado sigue terminado."
           }
         },
         "fr" : {
@@ -2801,7 +2801,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Un OPML semplice contiene solo le iscrizioni. L'OPML esteso di Overcast contiene anche posizioni, segni di ascoltato e quando sono stati registrati. Uno stato senza momento riempie solo le lacune; uno più recente prevale; un episodio finito resta finito."
+            "value" : "Un OPML semplice contiene solo le iscrizioni. L'OPML esteso di Overcast contiene anche posizioni, segni di ascoltato e quando sono stati registrati. Uno stato senza marca temporale riempie solo le lacune; uno più recente prevale; un episodio finito resta finito."
           }
         }
       }
@@ -4446,7 +4446,7 @@
     "AntennaPod" : {
       "shouldTranslate" : false
     },
-    "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished." : {
+    "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no timestamp and only fills gaps. A newer state wins; a finished episode stays finished." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4457,7 +4457,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "La base de datos de AntennaPod contiene suscripciones, posiciones, marcas de escuchado y cuándo se reprodujo un episodio por última vez. Un episodio marcado como escuchado a mano no lleva momento y solo rellena huecos. Un estado más reciente gana; un episodio terminado sigue terminado."
+            "value" : "La base de datos de AntennaPod contiene suscripciones, posiciones, marcas de escuchado y cuándo se reprodujo un episodio por última vez. Un episodio marcado como escuchado a mano no lleva marca de tiempo y solo rellena huecos. Un estado más reciente gana; un episodio terminado sigue terminado."
           }
         },
         "fr" : {
@@ -4469,7 +4469,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Il database di AntennaPod contiene iscrizioni, posizioni, segni di ascoltato e quando un episodio è stato riprodotto l'ultima volta. Un episodio segnato a mano come ascoltato non ha un momento e riempie solo le lacune. Uno stato più recente prevale; un episodio finito resta finito."
+            "value" : "Il database di AntennaPod contiene iscrizioni, posizioni, segni di ascoltato e quando un episodio è stato riprodotto l'ultima volta. Un episodio segnato a mano come ascoltato non ha una marca temporale e riempie solo le lacune. Uno stato più recente prevale; un episodio finito resta finito."
           }
         }
       }
