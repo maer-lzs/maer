@@ -1268,7 +1268,8 @@
         }
       }
     },
-    "%lld positions down" : {
+    "%lld positions received" : {
+      "comment" : "Count of listening positions received from the sync server after a sync.",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -1276,13 +1277,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Position runter"
+                  "value" : "%lld Hörstand empfangen"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Positionen runter"
+                  "value" : "%lld Hörstände empfangen"
                 }
               }
             }
@@ -1294,13 +1295,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld position down"
+                  "value" : "%lld position received"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld positions down"
+                  "value" : "%lld positions received"
                 }
               }
             }
@@ -1312,13 +1313,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posición bajada"
+                  "value" : "%lld posición recibida"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posiciones bajadas"
+                  "value" : "%lld posiciones recibidas"
                 }
               }
             }
@@ -1330,13 +1331,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld position vers le bas"
+                  "value" : "%lld position reçue"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld positions vers le bas"
+                  "value" : "%lld positions reçues"
                 }
               }
             }
@@ -1348,13 +1349,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posizione scaricata"
+                  "value" : "%lld posizione ricevuta"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posizioni scaricate"
+                  "value" : "%lld posizioni ricevute"
                 }
               }
             }
@@ -1362,63 +1363,8 @@
         }
       }
     },
-    "%lld positions in" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Positionen rein"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld posiciones recibidas"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld positions reçues"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld posizioni importate"
-          }
-        }
-      }
-    },
-    "%lld positions out" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Positionen raus"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld posiciones enviadas"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld positions envoyées"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld posizioni esportate"
-          }
-        }
-      }
-    },
-    "%lld positions up" : {
+    "%lld positions sent" : {
+      "comment" : "Count of listening positions sent to the sync server after a sync.",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -1426,13 +1372,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Position hoch"
+                  "value" : "%lld Hörstand gesendet"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Positionen hoch"
+                  "value" : "%lld Hörstände gesendet"
                 }
               }
             }
@@ -1444,13 +1390,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld position up"
+                  "value" : "%lld position sent"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld positions up"
+                  "value" : "%lld positions sent"
                 }
               }
             }
@@ -1462,13 +1408,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posición subida"
+                  "value" : "%lld posición enviada"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posiciones subidas"
+                  "value" : "%lld posiciones enviadas"
                 }
               }
             }
@@ -1480,13 +1426,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld position vers le haut"
+                  "value" : "%lld position envoyée"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld positions vers le haut"
+                  "value" : "%lld positions envoyées"
                 }
               }
             }
@@ -1498,13 +1444,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posizione caricata"
+                  "value" : "%lld posizione inviata"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld posizioni caricate"
+                  "value" : "%lld posizioni inviate"
                 }
               }
             }
@@ -1840,7 +1786,8 @@
         }
       }
     },
-    "%lld subscriptions down" : {
+    "%lld subscriptions received" : {
+      "comment" : "Count of podcast subscriptions received from the sync server after a sync.",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -1848,13 +1795,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Abo runter"
+                  "value" : "%lld Abo empfangen"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Abos runter"
+                  "value" : "%lld Abos empfangen"
                 }
               }
             }
@@ -1866,13 +1813,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld subscription down"
+                  "value" : "%lld subscription received"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld subscriptions down"
+                  "value" : "%lld subscriptions received"
                 }
               }
             }
@@ -1884,13 +1831,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld suscripción bajada"
+                  "value" : "%lld suscripción recibida"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld suscripciones bajadas"
+                  "value" : "%lld suscripciones recibidas"
                 }
               }
             }
@@ -1920,13 +1867,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld iscrizione scaricata"
+                  "value" : "%lld iscrizione ricevuta"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld iscrizioni scaricate"
+                  "value" : "%lld iscrizioni ricevute"
                 }
               }
             }
@@ -2150,7 +2097,8 @@
         }
       }
     },
-    "%lld subscriptions up" : {
+    "%lld subscriptions sent" : {
+      "comment" : "Count of podcast subscriptions sent to the sync server after a sync.",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -2158,13 +2106,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Abo hoch"
+                  "value" : "%lld Abo gesendet"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Abos hoch"
+                  "value" : "%lld Abos gesendet"
                 }
               }
             }
@@ -2176,13 +2124,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld subscription up"
+                  "value" : "%lld subscription sent"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld subscriptions up"
+                  "value" : "%lld subscriptions sent"
                 }
               }
             }
@@ -2194,13 +2142,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld suscripción subida"
+                  "value" : "%lld suscripción enviada"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld suscripciones subidas"
+                  "value" : "%lld suscripciones enviadas"
                 }
               }
             }
@@ -2230,13 +2178,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld iscrizione caricata"
+                  "value" : "%lld iscrizione inviata"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld iscrizioni caricate"
+                  "value" : "%lld iscrizioni inviate"
                 }
               }
             }

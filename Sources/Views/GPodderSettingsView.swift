@@ -241,8 +241,8 @@ struct GPodderSettingsView: View {
         var parts: [String] = []
         if r.addedLocally > 0 { parts.append(String(localized: "\(r.addedLocally) added from server")) }
         if r.pushedToServer > 0 { parts.append(String(localized: "\(r.pushedToServer) pushed to server")) }
-        if r.historyPulled > 0 { parts.append(String(localized: "\(r.historyPulled) positions in")) }
-        if r.historyPushed > 0 { parts.append(String(localized: "\(r.historyPushed) positions out")) }
+        if r.historyPulled > 0 { parts.append(String(localized: "\(r.historyPulled) positions received")) }
+        if r.historyPushed > 0 { parts.append(String(localized: "\(r.historyPushed) positions sent")) }
         return parts.isEmpty ? String(localized: "Already in sync.") : parts.joined(separator: " · ")
     }
 
@@ -251,8 +251,8 @@ struct GPodderSettingsView: View {
         var parts: [String] = []
         if r.addedLocally > 0 { parts.append(String(localized: "\(r.addedLocally) added from server")) }
         if r.pushedToServer > 0 { parts.append(String(localized: "\(r.pushedToServer) pushed to server")) }
-        if r.historyPulled > 0 { parts.append(String(localized: "\(r.historyPulled) positions in")) }
-        if r.historyPushed > 0 { parts.append(String(localized: "\(r.historyPushed) positions out")) }
+        if r.historyPulled > 0 { parts.append(String(localized: "\(r.historyPulled) positions received")) }
+        if r.historyPushed > 0 { parts.append(String(localized: "\(r.historyPushed) positions sent")) }
         return parts.isEmpty ? String(localized: "Already in sync.") : parts.joined(separator: " · ")
     }
 }

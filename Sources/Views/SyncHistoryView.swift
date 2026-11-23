@@ -130,18 +130,20 @@ struct SyncHistoryView: View {
         }
     }
 
-    /// "2 subscriptions up, 1,299 positions up". Counters in display order.
+    /// "2 subscriptions sent, 1,299 positions received". Counters in
+    /// display order; sent and received, never up and down, which read as
+    /// moving a row in a list.
     private func summary(_ counters: [SyncHistoryEntry.Counter]) -> String {
         counters.map { counter in
             switch counter.key {
             case .subscriptionsUp:
-                return String(localized: "\(counter.value) subscriptions up")
+                return String(localized: "\(counter.value) subscriptions sent")
             case .subscriptionsDown:
-                return String(localized: "\(counter.value) subscriptions down")
+                return String(localized: "\(counter.value) subscriptions received")
             case .positionsUp:
-                return String(localized: "\(counter.value) positions up")
+                return String(localized: "\(counter.value) positions sent")
             case .positionsDown:
-                return String(localized: "\(counter.value) positions down")
+                return String(localized: "\(counter.value) positions received")
             case .albumsUpdated:
                 return String(localized: "\(counter.value) albums updated")
             case .songsUpdated:
