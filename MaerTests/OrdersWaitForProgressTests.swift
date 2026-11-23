@@ -109,6 +109,30 @@ struct OrdersWaitForProgressTests {
         #expect(!coordinator.unstartable.contains(id), "the title that played still counts as dead")
     }
 
+    /// The network's return asks every passed stream again and clears the
+    /// skips of the advance; the failed order must survive that, or its
+    /// title plays and the order stays in Up Next.
+    @Test("an order that failed before it played leaves Up Next when it plays after the network changed")
+    func anOrderLeavesAfterTheNetworkReturns() async throws {
+        let file = try Self.silence()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let coordinator = Self.coordinator(file)
+        let id = "network-\(UUID().uuidString)"
+        PlayQueue.shared.playLast(id)
+        defer { PlayQueue.shared.remove(id); coordinator.viewModel?.stop() }
+        await Reachability.$assumed.withValue(true) {
+            await coordinator.open(item: Self.title(id), autoplay: false)
+        }
+        #expect(coordinator.activeItem?.id == id, "the precondition: the open stands")
+        coordinator.viewModel?.failedBeforeProgress.send(id)
+        #expect(coordinator.unstartable.contains(id), "the precondition: the advance passes the failed title")
+        coordinator.networkChanged()
+        #expect(!coordinator.unstartable.contains(id), "the network's return no longer asks the passed stream again")
+        #expect(PlayQueue.shared.contains(id), "the failed order left Up Next before it played")
+        coordinator.viewModel?.firstProgress.send(id)
+        #expect(!PlayQueue.shared.contains(id), "the order stays in Up Next after its title played once the network returned")
+    }
+
     @Test("a stream that fails before it progresses stays in Up Next, the advance passes it and opens the next order")
     func aDeadStreamStaysAndIsPassed() async throws {
         let file = try Self.silence()
