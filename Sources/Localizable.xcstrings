@@ -1786,6 +1786,34 @@
         }
       }
     },
+    "%lld subscriptions mirrored to server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Abos auf den Server gespiegelt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld suscripciones reflejadas en el servidor"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld abonnements reproduits sur le serveur"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld iscrizioni replicate sul server"
+          }
+        }
+      }
+    },
     "%lld subscriptions received" : {
       "comment" : "Count of podcast subscriptions received from the sync server after a sync.",
       "localizations" : {
@@ -1877,34 +1905,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "%lld subscriptions mirrored to server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Abos auf den Server gespiegelt"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld suscripciones reflejadas en el servidor"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld abonnements reproduits sur le serveur"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld iscrizioni replicate sul server"
           }
         }
       }
@@ -20157,6 +20157,35 @@
         }
       }
     },
+    "No matching episode: %lld" : {
+      "comment" : "Count of imported episodes that match no episode of a followed show; the value after the colon is the count.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keiner Folge zugeordnet: %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sin episodio correspondiente: %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans épisode correspondant : %lld"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nessun episodio corrispondente: %lld"
+          }
+        }
+      }
+    },
     "No measurements yet. MetricKit delivers them about once a day." : {
       "localizations" : {
         "de" : {
@@ -21191,35 +21220,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Non ancora caricato. Recupera le librerie di questo server per assegnarle."
-          }
-        }
-      }
-    },
-    "No matching episode: %lld" : {
-      "comment" : "Count of imported episodes that match no episode of a followed show; the value after the colon is the count.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keiner Folge zugeordnet: %lld"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sin episodio correspondiente: %lld"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sans épisode correspondant : %lld"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nessun episodio corrispondente: %lld"
           }
         }
       }
@@ -25402,35 +25402,6 @@
         }
       }
     },
-    "Popular: %@" : {
-      "comment" : "Title of the radio row with the popular stations of one country; %@ is the country's name.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebt: %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Popular: %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Populaire : %@"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Popolari: %@"
-          }
-        }
-      }
-    },
     "Popular Radio-Play Podcasts" : {
       "localizations" : {
         "de" : {
@@ -25567,6 +25538,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Popolari tra gli altri ascoltatori"
+          }
+        }
+      }
+    },
+    "Popular: %@" : {
+      "comment" : "Title of the radio row with the popular stations of one country; %@ is the country's name.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebt: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Popular: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Populaire : %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Popolari: %@"
           }
         }
       }

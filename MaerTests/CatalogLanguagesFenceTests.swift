@@ -83,8 +83,10 @@ struct CatalogLanguagesFenceTests {
 
     /// The texts with a counted number that a language says in one form
     /// for every count, measured. A text that gains its forms leaves the
-    /// stock, a new one without forms grows it; both show here.
-    nonisolated static let countsWithOneForm = 71
+    /// stock, a new one without forms grows it; both show here. 69: the
+    /// gpodder counts positions in and out became positions received and
+    /// sent, which carry their forms.
+    nonisolated static let countsWithOneForm = 69
 
     /// The keys with a counted number whose value in `language` has no
     /// plural forms.
