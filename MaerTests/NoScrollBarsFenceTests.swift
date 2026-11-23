@@ -22,6 +22,11 @@ struct NoScrollBarsFenceTests {
             if count > 0 { setters.append("\(name): \(count)") }
         }
         #expect(setters == ["AppearanceHost.swift: 1"], "a view sets its scroll bars itself: \(setters)")
+        // `.hidden` is a wish the system may overrule: on the Mac a mouse or
+        // "Show scroll bars: Always" brings them back. `.never` is not.
+        let rule = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/AppearanceHost.swift"), encoding: .utf8))
+        #expect(rule.contains("scrollIndicators(.never)"), "the rule asks only for hidden bars, which the Mac shows")
         let host = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/AppearanceHost.swift"), encoding: .utf8))
         #expect(host.contains(".background(WindowStyle(style: Self.style(AppearanceChoice.of(appearance))))\n            .noScrollBars()"))
