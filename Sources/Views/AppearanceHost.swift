@@ -83,8 +83,10 @@ extension View {
     /// THE one place for scroll bars: the app shows none, on every device
     /// and in every posture. The root and every presented leaf carry it
     /// with the appearance (`followsAppearanceChoice`); a leaf that keeps
-    /// its own scheme carries it itself.
+    /// its own scheme carries it itself. `.never`, not `.hidden`: hidden is
+    /// a wish the Mac overrules with a mouse or with "Show scroll bars:
+    /// Always", and the bars stood there.
     func noScrollBars() -> some View {
-        scrollIndicators(.hidden)
+        scrollIndicators(.never)
     }
 }
