@@ -21587,7 +21587,8 @@
         }
       }
     },
-    "Not matched to any episode: %lld" : {
+    "No matching episode: %lld" : {
+      "comment" : "Count of imported episodes that match no episode of a followed show; the value after the colon is the count.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -21598,7 +21599,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sin asignar a ningún episodio: %lld"
+            "value" : "Sin episodio correspondiente: %lld"
           }
         },
         "fr" : {
@@ -21610,7 +21611,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Non abbinati a nessun episodio: %lld"
+            "value" : "Nessun episodio corrispondente: %lld"
           }
         }
       }

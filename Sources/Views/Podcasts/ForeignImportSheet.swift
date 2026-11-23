@@ -485,7 +485,7 @@ struct ForeignImportSheet: View {
                         .accessibilityIdentifier("foreign-import-unmatched-group")
                     }
                 } header: {
-                    Text("Not matched to any episode: \(r.unmatched.count)")
+                    Text("No matching episode: \(r.unmatched.count)")
                 } footer: {
                     Text("These states name no episode of the subscribed shows. Nothing was written for them.")
                 }
