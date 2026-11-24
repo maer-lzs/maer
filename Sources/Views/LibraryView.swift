@@ -1101,7 +1101,8 @@ struct LibraryView: View {
             // The mini player always stands: without a session it names
             // what waits or what was heard last, and opens Up Next.
             let fill = MiniBarFill.of(hasSession: false, waiting: PlayQueue.shared.shownIds,
-                                      lastPlayed: AppStorageKeys.lastPlayedItemIdValue)
+                                      lastPlayed: AppStorageKeys.lastPlayedItemIdValue,
+                                      heardLast: AppStorageKeys.heardLastItemIdValue)
             IdleMiniBar(fill: fill, title: idleTitle(fill), compact: barCollapsed,
                         slim: tabBarPlacement.isSide, onOpenQueue: { showQueueSheet = true })
                 .matchedGeometryEffect(id: "player", in: barNS)

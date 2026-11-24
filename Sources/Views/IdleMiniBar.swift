@@ -50,12 +50,13 @@ struct IdleMiniBar: View {
         .accessibilityIdentifier("mini-player-idle")
     }
 
-    /// The line under the title: what the bar names.
+    /// The line under the title: what the bar names. An empty bar says
+    /// it once, in its title.
     static func secondLine(_ fill: MiniBarFill) -> LocalizedStringKey? {
         switch fill {
         case .waiting: "Waiting in Up Next"
         case .lastPlayed: "Heard last"
-        case .session, .empty: "Up Next"
+        case .session, .empty: nil
         }
     }
 

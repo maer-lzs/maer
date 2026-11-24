@@ -190,7 +190,11 @@ nonisolated enum MusopenOrder {
     /// when what follows starts with the movement's number ("IV. Allegro",
     /// "2. Andante"); nil for a title that names no movement.
     static func workStem(_ title: String) -> String? {
-        nil
+        guard let dash = title.range(of: " - ", options: .backwards) else { return nil }
+        let movement = title[dash.upperBound...]
+        guard movement.range(of: #"^([IVXLC]+|[0-9]+)[.)] "#, options: .regularExpression) != nil else { return nil }
+        let stem = folded(String(title[..<dash.lowerBound])).trimmingCharacters(in: .whitespaces)
+        return stem.isEmpty ? nil : stem
     }
 
     /// The next movement of the same work after a recording: the same
@@ -198,7 +202,15 @@ nonisolated enum MusopenOrder {
     /// nil after the last movement and for a title without movements.
     static func nextMovement<T>(after id: String, in items: [T], id key: (T) -> String, title: (T) -> String,
                                 composer: (T) -> String?, performer: (T) -> String?) -> T? {
-        nil
+        guard let finished = items.first(where: { key($0) == id }), let stem = workStem(title(finished)) else { return nil }
+        func sameWork(_ item: T) -> Bool {
+            workStem(title(item)) == stem
+                && composerKey(author: composer(item), title: title(item)) == composerKey(author: composer(finished), title: title(finished))
+                && performer(item) == performer(finished)
+        }
+        let page = ordered(items.filter(sameWork), title: title, composer: composer)
+        guard let at = page.firstIndex(where: { key($0) == id }), at + 1 < page.count else { return nil }
+        return page[at + 1]
     }
 
     private static func folded(_ text: String) -> String {

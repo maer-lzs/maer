@@ -8,6 +8,14 @@ remove shows and rename it. Saving changes that folder. Create and Save
 stand at the top right of the sheet, where a sheet confirms. The footers
 of the two switches of the subscriptions say plainly what each does.
 
+**Heard last after the end.** When a title has played to its end and
+nothing waits, the mini player names it as heard last instead of saying
+that nothing is in Up Next, and an empty mini player says so once.
+
+**Musopen plays the whole work.** When a movement ends and Up Next is
+empty, the next movement of the same work follows, in the order of the
+Musopen page. What waits in Up Next comes first.
+
 ## v3.9.1 (Build 68)
 
 **Jamendo and Podcast Index work again.** The app's keys for the two

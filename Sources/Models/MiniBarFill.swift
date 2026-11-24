@@ -18,6 +18,9 @@ nonisolated enum MiniBarFill: Equatable, Sendable {
         if hasSession { return .session }
         if let first = waiting.first { return .waiting(first) }
         if let lastPlayed, !lastPlayed.isEmpty { return .lastPlayed(lastPlayed) }
+        // A title heard to its end leaves the standby, and is still the
+        // one heard last.
+        if let heardLast, !heardLast.isEmpty { return .lastPlayed(heardLast) }
         return .empty
     }
 }

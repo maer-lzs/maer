@@ -233,8 +233,9 @@ nonisolated enum PlaybackAdvance {
     }
 
     /// The WHOLE cascade including stage 3, as one rule: orders, context,
-    /// then the medium's own continuation (podcasts binge and never fall
-    /// through to series; books ask the series only with the setting on).
+    /// then the medium's own continuation (a Musopen movement the next of
+    /// its work, podcasts binge and never fall through to series; books ask
+    /// the series only with the setting on).
     /// The jump at a title's end and the what-plays-next line both call
     /// THIS, so what the line names is what actually plays; an empty
     /// answer means nothing plays, never an invented continuation.
@@ -251,6 +252,8 @@ nonisolated enum PlaybackAdvance {
                           isPlayable: isPlayable, resolves: resolves) {
             return hit
         }
+        // A Musopen movement goes on to the next of its work.
+        if let id = workNext(finishedId) { return (id, .work) }
         if isPodcast(finishedId) {
             return bingeNext(finishedId).map { ($0, .binge) }
         }

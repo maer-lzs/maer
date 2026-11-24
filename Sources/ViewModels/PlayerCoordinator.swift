@@ -1099,7 +1099,11 @@ final class PlayerCoordinator: ObservableObject {
                 memo[item.id] = item
                 return item.id
             },
-            workNext: { _ in nil },
+            workNext: { id in
+                guard let item = FreeCatalogProvider.shared.nextMovement(after: id) else { return nil }
+                memo[item.id] = item
+                return item.id
+            },
             seriesEnabled: ChapterEntryRules.seriesMayFollow(finishedId, enabled: AppStorageKeys.autoPlayNextInSeriesValue),
             seriesNext: { [weak self] id in
                 guard let item = self?.nextInSeriesProvider?(id) else { return nil }
@@ -1222,7 +1226,7 @@ final class PlayerCoordinator: ObservableObject {
         // never only a flag; an empty standby is honest. The event gate is
         // untouched. This path still writes no position.
         if Self.standbyCountsAsFinished(ListeningStore.mark(lastId)) {
-            AppStorageKeys.lastPlayedItemIdValue = nil
+            clearStandbyAsHeard(lastId)
             Logger.player.notice("STANDBY cleared: \(lastId, privacy: .public) counts as finished")
             return
         }
@@ -1400,7 +1404,7 @@ final class PlayerCoordinator: ObservableObject {
             return
         case .clearFinished:
             viewModel?.stop(); viewModel = nil; activeItem = nil
-            AppStorageKeys.lastPlayedItemIdValue = nil
+            clearStandbyAsHeard(held)
             Logger.player.notice("STANDBY cleared live: \(held ?? "-", privacy: .public) counts as finished")
         case .clearTombstone:
             // Foreign tombstone adopted. "nothing on standby" travels.
@@ -1469,6 +1473,9 @@ final class PlayerCoordinator: ObservableObject {
     /// kept here and not sent leaves the other devices on the old title, a
     /// value sent and not kept leaves this one.
     private func setStandbyPointer(_ id: String?) {
+        // A start or a close chooses anew: what ended before is no longer
+        // the one heard last.
+        AppStorageKeys.heardLastItemIdValue = nil
         AppStorageKeys.lastPlayedItemIdValue = id
         UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: id)
     }
@@ -1509,6 +1516,15 @@ final class PlayerCoordinator: ObservableObject {
         guard let before = pointerBeforeOpen else { return }
         pointerBeforeOpen = nil
         setStandbyPointer(before)
+    }
+
+    /// A title heard to its end leaves the standby (nothing finished is
+    /// offered to continue, and the clear notes nothing: each device
+    /// derives it), and stays this device's title heard last, which the
+    /// idle mini player names.
+    private func clearStandbyAsHeard(_ id: String?) {
+        AppStorageKeys.lastPlayedItemIdValue = nil
+        AppStorageKeys.heardLastItemIdValue = id
     }
 
     /// The standby question, pure: finished by local knowledge? Duration

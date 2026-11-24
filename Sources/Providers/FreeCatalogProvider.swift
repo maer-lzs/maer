@@ -367,6 +367,15 @@ final class FreeCatalogProvider: AudioProvider {
     }
 
     func libraryItem(forId id: String) -> LibraryItem? { itemsById[id] }
+
+    /// The next movement of a Musopen recording's work among the
+    /// recordings this run has read (`MusopenOrder.nextMovement`).
+    func nextMovement(after id: String) -> LibraryItem? {
+        guard MusopenCoverArt.applies(to: id) else { return nil }
+        let recordings = itemsById.values.filter { MusopenCoverArt.applies(to: $0.id) }
+        return MusopenOrder.nextMovement(after: id, in: recordings, id: \.id, title: \.title,
+                                         composer: \.author, performer: { $0.media?.metadata?.narratorName })
+    }
     func librivoxBook(forId id: String) -> LibriVoxBook? { librivoxBooks[id] }
     func jamendoTrack(forId id: String) -> JamendoTrack? { jamendoTracks[id] }
 
