@@ -1,6 +1,10 @@
 # Changelog
 
-## v3.9 (Build 67)
+## v3.9 (Build 68)
+
+**Jamendo and Podcast Index work again.** The app's keys for the two
+services were missing from 3.8, so Jamendo showed nothing and Podcast
+Index was off. A build without them can no longer be made for the store.
 
 **Rights with their seal everywhere.** The page of an album or a
 recording and the player name a catalogue title's rights as the
@@ -23,17 +27,25 @@ the Classical page, and a page with every recording behind its heading,
 ordered by composer and work, the single parts of an orchestra recording
 at the end. A recording plays on tap, downloads from the menu of its tile
 or its page and names its licence on its page, where it counts as one
-track. A recording has no picture, so its cover is drawn: a soft diagonal
-between two colours that belong to its composer, the same on every
-device, with the composer's initial large in a corner and the composer
-and the work on it, on its tile, its page and in the player. Musopen has
-its own switch under the sources and under the rows, and the map of the
-areas names it among what needs no account.
+track. Its tile, its page, the cover and the player name the same
+composer, work and performer. A recording has no picture, so its cover is
+drawn: a diagonal round the colour circle between one of Goethe's pairs of
+opposite colours that belongs to its composer, the same on every device,
+with the composer's initial large in a corner and the composer and the
+work on it, white or dark as it reads best. It is the recording's cover
+everywhere: on its tile and page, in the player and the mini player, in
+lists and their collages, on the lock screen, in CarPlay and in the
+widget. The Classical page holds two sections, Musopen and Shellac.
+Musopen has its own switch under the sources and under the rows, and the
+map of the areas names it among what needs no account.
 
-**Spanish, French and Italian.** Mär speaks Spanish, French and Italian,
-in the app, in Siri's phrases and in the system's questions. The
-translations wait for a native speaker's review; until then they come with
-TestFlight only.
+**Browse leads with all three kinds.** On Start the first tiles show an
+audiobook, a show and music, audiobooks and radio plays take turns, and
+Musopen stands among the music. The Browse page begins with the books.
+
+**French.** Mär speaks French, in the app, in Siri's phrases and in the
+system's questions, read by a native speaker. Spanish and Italian follow
+once a native speaker has read them.
 
 **Audiobooks download while you listen.** A new setting under Audiobooks,
 Download While You Listen (off by default): an audiobook you start and the

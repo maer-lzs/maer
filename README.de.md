@@ -84,7 +84,7 @@ Eine App, ein Player und eine Gestaltung für vier Arten von Audio. Jede Funktio
 - CarPlay, Widgets, Siri und Kurzbefehle, Sperrbildschirm und Dynamic Island
 - Eine Sendung, Folge, einen Sender, ein freies Hörbuch oder einen Titel von Jamendo als Link teilen
 - iPhone, iPad und das iPhone Duo, Dynamic Type und VoiceOver
-- Auf Englisch und Deutsch; Spanisch, Französisch und Italienisch gehen zuerst nach TestFlight und kommen in den App Store, sobald jemand, der die Sprache spricht, sie gelesen hat
+- Auf Englisch, Deutsch und Französisch; Spanisch und Italienisch kommen in die App, sobald jemand, der die Sprache spricht, sie gelesen hat
 
 ## Kompatibel mit
 
@@ -119,11 +119,13 @@ Die Datenschutzerklärung: [maer.fm/datenschutz](https://maer.fm/datenschutz). W
 ## Bauen & installieren
 
 Das Repository enthält das komplette Xcode-Projekt; nichts muss zusammengebaut werden.
-**Mär baut ohne jeden API-Schlüssel** (zwei optionale App-Schlüssel für Jamendo und
+**Ein Debug-Bau von Mär braucht keinen API-Schlüssel** (zwei App-Schlüssel für Jamendo und
 PodcastIndex werden aus `Config/AppKeys.local.xcconfig` gelesen, wenn es die Datei gibt;
 ein Schlüssel, der in den Einstellungen der App eingetragen ist, geht vor. Ohne jeden
-Schlüssel bleiben die Jamendo-Reihen weg, und die Podcast-Suche nimmt Apples Verzeichnis)
-und hat **keine Abhängigkeiten von Dritten**: kein Paketmanager-Schritt, nichts aufzulösen.
+Schlüssel bleiben die Jamendo-Reihen weg, und die Podcast-Suche nimmt Apples Verzeichnis).
+Ein Release-Bau, der in den App Store geht, bricht ab, wenn einer der Schlüssel leer ist,
+damit kein Store-Bau ohne sie hinausgeht. Mär hat **keine Abhängigkeiten von Dritten**: kein
+Paketmanager-Schritt, nichts aufzulösen.
 
 1. Repo klonen und **`Maer.xcodeproj`** öffnen (Xcode mit einem iOS-26-SDK oder neuer).
 2. **Signieren** (Ziel `Maer` → Signing & Capabilities):
