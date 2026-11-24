@@ -29,8 +29,8 @@ struct MusopenCoverArtTests {
         "Gaetano Donizetti", "Vincenzo Bellini", "Jacques Offenbach", "Charles Gounod",
     ]
 
-    @Test("a composer has one pair of Goethe's circle and one cover, the same on every device and in every spelling")
-    func onePairPerComposer() {
+    @Test("a composer has one place of Goethe's circle and one cover, the same on every device and in every spelling")
+    func onePlacePerComposer() {
         let mozart = MusopenCoverArt.art(composer: "Wolfgang Amadeus Mozart")
         // The source names one composer in several ways; the family name decides.
         for spelling in ["Mozart", "Mozart, Wolfgang Amadeus", "  wolfgang amadeus MOZART "] {
@@ -43,13 +43,17 @@ struct MusopenCoverArtTests {
             let apart = abs(pair.first - pair.second).truncatingRemainder(dividingBy: 360)
             #expect(min(apart, 360 - apart) >= 150, "\(pair)")
         }
-        // The stock uses all three pairs.
-        #expect(Set(Self.composers.map { MusopenCoverArt.art(composer: $0).pair }) == [0, 1, 2])
+        // The rule's place is the one its hue names (`GoetheCircleTests`).
+        for name in Self.composers {
+            let art = MusopenCoverArt.art(composer: name)
+            #expect(GoetheCircleTests.place(ofHue: art.start[2]) == art.place, "\(name)")
+            #expect(MusopenCoverArt.hue(place: art.place) == art.start[2])
+        }
     }
 
-    @Test("the two ends of every composer stand apart, the diagonal does not pass through grey, the text keeps 4.5:1")
+    @Test("the two ends of every composer and of every place stand apart, the diagonal does not pass through grey, the text keeps 4.5:1")
     func colourRules() {
-        for name in Self.composers + ["", "x"] {
+        for name in Self.composers + GoetheCircleTests.representatives.values.sorted() + ["", "x"] {
             let art = MusopenCoverArt.art(composer: name)
             let start = art.stops.first!, end = art.stops.last!
             #expect(MusopenCoverArt.distance(start, end) >= 0.18, "\(name): the two colours lie too close")

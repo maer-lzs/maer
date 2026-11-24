@@ -9,16 +9,37 @@ import Foundation
 /// whose colours belong to the composer, with the composer and the work
 /// on it (`MusopenCover`), drawn once behind its address (`DrawnCover`).
 ///
-/// The colours follow Goethe's colour circle: every composer has for good
-/// one of its three pairs of opposites, purple and green, yellow and
-/// violet, orange and blue, and within the pair a lightness and a
-/// saturation of his own. The diagonal runs from one to the other round
-/// the colour circle in OKLCH, never through grey, and the text takes the
-/// colour, white or dark, that stands out from what lies under it.
+/// The colours follow Goethe's colour circle with 24 places: every
+/// composer has one place for good, the other end of his cover is the
+/// place opposite (+12), so he has practically a pair of opposites of his
+/// own, and within it a lightness and a saturation of his own. The
+/// diagonal runs from one to the other round the colour circle in OKLCH,
+/// never through grey, and the text takes the colour, white or dark, that
+/// stands out from what lies under it.
 nonisolated enum MusopenCoverArt {
     /// Goethe's three pairs of opposites as OKLCH hues in degrees: purple
     /// and green, yellow and violet, orange and blue.
     static let goethePairs: [(first: Double, second: Double)] = [(350, 145), (100, 305), (55, 260)]
+
+    /// The hues of the three pairs as anchors in the order of the circle,
+    /// four places apart: yellow (place 0), orange (4), purple (8), violet
+    /// (12), blue (16), green (20). Opposite anchors are Goethe's pairs.
+    static let anchors: [Double] = [100, 55, 350, 305, 260, 145]
+
+    static let placeCount = 24
+
+    /// The hue of a place: an anchor, or between two anchors in even steps
+    /// in the direction of the circle (the hue falls from anchor to anchor
+    /// and never passes one).
+    static func hue(place: Int) -> Double {
+        let place = ((place % placeCount) + placeCount) % placeCount
+        let span = placeCount / anchors.count
+        let from = anchors[place / span], to = anchors[(place / span + 1) % anchors.count]
+        var fall = (from - to).truncatingRemainder(dividingBy: 360)
+        if fall <= 0 { fall += 360 }
+        let hue = (from - fall * Double(place % span) / Double(span)).truncatingRemainder(dividingBy: 360)
+        return hue < 0 ? hue + 360 : hue
+    }
 
     static func applies(to itemId: String) -> Bool { itemId.hasPrefix(MusopenCatalog.prefix) }
 
@@ -53,11 +74,11 @@ nonisolated enum MusopenCoverArt {
         (MusopenOrder.composer(author: composer, title: title), title)
     }
 
-    /// The colours of one composer's cover: the pair of Goethe's circle,
+    /// The colours of one composer's cover: his place on Goethe's circle,
     /// the two ends as OKLCH (lightness, chroma, hue), and whether the
     /// text is dark.
     struct Art: Equatable {
-        let pair: Int
+        let place: Int
         let start: [Double]
         let end: [Double]
         /// The diagonal as red, green and blue at `stopCount` even stops.
@@ -73,9 +94,8 @@ nonisolated enum MusopenCoverArt {
 
     static func art(composer: String?) -> Art {
         let hash = familyHash(composer)
-        let pair = Int(hash % UInt32(goethePairs.count))
-        let hues = goethePairs[pair]
-        let flip = (hash >> 2) & 1 == 1
+        // The place from the high bits: the low ones choose the field below.
+        let place = Int((hash >> 16) % UInt32(placeCount))
         // A dark field (one in three light): the end under the text lies
         // between 0.34 and 0.46 for white text or between 0.76 and 0.86 for
         // dark text, the other end the step toward the middle, so the text
@@ -86,13 +106,13 @@ nonisolated enum MusopenCoverArt {
         let light = lightField ? 0.76 + step * 0.8 : 0.34 + step
         let other = lightField ? light - lightnessStep : light + lightnessStep
         let chroma = 0.09 + Double((hash >> 8) % 7) / 100
-        let first = [light, chroma, flip ? hues.second : hues.first]
-        let second = [other, chroma, flip ? hues.first : hues.second]
+        let first = [light, chroma, hue(place: place)]
+        let second = [other, chroma, hue(place: place + placeCount / 2)]
         let around = (hash >> 10) & 1 == 1
         let stops = (0..<stopCount).map { index in
             rgb(oklch: along(first, second, at: Double(index) / Double(stopCount - 1), clockwise: around))
         }
-        return Art(pair: pair, start: first, end: second, stops: stops, darkText: textIsDark(on: stops))
+        return Art(place: place, start: first, end: second, stops: stops, darkText: textIsDark(on: stops))
     }
 
     /// The colour at `t` of the way from `a` to `b` round the colour

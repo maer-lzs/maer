@@ -9,9 +9,10 @@ Index was off. A build without them can no longer be made for the store.
 **The drawn Musopen cover everywhere.** A recording's drawn cover is its
 cover on every surface: on its tile and page, in the player and the mini
 player, in lists and their collages, on the lock screen, in CarPlay and in
-the widget. Its colours are one of Goethe's pairs of opposite colours that
-belongs to the composer, running round the colour circle instead of
-through grey, and its text is white or dark as it reads best.
+the widget. Its colours come from Goethe's colour circle, every composer
+with a pair of opposite colours of his own, twelve pairs on 24 places
+instead of three, running round the circle instead of through grey, and
+its text is white or dark as it reads best.
 
 **Composer, work and performer agree.** The tile, the page, the cover and
 the player of a recording name the same composer, work and performer.

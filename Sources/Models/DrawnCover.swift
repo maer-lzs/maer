@@ -14,8 +14,9 @@ import Foundation
 /// with it a new address in every cache.
 nonisolated enum DrawnCover {
     static let scheme = "maer-drawn"
-    /// 2: the colours of Goethe's circle (`MusopenCoverArt.art`).
-    static let version = "2"
+    /// 2: the colours of Goethe's circle (`MusopenCoverArt.art`); 3: its 24
+    /// places, every composer with a pair of his own.
+    static let version = "3"
 
     /// The address of the drawn cover of a recording.
     static func url(title: String, composer: String?) -> URL {
