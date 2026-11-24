@@ -39,6 +39,28 @@ struct DrawnCoverTests {
         #expect(provider.largeCoverURL(forItemId: item.id) == url)
     }
 
+    /// The colour of one pixel of a picture as sRGB, 0 to 1.
+    private func pixel(_ image: UIImage, x: Int, y: Int) -> [Double] {
+        guard let cg = image.cgImage, let data = cg.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return [] }
+        let perPixel = cg.bitsPerPixel / 8
+        let offset = y * cg.bytesPerRow + x * perPixel
+        return (0..<3).map { Double(bytes[offset + $0]) / 255 }
+    }
+
+    @Test("on the rendered picture of every composer of the stock the two corners stand apart in colour")
+    func renderedCornersStandApart() throws {
+        let side = Int(DrawnCoverRenderer.side)
+        for name in MusopenCoverArtTests.composers {
+            let data = try #require(DrawnCoverRenderer.png(for: DrawnCover.url(title: "", composer: name)))
+            let image = try #require(UIImage(data: data))
+            let near = pixel(image, x: 4, y: 4), far = pixel(image, x: side - 5, y: side - 5)
+            #expect(near.count == 3 && far.count == 3, "\(name): no pixels read")
+            guard near.count == 3, far.count == 3 else { continue }
+            // The far corner lies under the darkened letter; the two still stand apart.
+            #expect(MusopenCoverArt.distance(near, far) >= 0.15, "\(name): \(near) against \(far)")
+        }
+    }
+
     @Test("the door draws the address into a square picture of the large cover's size")
     func theDoorDraws() async throws {
         let url = DrawnCover.url(title: "Symphony No. 5", composer: "Ludwig van Beethoven")

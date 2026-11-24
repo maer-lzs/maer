@@ -54,7 +54,7 @@ struct MusopenComposerTests {
         #expect(MusopenCoverArt.initial(composer: lines.composer, title: lines.work) == "A")
         let pitman = MusopenCoverArt.lines(title: "Nocturne", composer: "Composer: Frédéric Chopin; Performer: Paul Pitman")
         let gurevich = MusopenCoverArt.lines(title: "Waltz", composer: "Composer: Frédéric Chopin; Performer: Olga Gurevich")
-        #expect(MusopenCoverArt.colourIndices(composer: pitman.composer) == MusopenCoverArt.colourIndices(composer: gurevich.composer),
+        #expect(MusopenCoverArt.art(composer: pitman.composer) == MusopenCoverArt.art(composer: gurevich.composer),
                 "one composer, one colour, whoever plays")
         #expect(MusopenCoverArt.lines(title: "Nocturne", composer: "Unknown authorUnknown author").composer == nil)
     }
