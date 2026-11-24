@@ -30,6 +30,16 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// second cut inside it would be a shelf of a shelf.
     var hasGenreShelves: Bool = false
 
+    /// The classical shelf's page is the page of classical music: Musopen
+    /// first, then the 78s, each section under its own heading.
+    var isClassicalPage: Bool { key == ArchiveMusicCatalog.classical.key }
+
+    /// The title of the area's own page: "Classical" for the classical
+    /// page, which holds more than the shellac shelf, else the shelf.
+    var pageTitle: String {
+        isClassicalPage ? String(localized: "Classical") : title
+    }
+
     /// The same area in its second role. The full page behind the popular
     /// chevron shows the endless grid WITHOUT the shelves. One view, two
     /// roles, and no second page that could drift apart.

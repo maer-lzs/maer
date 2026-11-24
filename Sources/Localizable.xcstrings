@@ -29504,6 +29504,35 @@
         }
       }
     },
+    "Shellac" : {
+      "comment" : "Heading of the section of the 78 rpm shellac records on the page of classical music, below the Musopen recordings.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schellack"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Discos de 78 rpm"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Disques 78 tours"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dischi a 78 giri"
+          }
+        }
+      }
+    },
     "Short Stories" : {
       "comment" : "Genre of books, podcasts or music",
       "localizations" : {
