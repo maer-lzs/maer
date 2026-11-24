@@ -119,13 +119,13 @@ Die Datenschutzerklärung: [maer.fm/datenschutz](https://maer.fm/datenschutz). W
 ## Bauen & installieren
 
 Das Repository enthält das komplette Xcode-Projekt; nichts muss zusammengebaut werden.
-**Ein Debug-Bau von Mär braucht keinen API-Schlüssel** (zwei App-Schlüssel für Jamendo und
+**Mär baut ohne jeden API-Schlüssel** (zwei App-Schlüssel für Jamendo und
 PodcastIndex werden aus `Config/AppKeys.local.xcconfig` gelesen, wenn es die Datei gibt;
 ein Schlüssel, der in den Einstellungen der App eingetragen ist, geht vor. Ohne jeden
 Schlüssel bleiben die Jamendo-Reihen weg, und die Podcast-Suche nimmt Apples Verzeichnis).
-Ein Release-Bau, der in den App Store geht, bricht ab, wenn einer der Schlüssel leer ist,
-damit kein Store-Bau ohne sie hinausgeht. Mär hat **keine Abhängigkeiten von Dritten**: kein
-Paketmanager-Schritt, nichts aufzulösen.
+Nur ein Archiv, der Bau für TestFlight und den App Store, bricht ab, wenn einer der
+Schlüssel leer ist, damit kein Store-Bau ohne sie hinausgeht. Mär hat **keine
+Abhängigkeiten von Dritten**: kein Paketmanager-Schritt, nichts aufzulösen.
 
 1. Repo klonen und **`Maer.xcodeproj`** öffnen (Xcode mit einem iOS-26-SDK oder neuer).
 2. **Signieren** (Ziel `Maer` → Signing & Capabilities):

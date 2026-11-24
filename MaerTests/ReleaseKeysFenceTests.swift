@@ -11,8 +11,9 @@ import Testing
 /// The app's keys (Jamendo, Podcast Index) live outside git in
 /// `Config/AppKeys.local.xcconfig`, which `#include?` takes when it is there
 /// and skips silently when not. Builds 66 and 67 were archived in work
-/// trees without the file and went out with empty keys. A Release build of
-/// the app stops now when one is empty; Debug and the tests build without.
+/// trees without the file and went out with empty keys. An archive of the
+/// app (Release, ACTION install) stops now when one is empty; Debug, the
+/// tests and the Release check build of `lauf.sh` build without.
 struct ReleaseKeysFenceTests {
     @Test("the app runs the key check in a build phase of its own", .needsTheProjectFile)
     func theAppRunsTheCheck() throws {
@@ -21,10 +22,11 @@ struct ReleaseKeysFenceTests {
         #expect(project.components(separatedBy: call).count - 1 == 1, "the key check does not run exactly in the app")
     }
 
-    @Test("the check stops a Release build on an empty key, names file and folder and never a value", .needsTheSources)
+    @Test("the check stops an archive on an empty key, names file and folder and never a value", .needsTheSources)
     func theCheckStopsAndNamesNoValue() throws {
         let script = try SourceTree.text(SourceTree.root.appendingPathComponent("scripts/release-keys.sh"))
-        #expect(script.contains("[ \"${CONFIGURATION}\" = \"Release\" ] || exit 0"), "the check also stops a Debug build")
+        #expect(script.contains("[ \"${CONFIGURATION}\" = \"Release\" ] && [ \"${ACTION}\" = \"install\" ] || exit 0"),
+                "the check also stops a Debug build or the Release check build of a work tree")
         for name in ["MAER_JAMENDO_CLIENT_ID", "MAER_PODCASTINDEX_KEY", "MAER_PODCASTINDEX_SECRET"] {
             #expect(script.contains(name), "the check forgets \(name)")
         }

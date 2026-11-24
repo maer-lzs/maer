@@ -8,10 +8,12 @@
 # in Config/AppKeys.local.xcconfig, which Config/AppKeys.xcconfig includes
 # when it is there and skips silently when not. Builds 66 and 67 were
 # archived in work trees without the file and went out with empty keys.
-# A Release build of the app stops here when a key is empty. The message
-# names the key, the file and its folder, never a value. Debug and the
-# tests build without keys.
-[ "${CONFIGURATION}" = "Release" ] || exit 0
+# An archive of the app (a Release build Xcode installs, ACTION install:
+# what goes to TestFlight and the store) stops here when a key is empty.
+# The message names the key, the file and its folder, never a value.
+# Debug, the tests and a Release build that is no archive (the check
+# build of lauf.sh in a work tree) build without keys.
+[ "${CONFIGURATION}" = "Release" ] && [ "${ACTION}" = "install" ] || exit 0
 missing=""
 [ -n "${MAER_JAMENDO_CLIENT_ID}" ] || missing="$missing MAER_JAMENDO_CLIENT_ID"
 [ -n "${MAER_PODCASTINDEX_KEY}" ] || missing="$missing MAER_PODCASTINDEX_KEY"

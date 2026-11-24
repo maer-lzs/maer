@@ -119,13 +119,13 @@ The privacy policy: [maer.fm/privacy](https://maer.fm/privacy). What leaves the 
 ## Build & install
 
 The repository ships the complete Xcode project; nothing needs to be assembled.
-**A Debug build of Mär needs no API keys** (two app keys for Jamendo and
+**Mär builds without any API keys** (two app keys for Jamendo and
 PodcastIndex are read from `Config/AppKeys.local.xcconfig` if that file exists;
 a key entered in the app's settings comes first. Without any key the Jamendo
-rows stay away and the podcast search uses Apple's directory). A Release
-build, the one that goes to the App Store, stops when one of the keys is
-empty, so a store build never goes out without them. Mär has **no
-third-party dependencies**: no package manager step, nothing to resolve.
+rows stay away and the podcast search uses Apple's directory). Only an
+archive, the build that goes to TestFlight and the App Store, stops when one
+of the keys is empty, so a store build never goes out without them. Mär has
+**no third-party dependencies**: no package manager step, nothing to resolve.
 
 1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK or newer).
 2. **Signing** (target `Maer` → Signing & Capabilities):
