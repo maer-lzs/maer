@@ -228,6 +228,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = CF1170FE2FF99D9E00DA1AC5 /* Build configuration list for PBXNativeTarget "Maer" */;
 			buildPhases = (
+				CFAB10022026112400000003 /* Release keys */,
 				CF1170EF2FF99D9D00DA1AC5 /* Sources */,
 				CF1170F02FF99D9D00DA1AC5 /* Frameworks */,
 				CF1170F12FF99D9D00DA1AC5 /* Resources */,
@@ -428,6 +429,22 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "# A language waiting for its review leaves a Release build (MAER_STORE_LANGUAGES_OUT).\n/bin/sh \"${SRCROOT}/scripts/store-languages.sh\"\n";
+		};
+		CFAB10022026112400000003 /* Release keys */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/scripts/release-keys.sh",
+			);
+			name = "Release keys";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# A Release build stops on an empty app key (Config/AppKeys.local.xcconfig).\n/bin/sh \"${SRCROOT}/scripts/release-keys.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
