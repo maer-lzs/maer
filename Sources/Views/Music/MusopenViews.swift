@@ -25,12 +25,14 @@ struct MusopenCover: View {
 
     var body: some View {
         let lines = MusopenCoverArt.lines(title: title, composer: composer)
-        let art = MusopenCoverArt.colours(composer: lines.composer)
+        let art = MusopenCoverArt.art(composer: lines.composer)
         let initial = MusopenCoverArt.initial(composer: lines.composer, title: lines.work)
         GeometryReader { geo in
             let side = geo.size.width
             ZStack(alignment: .topLeading) {
-                LinearGradient(colors: [colour(art.start), colour(art.end)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                // The diagonal round Goethe's circle, its stops in OKLCH, so
+                // two opposites do not meet in grey.
+                LinearGradient(colors: art.stops.map(colour), startPoint: .topLeading, endPoint: .bottomTrailing)
                 Text(verbatim: initial)
                     .font(.system(size: side * 0.95, weight: .black))
                     .foregroundStyle(Color(white: MusopenCoverArt.letterShade).opacity(MusopenCoverArt.letterOpacity))
@@ -45,7 +47,7 @@ struct MusopenCover: View {
                     Text(verbatim: lines.work)
                         .font(.system(size: side * 0.15, weight: .bold))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(art.darkText ? colour(MusopenCoverArt.darkText) : .white)
                 .minimumScaleFactor(0.35)
                 .padding(side * 0.09)
                 .frame(width: side, height: side, alignment: .topLeading)
