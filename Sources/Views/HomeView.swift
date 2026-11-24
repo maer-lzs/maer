@@ -477,21 +477,24 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         recommendationsEnabled || discoverMusicRowVisible || discoverBooksRowVisible
     }
 
-    /// The three shares, each empty while its switch is off, mixed rank by
-    /// rank (`BrowseMix`). The music share interleaves classical and
-    /// Jamendo with Start's own seed, the book share is the catalog mix.
+    /// The three shares, each empty while its switch is off, in Start's
+    /// order (`BrowseMix.startShares`: books, shows, music) and mixed rank by
+    /// rank. The music share interleaves classical, Jamendo and Musopen with
+    /// Start's own seed, the book share alternates audiobook and radio play,
+    /// an audiobook first (`CatalogMix.tiles(for: .home)`).
     private var browseShares: [[BrowseTile]] {
         let recommended = recommendationsEnabled ? discoverShown.map(BrowseTile.recommendation) : []
         let rows = freeCatalogStore.rows
         let music = discoverMusicRowVisible
             ? HomeSections.interleave([CatalogMix.ordered(rows.classical, for: .musicHome),
-                                       CatalogMix.ordered(rows.freeMusic, for: .musicHome)],
+                                       CatalogMix.ordered(rows.freeMusic, for: .musicHome),
+                                       AppStorageKeys.musopenActive ? CatalogMix.ordered(rows.musopen, for: .musicHome) : []],
                                       limit: RowPreview.limit).map(BrowseTile.music)
             : []
         let books = discoverBooksRowVisible
             ? CatalogMix.tiles(for: .home, rows: freeCatalogStore.sourceRows).map(BrowseTile.catalog)
             : []
-        return [recommended, music, books]
+        return BrowseMix.startShares(recommended: recommended, music: music, books: books)
     }
 
     /// A share that is on but stands empty says why in the log (the page
@@ -499,12 +502,13 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     private var browseDropReasons: [String] {
         let shares = browseShares
         let failures = freeCatalogStore.sourcesFailures
+        func share(_ name: BrowseMix.Share) -> [BrowseTile] { shares[BrowseMix.Share.allCases.firstIndex(of: name) ?? 0] }
         return [
-            BrowseMix.dropReason(.recommended, enabled: recommendationsEnabled, isEmpty: shares[0].isEmpty,
+            BrowseMix.dropReason(.recommended, enabled: recommendationsEnabled, isEmpty: share(.recommended).isEmpty,
                                  failure: nil),
-            BrowseMix.dropReason(.music, enabled: discoverMusicRowVisible, isEmpty: shares[1].isEmpty,
+            BrowseMix.dropReason(.music, enabled: discoverMusicRowVisible, isEmpty: share(.music).isEmpty,
                                  failure: freeCatalogStore.rows.freeMusicProblem),
-            BrowseMix.dropReason(.books, enabled: discoverBooksRowVisible, isEmpty: shares[2].isEmpty,
+            BrowseMix.dropReason(.books, enabled: discoverBooksRowVisible, isEmpty: share(.books).isEmpty,
                                  failure: failures.isEmpty ? nil
                                     : failures.keys.map(\.rawValue).sorted().joined(separator: ",")),
         ].compactMap { $0 }

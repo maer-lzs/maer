@@ -5,12 +5,27 @@
 
 import Foundation
 
-/// The Browse double row on Start: three shares (the recommendations, the
-/// free music, the free audiobooks and radio plays) mixed rank by rank.
+/// The Browse double row on Start: three shares (the free audiobooks and
+/// radio plays, the recommendations, the free music) mixed rank by rank.
 /// The rule is pure so the row and its witnesses ask the same thing.
 nonisolated enum BrowseMix {
+    /// The shares in the order Start mixes them: an audiobook first (the
+    /// book share opens with one, `CatalogMix.alternating`), then a show,
+    /// then music, so the first three tiles show the three kinds as far as
+    /// they are switched on.
     enum Share: String, CaseIterable, Sendable {
-        case recommended, music, books
+        case books, recommended, music
+    }
+
+    /// The shares in `Share` order, from what each one holds.
+    static func startShares<T>(recommended: [T], music: [T], books: [T]) -> [[T]] {
+        Share.allCases.map { share in
+            switch share {
+            case .books: books
+            case .recommended: recommended
+            case .music: music
+            }
+        }
     }
 
     /// Rank by rank: the first of every share, then the second, and so
@@ -54,12 +69,14 @@ nonisolated enum BrowseMix {
 /// the app browses, each pointing at its existing page. The radio catalog
 /// is not part of it (it has its own tab).
 nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
-    case recommendations, charts
+    // The page's order: the books first (an audiobook catalogue leads),
+    // then the shows, then the music, as on Start.
+    case librivox, gutenberg, archiveBooks, oldTimeRadio
+    case recommendations, charts, publicFeeds, independentFeeds
     case classical, netlabels, oldRecords, jamendo, musopen
-    case librivox, gutenberg, archiveBooks, oldTimeRadio, publicFeeds, independentFeeds
 
     enum Group: String, CaseIterable, Identifiable, Sendable {
-        case podcasts, music, books
+        case books, podcasts, music
         var id: String { rawValue }
     }
 

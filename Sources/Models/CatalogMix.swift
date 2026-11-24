@@ -50,6 +50,20 @@ nonisolated enum CatalogMix {
         return HomeSections.interleave(mixed, limit: limit)
     }
 
+    /// Start's book share: audiobooks (LibriVox, archive.org, Gutenberg)
+    /// and radio plays (the curated feeds of public and independent
+    /// studios, Old Time Radio) take turns, an audiobook first. Each side
+    /// mixes its own lanes as `row` does; before, LibriVox stood as the
+    /// fourth lane and the first audiobook came around tile twelve.
+    static func alternating(audiobooks: [[LibraryItem]], radioFeeds: [[HoerspielCuration.Entry]],
+                            radioItems: [[LibraryItem]], limit: Int,
+                            seed: UInt64, previous: Set<String>) -> [Tile] {
+        let books = row(feedGroups: [], itemGroups: audiobooks, limit: limit, seed: seed, previous: previous)
+        let plays = row(feedGroups: radioFeeds, itemGroups: radioItems, limit: limit,
+                        seed: seed &+ 0x51_7CC1_B727, previous: previous)
+        return HomeSections.interleave([books, plays], limit: limit)
+    }
+
     /// One lane, mixed by the row rules: seeded shuffle (stable for the
     /// whole session. A row that re-sorts under the fingers is a layout jump
     /// in slow motion), and the PREVIOUS round's tiles carry a malus. They

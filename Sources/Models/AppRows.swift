@@ -109,7 +109,7 @@ nonisolated enum AppRows {
                group: "home.browse"),
         AppRow(key: "home.discoverMusic", tab: .home,
                title: String(localized: "Discover · Music"),
-               sourceKeys: ["jamendo", "internetArchive"],
+               sourceKeys: ["jamendo", "internetArchive", "musopen"],
                storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible,
                group: "home.browse"),
         AppRow(key: "home.discoverBooks", tab: .home,

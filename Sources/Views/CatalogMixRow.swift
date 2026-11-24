@@ -101,9 +101,14 @@ extension CatalogMix {
             ? [rows.oldTimeRadio, rows.librivoxPopular, rows.archiveBooks, rows.gutenberg]
             : []
         let previous = Set(AppStorageKeys.stringArray(AppStorageKeys.catalogMixLastShown) ?? [])
-        let tiles = row(feedGroups: feedGroups, itemGroups: itemGroups,
-                        limit: RowPreview.limit,
-                        seed: seed(for: surface), previous: previous)
+        // Start alternates audiobook and radio play, an audiobook first.
+        let tiles = surface == .home
+            ? alternating(audiobooks: [rows.librivoxPopular, rows.archiveBooks, rows.gutenberg],
+                          radioFeeds: feedGroups, radioItems: [rows.oldTimeRadio],
+                          limit: RowPreview.limit, seed: seed(for: surface), previous: previous)
+            : row(feedGroups: feedGroups, itemGroups: itemGroups,
+                  limit: RowPreview.limit,
+                  seed: seed(for: surface), previous: previous)
         // The malus is recorded from the mixed surface only: Start is the one
         // that sees both worlds, so its row is the honest record of "what did
         // the user already get shown".
