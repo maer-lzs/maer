@@ -510,6 +510,12 @@ final class MaerPlaylists: ObservableObject {
         return playlist(id: folder.id) ?? folder
     }
 
+    /// A folder edited in the sheet it was made in: its name, the shows
+    /// that join and those that leave (`PodcastFolder.edit`). It stays the
+    /// same folder; the shows join first, so it is never empty on the way.
+    func editFolder(id: String, name: String, join: [String], leave: [String]) {
+    }
+
     func delete(playlistId: String) {
         playlists.removeAll { $0.id == playlistId }
         // The deletion needs to be a FACT, not the absence of one. Otherwise

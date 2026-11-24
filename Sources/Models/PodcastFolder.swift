@@ -82,6 +82,22 @@ nonisolated enum PodcastFolder {
         itemIds.compactMap(feedKey(of:)).reduce(0) { $0 + new($1) }
     }
 
+    /// What an edit of a folder changes, among the candidates (the
+    /// subscriptions as the sheet shows them): a chosen show that is not in
+    /// the folder joins, in the order of the candidates; a candidate in the
+    /// folder that is no longer chosen leaves. A show of the folder that is
+    /// no candidate (no longer subscribed) stays, since the sheet does not
+    /// show it.
+    static func edit(_ itemIds: [String], candidates: [String], chosen: Set<String>) -> (join: [String], leave: [String]) {
+        ([], [])
+    }
+
+    /// The number of shows a folder holds after an edit; at 0 there is
+    /// nothing to save, a folder is never empty.
+    static func remaining(_ itemIds: [String], after edit: (join: [String], leave: [String])) -> Int {
+        0
+    }
+
     /// The routine rules a folder starts through: the newest of each show.
     static func ruleIds(_ itemIds: [String]) -> [String] {
         itemIds.compactMap(feedKey(of:)).compactMap { RoutineRule(kind: .newest, feedKey: $0)?.id }
