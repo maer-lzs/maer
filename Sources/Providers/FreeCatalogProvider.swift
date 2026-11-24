@@ -350,7 +350,7 @@ final class FreeCatalogProvider: AudioProvider {
         let id = recording.itemId
         musopenRecordings[id] = recording
         licences[id] = recording.licence.label
-        let parts = MusopenOrder.parts(author: MusopenCatalog.artistText(recording.artistHTML),
+        let parts = MusopenOrder.parts(author: MusopenCatalog.artistText(recording.artistHTML, plain: htmlPlainText),
                                        title: FreeCatalog.shownTitle(recording.title, itemId: id))
         let item = LibraryItem(
             id: id,

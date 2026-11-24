@@ -25,7 +25,7 @@ nonisolated enum DrawnCover {
         var items = [URLQueryItem(name: "t", value: title)]
         if let composer, !composer.isEmpty { items.append(URLQueryItem(name: "c", value: composer)) }
         items.append(URLQueryItem(name: "v", value: version))
-        parts.queryItems = items
+        parts.setQuery(items)
         return parts.url ?? URL(string: "\(scheme)://musopen")!
     }
 

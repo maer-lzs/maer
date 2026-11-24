@@ -30,12 +30,13 @@ struct MusopenMetadataTests {
 
     @Test("the artist field as text: no hidden double, no uploader, no Unknown author")
     func artistText() {
-        #expect(MusopenCatalog.artistText("Unknown author<span style=\"display: none;\">Unknown author</span>") == nil)
-        #expect(MusopenCatalog.artistText("<a href=\"//commons.wikimedia.org/wiki/User:Morn\" title=\"User:Morn\">Morn</a>") == nil)
-        #expect(MusopenCatalog.artistText("<bdi><a href=\"https://en.wikipedia.org/wiki/en:Fr%C3%A9d%C3%A9ric_Chopin\">Frédéric Chopin</a></bdi> / <bdi>Frank Levy</bdi>")
+        func text(_ html: String?) -> String? { MusopenCatalog.artistText(html, plain: htmlPlainText) }
+        #expect(text("Unknown author<span style=\"display: none;\">Unknown author</span>") == nil)
+        #expect(text("<a href=\"//commons.wikimedia.org/wiki/User:Morn\" title=\"User:Morn\">Morn</a>") == nil)
+        #expect(text("<bdi><a href=\"https://en.wikipedia.org/wiki/en:Fr%C3%A9d%C3%A9ric_Chopin\">Frédéric Chopin</a></bdi> / <bdi>Frank Levy</bdi>")
                 == "Frédéric Chopin; Frank Levy")
-        #expect(MusopenCatalog.artistText("The Milan Baroque Soloists") == "The Milan Baroque Soloists")
-        #expect(MusopenCatalog.artistText(nil) == nil)
+        #expect(text("European &amp; Archive") == "European & Archive")
+        #expect(text(nil) == nil)
     }
 
     @Test("La Traviata names Verdi, the uploader names nobody")

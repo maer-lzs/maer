@@ -93,20 +93,18 @@ nonisolated enum MusopenCatalog {
     /// a hidden span, and the two used to meet as "Unknown authorUnknown
     /// author"), a link to a Commons user names the uploader, not an artist,
     /// and goes as well; line breaks and " / " part the names, "Unknown
-    /// author" is no name. nil when nothing is left.
-    static func artistText(_ html: String?) -> String? {
+    /// author" is no name. nil when nothing is left. `plain` makes text of
+    /// the rest as every catalog name becomes it (`htmlPlainText`).
+    static func artistText(_ html: String?, plain: (String) -> String) -> String? {
         guard var text = html else { return nil }
         let options: String.CompareOptions = [.regularExpression, .caseInsensitive]
         text = text.replacingOccurrences(of: "<(\\w+)[^>]*display:\\s*none[^>]*>.*?</\\1>", with: "", options: options)
         text = text.replacingOccurrences(of: "<a [^>]*/wiki/User:[^>]*>.*?</a>", with: "", options: options)
-        text = text.replacingOccurrences(of: "<br\\s*/?>", with: ";", options: options)
         text = text.replacingOccurrences(of: " / ", with: ";")
-        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-        for (entity, plain) in ["&amp;": "&", "&quot;": "\"", "&#39;": "'", "&nbsp;": " ", "&lt;": "<", "&gt;": ">"] {
-            text = text.replacingOccurrences(of: entity, with: plain)
-        }
+        text = plain(text)
         var seen: Set<String> = []
-        let parts = text.split(separator: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let parts = text.split(whereSeparator: { $0 == ";" || $0.isNewline })
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty && $0.lowercased() != "unknown author" && seen.insert($0.lowercased()).inserted }
         return parts.isEmpty ? nil : parts.joined(separator: "; ")
     }

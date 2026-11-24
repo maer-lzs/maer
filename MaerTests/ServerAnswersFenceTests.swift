@@ -22,6 +22,8 @@ struct ServerAnswersFenceTests {
             "Wikimedia Commons API, eight files of the Musopen category by page id (one of each kind: Ogg with MP3, WAV, MP3 original, FLAC without MP3, Public Domain Mark, video, Ogg video, picture), metadata cut to the four fields the reader reads",
         "commons/musopen_category_page.json":
             "Wikimedia Commons API, the first answer of Category:Musopen with two files and its continue token, metadata cut to the four fields the reader reads",
+        "commons/musopen_composers.json":
+            "Wikimedia Commons API on 24.11.2026, a search in Category:Musopen for Traviata and for Unknown author, five files with the reader's fields and their categories: the uploader as artist, a hidden second Unknown author, the composer before a dash and before a comma, a title with a comma and no composer",
     ]
 
     /// Every answer file, by its path below `ServerAnswers`.
