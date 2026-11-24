@@ -98,7 +98,8 @@ struct PodcastFolderEditTests {
             for language in ["de", "fr"] {
                 let unit = (languages[language] as? [String: Any])?["stringUnit"] as? [String: Any]
                 #expect(unit?["state"] as? String == "translated", "\(language): \(key)")
-                #expect(!((unit?["value"] as? String) ?? "").isEmpty, "\(language): \(key)")
+                let value = unit?["value"] as? String ?? ""
+                #expect(value.count > 20 && value != key, "\(language): \(key)")
             }
         }
     }

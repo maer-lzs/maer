@@ -15,22 +15,30 @@ struct PodcastSubscriptionFoldSection: View {
     @AppStorage(AppStorageKeys.podcastsPinchflatInSubscriptions) private var pinchflatFolded = false
     @AppStorage(AppStorageKeys.podcastsPremiumInSubscriptions) private var premiumFolded = false
 
+    /// Each switch has its own footer, so the sentence names the shows it
+    /// moves.
     var body: some View {
-        Section {
-            if PinchflatClient.isConfigured(PinchflatClient.serverURL) {
+        if PinchflatClient.isConfigured(PinchflatClient.serverURL) {
+            Section {
                 AppSwitch(isOn: $pinchflatFolded) {
                     Label("Pinchflat like other feeds", systemImage: PinchflatGlyph.symbol)
                 }
                 .accessibilityIdentifier("fold-pinchflat")
+            } header: {
+                Text("Subscriptions")
+            } footer: {
+                Text("If switched on, Pinchflat shows will be displayed with your other subscriptions and count alongside them. Their own row will no longer be shown.")
             }
+        }
+        Section {
             AppSwitch(isOn: $premiumFolded) {
                 Label("Premium like other feeds", systemImage: "lock.fill")
             }
             .accessibilityIdentifier("fold-premium")
         } header: {
-            Text("Subscriptions")
+            if !PinchflatClient.isConfigured(PinchflatClient.serverURL) { Text("Subscriptions") }
         } footer: {
-            Text("Switched on, these shows stand in your subscriptions with their glyph and count with them; their own row falls away.")
+            Text("If switched on, premium shows will be displayed with your other subscriptions and count alongside them. Their own row will no longer be shown.")
         }
     }
 }

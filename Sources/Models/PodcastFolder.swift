@@ -89,13 +89,16 @@ nonisolated enum PodcastFolder {
     /// no candidate (no longer subscribed) stays, since the sheet does not
     /// show it.
     static func edit(_ itemIds: [String], candidates: [String], chosen: Set<String>) -> (join: [String], leave: [String]) {
-        ([], [])
+        let inside = Set(itemIds.compactMap(feedKey(of:)))
+        return (candidates.filter { chosen.contains($0) && !inside.contains($0) },
+                candidates.filter { inside.contains($0) && !chosen.contains($0) })
     }
 
     /// The number of shows a folder holds after an edit; at 0 there is
     /// nothing to save, a folder is never empty.
     static func remaining(_ itemIds: [String], after edit: (join: [String], leave: [String])) -> Int {
-        0
+        let inside = Set(itemIds.compactMap(feedKey(of:)))
+        return inside.subtracting(edit.leave).union(edit.join).count
     }
 
     /// The routine rules a folder starts through: the newest of each show.

@@ -11069,6 +11069,34 @@
         }
       }
     },
+    "Edit Folder" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner bearbeiten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Editar carpeta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier le dossier"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Modifica cartella"
+          }
+        }
+      }
+    },
     "Education" : {
       "comment" : "Genre of books, podcasts or music",
       "localizations" : {
@@ -14184,6 +14212,62 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Spazio iCloud"
+          }
+        }
+      }
+    },
+    "If switched on, Pinchflat shows will be displayed with your other subscriptions and count alongside them. Their own row will no longer be shown." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn eingeschaltet, erscheinen Pinchflat-Sendungen bei deinen anderen Abos und zählen mit ihnen. Ihre eigene Reihe wird nicht mehr angezeigt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Si se activa, los programas de Pinchflat se mostrarán con tus otras suscripciones y contarán junto a ellas. Su propia fila ya no se mostrará."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si l’option est activée, les émissions Pinchflat s’affichent avec vos autres abonnements et sont comptées avec eux. Leur propre rangée n’est plus affichée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Se attivato, i programmi di Pinchflat verranno mostrati con le altre iscrizioni e contati insieme a esse. La loro riga separata non verrà più mostrata."
+          }
+        }
+      }
+    },
+    "If switched on, premium shows will be displayed with your other subscriptions and count alongside them. Their own row will no longer be shown." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn eingeschaltet, erscheinen Premium-Sendungen bei deinen anderen Abos und zählen mit ihnen. Ihre eigene Reihe wird nicht mehr angezeigt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Si se activa, los programas premium se mostrarán con tus otras suscripciones y contarán junto a ellas. Su propia fila ya no se mostrará."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si l’option est activée, les émissions premium s’affichent avec vos autres abonnements et sont comptées avec eux. Leur propre rangée n’est plus affichée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Se attivato, i programmi premium verranno mostrati con le altre iscrizioni e contati insieme a esse. La loro riga separata non verrà più mostrata."
           }
         }
       }
@@ -32805,34 +32889,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Passa al feed gratuito"
-          }
-        }
-      }
-    },
-    "Switched on, these shows stand in your subscriptions with their glyph and count with them; their own row falls away." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eingeschaltet stehen diese Sendungen mit ihrer Glyphe in deinen Abos und zählen mit; ihre eigene Reihe fällt weg."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Activados, estos programas aparecen en tus suscripciones con su símbolo y cuentan con ellas; su propia fila desaparece."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une fois l’option activée, ces émissions figurent dans vos abonnements avec leur symbole et sont comptées avec eux ; leur propre rangée disparaît."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Se attivato, questi programmi compaiono tra le tue iscrizioni con il loro simbolo e vengono contati con esse; la loro riga separata scompare."
           }
         }
       }

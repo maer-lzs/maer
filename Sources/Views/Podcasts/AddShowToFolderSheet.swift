@@ -7,28 +7,37 @@ import SwiftUI
 
 /// Puts a show into a folder: an existing one, or a new one with a name.
 /// With a show it comes from the show's page; without one it comes from
-/// "+" and offers the subscribed shows to start the new folder with.
+/// "+" and offers the subscribed shows to start the new folder with. With
+/// a folder to edit it comes from the folder's menu, the same sheet with
+/// the folder's name and shows chosen, and Save changes that folder.
+/// Create and Save stand where a sheet confirms on iOS, at the top right.
 struct AddShowToFolderSheet: View {
     /// The show to file; nil makes a new folder from chosen shows.
     let show: PodcastShow?
+    /// The folder to edit; nil makes a new one.
+    let editing: MaerPlaylists.Playlist?
     @ObservedObject private var store = MaerPlaylists.shared
     /// The subscriptions as the sheet opened; a short choice needs no
     /// observation of them.
     private let shows = PodcastSubscriptions.shared.shows
     @Environment(\.dismiss) private var dismiss
-    @State private var newName = ""
-    @State private var chosen: Set<String> = []
+    @State private var newName: String
+    @State private var chosen: Set<String>
+
+    init(show: PodcastShow?, editing: MaerPlaylists.Playlist? = nil) {
+        self.show = show
+        self.editing = editing
+        _newName = State(initialValue: editing?.name ?? "")
+        _chosen = State(initialValue: Set(editing?.itemIds.compactMap(PodcastFolder.feedKey(of:)) ?? []))
+    }
 
     var body: some View {
         let folders = store.playlists.filter { PodcastFolder.isFolder($0.itemIds) }
         NavigationStack {
             Form {
-                Section("New Folder") {
+                Section(editing == nil ? "New Folder" : "Name") {
                     TextField("Name", text: $newName)
                         .accessibilityIdentifier("podcast-folder-name")
-                    Button("Create") { create() }
-                        .disabled(!canCreate)
-                        .accessibilityIdentifier("podcast-folder-create")
                 }
                 if let show, !folders.isEmpty {
                     let entry = PodcastFolder.entry(feedKey: PodcastIdentity.feedKey(show.feedURL))
@@ -56,13 +65,43 @@ struct AddShowToFolderSheet: View {
                     }
                 }
             }
-            .navigationTitle(show == nil ? Text("New Folder") : Text("Add to Folder"))
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    if let folder = editing {
+                        Button("Save") { save(folder) }
+                            .disabled(!canSave(folder))
+                            .accessibilityIdentifier("podcast-folder-save")
+                    } else {
+                        Button("Create") { create() }
+                            .disabled(!canCreate)
+                            .accessibilityIdentifier("podcast-folder-create")
+                    }
+                }
             }
         }
         .softTopScrollEdge()
+    }
+
+    private var title: Text {
+        if editing != nil { return Text("Edit Folder") }
+        return show == nil ? Text("New Folder") : Text("Add to Folder")
+    }
+
+    private var candidates: [String] { shows.map { PodcastIdentity.feedKey($0.feedURL) } }
+
+    private func canSave(_ folder: MaerPlaylists.Playlist) -> Bool {
+        !newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && PodcastFolder.remaining(folder.itemIds, after: PodcastFolder.edit(folder.itemIds, candidates: candidates, chosen: chosen)) > 0
+    }
+
+    /// The same folder with its new name and shows; no second one.
+    private func save(_ folder: MaerPlaylists.Playlist) {
+        let edit = PodcastFolder.edit(folder.itemIds, candidates: candidates, chosen: chosen)
+        store.editFolder(id: folder.id, name: newName, join: edit.join, leave: edit.leave)
+        dismiss()
     }
 
     private var canCreate: Bool {

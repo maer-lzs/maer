@@ -99,8 +99,8 @@ struct PodcastFolderTile: View {
 /// A folder's page: the mosaic with its name and counts, Play and Shuffle
 /// over the newest unheard episode of each show, the sentence that says so,
 /// and the grid of its shows. A show leaves the folder from its menu; the
-/// page menu renames and deletes the folder, which gives its shows back to
-/// the loose grid.
+/// page menu edits the folder in the sheet it was made in (name and shows)
+/// and deletes it, which gives its shows back to the loose grid.
 struct PodcastFolderPage: View {
     let folderId: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -111,8 +111,7 @@ struct PodcastFolderPage: View {
     @Environment(\.itemRouter) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var infos: [RecentShowInfo] = []
-    @State private var renaming = false
-    @State private var newName = ""
+    @State private var editing: MaerPlaylists.Playlist?
     @State private var confirmingDelete = false
 
     var body: some View {
@@ -132,17 +131,14 @@ struct PodcastFolderPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .pageActions("podcast-folder-actions", shown: store.playlist(id: folderId) != nil) {
             Button {
-                newName = store.playlist(id: folderId)?.name ?? ""
-                renaming = true
-            } label: { Label("Rename", systemImage: "pencil") }
+                editing = store.playlist(id: folderId)
+            } label: { Label("Edit Folder", systemImage: "pencil") }
             Button(role: .destructive) { confirmingDelete = true } label: {
                 Label("Delete Folder", systemImage: "trash")
             }
         }
-        .alert("Rename", isPresented: $renaming) {
-            TextField("Name", text: $newName)
-            Button("Save") { store.rename(playlistId: folderId, to: newName) }
-            Button("Cancel", role: .cancel) {}
+        .sheet(item: $editing) { folder in
+            AddShowToFolderSheet(show: nil, editing: folder).followsAppearanceChoice()
         }
         .confirmationDialog("Delete Folder", isPresented: $confirmingDelete) {
             Button("Delete Folder", role: .destructive) {

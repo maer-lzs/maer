@@ -514,6 +514,11 @@ final class MaerPlaylists: ObservableObject {
     /// that join and those that leave (`PodcastFolder.edit`). It stays the
     /// same folder; the shows join first, so it is never empty on the way.
     func editFolder(id: String, name: String, join: [String], leave: [String]) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, playlist(id: id)?.name != trimmed { rename(playlistId: id, to: trimmed) }
+        join.forEach { file(show: $0, into: id) }
+        leave.forEach { remove(itemId: PodcastFolder.entry(feedKey: $0), from: id) }
+        if playlist(id: id)?.itemIds.isEmpty == true { delete(playlistId: id) }
     }
 
     func delete(playlistId: String) {

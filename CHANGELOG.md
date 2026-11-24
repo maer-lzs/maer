@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**Edit a folder.** The menu of a podcast folder offers Edit Folder: the
+sheet it was made in, with its name and its shows chosen, to add and
+remove shows and rename it. Saving changes that folder. Create and Save
+stand at the top right of the sheet, where a sheet confirms. The footers
+of the two switches of the subscriptions say plainly what each does.
+
 ## v3.9.1 (Build 68)
 
 **Jamendo and Podcast Index work again.** The app's keys for the two
