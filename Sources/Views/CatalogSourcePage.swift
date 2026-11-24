@@ -1083,18 +1083,11 @@ struct ArchiveSeriesPage: View {
             // An album takes the album page's measure, a series the show's.
             // The page is a large view: the release's original picture once
             // its files were read (`AudioProvider.largeCoverURL`). A Musopen
-            // recording has no picture; its cover is drawn, as on its tile.
+            // recording's drawn cover comes by its address (`DrawnCover`).
             let coverSide = side ?? (effectiveFlavor == .album ? 240 : 150)
             Group {
-                if MusopenCoverArt.applies(to: itemId) {
-                    MusopenCover(title: detail.media.metadata?.title ?? "",
-                                 composer: detail.media.metadata?.authorName)
-                        .frame(width: coverSide, height: coverSide)
-                        .clipShape(RoundedRectangle(cornerRadius: DetailCoverCard.cornerRadius, style: .continuous))
-                } else {
-                    podcastArtwork(url: router.largeCoverURL(itemId), size: coverSide,
-                                   corner: DetailCoverCard.cornerRadius)
-                }
+                podcastArtwork(url: router.largeCoverURL(itemId), size: coverSide,
+                               corner: DetailCoverCard.cornerRadius)
             }
             .coverCard()
         } lines: {

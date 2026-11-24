@@ -42,8 +42,10 @@ struct ArtworkDoorFenceTests {
     /// The homes and their stock on the day of the fence.
     // BESTAND OHNE EINZELGRUENDE: the three entries have the same reason, they ARE the
     // homes of the door. One sentence per line would be the same sentence three times.
+    // ImageCache 17: its three fetches take the bytes from `Artwork.bytes`, the
+    // one way a cover arrives, which also draws the drawn covers.
     nonisolated static let stock: [String: Int] = [
-        "ImageCache.swift": 20,
+        "ImageCache.swift": 17,
         "ImageProbe.swift": 5,
         "Artwork.swift": 3,
     ]

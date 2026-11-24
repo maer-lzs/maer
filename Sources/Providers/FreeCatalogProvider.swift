@@ -840,6 +840,12 @@ final class FreeCatalogProvider: AudioProvider {
     }
 
     func coverURL(forItemId itemId: String) -> URL? {
+        if MusopenCoverArt.applies(to: itemId) {
+            // A recording has no picture; its cover is drawn from its title
+            // and composer, at an address every surface loads (`DrawnCover`).
+            guard let meta = itemsById[itemId]?.media?.metadata else { return nil }
+            return DrawnCover.url(title: meta.title ?? "", composer: meta.authorName)
+        }
         if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
             guard let book = librivoxBooks[itemId],
                   let identifier = FreeCatalog.iarchiveIdentifier(from: book.url_iarchive)

@@ -270,14 +270,28 @@ enum Artwork {
         return await ImageCache.reduced(image, maxPixelSize: maxPixel)
     }
 
+    /// The bytes behind a cover's address, the one way a cover arrives: a
+    /// drawn cover (`DrawnCover`) is rendered here, every other address
+    /// comes through the HTTP door. So a drawn cover is a cover on every
+    /// surface that loads covers by their address.
+    static func bytes(from url: URL) async throws -> (Data, HTTPURLResponse?) {
+        if DrawnCover.parts(of: url) != nil {
+            guard let data = DrawnCoverRenderer.png(for: url) else { throw URLError(.cannotDecodeContentData) }
+            return (data, nil)
+        }
+        return try await HTTP.data(from: url, lane: .cover)
+    }
+
     /// `storedAs`: the address the picture is kept under when `url` is the
     /// earlier address a larger cover fell back to (`CoverAddressHistory`).
     private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int,
                               storedAs asked: URL? = nil) async -> Fetched {
         let target = asked ?? url
         // Offline there is nothing to fetch. Per-cell attempts during
-        // scrolling would only burn cycles.
-        guard await Reachability.isConnected() else {
+        // scrolling would only burn cycles. A drawn cover needs no network.
+        let drawn = DrawnCover.parts(of: url) != nil
+        let connected = drawn ? true : await Reachability.isConnected()
+        guard connected else {
             CoverTraceLog.note(pot: .network, outcome: .offline, attempt: attempt, url: url)
             return .unanswered
         }
@@ -289,7 +303,7 @@ enum Artwork {
         // answer only when no invalidation came in between.
         let startedAt = tiers.invalidationCount(for: target)
         // bearable, because the HTTP door logs the failure with its reason and the trace names it as transport
-        guard let (data, http) = try? await HTTP.data(from: url, lane: .cover) else {
+        guard let (data, http) = try? await bytes(from: url) else {
             CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
             return .unanswered
         }

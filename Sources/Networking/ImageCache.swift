@@ -863,7 +863,7 @@ final class ImageCache {
         // a tile that left asks nothing.
         guard await TileDwell.stood(TileDwell.cover) else { return nil }
         let startedAt = invalidationCount(for: url)
-        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
+        guard let (data, _) = try? await Artwork.bytes(from: url),
               let full = UIImage(data: data) else {
             // A failed load still shows a kept picture of an invalidated address.
             return await storedImage(for: url, maxPixelSize: target, allowKept: true)
@@ -1116,7 +1116,7 @@ final class ImageCache {
                 Logger.library.error("COVERCACHE persist move failed: \(FailureReason.of(error), privacy: .public)")
             }
         }
-        guard let (data, _) = try? await HTTP.data(from: coverURL, lane: .cover) else { return }
+        guard let (data, _) = try? await Artwork.bytes(from: coverURL) else { return }
         await makePersistent(coverURL: coverURL, data: data)
     }
 
@@ -1646,7 +1646,7 @@ final class ImageCache {
         inFlight.insert(name)
         defer { inFlight.remove(name) }
         let startedAt = invalidationCount(for: url)
-        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
+        guard let (data, _) = try? await Artwork.bytes(from: url),
               let image = UIImage(data: data) else { return }
         // Held at display size like every fetched cover, never the original.
         let reduced: (UIImage, Data)?

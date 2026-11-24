@@ -58,6 +58,23 @@ struct MusopenCover: View {
     }
 }
 
+/// The picture behind a drawn cover's address (`DrawnCover`): the drawing
+/// rendered once into PNG bytes, which the door of the covers keeps like
+/// any fetched cover.
+@MainActor
+enum DrawnCoverRenderer {
+    /// The side of the rendered picture in pixels, the size of a large cover.
+    static let side: CGFloat = 600
+
+    static func png(for url: URL) -> Data? {
+        guard let parts = DrawnCover.parts(of: url) else { return nil }
+        let renderer = ImageRenderer(content: MusopenCover(title: parts.title, composer: parts.composer)
+            .frame(width: side, height: side))
+        renderer.scale = 1
+        return renderer.uiImage?.pngData()
+    }
+}
+
 /// The Musopen row: its heading leads to the page of all recordings, the
 /// tiles come from the store's row of the day. It stands on the Music tab
 /// among the open catalogs and on the Classical page; with its switch off
