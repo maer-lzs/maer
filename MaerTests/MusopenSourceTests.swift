@@ -17,7 +17,9 @@ struct MusopenSourceTests {
     nonisolated static let recording = MusopenCatalog.Recording(
         pageId: 99430846,
         title: "A Midsummer Night's Dream Op. 61 Dance of Clowns",
-        artistHTML: "<a href=\"//commons.wikimedia.org/wiki/User:X\">European &amp; Archive</a>",
+        // As the file page of this recording states it: text, not a link to
+        // a Commons user (such a link names the uploader).
+        artistHTML: "<b>European &amp; Archive</b>",
         duration: 120.3,
         licence: .publicDomain,
         audioURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4f/Clowns.ogg/Clowns.ogg.mp3")!,
@@ -38,14 +40,17 @@ struct MusopenSourceTests {
         return (provider, asked, directory)
     }
 
-    @Test("A recording becomes a tile with its name and the artist as plain text")
+    @Test("A recording becomes a tile with its work, its composer and the artist field as performer in plain text")
     func tile() throws {
         let (provider, _, directory) = try makeProvider(allowed: true, answer: nil)
         defer { try? FileManager.default.removeItem(at: directory) }
         let item = try #require(provider.remember(recording: Self.recording))
         #expect(item.id == "mso:99430846")
         #expect(item.title == "A Midsummer Night's Dream Op. 61 Dance of Clowns")
-        #expect(item.author == "European & Archive")
+        // The field names an ensemble, no composer (`MusopenOrder.parts`).
+        #expect(item.author == nil)
+        let performer = item.media?.metadata?.narratorName
+        #expect(performer == "European & Archive")
         #expect(item.media?.duration == 120.3)
     }
 

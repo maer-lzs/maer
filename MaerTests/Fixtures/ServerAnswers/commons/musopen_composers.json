@@ -1,0 +1,199 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 22201798,
+    "title": "File:La Traviata - Act 1 - Libiamo ne' lieti calici.ogg",
+    "videoinfo": [
+     {
+      "duration": 182.91675736961452,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/2a/La_Traviata_-_Act_1_-_Libiamo_ne%27_lieti_calici.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:La_Traviata_-_Act_1_-_Libiamo_ne%27_lieti_calici.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "La Traviata - Act 1 - Libiamo ne' lieti calici"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Morn\" title=\"User:Morn\">Morn</a>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       },
+       "Categories": {
+        "value": "CC-Zero|Musopen|Audio files of La traviata|Audio files with closed captioning in Italian|Audio files with closed captioning in Hindi|Audio files with closed captioning in English|Audio files with closed captioning in Japanese|Audio files with closed captioning in Russian|Audio files with closed captioning in Spanish"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/2/2a/La_Traviata_-_Act_1_-_Libiamo_ne%27_lieti_calici.ogg/La_Traviata_-_Act_1_-_Libiamo_ne%27_lieti_calici.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 127728
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 22204857,
+    "title": "File:Johann Strauss - Wiener Blut Op. 354.ogg",
+    "videoinfo": [
+     {
+      "duration": 178.26689342403628,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Johann_Strauss_-_Wiener_Blut_Op._354.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Johann_Strauss_-_Wiener_Blut_Op._354.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Johann Strauss - Wiener Blut Op. 354"
+       },
+       "Artist": {
+        "value": "Unknown author<span style=\"display: none;\">Unknown author</span>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       },
+       "Categories": {
+        "value": "Wiener Blut|CC-Zero|Musopen|Template Unknown (author)|Audio files of music by Johann Strauss II"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a9/Johann_Strauss_-_Wiener_Blut_Op._354.ogg/Johann_Strauss_-_Wiener_Blut_Op._354.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 130424
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 22218876,
+    "title": "File:Brahms - Symphony No.3 in F major Op.90 - IV. Allegro.ogg",
+    "videoinfo": [
+     {
+      "duration": 508.37990929705217,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/31/Brahms_-_Symphony_No.3_in_F_major_Op.90_-_IV._Allegro.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Brahms_-_Symphony_No.3_in_F_major_Op.90_-_IV._Allegro.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Brahms - Symphony No.3 in F major Op.90 - IV. Allegro"
+       },
+       "Artist": {
+        "value": "Unknown author<span style=\"display: none;\">Unknown author</span>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       },
+       "Categories": {
+        "value": "Symphony No. 3 (Brahms)|CC-Zero|Allegro (music)|Musopen|Template Unknown (author)|Audio files of music by Johannes Brahms"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/3/31/Brahms_-_Symphony_No.3_in_F_major_Op.90_-_IV._Allegro.ogg/Brahms_-_Symphony_No.3_in_F_major_Op.90_-_IV._Allegro.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 129896
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 22269909,
+    "title": "File:Strauss, Kaiserwalzer.ogg",
+    "videoinfo": [
+     {
+      "duration": 180.6798866213152,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Strauss%2C_Kaiserwalzer.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Strauss,_Kaiserwalzer.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Strauss, Kaiserwalzer"
+       },
+       "Artist": {
+        "value": "Unknown author<span style=\"display: none;\">Unknown author</span>"
+       },
+       "LicenseShortName": {
+        "value": "CC0"
+       },
+       "License": {
+        "value": "cc0"
+       },
+       "Categories": {
+        "value": "Kaiserwalzer|CC-Zero|Musopen|Template Unknown (author)|Audio files of music by Johann Strauss II"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a6/Strauss%2C_Kaiserwalzer.ogg/Strauss%2C_Kaiserwalzer.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 130480
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pageid": 176969623,
+    "title": "File:Komm, süsser Tod, BWV 478.ogg",
+    "videoinfo": [
+     {
+      "duration": 82.0401814058957,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/68/Komm%2C_s%C3%BCsser_Tod%2C_BWV_478.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Komm,_s%C3%BCsser_Tod,_BWV_478.ogg",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Komm, süsser Tod, BWV 478"
+       },
+       "Artist": {
+        "value": "Unknown author<span style=\"display: none;\">Unknown author</span>"
+       },
+       "LicenseShortName": {
+        "value": "PDM-owner"
+       },
+       "Categories": {
+        "value": "Compositions by Johann Sebastian Bach|Musopen|Unknown date|Template Unknown (author)|PDMark-owner"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/68/Komm%2C_s%C3%BCsser_Tod%2C_BWV_478.ogg/Komm%2C_s%C3%BCsser_Tod%2C_BWV_478.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 166416
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
