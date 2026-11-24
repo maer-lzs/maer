@@ -90,7 +90,7 @@ struct MusopenCoverArtTests {
         #expect(!MusopenCoverArt.applies(to: FreeCatalog.archivePrefix + "x"))
     }
 
-    @Test("the tile, the page and the player draw the one cover; its text fits the picture instead of breaking off", .needsTheSources)
+    @Test("the drawn cover is drawn in one place and comes by its address everywhere; its text fits the picture", .needsTheSources)
     func oneCover() throws {
         func source(_ path: String) throws -> String {
             SyncContractFenceTests.stripped(
@@ -103,12 +103,21 @@ struct MusopenCoverArtTests {
                 "the cover draws no diagonal of its two colours")
         #expect(cover.contains("MusopenCoverArt.initial(composer: lines.composer, title: lines.work)"),
                 "the cover carries no initial")
-        #expect(try source("Sources/Views/FeedArtwork.swift").contains("MusopenCover(title: item.title, composer: item.author)"),
-                "the catalogue tile draws no cover for a recording")
-        #expect(try source("Sources/Views/CatalogSourcePage.swift").contains("MusopenCover(title:"),
-                "the page shows another placeholder")
-        #expect(try source("Sources/Views/PlayerView.swift").contains("MusopenCover(title:"),
-                "the player shows another placeholder")
+        // One place draws it: the renderer behind the drawn address. No view
+        // decides by itself which recording gets the drawing.
+        var drawers: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = SyncContractFenceTests.stripped(try SourceTree.text(file))
+            let count = text.components(separatedBy: "MusopenCover(").count - 1
+            if count > 0 { drawers.append("\(file.lastPathComponent): \(count)") }
+        }
+        #expect(drawers == ["MusopenViews.swift: 1"], "a view draws the cover itself: \(drawers)")
+        #expect(cover.contains("ImageRenderer(content: MusopenCover(title: parts.title, composer: parts.composer)"))
+        #expect(try source("Sources/Networking/Artwork.swift").contains("guard let data = DrawnCoverRenderer.png(for: url)"),
+                "the door of the covers does not draw a drawn address")
+        #expect(try source("Sources/Providers/FreeCatalogProvider.swift")
+            .contains("return DrawnCover.url(title: meta.title ?? \"\", composer: meta.authorName)"),
+                "a recording's cover address is not the drawn one")
     }
 }
 #endif
