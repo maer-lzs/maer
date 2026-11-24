@@ -88,6 +88,29 @@ nonisolated enum MusopenCatalog {
         var itemId: String { MusopenCatalog.prefix + String(pageId) }
     }
 
+    /// The artist field of a file page as text, its parts apart: an element
+    /// the page hides goes (Commons writes "Unknown author" a second time in
+    /// a hidden span, and the two used to meet as "Unknown authorUnknown
+    /// author"), a link to a Commons user names the uploader, not an artist,
+    /// and goes as well; line breaks and " / " part the names, "Unknown
+    /// author" is no name. nil when nothing is left.
+    static func artistText(_ html: String?) -> String? {
+        guard var text = html else { return nil }
+        let options: String.CompareOptions = [.regularExpression, .caseInsensitive]
+        text = text.replacingOccurrences(of: "<(\\w+)[^>]*display:\\s*none[^>]*>.*?</\\1>", with: "", options: options)
+        text = text.replacingOccurrences(of: "<a [^>]*/wiki/User:[^>]*>.*?</a>", with: "", options: options)
+        text = text.replacingOccurrences(of: "<br\\s*/?>", with: ";", options: options)
+        text = text.replacingOccurrences(of: " / ", with: ";")
+        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        for (entity, plain) in ["&amp;": "&", "&quot;": "\"", "&#39;": "'", "&nbsp;": " ", "&lt;": "<", "&gt;": ">"] {
+            text = text.replacingOccurrences(of: entity, with: plain)
+        }
+        var seen: Set<String> = []
+        let parts = text.split(separator: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && $0.lowercased() != "unknown author" && seen.insert($0.lowercased()).inserted }
+        return parts.isEmpty ? nil : parts.joined(separator: "; ")
+    }
+
     /// Where the reader stands: which category, and the token Commons
     /// handed out for its next answer.
     struct Cursor: Equatable, Sendable {

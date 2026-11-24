@@ -340,22 +340,25 @@ final class FreeCatalogProvider: AudioProvider {
         return item
     }
 
-    /// A Musopen recording as a catalog title. The artist comes as the
-    /// file page states it, with links; it becomes text here like every
-    /// catalog name. The licence is the file's own.
+    /// A Musopen recording as a catalog title: composer, work and
+    /// performer by the one rule (`MusopenOrder.parts`) from the artist
+    /// field as text (`MusopenCatalog.artistText`) and the file's title, so
+    /// the tile, the drawn cover, the page and the player name the same.
+    /// The licence is the file's own.
     @discardableResult
     func remember(recording: MusopenCatalog.Recording) -> LibraryItem? {
         let id = recording.itemId
         musopenRecordings[id] = recording
         licences[id] = recording.licence.label
-        let artist = recording.artistHTML.map(htmlPlainText).flatMap { $0.isEmpty ? nil : $0 }
+        let parts = MusopenOrder.parts(author: MusopenCatalog.artistText(recording.artistHTML),
+                                       title: FreeCatalog.shownTitle(recording.title, itemId: id))
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: FreeCatalog.shownTitle(recording.title, itemId: id),
-                    authorName: artist,
-                    narratorName: nil,
+                    title: parts.work,
+                    authorName: parts.composer,
+                    narratorName: parts.performer,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil),
                 duration: recording.duration, chapters: nil, tracks: nil),
             addedAt: nil)
@@ -802,7 +805,9 @@ final class FreeCatalogProvider: AudioProvider {
         let detail = LibraryItemDetail(
             id: itemId,
             media: LibraryItemMedia(
-                metadata: detailMetadata(itemId: itemId, title: recording.title,
+                // The work and the composer as the one rule named them
+                // (`remember(recording:)`), not the file's raw title.
+                metadata: detailMetadata(itemId: itemId, title: libraryItem(forId: itemId)?.title ?? recording.title,
                                          authorName: libraryItem(forId: itemId)?.author),
                 duration: recording.duration, chapters: nil,
                 tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: recording.duration,

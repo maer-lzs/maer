@@ -51,15 +51,77 @@ nonisolated enum MusopenOrder {
     /// before the dash the field speaks, which names the performers as
     /// often. Either counts only where it reads as a name; "Family, Given"
     /// shows as it is spoken.
+    ///
+    /// A known work whose files name no composer anywhere (Commons names
+    /// only the uploader for "La Traviata") takes its composer from
+    /// `knownWorks`; "Family, Work" counts as a name before the work only
+    /// for a family of the stock (`stockComposers`), so "Komm, süsser Tod"
+    /// names nobody.
     static func composer(author: String?, title: String) -> String? {
+        if let known = knownWorks.first(where: { folded(title).contains($0.key) })?.value { return known }
         let field = readableName(author ?? "").map(spoken)
-        guard let dash = title.range(of: " - "), let named = readableName(String(title[..<dash.lowerBound])) else {
-            return field
-        }
+        guard let named = namedBefore(title)?.name else { return field }
         let fromTitle = spoken(named)
         let sameFamily = field.map { folded(MusopenCoverArt.familyName($0)) == folded(MusopenCoverArt.familyName(fromTitle)) }
         return sameFamily == true ? field : fromTitle
     }
+
+    /// The name that stands before the work in a title, with the rest: the
+    /// name before " - ", or before ", " where its family is one of the
+    /// stock's composers.
+    private static func namedBefore(_ title: String) -> (name: String, work: String)? {
+        if let dash = title.range(of: " - "), let named = readableName(String(title[..<dash.lowerBound])) {
+            return (named, String(title[dash.upperBound...]))
+        }
+        if let comma = title.range(of: ", "), let named = readableName(String(title[..<comma.lowerBound])),
+           stockFamilies.contains(folded(MusopenCoverArt.familyName(spoken(named)))) {
+            return (named, String(title[comma.upperBound...]))
+        }
+        return nil
+    }
+
+    /// Composer, work and performer of a recording, the one answer for the
+    /// tile, the drawn cover, the page and the player: the composer as
+    /// `composer` says; the work the title without the composer in front
+    /// of it (the cover names him above); the performer the artist field
+    /// where it names someone else.
+    static func parts(author: String?, title: String) -> (composer: String?, work: String, performer: String?) {
+        let composer = composer(author: author, title: title)
+        var work = title
+        if let named = namedBefore(title), let composer,
+           folded(MusopenCoverArt.familyName(spoken(named.name))) == folded(MusopenCoverArt.familyName(composer)) {
+            work = named.work.trimmingCharacters(in: .whitespaces)
+        }
+        // The field as it stands, an ensemble too, unless it names the composer.
+        let field = (author ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let namesComposer = readableName(field).map(spoken).map { name in
+            composer.map { folded(MusopenCoverArt.familyName($0)) == folded(MusopenCoverArt.familyName(name)) } == true
+        } ?? false
+        let performer = field.isEmpty || namesComposer ? nil : field
+        return (composer, work.isEmpty ? title : work, performer)
+    }
+
+    /// Works whose files name their composer nowhere: neither the artist
+    /// field (the uploader) nor the file name. Measured on Commons 24.11.2026.
+    static let knownWorks: [String: String] = ["la traviata": "Giuseppe Verdi"]
+
+    /// The composers of the stock (55 counted on 23.11.2026), as the source
+    /// names them; their families let "Family, Work" stand as a name.
+    static let stockComposers = [
+        "Ludwig van Beethoven", "Johann Sebastian Bach", "Wolfgang Amadeus Mozart", "Frédéric Chopin",
+        "Johannes Brahms", "Franz Schubert", "Antonín Dvořák", "Pyotr Ilyich Tchaikovsky", "Giuseppe Verdi",
+        "Felix Mendelssohn", "Robert Schumann", "Franz Liszt", "Claude Debussy", "Edvard Grieg", "Joseph Haydn",
+        "George Frideric Handel", "Antonio Vivaldi", "Erik Satie", "Sergei Rachmaninoff", "Modest Mussorgsky",
+        "Richard Wagner", "Gioachino Rossini", "Giacomo Puccini", "Georges Bizet", "Camille Saint-Saëns",
+        "Maurice Ravel", "Edward Elgar", "Gustav Holst", "Johann Strauss", "Johann Pachelbel", "Isaac Albeniz",
+        "Gabriel Fauré", "Bedřich Smetana", "Jean Sibelius", "Gustav Mahler", "Anton Bruckner", "Hector Berlioz",
+        "Carl Maria von Weber", "Niccolò Paganini", "Domenico Scarlatti", "Arcangelo Corelli", "Henry Purcell",
+        "Georg Philipp Telemann", "Christoph Willibald Gluck", "Luigi Boccherini", "Muzio Clementi",
+        "Nikolai Rimsky-Korsakov", "Alexander Borodin", "Enrique Granados", "Manuel de Falla", "Scott Joplin",
+        "Gaetano Donizetti", "Vincenzo Bellini", "Jacques Offenbach", "Charles Gounod",
+    ]
+
+    private static let stockFamilies = Set(stockComposers.map { folded(MusopenCoverArt.familyName($0)) })
 
     /// The line under the title in the player, the mini player and the lock
     /// screen: for a Musopen recording its composer (`composer`), else what
