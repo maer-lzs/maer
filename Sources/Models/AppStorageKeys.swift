@@ -909,6 +909,10 @@ nonisolated enum AppStorageKeys {
     }
 
     static let lastPlayedItemId = "lastPlayedItemId"
+    /// The title this device heard to its end last, after the standby let
+    /// it go (`PlayerCoordinator.clearStandbyAsHeard`); the idle mini
+    /// player names it. This device's own, it does not travel.
+    static let heardLastItemId = "heardLastItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     /// The Pinchflat server's address (`PinchflatClient.serverURL`).
     static let pinchflatServerURL = "pinchflatServerURL"

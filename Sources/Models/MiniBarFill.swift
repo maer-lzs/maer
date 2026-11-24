@@ -14,7 +14,7 @@ nonisolated enum MiniBarFill: Equatable, Sendable {
     case lastPlayed(String)
     case empty
 
-    static func of(hasSession: Bool, waiting: [String], lastPlayed: String?) -> MiniBarFill {
+    static func of(hasSession: Bool, waiting: [String], lastPlayed: String?, heardLast: String? = nil) -> MiniBarFill {
         if hasSession { return .session }
         if let first = waiting.first { return .waiting(first) }
         if let lastPlayed, !lastPlayed.isEmpty { return .lastPlayed(lastPlayed) }

@@ -30,10 +30,12 @@ struct IdleMiniBar: View {
                         Text(verbatim: title ?? Self.fallbackTitle(fill))
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
-                        Text(Self.secondLine(fill))
-                            .font(.caption2)
-                            .foregroundStyle(MiniBarSurface.secondLine)
-                            .lineLimit(1)
+                        if let line = Self.secondLine(fill) {
+                            Text(line)
+                                .font(.caption2)
+                                .foregroundStyle(MiniBarSurface.secondLine)
+                                .lineLimit(1)
+                        }
                     }
                     Spacer(minLength: 0)
                 }
@@ -49,7 +51,7 @@ struct IdleMiniBar: View {
     }
 
     /// The line under the title: what the bar names.
-    static func secondLine(_ fill: MiniBarFill) -> LocalizedStringKey {
+    static func secondLine(_ fill: MiniBarFill) -> LocalizedStringKey? {
         switch fill {
         case .waiting: "Waiting in Up Next"
         case .lastPlayed: "Heard last"

@@ -186,6 +186,21 @@ nonisolated enum MusopenOrder {
         }.map(\.item)
     }
 
+    /// The work a movement belongs to: the title before its last " - "
+    /// when what follows starts with the movement's number ("IV. Allegro",
+    /// "2. Andante"); nil for a title that names no movement.
+    static func workStem(_ title: String) -> String? {
+        nil
+    }
+
+    /// The next movement of the same work after a recording: the same
+    /// composer, performer and work, in the order of the page (`ordered`);
+    /// nil after the last movement and for a title without movements.
+    static func nextMovement<T>(after id: String, in items: [T], id key: (T) -> String, title: (T) -> String,
+                                composer: (T) -> String?, performer: (T) -> String?) -> T? {
+        nil
+    }
+
     private static func folded(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }

@@ -73,6 +73,7 @@ nonisolated enum UserChoiceCatalog {
         "sleepTimerLastMinutes": .device,
         // Repeat in music belongs to this device, like shuffle.
         "musicRepeatMode": .device,
+        "heardLastItemId": .device,
         // The words of the tab bar fit one screen and not another.
         "tabBarWords": .device,
         // What this device did when podcast lists became folders: its own

@@ -214,7 +214,7 @@ final class PlaybackContext: ObservableObject {
 /// line, because a second derivation could diverge, and what the line names must
 /// be what actually plays.
 nonisolated enum PlaybackAdvance {
-    enum Origin: Equatable { case order, context, binge, series }
+    enum Origin: Equatable { case order, context, work, binge, series }
 
     static func next(queueIds: [String], contextIds: [String],
                      isPlayable: (String) -> Bool,
@@ -244,6 +244,7 @@ nonisolated enum PlaybackAdvance {
                             resolves: (String) -> Bool,
                             isPodcast: (String) -> Bool,
                             bingeNext: (String) -> String?,
+                            workNext: (String) -> String? = { _ in nil },
                             seriesEnabled: Bool,
                             seriesNext: (String) -> String?) -> (id: String, origin: Origin)? {
         if let hit = next(queueIds: queueIds, contextIds: contextIds,

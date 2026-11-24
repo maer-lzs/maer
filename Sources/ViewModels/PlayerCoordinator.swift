@@ -1099,6 +1099,7 @@ final class PlayerCoordinator: ObservableObject {
                 memo[item.id] = item
                 return item.id
             },
+            workNext: { _ in nil },
             seriesEnabled: ChapterEntryRules.seriesMayFollow(finishedId, enabled: AppStorageKeys.autoPlayNextInSeriesValue),
             seriesNext: { [weak self] id in
                 guard let item = self?.nextInSeriesProvider?(id) else { return nil }

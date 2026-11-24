@@ -120,4 +120,10 @@ nonisolated extension AppStorageKeys {
         get { string(lastPlayedItemId) }
         set { set(newValue, for: lastPlayedItemId) }
     }
+
+    /// What this device heard to its end last, or nil.
+    static var heardLastItemIdValue: String? {
+        get { string(heardLastItemId) }
+        set { set(newValue, for: heardLastItemId) }
+    }
 }
