@@ -36,6 +36,7 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     /// The catalog SENDER line of a catalogBook hit (LibriVox/Gutenberg/
     /// Internet Archive). Sources sign their hits.
     var sourceLabel: String? = nil
+    var lock: FeedLock = .none
 
     /// The kind of a title a music server's offline search names, from its
     /// id (`sub:<kind>:` and `jf:<kind>:`): each kind as it is, an unknown
@@ -417,4 +418,8 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     /// needs the card too. Otherwise the old "New Shows" row renders there
     /// and stays empty forever, because nothing fills it any more.
     var includesCatalog: Bool { self == .podcasts || self == .audiobooks }
+}
+
+nonisolated enum SearchHitLock {
+    static func locked(_ results: [SearchResult], lock: (String) -> FeedLock) -> [SearchResult] { results }
 }

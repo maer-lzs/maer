@@ -20,6 +20,7 @@ import SwiftUI
 /// locks once per render and hand them here.
 struct PremiumLockBadge: View {
     let lock: FeedLock
+    var size: CoverMarkSize.Class = .tile
     @Environment(\.dynamicTypeSize) private var type
 
     var body: some View {
