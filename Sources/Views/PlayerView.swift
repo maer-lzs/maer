@@ -1175,14 +1175,14 @@ struct PlayerView: View {
                 .modifier(SideCapsuleToolCell())
             }
             SideRound {
-                AirPlayButton(tintColor: .white, activeTintColor: AppTheme.accentUIColor)
+                AirPlayButton(tintColor: .white)
             }
         }
         .environment(\.colorScheme, .dark)
     }
 
     private var airPlayControl: some View {
-        AirPlayButton(tintColor: .white, activeTintColor: AppTheme.accentUIColor)
+        AirPlayButton(tintColor: .white)
             .frame(width: 44, height: 44)
     }
 

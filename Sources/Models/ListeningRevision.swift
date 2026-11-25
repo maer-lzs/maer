@@ -35,7 +35,23 @@ final class ListeningRevision: ObservableObject {
     }
 }
 
+/// A listening event that reaches a surface before its first load: kept
+/// and caught up once after the load, instead of dropped (a rebuild from
+/// an empty cache would blank the rows). After the load every event acts
+/// at once.
 nonisolated struct RevisionCatchUp {
-    mutating func bump(loaded: Bool) -> Bool { loaded }
-    mutating func loaded() -> Bool { false }
+    private(set) var pending = false
+
+    /// Whether the event acts now; before the load it is kept.
+    mutating func bump(loaded: Bool) -> Bool {
+        if loaded { return true }
+        pending = true
+        return false
+    }
+
+    /// The load is done: whether a kept event is to be caught up, once.
+    mutating func loaded() -> Bool {
+        defer { pending = false }
+        return pending
+    }
 }

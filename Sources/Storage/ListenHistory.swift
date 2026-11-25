@@ -45,7 +45,9 @@ final class ListenHistory {
 
     /// Title id to entry; the latest hearing wins.
     private(set) var entries: [String: Entry] = [:]
-    var rowsUnread: Bool { false }
+    /// The rows could not be read at the start: the page says so instead
+    /// of calling the history empty.
+    var rowsUnread: Bool { keeper.startReadFailed }
     private var loaded = false
 
     /// Where the start read of the rows ran: on the main thread (a hearing,

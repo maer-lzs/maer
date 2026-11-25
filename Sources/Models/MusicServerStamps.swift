@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 import Synchronization
 
 /// The kinds of rows a device keeps for a title on its own.
@@ -64,7 +65,14 @@ nonisolated struct MusicServerStamps: Equatable, Sendable {
 nonisolated enum MusicServerStampBook {
     private static let books = Mutex<[ObjectIdentifier: MusicServerStamps]>([:])
     static let storageKey = AppStorageKeys.musicServerStamps
-    static func isUnreadable(in defaults: UserDefaults = .standard) -> Bool { false }
+    /// A register stored in another form: nobody can read it, so no stamp
+    /// writes over it before it was read; it is said once per run.
+    static func isUnreadable(in defaults: UserDefaults = .standard) -> Bool {
+        guard let stored = defaults.object(forKey: storageKey) else { return false }
+        return !(stored is [String: [String: String]])
+    }
+
+    private static let saidUnreadable = Mutex<Set<ObjectIdentifier>>([])
 
     private static func current(_ defaults: UserDefaults) -> String? {
         MusicServerStamps.key(of: defaults.string(forKey: AppStorageKeys.subsonicServerURL) ?? "")
@@ -93,6 +101,14 @@ nonisolated enum MusicServerStampBook {
     static func stamp(_ itemIds: [String], kind: MusicRowKind, in defaults: UserDefaults = .standard) {
         let stamped = itemIds.filter(MusicServerStamps.isStamped)
         guard !stamped.isEmpty else { return }
+        // A register of another form is not overwritten: it stays for the
+        // build that can read it, and the rows read as unstamped meanwhile.
+        if isUnreadable(in: defaults) {
+            if saidUnreadable.withLock({ $0.insert(ObjectIdentifier(defaults)).inserted }) {
+                Logger.library.error("MUSICSTAMPS register unreadable: stored in another form, kept as it is, no stamp written")
+            }
+            return
+        }
         let server = current(defaults)
         let changed: MusicServerStamps? = withBook(defaults) { book in
             let before = book

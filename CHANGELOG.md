@@ -48,6 +48,12 @@ stands as clear as the pause beside it on every background. A show you
 follow carries the lock of a premium or refused feed among the search
 results too.
 
+**Small repairs.** The listening history says when it cannot be read
+instead of showing an empty page, and it and the book page follow every
+listening event at once. The books tab no longer misses a listening
+event that comes before its first load. Catalog answers from the
+Internet Archive that belong to another search are refused.
+
 ## v3.9.1 (Build 68)
 
 **Jamendo and Podcast Index work again.** The app's keys for the two

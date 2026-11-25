@@ -20,7 +20,7 @@ import OSLog
 nonisolated enum CatalogStockFetch {
     /// Exactly the fields the stock keeps. Asking for more would be paid for
     /// on every entry of every collection.
-    static let scrapeFields = "identifier,title,creator,subject,downloads,licenseurl,year"
+    static let scrapeFields = "identifier,title,creator,subject,downloads,licenseurl,year,collection"
 
     /// The endpoint caps a call at 10.000, and that is what we ask for: the
     /// call costs the same either way, and fewer calls is politer.
@@ -41,6 +41,7 @@ nonisolated enum CatalogStockFetch {
             let downloads: Int?
             let licenseurl: ArchiveStringList?
             let year: ArchiveStringList?
+            let collection: ArchiveStringList?
         }
         let items: [Item]
         let cursor: String?
@@ -71,6 +72,15 @@ nonisolated enum CatalogStockFetch {
             throw APIError.http(http.statusCode, "")
         }
         let decoded = try JSONDecoder().decode(ScrapeResponse.self, from: data)
+        // archive.org has answered another query's results (measured): an
+        // answer whose entries do not belong to this query is refused as a
+        // whole, and the stock keeps what it had.
+        if ScrapeAnswerCheck.foreign(query: query, items: decoded.items.map {
+            (collections: $0.collection?.values ?? [], subjects: $0.subject?.values ?? [])
+        }) {
+            Logger.library.error("CATALOGSTOCK answer refused: its entries belong to another query (items=\(decoded.items.count))")
+            throw URLError(.cannotParseResponse)
+        }
         return Slice(entries: decoded.items.compactMap(entry(from:)),
                      cursor: decoded.cursor,
                      total: decoded.total ?? decoded.items.count)
@@ -542,6 +552,42 @@ nonisolated enum CatalogStockFetch {
     }
 }
 
+/// Whether an archive.org answer belongs to another query: every entry
+/// must stand in the collection the query names, and where the query names
+/// subjects (a shelf), carry one of them as a whole word. An empty answer
+/// is a clean answer.
 nonisolated enum ScrapeAnswerCheck {
-    static func foreign(query: String, items: [(collections: [String], subjects: [String])]) -> Bool { false }
+    static func foreign(query: String, items: [(collections: [String], subjects: [String])]) -> Bool {
+        let collection = firstMatch(#"collection:([A-Za-z0-9_.-]+)"#, in: query)
+        let subjects = quoted(in: firstMatch(#"subject:(\([^)]*\)|"[^"]*")"#, in: query) ?? "")
+        return items.contains { item in
+            if let collection, !item.collections.contains(where: { $0.caseInsensitiveCompare(collection) == .orderedSame }) {
+                return true
+            }
+            if !subjects.isEmpty, !subjects.contains(where: { subject in item.subjects.contains { hasWord(subject, in: $0) } }) {
+                return true
+            }
+            return false
+        }
+    }
+
+    private static func firstMatch(_ pattern: String, in text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text) else { return nil }
+        return String(text[range])
+    }
+
+    private static func quoted(in text: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: #""([^"]*)""#) else { return [] }
+        return regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap {
+            Range($0.range(at: 1), in: text).map { String(text[$0]) }
+        }
+    }
+
+    /// The subject as a whole word of the value, case aside.
+    private static func hasWord(_ word: String, in value: String) -> Bool {
+        let escaped = NSRegularExpression.escapedPattern(for: word)
+        return value.range(of: "(?i)(^|[^\\p{L}\\p{N}])\(escaped)($|[^\\p{L}\\p{N}])", options: .regularExpression) != nil
+    }
 }

@@ -275,14 +275,17 @@ final class LibraryViewModel: ObservableObject {
                 Task { @MainActor in
                     // Nothing loaded yet (cold start, or a seeded harness
                     // that fills the lists directly): a rebuild from an
-                    // empty cache would blank them.
-                    guard let self, !self.cachedItems.isEmpty else { return }
+                    // empty cache would blank them, so the event is kept and
+                    // caught up after the first load.
+                    guard let self, self.catchUp.bump(loaded: !self.cachedItems.isEmpty) else { return }
                     await self.refreshContinueRows()
                 }
             }
     }
 
     private var revisionCancellable: AnyCancellable?
+    /// A listening event before the first load, caught up after it.
+    private var catchUp = RevisionCatchUp()
 
     // MARK: - Memoized derived lists
 
@@ -1418,6 +1421,7 @@ final class LibraryViewModel: ObservableObject {
             ScrollCalm.run { [self] in apply(output) }
         }
         rebuildRunning = false
+        if !cachedItems.isEmpty, catchUp.loaded() { await refreshContinueRows() }
         if let pending = pendingRebuild {
             pendingRebuild = nil
             await rebuild(items: pending.items, progress: pending.progress)

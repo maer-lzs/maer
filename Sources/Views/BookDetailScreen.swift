@@ -20,6 +20,9 @@ struct BookDetailScreen: View {
     @Environment(\.catalogFacts) private var catalogFacts
     let entry: LibraryEntry
     @ObservedObject var coordinator: PlayerCoordinator
+    /// Every listening event, so the progress this page reads from the
+    /// device's marks follows it, not only the session's changes.
+    @ObservedObject private var revision = ListeningRevision.shared
     /// Absent on the catalog entry path: a catalog title has no library
     /// list to refresh and no sibling entries. Every use is guarded, and
     /// the SERVER path keeps passing it exactly as before.

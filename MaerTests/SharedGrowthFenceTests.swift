@@ -89,8 +89,10 @@ struct SharedGrowthFenceTests {
     /// row observes the catalog rows, on the Music tab and on the Classical
     /// page that does not observe them itself (one, `MusopenRow`). 380:
     /// the page of all folders observes the lists, as the row does (one,
-    /// `PodcastFoldersPage`).
-    nonisolated static let stock = 380
+    /// `PodcastFoldersPage`). 382: the book page and the history page
+    /// follow the listening revision (two, `BookDetailScreen`,
+    /// `ListenHistoryScreen`).
+    nonisolated static let stock = 382
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -195,8 +197,9 @@ struct SharedGrowthFenceTests {
     /// for the next movement of a Musopen work (one, `PlayerCoordinator`).
     /// 778: the page of all folders observes the lists (one,
     /// `PodcastFoldersPage`). 779: the search asks the lock of its show
-    /// hits once per search (one, `RSSProvider.search`).
-    nonisolated static let sourcesStock = 779
+    /// hits once per search (one, `RSSProvider.search`). 781: the book page
+    /// and the history page follow the listening revision (two).
+    nonisolated static let sourcesStock = 781
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

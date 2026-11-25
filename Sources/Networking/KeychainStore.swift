@@ -6,6 +6,7 @@
 import Foundation
 import OSLog
 import Security
+import Synchronization
 
 /// Very simple keychain wrapper. Enough for a single-user app. No third-party
 /// dependency needed. `nonisolated`: the Security-framework `SecItem*` calls are
@@ -121,6 +122,9 @@ nonisolated enum KeychainStore {
         read(forKey: key).value
     }
 
+    /// The keys whose read failed in this run, said once each.
+    private static let failedReads = Mutex(FailureOnce())
+
     /// The same read, saying whether a missing value is missing or could
     /// not be read (`KeychainRead`).
     static func read(forKey key: String) -> KeychainRead {
@@ -141,8 +145,9 @@ nonisolated enum KeychainStore {
         // An unreadable item is NOT the same as a missing one. Log every
         // non-notFound failure (e.g. -25308 interactionNotAllowed while the
         // device is locked).
-        if status != errSecSuccess && status != errSecItemNotFound {
-            Logger.library.error("keychain read for \(key, privacy: .public) failed: \(status)")
+        if status != errSecSuccess && status != errSecItemNotFound,
+           failedReads.withLock { $0.first(key) } {
+            Logger.library.error("keychain read for \(key, privacy: .public) failed: \(status) (said once per run)")
         }
         return read
     }
@@ -202,6 +207,13 @@ nonisolated enum KeychainKey {
     static let maerSyncToken = "maerSyncToken"
 }
 
+/// Whether a failure of a key is the first in this run: the line is
+/// written once per key, not at every read (a grid reads the lock of each
+/// show at every render).
 nonisolated struct FailureOnce {
-    mutating func first(_ key: String) -> Bool { true }
+    private var said: Set<String> = []
+
+    mutating func first(_ key: String) -> Bool {
+        said.insert(key).inserted
+    }
 }

@@ -15,12 +15,19 @@ struct ListenHistoryScreen: View {
     let family: ListenHistory.Family
     @State private var entries: [ListenHistory.Entry] = []
     @State private var loaded = false
+    /// The rows could not be read: said, not shown as empty.
+    @State private var unread = false
+    /// Every listening event reads the page again.
+    @ObservedObject private var revision = ListeningRevision.shared
     /// The sentence of a row that could not open; the alert says it.
     @State private var openFailure: String?
 
     var body: some View {
         Group {
-            if loaded, entries.isEmpty {
+            if unread {
+                EmptyStateView("Listening History", systemImage: "exclamationmark.triangle",
+                               description: Text("Your listening history cannot be read on this device right now."))
+            } else if loaded, entries.isEmpty {
                 EmptyStateView("No listening history yet", systemImage: "checkmark.circle",
                                description: family == .book
                                    ? Text("Books you finish appear here.")
@@ -42,10 +49,12 @@ struct ListenHistoryScreen: View {
         .sentenceAlert($openFailure)
         .navigationTitle(Text("Listening History"))
         .navigationBarTitleDisplayMode(.large)
-        // Read and sorted once per opening, off the main thread.
-        .task {
-            guard !loaded else { return }
-            entries = await ListenHistory.shared.historyOffMain(family)
+        // Read and sorted off the main thread, at the opening and at every
+        // listening event.
+        .task(id: revision.value) {
+            let history = ListenHistory.shared
+            entries = await history.historyOffMain(family)
+            unread = history.rowsUnread
             loaded = true
         }
     }
