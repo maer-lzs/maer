@@ -432,13 +432,41 @@ final class MaerSyncSession {
     func carryIdentity(to next: MaerSyncIdentity) {
         guard let current = identity, current != next else { identity = next; return }
         persist()
-        for base in Self.identityKeys {
-            if let value = defaults.object(forKey: current.keyed(base)) { defaults.set(value, forKey: next.keyed(base)) }
-            defaults.removeObject(forKey: current.keyed(base))
+        // The target may hold state (a device restored from a backup): the
+        // one rule decides what of both stays (`IdentityCarry.merged`).
+        func side(_ identity: MaerSyncIdentity) -> IdentityCarry.Side {
+            IdentityCarry.Side(stands: rows.rows(identity.keyed(Self.mirrorKey)),
+                               standsVersion: defaults.string(forKey: identity.keyed(Self.versionKey)),
+                               queue: rows.rows(identity.keyed(Self.queueKey)),
+                               removals: Set(StandMirrorStore.loadList(identity.keyed(Self.removalsKey), defaults: defaults)),
+                               playlistsPending: documentRows.body(identity.keyed(Self.playlistsPendingKey)),
+                               choicesPending: documentRows.body(identity.keyed(Self.choicesPendingKey)))
         }
-        for owner in Self.identityOwners { rows.rename(owner: current.keyed(owner), to: next.keyed(owner)) }
-        for owner in Self.identityDocuments { documentRows.rename(owner: current.keyed(owner), to: next.keyed(owner)) }
+        let carried = IdentityCarry.merged(source: side(current), target: side(next))
+        for kind in carried.dropped {
+            Logger.library.notice("MAERSYNC carry: a pending \(kind, privacy: .public) document of the account it joins gave way to the one carried over")
+        }
+        rows.set(next.keyed(Self.mirrorKey), carried.side.stands)
+        rows.set(next.keyed(Self.queueKey), carried.side.queue)
+        defaults.set(carried.side.standsVersion, forKey: next.keyed(Self.versionKey))
+        StandMirrorStore.saveList(Array(carried.side.removals), key: next.keyed(Self.removalsKey), defaults: defaults)
+        documentRows.setBody(next.keyed(Self.playlistsPendingKey), carried.side.playlistsPending)
+        documentRows.setBody(next.keyed(Self.choicesPendingKey), carried.side.choicesPending)
+        // The documents' pictures and versions, by the same rule: the side
+        // that read, whole.
+        for (body, version) in [(Self.playlistsMirrorKey, Self.playlistsVersionKey), (Self.choicesMirrorKey, Self.choicesVersionKey)] {
+            let sourceRead = defaults.string(forKey: current.keyed(version)) != nil
+            if sourceRead {
+                documentRows.setBody(next.keyed(body), documentRows.body(current.keyed(body)))
+                defaults.set(defaults.string(forKey: current.keyed(version)), forKey: next.keyed(version))
+            }
+        }
+        // Nothing stays behind under the source.
+        for base in Self.identityKeys { defaults.removeObject(forKey: current.keyed(base)) }
+        for owner in Self.identityOwners { rows.set(current.keyed(owner), [:]) }
+        for owner in Self.identityDocuments { documentRows.setBody(current.keyed(owner), nil) }
         identity = next
+        loadIdentityState()
     }
 
     /// A short name for the log line that says which carrier runs.
