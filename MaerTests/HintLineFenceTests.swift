@@ -20,7 +20,7 @@ import Foundation
         "CatalogDetailExtras.swift": (1, "the import result in its row, beside the green and grey results"),
         "SyncHistoryView.swift": (1, "the guard note of a history entry, in the entry's caption rhythm"),
         "ShowAccessRefusedBanner.swift": (1, "the symbol of a banner title, not a sentence"),
-        "PremiumBadge.swift": (1, "a badge, no sentence"),
+        "CoverGlyphStack.swift": (1, "the one alert tone of the marks (GlyphTone.alert): a failed download and a refused feed, no sentence"),
         "AbsSessionStateBanner.swift": (1, "the symbol of a banner title, orange only while a sign-in is asked for"),
         "MediaType+Tint.swift": (1, "the audiobooks' type colour, no hint"),
     ]

@@ -63,7 +63,7 @@ struct CompletedResumeTests {
         let coordinator = try FetchAnswerTests.squeezedSource("Sources/ViewModels/PlayerCoordinator.swift")
         let asked = try #require(coordinator.range(of: "if let model = viewModel, Self.sleepEndsWithTitle(untilChapterEnd: model.sleepUntilChapterEnd,"),
                                  "the advance does not ask the sleep")
-        let next = try #require(coordinator.range(of: "guard let next = resolveAdvance(after: finishedItemId) else { return }"))
+        let next = try #require(coordinator.range(of: "guard let next = resolveAdvance(after: finishedItemId) else {"))
         #expect(asked.lowerBound < next.lowerBound, "the sleep is asked after the next title is chosen")
     }
 }
