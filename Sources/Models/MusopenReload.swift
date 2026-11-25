@@ -38,3 +38,10 @@ enum MusopenReload {
         return .started(next)
     }
 }
+
+@MainActor
+final class MusopenPrefetch {
+    var isReading: Bool { false }
+    func begin(title: String, readToEnd: Bool, read: @escaping @MainActor () async -> Bool) {}
+    func result(read: () async -> Bool) async -> Bool { await read() }
+}
