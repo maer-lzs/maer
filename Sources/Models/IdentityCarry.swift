@@ -18,14 +18,6 @@ nonisolated enum IdentityCarry {
         var choicesPending: Data? = nil
     }
 
-    /// The queues join, the newer moment (second value) winning per title,
-    /// the source on a tie. The picture of what the service holds is the
-    /// source's whole when it has read (its version stands), else the
-    /// target's whole; never mixed per entry, or a title the service no
-    /// longer holds would come back. The removals are the source's alone:
-    /// they carry no moment, and an old one would delete a title made again
-    /// elsewhere. A pending document is the source's when it has one, else
-    /// the target's; a target's that gives way is named in `dropped`.
     /// Which side lives: at a reload the caller knows (the source has just
     /// read); at a cold start nobody does, and `living(source:target:)`
     /// estimates it.

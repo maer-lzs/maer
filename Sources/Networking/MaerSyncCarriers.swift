@@ -468,10 +468,13 @@ final class MaerSyncSession {
         }
         let target = side(next)
         let source = side(current)
-        let targetHeld = !target.stands.isEmpty || !target.queue.isEmpty || target.standsVersion != nil
-            || target.playlistsPending != nil || target.choicesPending != nil
-        let carried = IdentityCarry.merged(source: source, target: target,
-                                           living: living ?? IdentityCarry.living(source: source, target: target))
+        // Any of the ten keys counts: a target with only removals, only a
+        // document's picture or only a version holds state too.
+        let targetHeld = Self.identityKeys.contains { defaults.object(forKey: next.keyed($0)) != nil }
+            || Self.identityOwners.contains { rows.holds(next.keyed($0)) }
+            || Self.identityDocuments.contains { documents.body(next.keyed($0)) != nil }
+        let resolved = living ?? IdentityCarry.living(source: source, target: target)
+        let carried = IdentityCarry.merged(source: source, target: target, living: resolved)
         for kind in carried.dropped {
             Logger.library.notice("MAERSYNC carry: the \(kind, privacy: .public) of the side that does not live fell")
         }
@@ -481,11 +484,10 @@ final class MaerSyncSession {
         StandMirrorStore.saveList(Array(carried.side.removals), key: next.keyed(Self.removalsKey), defaults: defaults)
         documents.setBody(next.keyed(Self.playlistsPendingKey), carried.side.playlistsPending)
         documents.setBody(next.keyed(Self.choicesPendingKey), carried.side.choicesPending)
-        // The documents' pictures and versions, by the same rule: the side
-        // that read, whole.
+        // The documents' pictures and versions, by the same answer as the
+        // stands: the living side's, whole; a tie keeps the target.
         for (body, version) in [(Self.playlistsMirrorKey, Self.playlistsVersionKey), (Self.choicesMirrorKey, Self.choicesVersionKey)] {
-            let sourceRead = defaults.string(forKey: current.keyed(version)) != nil
-            if sourceRead {
+            if resolved == .source {
                 documents.setBody(next.keyed(body), documents.body(current.keyed(body)))
                 defaults.set(defaults.string(forKey: current.keyed(version)), forKey: next.keyed(version))
             }
