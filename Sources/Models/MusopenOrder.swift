@@ -197,6 +197,10 @@ nonisolated enum MusopenOrder {
         return stem.isEmpty ? nil : stem
     }
 
+    static func movementNumber(_ title: String) -> Int? {
+        nil
+    }
+
     /// The next movement of the same work after a recording: the same
     /// composer, performer and work, in the order of the page (`ordered`);
     /// nil after the last movement and for a title without movements.
