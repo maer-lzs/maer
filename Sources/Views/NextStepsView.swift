@@ -134,8 +134,6 @@ struct ImportGuidePage: View {
                 } footer: {
                     if let note = Self.noteText(guide.notes) { note }
                 }
-            } else if let note = Self.noteText(guide.notes) {
-                Section { note.foregroundStyle(.secondary) }
             }
             actionSection
         }

@@ -17899,6 +17899,34 @@
         }
       }
     },
+    "Measured while you listen in Mär on this device, from when it began counting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemessen beim Hören in Mär auf diesem Gerät, seit Mär zählt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Medido mientras escuchas en Mär en este dispositivo, desde que empezó a contar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesuré pendant l’écoute dans Mär sur cet appareil, depuis que Mär compte."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Misurato mentre ascolti in Mär su questo dispositivo, da quando ha iniziato a contare."
+          }
+        }
+      }
+    },
     "Measured while you listen in Mär, from when it began counting." : {
       "localizations" : {
         "de" : {
@@ -24093,34 +24121,6 @@
         }
       }
     },
-    "Pinchflat like other feeds" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pinchflat wie normale Feeds"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Pinchflat como otros feeds"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pinchflat comme les autres flux"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Pinchflat come gli altri feed"
-          }
-        }
-      }
-    },
     "Pinchflat Server" : {
       "localizations" : {
         "de" : {
@@ -25856,34 +25856,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "I feed premium contengono dati di accesso nel loro indirizzo. Se disattivato, restano solo su questo dispositivo; i mirror restano comunque esclusi."
-          }
-        }
-      }
-    },
-    "Premium like other feeds" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium wie normale Feeds"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Premium como otros feeds"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium comme les autres flux"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Premium come gli altri feed"
           }
         }
       }
@@ -29922,6 +29894,62 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Programma senza iscrizione o senza indirizzo del feed"
+          }
+        }
+      }
+    },
+    "Show Pinchflat feeds in the subscription list" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pinchflat-Feeds in der Aboliste zeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostrar los feeds de Pinchflat en la lista de suscripciones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher les flux Pinchflat dans la liste des abonnements"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostra i feed Pinchflat nell'elenco delle iscrizioni"
+          }
+        }
+      }
+    },
+    "Show premium feeds in the subscription list" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium-Feeds in der Aboliste zeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostrar los feeds premium en la lista de suscripciones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher les flux premium dans la liste des abonnements"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostra i feed premium nell'elenco delle iscrizioni"
           }
         }
       }

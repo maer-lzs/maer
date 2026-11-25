@@ -125,7 +125,8 @@ struct ImportGuideAndStatsTests {
         let view = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/Views/StatsView.swift"), encoding: .utf8))
         #expect(!view.contains("ListeningStore.positions()"), "the shows still sum stored positions")
-        #expect(view.contains("ListeningByClass.shows(seconds: stats.itemSeconds"))
+        #expect(view.contains("let seconds = stats.itemSeconds(matching: ItemNamespace.isPodcastEpisode)")
+                && view.contains("ListeningByClass.shows(seconds: seconds,"))
         #expect(view.contains("ListeningByClass.namedTop("))
         #expect(!view.contains("\"Unknown Show\""), "a show without a name still stands as one")
         // Over Mär Sync the seconds of every title travel, over iCloud only

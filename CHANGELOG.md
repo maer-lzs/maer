@@ -22,7 +22,8 @@ a movement that is missing ends the work instead of being skipped.
 **Statistics that add up.** Most Listened Shows counts the time measured
 while you listen, the same time Total counts, so the shows never add up
 to more than Total. A show nobody can name no longer stands as one
-unknown show. The import guides translate Other apps (OPML) and no
+unknown show. Where only this device's shows are counted, the footer
+says so. The import guides translate Other apps (OPML) and no
 longer list Spotify, which gives nothing to import.
 
 **The Podcasts tab in a new order.** The folders stand under the new
@@ -30,7 +31,9 @@ episodes and above the subscriptions, as one row of two tiles with the
 next one at the edge, and their heading leads to a page of all folders.
 The subscriptions show six shows before the link to all of them. Browse
 appears as one row once you follow a show, and its heading says Browse
-everywhere.
+everywhere. The two switches of the subscriptions are
+called Show premium feeds in the subscription list and Show Pinchflat
+feeds in the subscription list.
 
 **Marks of one size.** The marks on a cover share one size: the
 downloaded mark no longer stands larger than the others and covers the

@@ -90,11 +90,9 @@ struct StatsView: View {
     /// Total. A show nobody can name is no row.
     @ViewBuilder
     private var mostListenedShows: some View {
-        let measured = ListeningByClass.shows(seconds: stats.itemSeconds(matching: ItemNamespace.isPodcastEpisode),
-                                              showId: AppStorageKeys.podcastShowId(forEpisodeId:))
-        let episodes = Dictionary(grouping: stats.itemSeconds(matching: ItemNamespace.isPodcastEpisode).keys) {
-            AppStorageKeys.podcastShowId(forEpisodeId: $0) ?? ""
-        }
+        let seconds = stats.itemSeconds(matching: ItemNamespace.isPodcastEpisode)
+        let measured = ListeningByClass.shows(seconds: seconds, showId: AppStorageKeys.podcastShowId(forEpisodeId:))
+        let episodes = ListeningByClass.episodesByShow(seconds.keys, showId: AppStorageKeys.podcastShowId(forEpisodeId:))
         let top = ListeningByClass.namedTop(measured, limit: Self.topLimit, atLeast: Double(Self.shortest)) {
             PodcastShowSources.statsTitle(forShowId: $0, episodeIds: episodes[$0] ?? [])
         }
@@ -106,7 +104,13 @@ struct StatsView: View {
             } header: {
                 Text("Most Listened Shows")
             } footer: {
-                Text("Measured while you listen in Mär, from when it began counting.")
+                // Over iCloud only this device's titles count; Total counts
+                // every device.
+                if stats.itemsTravel {
+                    Text("Measured while you listen in Mär, from when it began counting.")
+                } else {
+                    Text("Measured while you listen in Mär on this device, from when it began counting.")
+                }
             }
         }
     }

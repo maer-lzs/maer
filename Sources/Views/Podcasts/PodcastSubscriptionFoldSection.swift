@@ -21,7 +21,7 @@ struct PodcastSubscriptionFoldSection: View {
         if PinchflatClient.isConfigured(PinchflatClient.serverURL) {
             Section {
                 AppSwitch(isOn: $pinchflatFolded) {
-                    Label("Pinchflat like other feeds", systemImage: PinchflatGlyph.symbol)
+                    Label("Show Pinchflat feeds in the subscription list", systemImage: PinchflatGlyph.symbol)
                 }
                 .accessibilityIdentifier("fold-pinchflat")
             } header: {
@@ -32,7 +32,7 @@ struct PodcastSubscriptionFoldSection: View {
         }
         Section {
             AppSwitch(isOn: $premiumFolded) {
-                Label("Premium like other feeds", systemImage: "lock.fill")
+                Label("Show premium feeds in the subscription list", systemImage: "lock.fill")
             }
             .accessibilityIdentifier("fold-premium")
         } header: {

@@ -797,6 +797,10 @@ final class ListeningStatsStore: ObservableObject {
             .map { (id: $0.key, seconds: $0.value) }
     }
 
+    /// Whether the seconds per title of the other devices arrive here; the
+    /// footer of the shows says so per carrier.
+    var itemsTravel: Bool { ListeningStatsSync.itemsTravel(hasRoomLimit: carrier.hasRoomLimit) }
+
     /// Seconds per title for the titles `isIncluded` keeps. Over Mär Sync
     /// every device's titles arrive, over iCloud only the stations'.
     func itemSeconds(matching isIncluded: (String) -> Bool) -> [String: Int] {

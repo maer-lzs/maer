@@ -7,10 +7,10 @@ import Foundation
 
 /// "What do I really listen to a lot". Per class, derived at ONE place.
 ///
-/// The recommendation seed and the statistics ask the same question, so they
-/// ask the same function. Two parallel derivations of one number would be the
-/// second version this project keeps abolishing, and here it would be worse
-/// than usual: the two would disagree on screen.
+/// Two answers, each said where it is shown. The recommendation seed sums
+/// the stored positions, because it holds for the past too. The statistics
+/// sum the measured seconds per title, the counter Total sums by day, so
+/// their shows never add up above Total.
 nonisolated enum ListeningByClass {
 
     /// Seconds per podcast SHOW, summed from the stored episode positions.
@@ -57,7 +57,16 @@ nonisolated enum ListeningByClass {
         return out
     }
 
-    static func episodesByShow(_ ids: some Sequence<String>, showId: (String) -> String?) -> [String: [String]] { [:] }
+    /// The episodes of each show among the given titles, grouped once:
+    /// the statistics name a show from one of its heard episodes.
+    static func episodesByShow(_ ids: some Sequence<String>, showId: (String) -> String?) -> [String: [String]] {
+        var out: [String: [String]] = [:]
+        for id in ids where ItemNamespace.isPodcastEpisode(id) {
+            guard let show = showId(id) else { continue }
+            out[show, default: []].append(id)
+        }
+        return out
+    }
 
     /// The top entries that have a name, longest first. An entry nobody can
     /// name is no row and takes no place: one "Unknown Show" summed what
