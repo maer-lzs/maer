@@ -316,7 +316,12 @@ final class MaerSyncSession {
         if let current, !current.isByAddress, let readAccess = self.access {
             let stranded = MaerSyncIdentity(service: "address:\(readAccess.baseURL.absoluteString)", owner: current.owner)
             if Self.identityOwners.contains(where: { rows.holds(stranded.keyed($0)) }) {
-                Self.carryRows(from: stranded, to: current, defaults: defaults, rows: rows, documents: documentRows)
+                // Nobody knows which side lives: the rule estimates it.
+                if Self.carryRows(from: stranded, to: current, living: nil, defaults: defaults,
+                                  rows: rows, documents: documentRows) {
+                    // The net under the estimate: read every kind first.
+                    self.unreadKinds = Self.allKinds
+                }
             }
         }
         let key: (String) -> String = { base in current?.keyed(base) ?? base }
@@ -439,10 +444,18 @@ final class MaerSyncSession {
     /// The rows of one identity carried onto another that may hold state
     /// (`IdentityCarry.merged`); nothing stays under the source. Static, so
     /// a cold start can carry before the session loads its state.
-    var waitsForRead: Bool { false }
+    /// Whether a kind waits to be read before anything of it is written.
+    var waitsForRead: Bool { !unreadKinds.isEmpty }
 
-    static func carryRows(from current: MaerSyncIdentity, to next: MaerSyncIdentity, living: IdentityCarry.Living = .source, defaults: UserDefaults,
-                          rows: CarrierStandRows, documents: CarrierDocumentRows) {
+    /// Every kind the session reads and writes.
+    static let allKinds: Set<String> = [standsKind, playlistsKind, choicesKind, claimKind, statsKind, feedAuthKind]
+
+    /// Returns whether the target held state; then the caller reads every
+    /// kind before it writes, the net under the estimate of `living`. Nil
+    /// for `living` estimates it (a cold start); a reload says the source.
+    @discardableResult
+    static func carryRows(from current: MaerSyncIdentity, to next: MaerSyncIdentity, living: IdentityCarry.Living?, defaults: UserDefaults,
+                          rows: CarrierStandRows, documents: CarrierDocumentRows) -> Bool {
         // The target may hold state (a device restored from a backup): the
         // one rule decides what of both stays (`IdentityCarry.merged`).
         func side(_ identity: MaerSyncIdentity) -> IdentityCarry.Side {
@@ -453,9 +466,14 @@ final class MaerSyncSession {
                                playlistsPending: documents.body(identity.keyed(Self.playlistsPendingKey)),
                                choicesPending: documents.body(identity.keyed(Self.choicesPendingKey)))
         }
-        let carried = IdentityCarry.merged(source: side(current), target: side(next), living: living)
+        let target = side(next)
+        let source = side(current)
+        let targetHeld = !target.stands.isEmpty || !target.queue.isEmpty || target.standsVersion != nil
+            || target.playlistsPending != nil || target.choicesPending != nil
+        let carried = IdentityCarry.merged(source: source, target: target,
+                                           living: living ?? IdentityCarry.living(source: source, target: target))
         for kind in carried.dropped {
-            Logger.library.notice("MAERSYNC carry: a pending \(kind, privacy: .public) document of the account it joins gave way to the one carried over")
+            Logger.library.notice("MAERSYNC carry: the \(kind, privacy: .public) of the side that does not live fell")
         }
         rows.set(next.keyed(Self.mirrorKey), carried.side.stands)
         rows.set(next.keyed(Self.queueKey), carried.side.queue)
@@ -476,6 +494,7 @@ final class MaerSyncSession {
         for base in Self.identityKeys { defaults.removeObject(forKey: current.keyed(base)) }
         for owner in Self.identityOwners { rows.set(current.keyed(owner), [:]) }
         for owner in Self.identityDocuments { documents.setBody(current.keyed(owner), nil) }
+        return targetHeld
     }
 
     /// A changed service key the person accepted names the same account:
@@ -483,7 +502,10 @@ final class MaerSyncSession {
     func carryIdentity(to next: MaerSyncIdentity) {
         guard let current = identity, current != next else { identity = next; return }
         persist()
-        Self.carryRows(from: current, to: next, defaults: defaults, rows: rows, documents: documentRows)
+        // At a reload the source has just read: it lives.
+        if Self.carryRows(from: current, to: next, living: .source, defaults: defaults, rows: rows, documents: documentRows) {
+            unreadKinds = Self.allKinds
+        }
         identity = next
         loadIdentityState()
     }

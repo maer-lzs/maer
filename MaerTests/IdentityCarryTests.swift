@@ -53,11 +53,11 @@ struct IdentityCarryTests {
     func pendingDocuments() {
         let carried = IdentityCarry.merged(source: Self.window, target: Self.backup, living: .source)
         #expect(carried.side.playlistsPending == Data("window-lists".utf8))
-        #expect(carried.dropped == ["playlists"], "the target's pending document fell without a word")
+        #expect(carried.dropped.contains("playlists"), "the target's pending document fell without a word")
         var none = Self.window
         none.playlistsPending = nil
         let kept = IdentityCarry.merged(source: none, target: Self.backup, living: .source)
-        #expect(kept.side.playlistsPending == Data("backup-lists".utf8) && kept.dropped.isEmpty)
+        #expect(kept.side.playlistsPending == Data("backup-lists".utf8) && !kept.dropped.contains("playlists"))
     }
 
     @Test("an empty target takes the source as it is")

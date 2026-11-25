@@ -26,28 +26,55 @@ nonisolated enum IdentityCarry {
     /// they carry no moment, and an old one would delete a title made again
     /// elsewhere. A pending document is the source's when it has one, else
     /// the target's; a target's that gives way is named in `dropped`.
+    /// Which side lives: at a reload the caller knows (the source has just
+    /// read); at a cold start nobody does, and `living(source:target:)`
+    /// estimates it.
     enum Living: Equatable, Sendable { case source, target, tie }
 
-    static func living(source: Side, target: Side) -> Living { .source }
-
-    static func merged(source: Side, target: Side, living: Living) -> (side: Side, dropped: [String]) {
-        var out = Side()
-        if source.standsVersion != nil {
-            out.stands = source.stands
-            out.standsVersion = source.standsVersion
-        } else {
-            out.stands = target.stands
-            out.standsVersion = target.standsVersion
+    /// The side with the newest moment over its picture and its queue
+    /// lives; an empty side does not; equal moments are a tie. A moment is
+    /// when something was heard, not when it was read, so this is only
+    /// asked where nobody knows.
+    static func living(source: Side, target: Side) -> Living {
+        func newest(_ side: Side) -> Double? {
+            (Array(side.stands.values) + Array(side.queue.values)).compactMap { $0.count > 1 ? $0[1] : nil }.max()
         }
+        switch (newest(source), newest(target)) {
+        case (nil, nil): return .tie
+        case (_, nil): return .source
+        case (nil, _): return .target
+        case let (s?, t?): return s == t ? .tie : (s > t ? .source : .target)
+        }
+    }
+
+    /// From the living side whole: the picture with its version, the
+    /// removals, a pending document (the other's when the living has none;
+    /// one of the other that gives way is named). The queues always join,
+    /// the newer moment winning per title, the source on a tie. A tie keeps
+    /// the target (the identity the device runs under) and applies the
+    /// removals of neither side: a fallen removal lets a title come back,
+    /// an old one applied deletes it; the first error is the smaller.
+    static func merged(source: Side, target: Side, living: Living) -> (side: Side, dropped: [String]) {
+        let live = living == .source ? source : target
+        let other = living == .source ? target : source
+        var out = Side()
+        out.stands = live.stands
+        out.standsVersion = live.standsVersion
         out.queue = target.queue.merging(source.queue) { older, newer in
             (newer.count > 1 ? newer[1] : 0) >= (older.count > 1 ? older[1] : 0) ? newer : older
         }
-        out.removals = source.removals
         var dropped: [String] = []
-        out.playlistsPending = source.playlistsPending ?? target.playlistsPending
-        if source.playlistsPending != nil, target.playlistsPending != nil { dropped.append("playlists") }
-        out.choicesPending = source.choicesPending ?? target.choicesPending
-        if source.choicesPending != nil, target.choicesPending != nil { dropped.append("choices") }
+        if living == .tie {
+            out.removals = []
+            if !source.removals.isEmpty || !target.removals.isEmpty { dropped.append("removals") }
+        } else {
+            out.removals = live.removals
+            if !other.removals.isEmpty { dropped.append("removals") }
+        }
+        out.playlistsPending = live.playlistsPending ?? other.playlistsPending
+        if live.playlistsPending != nil, other.playlistsPending != nil { dropped.append("playlists") }
+        out.choicesPending = live.choicesPending ?? other.choicesPending
+        if live.choicesPending != nil, other.choicesPending != nil { dropped.append("choices") }
         return (out, dropped)
     }
 }
