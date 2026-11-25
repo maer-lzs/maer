@@ -447,6 +447,8 @@ struct SearchScreen: View {
                     titleDimmed: !result.isPlayableNow,
                     coverDimmed: !result.isPlayableNow,
                     offlineBadge: !result.isPlayableNow,
+                    // A followed show carries its feed's lock, as in the deck.
+                    lock: result.lock,
                     // Catalog hits say WHAT they are: book hits name
                     // their SENDER (LibriVox/Gutenberg/Archive), the licence
                     // capsule logic stays with the detail sheet.

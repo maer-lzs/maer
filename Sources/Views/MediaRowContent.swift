@@ -19,6 +19,8 @@ struct MediaRowContent<CoverOverride: View>: View {
     var coverDimmed = false
     var offlineBadge = false
     var downloadedBadge = false
+    /// The lock of a followed show's feed, in the size of a row's marks.
+    var lock: FeedLock = .none
     /// In-progress bar (0…1) below the title; nil hides it.
     var progressFraction: Double? = nil
     var meta: String? = nil
@@ -44,6 +46,7 @@ struct MediaRowContent<CoverOverride: View>: View {
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
          titleDimmed: Bool = false, coverDimmed: Bool = false,
          offlineBadge: Bool = false, downloadedBadge: Bool = false,
+         lock: FeedLock = .none,
          progressFraction: Double? = nil, meta: String? = nil,
          showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
          coverSize: CGFloat = 64, showsOriginCapsule: Bool = false,
@@ -56,6 +59,7 @@ struct MediaRowContent<CoverOverride: View>: View {
         self.coverDimmed = coverDimmed
         self.offlineBadge = offlineBadge
         self.downloadedBadge = downloadedBadge
+        self.lock = lock
         self.progressFraction = progressFraction
         self.meta = meta
         self.showsPlayedCheck = showsPlayedCheck
@@ -128,9 +132,15 @@ struct MediaRowContent<CoverOverride: View>: View {
         .clipShape(shape)
         .opacity(coverDimmed ? 0.5 : 1)
         .overlay(alignment: .topTrailing) {
-            if offlineBadge {
-                OfflineUnavailableBadge(size: .row)
-                    .padding(CoverMarkSize.inset(.row))
+            VStack(spacing: 0) {
+                if lock != .none {
+                    PremiumLockBadge(lock: lock, size: .row)
+                        .padding(CoverMarkSize.inset(.row))
+                }
+                if offlineBadge {
+                    OfflineUnavailableBadge(size: .row)
+                        .padding(CoverMarkSize.inset(.row))
+                }
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -148,6 +158,7 @@ extension MediaRowContent where CoverOverride == EmptyView {
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
          titleDimmed: Bool = false, coverDimmed: Bool = false,
          offlineBadge: Bool = false, downloadedBadge: Bool = false,
+         lock: FeedLock = .none,
          progressFraction: Double? = nil, meta: String? = nil,
          showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
          coverSize: CGFloat = 64, showsOriginCapsule: Bool = false,
@@ -155,6 +166,7 @@ extension MediaRowContent where CoverOverride == EmptyView {
         self.init(coverURL: coverURL, eyebrow: eyebrow, title: title,
                   titleDimmed: titleDimmed, coverDimmed: coverDimmed,
                   offlineBadge: offlineBadge, downloadedBadge: downloadedBadge,
+                  lock: lock,
                   progressFraction: progressFraction, meta: meta,
                   showsPlayedCheck: showsPlayedCheck,
                   placeholderSystemImage: placeholderSystemImage,

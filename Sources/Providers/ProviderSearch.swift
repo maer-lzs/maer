@@ -35,7 +35,8 @@ extension RSSProvider: SearchableProvider {
             }
             return PodcastLocalSearch.results(shows: snapshot, query: query)
         }.value
-        return hits.map { result in
+        let subs = PodcastSubscriptions.shared
+        return SearchHitLock.locked(hits) { subs.lock(feedURL: $0) }.map { result in
             guard result.kind == .episode else { return result }
             var episode = result
             episode.isPlayableNow = MediaAvailability.canPlayNow(

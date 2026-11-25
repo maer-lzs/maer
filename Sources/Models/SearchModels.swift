@@ -420,6 +420,16 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     var includesCatalog: Bool { self == .podcasts || self == .audiobooks }
 }
 
+/// The lock a search hit carries, as on the desktop: a followed show
+/// carries its feed's lock (premium, refused), asked once per search; an
+/// episode hit and a directory hit nobody follows carry none.
 nonisolated enum SearchHitLock {
-    static func locked(_ results: [SearchResult], lock: (String) -> FeedLock) -> [SearchResult] { results }
+    static func locked(_ results: [SearchResult], lock: (String) -> FeedLock) -> [SearchResult] {
+        results.map { result in
+            guard result.kind == .show else { return result }
+            var show = result
+            show.lock = lock(result.id)
+            return show
+        }
+    }
 }

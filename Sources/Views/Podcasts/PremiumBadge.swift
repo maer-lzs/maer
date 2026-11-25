@@ -24,7 +24,7 @@ struct PremiumLockBadge: View {
     @Environment(\.dynamicTypeSize) private var type
 
     var body: some View {
-        let diameter = CoverMarkSize.diameter(.tile, type)
+        let diameter = CoverMarkSize.diameter(size, type)
         switch lock {
         case .refused:
             Image(systemName: "lock.trianglebadge.exclamationmark.fill")

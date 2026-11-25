@@ -194,8 +194,9 @@ struct SharedGrowthFenceTests {
     /// pages do (one, `MusopenLoader`). 777: the advance asks the catalog
     /// for the next movement of a Musopen work (one, `PlayerCoordinator`).
     /// 778: the page of all folders observes the lists (one,
-    /// `PodcastFoldersPage`).
-    nonisolated static let sourcesStock = 778
+    /// `PodcastFoldersPage`). 779: the search asks the lock of its show
+    /// hits once per search (one, `RSSProvider.search`).
+    nonisolated static let sourcesStock = 779
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,
