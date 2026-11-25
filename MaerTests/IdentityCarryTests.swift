@@ -218,6 +218,30 @@ struct IdentityCarryTests {
                 "a stands write went out before the stands were read")
     }
 
+    @Test("a cold start takes over a state under the address that holds only removals or only a document")
+    func coldStartTakesEveryKey() throws {
+        let fills: [(String, (UserDefaults, CarrierDocumentRows) -> Void)] = [
+            ("removals", { d, _ in StandMirrorStore.saveList(["rss:r:1"], key: ServiceKeyIdentityTests.byAddress.keyed(MaerSyncSession.removalsKey), defaults: d) }),
+            ("a pending document", { _, docs in docs.setBody(ServiceKeyIdentityTests.byAddress.keyed(MaerSyncSession.identityDocuments[0]), Data("p".utf8)) }),
+        ]
+        for (name, fill) in fills {
+            let suite = "maer-carry-cold-\(UUID().uuidString)"
+            let defaults = try #require(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let documents = CarrierDocumentRows.matching(defaults)
+            fill(defaults, documents)
+            let box = ServiceKeyIdentityTests.Box()
+            box.access = ServiceKeyIdentityTests.access
+            box.identity = ServiceKeyIdentityTests.byKey
+            _ = MaerSyncSession(transport: MaerSyncCarrierTests.FakeTransport(), announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                access: { box.access }, identity: { box.identity }, accessUnknown: { box.unknown },
+                                deviceId: { "dev-a" }, defaults: defaults)
+            #expect(!MaerSyncSession.holdsState(ServiceKeyIdentityTests.byAddress, defaults: defaults,
+                                                rows: CarrierStandRows.matching(defaults), documents: documents),
+                    "a state under the address with only \(name) stayed behind")
+        }
+    }
+
     @Test("Fence G-39-37-b: every key of the three lists stands at the target after the carry")
     func everyListedKeyCarries() throws {
         let suite = "maer-carry-keys-\(UUID().uuidString)"

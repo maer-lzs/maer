@@ -447,6 +447,9 @@ final class MaerSyncSession {
     /// Whether a kind waits to be read before anything of it is written.
     var waitsForRead: Bool { !unreadKinds.isEmpty }
 
+    static func holdsState(_ identity: MaerSyncIdentity, defaults: UserDefaults, rows: CarrierStandRows,
+                           documents: CarrierDocumentRows) -> Bool { true }
+
     /// Every kind the session reads and writes.
     static let allKinds: Set<String> = [standsKind, playlistsKind, choicesKind, claimKind, statsKind, feedAuthKind]
 
