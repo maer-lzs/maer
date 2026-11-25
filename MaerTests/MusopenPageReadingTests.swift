@@ -80,7 +80,10 @@ struct MusopenPageReadingTests {
     func thePageReadsThroughIt() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusopenViews.swift"), encoding: .utf8))
-        #expect(page.contains("MusopenPageReading.readAll(reading, fetch: { await MusopenLoader.next(from: $0) })"))
+        #expect(page.contains("MusopenLoader.readAll(reading) { reading = $0 }"))
+        let loader = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/MusopenLoader.swift"), encoding: .utf8))
+        #expect(loader.contains("MusopenPageReading.readAll(start, maxAnswers: MusopenCatalog.readingLimit,"))
         #expect(page.contains("if reading.showsFailedLine {"))
         #expect(page.contains("LoadFailedView(form: .line"))
         #expect(page.contains("if reading.readsOnAppear { await readAll() }"), "the page does not read on when it appears again")

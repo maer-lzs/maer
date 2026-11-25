@@ -17,7 +17,10 @@ title that cannot be opened leaves it as it was.
 empty, the next movement of the same work follows, in the order of the
 Musopen page. What waits in Up Next comes first. Movements follow by
 their number, so a work of more than nine movements keeps its order, and
-a movement that is missing ends the work instead of being skipped.
+a movement that is missing ends the work instead of being skipped. When
+Mär was restarted and the Musopen page has not been opened since, the
+end of a movement reads the catalog once and goes on. Movements written
+after a comma or in small Roman numerals count too.
 
 **Statistics that add up.** Most Listened Shows counts the time measured
 while you listen, the same time Total counts, so the shows never add up
@@ -38,7 +41,8 @@ feeds in the subscription list.
 **Marks of one size.** The marks on a cover share one size: the
 downloaded mark no longer stands larger than the others and covers the
 title printed on a cover. In lists, the offline mark stands on the same
-disc as the downloaded mark.
+disc as the downloaded mark. A failed download is marked in orange,
+like a feed that refused access.
 
 ## v3.9.1 (Build 68)
 

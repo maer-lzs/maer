@@ -30,7 +30,7 @@ struct PremiumLockBadge: View {
                 .font(.system(size: diameter * 0.5, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: diameter, height: diameter)
-                .background(Circle().fill(Color.orange))
+                .background(Circle().fill(GlyphTone.alert))
                 .accessibilityLabel(Text("Access refused"))
         case .premium:
             Image(systemName: "lock.fill")

@@ -14,6 +14,21 @@ import OSLog
 enum MusopenLoader {
     typealias Outcome = CatalogLoadOutcome
 
+    /// Whether the catalog was read in this run, to its end or to its
+    /// limit: the end of a movement then reads it no second time.
+    static var musopenReadToEnd = false
+
+    /// Every answer in turn, within the limit, for the page and for the end
+    /// of a movement alike; a reading that ended without failure counts as
+    /// read. A page left in the middle of its reading does not count.
+    static func readAll(_ start: MusopenPageReading = MusopenPageReading(),
+                        show: (MusopenPageReading) -> Void = { _ in }) async -> MusopenPageReading {
+        let reading = await MusopenPageReading.readAll(start, maxAnswers: MusopenCatalog.readingLimit,
+                                                       fetch: { await next(from: $0) }, show: show)
+        if !Task.isCancelled { musopenReadToEnd = !reading.failed }
+        return reading
+    }
+
     static func next(from cursor: MusopenCatalog.Cursor, using clients: CatalogClients = .live)
         async -> (outcome: Outcome, next: MusopenCatalog.Cursor?) {
         do {

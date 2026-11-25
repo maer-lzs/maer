@@ -190,34 +190,50 @@ nonisolated enum MusopenOrder {
         }.map(\.item)
     }
 
-    /// The work a movement belongs to: the title before its last " - "
-    /// when what follows starts with the movement's number ("IV. Allegro",
-    /// "2. Andante"); nil for a title that names no movement.
-    static func workStem(_ title: String) -> String? {
-        guard let dash = title.range(of: " - ", options: .backwards) else { return nil }
-        let movement = title[dash.upperBound...]
-        guard movement.range(of: #"^([IVXLC]+|[0-9]+)[.)] "#, options: .regularExpression) != nil else { return nil }
-        let stem = folded(String(title[..<dash.lowerBound])).trimmingCharacters(in: .whitespaces)
-        return stem.isEmpty ? nil : stem
-    }
+    /// The work a movement belongs to (`movement`); nil for a title that
+    /// names no movement.
+    static func workStem(_ title: String) -> String? { movement(title)?.stem }
 
-    /// The number of a movement, read as a number from what follows the
-    /// last " - ": Roman ("IX. Air") or Arabic ("10. Air"). A text sort put
-    /// IX after IV and 10 after 1.
-    static func movementNumber(_ title: String) -> Int? {
-        guard let dash = title.range(of: " - ", options: .backwards),
-              let match = title[dash.upperBound...].range(of: #"^([IVXLC]+|[0-9]+)(?=[.)] )"#, options: .regularExpression)
-        else { return nil }
-        let digits = String(title[match])
-        if let arabic = Int(digits) { return arabic }
-        let values: [Character: Int] = ["I": 1, "V": 5, "X": 10, "L": 50, "C": 100]
-        let numerals = digits.compactMap { values[$0] }
-        return numerals.indices.reduce(0) { sum, i in
-            i + 1 < numerals.count && numerals[i] < numerals[i + 1] ? sum - numerals[i] : sum + numerals[i]
+    /// Where a movement stands in a title: the work before the last
+    /// separator (" - ", or ", " as Commons writes it too) and the number
+    /// after it, Roman in capitals or small letters ("IX. Air",
+    /// "ii. largo") or Arabic ("10. Air"), before "." or ")". A number past
+    /// 40 is no movement ("Prelude, C. major" names a key); nil for a title
+    /// without one. A text sort put IX after IV and 10 after 1.
+    static func movement(_ title: String) -> (stem: String, number: Int)? {
+        for separator in [" - ", ", "] {
+            guard let at = title.range(of: separator, options: .backwards) else { continue }
+            let rest = title[at.upperBound...]
+            guard let match = rest.range(of: #"^([IVXLC]+|[ivxlc]+|[0-9]+)(?=[.)] )"#, options: .regularExpression)
+            else { continue }
+            let digits = String(rest[match]).uppercased()
+            let number: Int
+            if let arabic = Int(digits) {
+                number = arabic
+            } else {
+                let values: [Character: Int] = ["I": 1, "V": 5, "X": 10, "L": 50, "C": 100]
+                let numerals = digits.compactMap { values[$0] }
+                number = numerals.indices.reduce(0) { sum, i in
+                    i + 1 < numerals.count && numerals[i] < numerals[i + 1] ? sum - numerals[i] : sum + numerals[i]
+                }
+            }
+            let stem = folded(String(title[..<at.lowerBound])).trimmingCharacters(in: .whitespaces)
+            guard (1...40).contains(number), !stem.isEmpty else { continue }
+            return (stem, number)
         }
+        return nil
     }
 
-    static func needsReading(after title: String, readToEnd: Bool) -> Bool { false }
+    /// The number of a movement (`movement`).
+    static func movementNumber(_ title: String) -> Int? { movement(title)?.number }
+
+    /// Whether the end of a recording reads the catalog first: only a
+    /// numbered movement, and only while the catalog was not read in this
+    /// run (`MusopenLoader.musopenReadToEnd`); after a read the work simply
+    /// ends where its next movement is missing.
+    static func needsReading(after title: String, readToEnd: Bool) -> Bool {
+        !readToEnd && movementNumber(title) != nil
+    }
 
     /// The next movement of the same work after a recording: the same
     /// composer, performer and work, the movement whose number follows;

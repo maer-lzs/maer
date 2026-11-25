@@ -77,8 +77,9 @@ struct MusopenOrderTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusopenViews.swift"), encoding: .utf8))
         #expect(page.contains("MusopenOrder.ordered(items, title: { $0.title }, composer: { $0.author })"))
         // The reading of every answer has its witness at the run
-        // (`MusopenPageReadingTests`); the page reads through it.
-        #expect(page.contains("MusopenPageReading.readAll(reading"), "the page reads on only while scrolling")
+        // (`MusopenPageReadingTests`); the page reads through the loader,
+        // which reads it within its limit and notes the catalog as read.
+        #expect(page.contains("MusopenLoader.readAll(reading"), "the page reads on only while scrolling")
     }
 
     @Test("the map of the areas names Musopen among what needs no account, in both languages", .needsTheSources)

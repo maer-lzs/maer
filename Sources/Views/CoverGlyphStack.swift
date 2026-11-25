@@ -12,6 +12,9 @@ import SwiftUI
 enum GlyphTone {
     static let fill = Color.white.opacity(0.22)
     static let shade = Color.black.opacity(0.55)
+    /// The one colour of a mark that says something went wrong: a failed
+    /// download and a feed that refused access.
+    static let alert = Color.orange
 }
 
 extension View {
@@ -171,7 +174,7 @@ struct StandardCoverMarks: View {
                 .font(.system(size: diameter * 0.45, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: diameter, height: diameter)
-                .background(Circle().fill(AppTheme.accent))
+                .background(Circle().fill(GlyphTone.alert))
                 .accessibilityLabel(Text("Download failed"))
         case .downloaded: DownloadedMark(size: .tile).accessibilityIdentifier("download-done")
         case .offline: OfflineUnavailableBadge()

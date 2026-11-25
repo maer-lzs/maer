@@ -214,6 +214,6 @@ struct MusopenPage: View {
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        reading = await MusopenPageReading.readAll(reading, fetch: { await MusopenLoader.next(from: $0) }) { reading = $0 }
+        reading = await MusopenLoader.readAll(reading) { reading = $0 }
     }
 }

@@ -22,7 +22,9 @@ nonisolated enum MusopenCatalog {
     /// Files per answer; the file pages' metadata keeps an answer of 50
     /// at a size a phone reads in one go.
     static let pageSize = 50
-    static let readingLimit = 0
+    /// The most answers one reading asks: a full reading took 21 on
+    /// 24.11.2026 (16 of Musopen, 5 of Set Chopin Free).
+    static let readingLimit = 40
 
     /// The rights of the catalog, once at the top of its surfaces and under
     /// its switch; each recording names its own licence on its page.

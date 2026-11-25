@@ -38,9 +38,15 @@ struct MusopenPageReading {
                         show: (Self) -> Void) async -> Self {
         var state = start
         state.failed = false
-        while state.cursor != nil, !state.failed, !Task.isCancelled {
+        // A limit of answers per reading, so no source can keep it turning.
+        var asked = 0
+        while state.cursor != nil, !state.failed, !Task.isCancelled, asked < maxAnswers {
             let before = state.cursor
-            state = await state.nextAnswer(fetch)
+            state = await state.nextAnswer { cursor in
+                guard asked < maxAnswers else { return (.cancelled, cursor) }
+                asked += 1
+                return await fetch(cursor)
+            }
             show(state)
             if state.cursor == before { break }
         }

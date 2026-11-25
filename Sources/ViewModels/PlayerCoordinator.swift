@@ -1002,12 +1002,42 @@ final class PlayerCoordinator: ObservableObject {
         // ONE rule shared with the player's what-plays-next line. The jump
         // preserves the context: an advance is consumption, never a fresh
         // user intent.
-        guard let next = resolveAdvance(after: finishedItemId) else { return }
+        guard let next = resolveAdvance(after: finishedItemId) else {
+            reloadMusopen(after: finishedItemId)
+            return
+        }
         // The list starts again: its rest is the whole list after its first title.
         if context.ids.isEmpty, AppStorageKeys.musicRepeatModeValue == .all, next.id == context.whole.first {
             context.replace(ids: Array(context.whole.dropFirst()), source: context.sourceTitle, whole: context.whole)
         }
         Task { await self.advance(to: next) }
+    }
+
+    /// A Musopen movement ended and nothing follows: read the catalog once
+    /// and ask the advance again (`MusopenReload`), unless another title
+    /// began meanwhile.
+    private func reloadMusopen(after finishedId: String) {
+        guard MusopenCoverArt.applies(to: finishedId), activeItem?.id == finishedId,
+              let title = activeItem?.title else { return }
+        Task {
+            var found: LibraryItem?
+            _ = await MusopenReload.run(
+                title: title, readToEnd: MusopenLoader.musopenReadToEnd,
+                read: { await !MusopenLoader.readAll().failed },
+                stillEnded: { [weak self] in
+                    guard let self else { return false }
+                    return !self.isChangingTitle && (self.activeItem?.id ?? finishedId) == finishedId
+                        && self.viewModel?.isPlaying != true
+                },
+                resolve: { [weak self] in
+                    found = self?.resolveAdvance(after: finishedId)
+                    return found?.id
+                },
+                start: { [weak self] _ in
+                    if let found { await self?.advance(to: found) }
+                },
+                log: { Logger.player.notice("\($0, privacy: .public)") })
+        }
     }
 
     /// Watches a model this run attached; the last four are kept, an older
