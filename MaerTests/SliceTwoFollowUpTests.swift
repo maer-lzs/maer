@@ -9,7 +9,7 @@ import Testing
 @testable import Maer
 
 /// What came after the order of the Podcasts tab: the titles of the two
-/// switches of the subscriptions as decided; the footer of the
+/// switches of the subscriptions in their chosen words; the footer of the
 /// shows' statistics true for each carrier (over iCloud only this
 /// device's titles count); the measured seconds read once and grouped by
 /// one rule; a work without movement numbers ends; the guide page without
@@ -26,7 +26,7 @@ struct SliceTwoFollowUpTests {
          "Afficher les flux Pinchflat dans la liste des abonnements"),
     ]
 
-    @Test("the two switches carry the decided titles, in English, German and French", .needsTheSources)
+    @Test("the two switches carry their chosen titles, in English, German and French", .needsTheSources)
     func switchTitles() throws {
         let fold = try Self.source("Sources/Views/Podcasts/PodcastSubscriptionFoldSection.swift")
         #expect(!fold.contains("like other feeds"), "the old titles stand")

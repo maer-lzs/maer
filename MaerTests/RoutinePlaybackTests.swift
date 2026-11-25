@@ -269,10 +269,11 @@ struct RoutinePlaybackTests {
         }
         // The car starts a list in three places: the row of a routine or a
         // mixed list, its cover on Start, and the cover of a device list in
-        // the music tab. A podcast folder starts from its tile and from its
-        // page, in order and shuffled.
+        // the music tab. A podcast folder starts from its tile in the row
+        // and on the page of all folders, and from its page, in order and
+        // shuffled.
         #expect(starts == ["PlaylistCard.swift": 1, "MusicLibraryPages.swift": 1, "LibraryView.swift": 1, "AppShortcuts.swift": 1,
-                           "CarPlaySceneDelegate.swift": 3, "PodcastFolderViews.swift": 3])
+                           "CarPlaySceneDelegate.swift": 3, "PodcastFolderViews.swift": 4])
         #expect(bare.isEmpty, "a rule is read for playback in one place: \(bare)")
         let door = try FetchAnswerTests.squeezedSource("Sources/Providers/RoutinePlayback.swift")
         #expect(door.contains("resuming: start.fromRule)"))
