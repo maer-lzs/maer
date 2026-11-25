@@ -541,3 +541,7 @@ nonisolated enum CatalogStockFetch {
         return rows
     }
 }
+
+nonisolated enum ScrapeAnswerCheck {
+    static func foreign(query: String, items: [(collections: [String], subjects: [String])]) -> Bool { false }
+}

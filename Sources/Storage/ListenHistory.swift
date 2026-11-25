@@ -45,6 +45,7 @@ final class ListenHistory {
 
     /// Title id to entry; the latest hearing wins.
     private(set) var entries: [String: Entry] = [:]
+    var rowsUnread: Bool { false }
     private var loaded = false
 
     /// Where the start read of the rows ran: on the main thread (a hearing,

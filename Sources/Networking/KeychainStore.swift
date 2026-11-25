@@ -201,3 +201,7 @@ nonisolated enum KeychainKey {
     static let jellyfinToken = "jellyfinToken"
     static let maerSyncToken = "maerSyncToken"
 }
+
+nonisolated struct FailureOnce {
+    mutating func first(_ key: String) -> Bool { true }
+}

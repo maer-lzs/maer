@@ -34,3 +34,8 @@ final class ListeningRevision: ObservableObject {
         Logger.player.notice("REVISION bump n=\(self.value) reason=\(reason, privacy: .public)")
     }
 }
+
+nonisolated struct RevisionCatchUp {
+    mutating func bump(loaded: Bool) -> Bool { loaded }
+    mutating func loaded() -> Bool { false }
+}

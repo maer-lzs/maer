@@ -64,6 +64,7 @@ nonisolated struct MusicServerStamps: Equatable, Sendable {
 nonisolated enum MusicServerStampBook {
     private static let books = Mutex<[ObjectIdentifier: MusicServerStamps]>([:])
     static let storageKey = AppStorageKeys.musicServerStamps
+    static func isUnreadable(in defaults: UserDefaults = .standard) -> Bool { false }
 
     private static func current(_ defaults: UserDefaults) -> String? {
         MusicServerStamps.key(of: defaults.string(forKey: AppStorageKeys.subsonicServerURL) ?? "")
