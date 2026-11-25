@@ -315,7 +315,7 @@ final class MaerSyncSession {
         // and the next reload) is taken over before anything is loaded.
         if let current, !current.isByAddress, let readAccess = self.access {
             let stranded = MaerSyncIdentity(service: "address:\(readAccess.baseURL.absoluteString)", owner: current.owner)
-            if Self.identityOwners.contains(where: { rows.holds(stranded.keyed($0)) }) {
+            if Self.holdsState(stranded, defaults: defaults, rows: rows, documents: documentRows) {
                 // Nobody knows which side lives: the rule estimates it.
                 if Self.carryRows(from: stranded, to: current, living: nil, defaults: defaults,
                                   rows: rows, documents: documentRows) {
@@ -447,8 +447,15 @@ final class MaerSyncSession {
     /// Whether a kind waits to be read before anything of it is written.
     var waitsForRead: Bool { !unreadKinds.isEmpty }
 
+    /// Whether an identity holds anything: one place for both questions,
+    /// at a cold start (is a state stranded under the address) and in the
+    /// carry (did the target hold state). Any of the ten keys counts.
     static func holdsState(_ identity: MaerSyncIdentity, defaults: UserDefaults, rows: CarrierStandRows,
-                           documents: CarrierDocumentRows) -> Bool { true }
+                           documents: CarrierDocumentRows) -> Bool {
+        identityKeys.contains { defaults.object(forKey: identity.keyed($0)) != nil }
+            || identityOwners.contains { rows.holds(identity.keyed($0)) }
+            || identityDocuments.contains { documents.body(identity.keyed($0)) != nil }
+    }
 
     /// Every kind the session reads and writes.
     static let allKinds: Set<String> = [standsKind, playlistsKind, choicesKind, claimKind, statsKind, feedAuthKind]
@@ -471,11 +478,7 @@ final class MaerSyncSession {
         }
         let target = side(next)
         let source = side(current)
-        // Any of the ten keys counts: a target with only removals, only a
-        // document's picture or only a version holds state too.
-        let targetHeld = Self.identityKeys.contains { defaults.object(forKey: next.keyed($0)) != nil }
-            || Self.identityOwners.contains { rows.holds(next.keyed($0)) }
-            || Self.identityDocuments.contains { documents.body(next.keyed($0)) != nil }
+        let targetHeld = holdsState(next, defaults: defaults, rows: rows, documents: documents)
         let resolved = living ?? IdentityCarry.living(source: source, target: target)
         let carried = IdentityCarry.merged(source: source, target: target, living: resolved)
         for kind in carried.dropped {
