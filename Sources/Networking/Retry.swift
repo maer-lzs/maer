@@ -221,7 +221,22 @@ nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendabl
     /// `Location` the caller reads.
     static func followingNone() -> RedirectGuard { RedirectGuard(allows: { _ in false }) }
 
-    static func isSameOrigin(_ target: URL, as base: URL) -> Bool { true }
+    /// Follows a redirect only to the same scheme, host and port as `base`:
+    /// a way whose answer is held for the address the person typed (the
+    /// key of Mär Sync) must not take another origin's answer for it.
+    static func sameOrigin(as base: URL?) -> RedirectGuard {
+        guard let base else { return followingNone() }
+        return RedirectGuard(allows: { isSameOrigin($0, as: base) })
+    }
+
+    /// Same scheme, host (case aside) and port, the default port of the
+    /// scheme filled in.
+    static func isSameOrigin(_ target: URL, as base: URL) -> Bool {
+        func port(_ url: URL) -> Int? { url.port ?? (url.scheme?.lowercased() == "https" ? 443 : url.scheme?.lowercased() == "http" ? 80 : nil) }
+        return target.scheme?.lowercased() == base.scheme?.lowercased()
+            && target.host?.lowercased() == base.host?.lowercased()
+            && port(target) == port(base)
+    }
 
     var refused: Bool { refusals.withLock { $0 > 0 } }
 

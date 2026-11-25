@@ -57,7 +57,8 @@ nonisolated enum HTTP {
     /// A socket on the socket lane; the caller resumes, receives and
     /// cancels the task. Handed out here so the session stays behind the
     /// door like every other one.
-    static func webSocket(for request: URLRequest) throws -> URLSessionWebSocketTask {
+    static func webSocket(for request: URLRequest,
+                          redirects: RedirectGuard = .following()) throws -> URLSessionWebSocketTask {
         var out = prepare(request, lane: .socket)
         try ServerHeaders.admit(out)
         // MEASURED, because the answer is the opposite of what it looks
@@ -72,7 +73,7 @@ nonisolated enum HTTP {
         // URLRequest's own default silently.
         out.timeoutInterval = socketUpgradeTimeout
         let task = session(.socket).webSocketTask(with: out)
-        task.delegate = RedirectGuard.following()
+        task.delegate = redirects
         return task
     }
 
@@ -81,13 +82,15 @@ nonisolated enum HTTP {
     /// stream lane never, and not for a caller that runs a loop of its own
     /// (`retry: false`). A failure is logged with its reason and rethrown.
     static func data(for request: URLRequest, lane: Lane = .api,
-                     retry: Bool = true, repeatable: Bool = true) async throws -> (Data, HTTPURLResponse?) {
+                     retry: Bool = true, repeatable: Bool = true,
+                     redirects: RedirectGuard? = nil) async throws -> (Data, HTTPURLResponse?) {
         let prepared = prepare(request, lane: lane)
         do {
             try ServerHeaders.admit(prepared)
-            if lane == .stream || !retry {
+            // A way with its own guard (`redirects`) runs once, through it.
+            if lane == .stream || !retry || redirects != nil {
                 let (data, response) = try await courteously(prepared) {
-                    try await session(lane).data(for: prepared, delegate: RedirectGuard.following())
+                    try await session(lane).data(for: prepared, delegate: redirects ?? RedirectGuard.following())
                 }
                 return (data, response as? HTTPURLResponse)
             }

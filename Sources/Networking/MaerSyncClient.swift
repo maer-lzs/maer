@@ -638,7 +638,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
     private let wire: MaerSyncWire
 
     init(tunnels: MaerSyncTunnels = MaerSyncTunnels(),
-         wire: @escaping MaerSyncWire = { try await HTTP.data(for: $0, retry: false) }) {
+         wire: @escaping MaerSyncWire = MaerSyncWires.guarded) {
         self.tunnels = tunnels
         self.wire = wire
     }
@@ -753,7 +753,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
     private(set) var isOpen = false
     private let wire: MaerSyncWire
 
-    init(wire: @escaping MaerSyncWire = { try await HTTP.data(for: $0, retry: false) }) {
+    init(wire: @escaping MaerSyncWire = MaerSyncWires.guarded) {
         self.wire = wire
     }
 
@@ -772,7 +772,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
                 let line = try await MaerSyncTunnel.handshake(at: access.baseURL, wire: wire)
                 var request = URLRequest(url: url)
                 request.setValue(line.name, forHTTPHeaderField: "X-Maer-Session")
-                let socket = try HTTP.webSocket(for: request)
+                let socket = try HTTP.webSocket(for: request, redirects: .sameOrigin(as: request.url))
                 guard let self, self.openedAs == generation else { socket.cancel(); return }
                 self.task = socket
                 socket.resume()
@@ -827,4 +827,11 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
               let version = object["version"] as? String else { return nil }
         return MaerSyncAnnouncement(kind: kind, scope: object["scope"] as? String ?? "", version: version)
     }
+}
+
+/// Every way to the service follows a redirect only to its own origin: an
+/// answer from another host would be taken for the address the person
+/// typed (its key held for it, its token sent there).
+nonisolated enum MaerSyncWires {
+    static let guarded: MaerSyncWire = { try await HTTP.data(for: $0, retry: false, redirects: .sameOrigin(as: $0.url)) }
 }

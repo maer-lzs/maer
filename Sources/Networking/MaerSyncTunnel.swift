@@ -57,7 +57,7 @@ actor MaerSyncTunnel {
     private var line: MaerSyncLine?
     private var chain: Task<Void, Never>?
 
-    init(base: URL, wire: @escaping MaerSyncWire = { try await HTTP.data(for: $0, retry: false) }) {
+    init(base: URL, wire: @escaping MaerSyncWire = MaerSyncWires.guarded) {
         self.base = base
         self.wire = wire
     }
@@ -72,7 +72,14 @@ actor MaerSyncTunnel {
         guard let keyResponse else { throw MaerSyncFailure.unreadable }
         let offeredKey = try MaerSyncAnswer.serviceKey(MaerSyncReply(keyResponse, body: keyBytes))
         let (key, offered) = (offeredKey.key, offeredKey.fingerprint)
-        switch ServiceKeyTrust.standing(held: ServiceKeyPin.held(for: base), offered: offered) {
+        // A pin this device cannot read now is unknown, not absent: the
+        // handshake stops instead of holding the offered key over it.
+        let pin = ServiceKeyPin.read(for: base)
+        if pin == .unreadable {
+            Logger.library.error("MAERSYNC the held key of \(base.host ?? "-", privacy: .public) cannot be read now; nothing runs until it can")
+            throw MaerSyncFailure.unreadable
+        }
+        switch ServiceKeyTrust.standing(held: pin.held, offered: offered) {
         case .changed(let held, let offered):
             Logger.library.error("MAERSYNC the service at \(base.host ?? "-", privacy: .public) offers a different key than the one held; nothing runs until somebody looks")
             throw MaerSyncFailure.serviceKeyChanged(held: held, offered: offered)
@@ -177,7 +184,7 @@ actor MaerSyncTunnels {
     private var tunnels: [String: MaerSyncTunnel] = [:]
     private let wire: MaerSyncWire
 
-    init(wire: @escaping MaerSyncWire = { try await HTTP.data(for: $0, retry: false) }) {
+    init(wire: @escaping MaerSyncWire = MaerSyncWires.guarded) {
         self.wire = wire
     }
 

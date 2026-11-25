@@ -34437,6 +34437,34 @@
         }
       }
     },
+    "The key this device holds for the service cannot be read right now. Unlock the device and try again. Nothing was sent." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Schlüssel, den dieses Gerät für den Dienst hält, lässt sich gerade nicht lesen. Entsperre das Gerät und versuche es noch einmal. Nichts wurde gesendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La clave que este dispositivo guarda para el servicio no se puede leer ahora. Desbloquea el dispositivo y vuelve a intentarlo. No se envió nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé que cet appareil garde pour le service ne peut pas être lue pour le moment. Déverrouille l’appareil et réessaie. Rien n’a été envoyé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La chiave che questo dispositivo conserva per il servizio non può essere letta ora. Sblocca il dispositivo e riprova. Non è stato inviato nulla."
+          }
+        }
+      }
+    },
     "The last thing you played, one tap away." : {
       "localizations" : {
         "de" : {

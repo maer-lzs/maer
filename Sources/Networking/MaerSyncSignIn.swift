@@ -47,6 +47,10 @@ enum MaerSyncSignIn {
         /// The service is there and has not made its key yet. Its operator
         /// ends this by starting the service once with a key.
         case serviceHasNoKey
+        /// The key this device holds for the service cannot be read now (a
+        /// locked device, a keychain error): unknown, not absent. Nothing
+        /// was sent and nothing held over it.
+        case keyPinUnreadable
         /// The service does not know the key path at all: it is older than
         /// this app. A named case, because "did not answer" would send the
         /// person to their network when the remedy is an update.
@@ -266,7 +270,12 @@ enum MaerSyncSignIn {
             Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")
             return Self.outcome(forTransportError: error)
         }
-        let standing = ServiceKeyTrust.standing(held: ServiceKeyPin.held(for: base), offered: offered)
+        let pin = ServiceKeyPin.read(for: base)
+        if pin == .unreadable {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the held key cannot be read now")
+            return .keyPinUnreadable
+        }
+        let standing = ServiceKeyTrust.standing(held: pin.held, offered: offered)
         if case .changed(let held, _) = standing, offered != acceptingKey {
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the service offers a different key than the one held")
             return .keyChanged(held: held, offered: offered)

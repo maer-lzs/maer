@@ -423,6 +423,8 @@ struct MaerSyncSettingsView: View {
             setStatus(String(localized: "The service's key has changed. Nothing was sent."), isError: true)
         case .serviceHasNoKey:
             setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
+        case .keyPinUnreadable:
+            setStatus(String(localized: "The key this device holds for the service cannot be read right now. Unlock the device and try again. Nothing was sent."), isError: true)
         case .serviceIsOlder:
             setStatus(String(localized: "The service does not offer a key, so it is older than this Mär. Update the service."), isError: true)
         case .serviceIsNewer:

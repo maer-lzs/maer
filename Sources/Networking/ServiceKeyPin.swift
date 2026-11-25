@@ -42,10 +42,27 @@ nonisolated enum ServiceKeyPin {
         return "serviceKeyPin:\(host)\(port)"
     }
 
-    enum PinRead: Equatable { case held(String), none, unreadable }
+    /// What the keychain says about the pin: held, none, or there but not
+    /// readable now (a locked device, an error). Unreadable is not none:
+    /// reading it as none would hold the key on offer over the pin.
+    enum PinRead: Equatable {
+        case held(String), none, unreadable
+
+        var held: String? { if case .held(let value) = self { value } else { nil } }
+    }
+
     static func reading(_ read: KeychainRead) -> PinRead {
-        if case .value(let v) = read, !v.isEmpty { return .held(v) }
-        return .none
+        switch read {
+        case .value(let value): value.isEmpty ? .none : .held(value)
+        case .missing: .none
+        case .unreadable, .undecodable: .unreadable
+        }
+    }
+
+    /// The pin as the keychain reads it now.
+    static func read(for baseURL: URL) -> PinRead {
+        guard let account = account(for: baseURL) else { return .none }
+        return reading(KeychainStore.read(forKey: account))
     }
 
     /// The fingerprint this device is holding for that service, or nil.
