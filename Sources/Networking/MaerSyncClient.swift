@@ -62,19 +62,37 @@ nonisolated enum MaerSyncAccessRead: Equatable, Sendable {
 }
 
 extension MaerSyncIdentity {
+    /// The identity by the pin: the key's fingerprint when it reads, the
+    /// address only when there is no pin at all, and unknown when a pin is
+    /// there but cannot be read now or is damaged: an account that is the
+    /// same must never be named otherwise for a run.
     static func read(access: MaerSyncAccess?, owner: String, pin: ServiceKeyPin.PinRead) -> ServiceKeyIdentityRead {
         guard let access else { return .none }
-        return .known(MaerSyncIdentity(service: pin.held ?? "address:\(access.baseURL.absoluteString)", owner: owner))
+        switch pin {
+        case .held(let fingerprint): return .known(MaerSyncIdentity(service: fingerprint, owner: owner))
+        case .none: return .known(MaerSyncIdentity(service: "address:\(access.baseURL.absoluteString)", owner: owner))
+        case .unreadable, .damaged: return .unknown
+        }
     }
+
+    /// The identity of the stored access as the keychain reads it now.
+    static func readStored() -> ServiceKeyIdentityRead {
+        let access = MaerSyncAccess.stored()
+        let owner = AppStorageKeys.maerSyncOwnerValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return read(access: access, owner: owner, pin: access.map { ServiceKeyPin.read(for: $0.baseURL) } ?? .none)
+    }
+
+    /// Whether this identity names its service by the address, as a device
+    /// does whose access stood without a pin.
+    var isByAddress: Bool { service.hasPrefix("address:") }
+
 
     /// The identity of the access set up on this device, or nil while none
     /// is: the held fingerprint of the service's key and the account name.
     /// A service without a held key is named by its normalized address.
     static func stored() -> MaerSyncIdentity? {
-        guard let access = MaerSyncAccess.stored() else { return nil }
-        let owner = AppStorageKeys.maerSyncOwnerValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let service = ServiceKeyPin.held(for: access.baseURL) ?? "address:\(access.baseURL.absoluteString)"
-        return MaerSyncIdentity(service: service, owner: owner)
+        if case .known(let identity) = readStored() { return identity }
+        return nil
     }
 }
 

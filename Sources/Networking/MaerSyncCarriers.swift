@@ -300,9 +300,14 @@ final class MaerSyncSession {
         self.rows = rows
         let documentRows = documents ?? CarrierDocumentRows.matching(defaults)
         self.documentRows = documentRows
-        self.access = access()
-        self.accessUnknown = self.access == nil && accessUnknown()
         let current = identity()
+        // A readable access whose identity cannot be read now (its pin) is
+        // unknown as a whole: nothing runs and nothing is kept under another
+        // name until it reads.
+        let unknown = accessUnknown()
+        let readAccess = access()
+        self.accessUnknown = unknown && (readAccess == nil || current == nil)
+        self.access = self.accessUnknown ? nil : readAccess
         self.identity = current
         if let current { Self.adoptPlainKeys(into: current, defaults: defaults, rows: rows, documents: documentRows) }
         let key: (String) -> String = { base in current?.keyed(base) ?? base }
@@ -473,9 +478,26 @@ final class MaerSyncSession {
     }
 
     func reloadAccess() {
-        access = loadAccess()
         let next = loadIdentity()
-        if next != identity { switchIdentity(to: next) }
+        // The pin cannot be read now: the account stays what it was, and
+        // nothing runs until it reads (`rereadIfUnknown`).
+        if next == nil, loadUnknown() {
+            persist()
+            access = nil
+            accessUnknown = true
+            Logger.library.notice("MAERSYNC identity unknown: the held key cannot be read now; the families wait")
+            return
+        }
+        access = loadAccess()
+        // A device whose access stood without a pin (restored from a
+        // backup, or signed in before pins) is known by its address until
+        // the handshake holds the pin: its state goes over to the
+        // fingerprint, nothing stays behind under the address.
+        if let current = identity, let next, current.isByAddress, !next.isByAddress, current.owner == next.owner {
+            carryIdentity(to: next)
+        } else if next != identity {
+            switchIdentity(to: next)
+        }
         unauthorized = false
         passwordWithdrawn = false
         keyChange = nil
@@ -1744,7 +1766,7 @@ enum MaerSyncCarriers {
     static let session = MaerSyncSession(transport: MaerSyncHTTP(), announcer: MaerSyncSocket(),
                                          access: { MaerSyncAccess.stored() },
                                          identity: { MaerSyncIdentity.stored() },
-                                         accessUnknown: { MaerSyncAccess.read() == .unknown },
+                                         accessUnknown: { MaerSyncAccess.read() == .unknown || MaerSyncIdentity.readStored() == .unknown },
                                          deviceId: { SyncHistoryStore.lastingDeviceId },
                                          path: NetworkMonitor.shared)
 }

@@ -112,7 +112,7 @@ struct MaerSyncTunnelTests {
         #expect(await service.handshakes == 1)
         #expect(await service.sealedRequests == 3)
         #expect(await service.innerHeaders.first?["Authorization"] == "Bearer t", "the token rides inside")
-        #expect(ServiceKeyPin.held(for: base) == (await service.fingerprint), "the first meeting held the key")
+        #expect(ServiceKeyPin.read(for: base).held == (await service.fingerprint), "the first meeting held the key")
     }
 
     @Test("an ended session costs one handshake and one repetition, nothing else")
@@ -200,7 +200,7 @@ struct MaerSyncTunnelTests {
             try await tunnel.exchange(method: "GET", target: "/v1/doc/stands", headers: [:], body: Data())
         }
         #expect(await service.handshakes == 0, "nothing was sent to whoever offered the key")
-        #expect(ServiceKeyPin.held(for: base) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", "the held key is untouched")
+        #expect(ServiceKeyPin.read(for: base).held == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", "the held key is untouched")
     }
 
     @Test("the door sends the three paths and the sign-in through the tunnel")

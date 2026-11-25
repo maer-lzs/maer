@@ -54,7 +54,10 @@ listening event at once. The books tab no longer misses a listening
 event that comes before its first load. Catalog answers from the
 Internet Archive that belong to another search are refused. Mär Sync
 follows no redirect to another server, and a held service key that
-cannot be read right now stops the sign-in instead of being replaced.
+cannot be read right now stops the sign-in instead of being replaced. While
+that key cannot be read, nothing is kept under another name, and a
+device restored from a backup keeps what it did before its first contact
+with the service.
 
 ## v3.9.1 (Build 68)
 

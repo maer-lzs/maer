@@ -30,7 +30,7 @@ struct ServiceKeyOriginTests {
         #expect(ServiceKeyPin.reading(.value("")) == ServiceKeyPin.PinRead.none)
         #expect(ServiceKeyPin.reading(.missing) == ServiceKeyPin.PinRead.none)
         #expect(ServiceKeyPin.reading(.unreadable) == .unreadable)
-        #expect(ServiceKeyPin.reading(.undecodable) == .unreadable, "there but not readable is not gone")
+        #expect(ServiceKeyPin.reading(.undecodable) == .damaged, "there but not readable is not gone, and is told apart")
     }
 
     @Test("Fence: the key is asked without following a redirect off its origin, and an unreadable pin stops the sign-in", .needsTheSources)

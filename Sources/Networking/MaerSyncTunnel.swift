@@ -75,8 +75,8 @@ actor MaerSyncTunnel {
         // A pin this device cannot read now is unknown, not absent: the
         // handshake stops instead of holding the offered key over it.
         let pin = ServiceKeyPin.read(for: base)
-        if pin == .unreadable {
-            Logger.library.error("MAERSYNC the held key of \(base.host ?? "-", privacy: .public) cannot be read now; nothing runs until it can")
+        if pin == .unreadable || pin == .damaged {
+            Logger.library.error("MAERSYNC the held key of \(base.host ?? "-", privacy: .public) \(pin == .damaged ? "is damaged" : "cannot be read now", privacy: .public); nothing runs until it can")
             throw MaerSyncFailure.unreadable
         }
         switch ServiceKeyTrust.standing(held: pin.held, offered: offered) {

@@ -34240,6 +34240,34 @@
         }
       }
     },
+    "The held key cannot be read right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der gehaltene Schlüssel lässt sich gerade nicht lesen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La clave guardada no se puede leer ahora."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé gardée ne peut pas être lue pour le moment."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La chiave conservata non può essere letta ora."
+          }
+        }
+      }
+    },
     "The import stopped at show %lld of %lld while Mär was in the background. What it took over is kept. Start the import again to continue." : {
       "localizations" : {
         "de" : {

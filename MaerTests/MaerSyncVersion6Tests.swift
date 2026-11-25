@@ -141,7 +141,7 @@ struct MaerSyncVersion6Tests {
         #expect(outcome == .serviceIsOlder)
         #expect(await service.plainPaths == ["/v2/key"], "one question, on the new path, and nothing after it")
         #expect(await service.innerTargets.isEmpty, "no session, no salt, no token")
-        #expect(ServiceKeyPin.held(for: base) == nil, "nothing was held")
+        #expect(ServiceKeyPin.read(for: base).held == nil, "nothing was held")
     }
 
     /// The source of the way back, counted without comments.

@@ -271,6 +271,11 @@ enum MaerSyncSignIn {
             return Self.outcome(forTransportError: error)
         }
         let pin = ServiceKeyPin.read(for: base)
+        if pin == .damaged {
+            // Until a decision on its own way out: it stops as an unreadable one.
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the held key is damaged")
+            return .keyPinUnreadable
+        }
         if pin == .unreadable {
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the held key cannot be read now")
             return .keyPinUnreadable
@@ -377,9 +382,9 @@ enum MaerSyncSignIn {
     /// The fingerprint this device holds for the service at an address, for
     /// the settings page to show: a held key nobody can read cannot be
     /// compared with what the service prints about itself.
-    static func heldKey(forAddress address: String) -> String? {
-        guard let base = MaerSyncPaths.normalized(address) else { return nil }
-        return ServiceKeyPin.held(for: base)
+    static func heldKeyRead(forAddress address: String) -> ServiceKeyPin.PinRead {
+        guard let base = MaerSyncPaths.normalized(address) else { return .none }
+        return ServiceKeyPin.read(for: base)
     }
 
     /// The person's answer to a changed key on a device that is already

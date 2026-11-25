@@ -78,10 +78,10 @@ struct ServiceKeyTrustTests {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))
         defer { KeychainStore.delete(forKey: account) }
-        #expect(ServiceKeyPin.held(for: host) == nil)
+        #expect(ServiceKeyPin.read(for: host).held == nil)
 
         ServiceKeyPin.hold("AAAA-BBBB", for: host)
-        #expect(ServiceKeyPin.held(for: host) == "AAAA-BBBB")
+        #expect(ServiceKeyPin.read(for: host).held == "AAAA-BBBB")
         let attrs = try #require(attributes(ofAccount: account))
         // The two halves of "it does not travel": not in a backup, and not
         // in the iCloud keychain. The device link code is deliberately in a
@@ -91,9 +91,9 @@ struct ServiceKeyTrustTests {
         #expect((attrs[kSecAttrSynchronizable as String] as? NSNumber)?.boolValue != true)
 
         ServiceKeyPin.hold("CCCC-DDDD", for: host)
-        #expect(ServiceKeyPin.held(for: host) == "CCCC-DDDD", "holding is blunt; the guard is the rule, not the store")
+        #expect(ServiceKeyPin.read(for: host).held == "CCCC-DDDD", "holding is blunt; the guard is the rule, not the store")
         ServiceKeyPin.hold("", for: host)
-        #expect(ServiceKeyPin.held(for: host) == "CCCC-DDDD", "an empty fingerprint is not held")
+        #expect(ServiceKeyPin.read(for: host).held == "CCCC-DDDD", "an empty fingerprint is not held")
     }
 
     @Test("two hosts are two memories")
@@ -104,9 +104,9 @@ struct ServiceKeyTrustTests {
             KeychainStore.delete(forKey: ServiceKeyPin.account(for: two)!)
         }
         ServiceKeyPin.hold("AAAA", for: one)
-        #expect(ServiceKeyPin.held(for: two) == nil)
+        #expect(ServiceKeyPin.read(for: two).held == nil)
         ServiceKeyPin.hold("BBBB", for: two)
-        #expect(ServiceKeyPin.held(for: one) == "AAAA")
+        #expect(ServiceKeyPin.read(for: one).held == "AAAA")
     }
 
     /// A source fence, because a behaviour case in the simulator cannot see
@@ -153,16 +153,16 @@ struct ServiceKeyTrustTests {
         transport.refuseToken = true
         #expect(await signIn(transport, at: host, secret: "wrong") == .refused)
         #expect(transport.keyRequests == 1, "the key was met")
-        #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint, "held at the meeting")
+        #expect(ServiceKeyPin.read(for: host).held == transport.serviceFingerprint, "held at the meeting")
 
         transport.refuseToken = false
         let outcome = await signIn(transport, at: host)
         #expect(outcome == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
-        #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint)
+        #expect(ServiceKeyPin.read(for: host).held == transport.serviceFingerprint)
 
         // The ordinary case: the same key, nothing said, nothing rewritten.
         #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
-        #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint)
+        #expect(ServiceKeyPin.read(for: host).held == transport.serviceFingerprint)
     }
 
     @Test("another key stops the sign-in, BEFORE the secret travels")
@@ -183,14 +183,14 @@ struct ServiceKeyTrustTests {
         // This is the whole point of meeting before trading: the secret
         // did not go to whoever offered the new key.
         #expect(transport.tokenRequests == 1, "no token was asked for over a changed key")
-        #expect(ServiceKeyPin.held(for: host) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", "the held key is untouched")
+        #expect(ServiceKeyPin.read(for: host).held == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", "the held key is untouched")
 
         // And the counter direction: the label moves and the bytes stay,
         // which is no change at all, because the label decides nothing.
         transport.serviceKeyBytes = Data(repeating: 7, count: 32)
         transport.serviceLabel = "ZZZZ-YYYY"
         #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
-        #expect(ServiceKeyPin.held(for: host) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
+        #expect(ServiceKeyPin.read(for: host).held == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
     }
 
     @Test("the acceptance applies exactly to the accepted key and to no next one")
@@ -206,7 +206,7 @@ struct ServiceKeyTrustTests {
         // Accepting the offered key signs in and holds it.
         #expect(await signIn(transport, at: host, accepting: second)
                 == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
-        #expect(ServiceKeyPin.held(for: host) == second)
+        #expect(ServiceKeyPin.read(for: host).held == second)
         #expect(transport.tokenRequests == 2)
 
         // A key that moved between the event and the answer is a new event:
@@ -215,7 +215,7 @@ struct ServiceKeyTrustTests {
         let third = transport.serviceFingerprint
         #expect(await signIn(transport, at: host, accepting: second) == .keyChanged(held: second, offered: third))
         #expect(transport.tokenRequests == 2, "and the secret stayed here")
-        #expect(ServiceKeyPin.held(for: host) == second)
+        #expect(ServiceKeyPin.read(for: host).held == second)
     }
 
     @Test("without a key there is no sign-in, and the two reasons carry two names")
@@ -236,10 +236,10 @@ struct ServiceKeyTrustTests {
         transport.offline = false
 
         #expect(transport.tokenRequests == 0, "the secret never left for a service without a key")
-        #expect(ServiceKeyPin.held(for: host) == nil)
-        #expect(MaerSyncSignIn.heldKey(forAddress: host.absoluteString) == nil)
+        #expect(ServiceKeyPin.read(for: host).held == nil)
+        #expect(MaerSyncSignIn.heldKeyRead(forAddress: host.absoluteString) == ServiceKeyPin.PinRead.none)
         _ = await signIn(transport, at: host)
-        #expect(MaerSyncSignIn.heldKey(forAddress: host.absoluteString) == transport.serviceFingerprint,
+        #expect(MaerSyncSignIn.heldKeyRead(forAddress: host.absoluteString).held == transport.serviceFingerprint,
                 "the page reads what the sign-in held")
     }
 }

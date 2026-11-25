@@ -55,7 +55,9 @@ nonisolated enum ServiceKeyPin {
         switch read {
         case .value(let value): value.isEmpty ? .none : .held(value)
         case .missing: .none
-        case .unreadable, .undecodable: .unreadable
+        case .unreadable: .unreadable
+        // There but not decodable: reading again does not heal it.
+        case .undecodable: .damaged
         }
     }
 
@@ -63,13 +65,6 @@ nonisolated enum ServiceKeyPin {
     static func read(for baseURL: URL) -> PinRead {
         guard let account = account(for: baseURL) else { return .none }
         return reading(KeychainStore.read(forKey: account))
-    }
-
-    /// The fingerprint this device is holding for that service, or nil.
-    static func held(for baseURL: URL) -> String? {
-        guard let account = account(for: baseURL) else { return nil }
-        let stored = KeychainStore.load(forKey: account)
-        return (stored?.isEmpty ?? true) ? nil : stored
     }
 
     /// Hold on to a fingerprint for that service.

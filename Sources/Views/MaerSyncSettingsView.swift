@@ -50,7 +50,7 @@ struct MaerSyncSettingsView: View {
     /// on the page until the person answers it one way or the other; the
     /// form keeps what they typed, so answering is one tap and not a second
     /// sign-in.
-    @State private var heldKey: String?
+    @State private var heldKey: ServiceKeyPin.PinRead = .none
     @State private var keyChange: KeyChange?
 
     /// The event belongs to the address it came from: typing another
@@ -199,12 +199,22 @@ struct MaerSyncSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(statusIsError ? .red : .secondary)
                 }
-                if let heldKey {
+                if heldKey == .unreadable || heldKey == .damaged {
+                    // A held key that cannot be read is said, not hidden as none.
+                    Label {
+                        Text("The held key cannot be read right now.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "key")
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                if let shown = heldKey.held {
                     // Shown so it can be COMPARED: the service prints its
                     // own fingerprint to its operator, and a held key nobody
                     // can read is a promise nobody can check.
                     Label {
-                        Text("Service key held by this device: \(heldKey)")
+                        Text("Service key held by this device: \(shown)")
                             .font(.system(.footnote, design: .monospaced))
                     } icon: {
                         Image(systemName: "key")
@@ -247,7 +257,7 @@ struct MaerSyncSettingsView: View {
             // A refusal from a round in the background reaches the open
             // page through the session's ring, not at the next own change.
             MaerSyncCarriers.session.onRefusalChange = { refreshFromSession() }
-            heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+            heldKey = MaerSyncSignIn.heldKeyRead(forAddress: serverURL)
             // The event can also come from a round in the background, on a
             // device that is signed in: the session stops and keeps it here.
             if let change = MaerSyncCarriers.session.keyChange {
@@ -259,7 +269,7 @@ struct MaerSyncSettingsView: View {
         // form: typing another address must not leave the old address's key
         // or its event standing under it.
         .onChange(of: serverURL) { _, address in
-            heldKey = MaerSyncSignIn.heldKey(forAddress: address)
+            heldKey = MaerSyncSignIn.heldKeyRead(forAddress: address)
             if let keyChange, !keyChange.stands(forAddress: address) { self.keyChange = nil }
         }
     }
@@ -319,7 +329,7 @@ struct MaerSyncSettingsView: View {
                 Button {
                     MaerSyncSignIn.acceptKey(change.offered, forAddress: serverURL)
                     keyChange = nil
-                    heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+                    heldKey = MaerSyncSignIn.heldKeyRead(forAddress: serverURL)
                     setStatus(String(localized: "The new key is held. Syncing goes on at the next occasion."), isError: false)
                 } label: {
                     Label("Accept the new key", systemImage: "key.viewfinder")
@@ -416,7 +426,7 @@ struct MaerSyncSettingsView: View {
             // session's values.
             refreshFromSession()
             keyChange = nil
-            heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+            heldKey = MaerSyncSignIn.heldKeyRead(forAddress: serverURL)
             setStatus(String(localized: "Signed in."), isError: false)
         case .keyChanged(let held, let offered):
             keyChange = KeyChange(held: held, offered: offered, address: serverURL)
