@@ -154,6 +154,70 @@ struct IdentityCarryTests {
         #expect(session.waitsForRead, "the carry onto a target with state writes before reading the service")
     }
 
+    @Test("cold start, the target living: the documents' pictures and versions of the target stay, the address's old ones do not replace them")
+    func documentPicturesFollowLiving() throws {
+        let suite = "maer-carry-docs-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
+        let documents = CarrierDocumentRows.matching(defaults)
+        let from = ServiceKeyIdentityTests.byAddress
+        let to = ServiceKeyIdentityTests.byKey
+        documents.setBody(from.keyed(MaerSyncSession.playlistsMirrorKey), Data("old".utf8))
+        defaults.set("v-old", forKey: from.keyed(MaerSyncSession.playlistsVersionKey))
+        documents.setBody(to.keyed(MaerSyncSession.playlistsMirrorKey), Data("live".utf8))
+        defaults.set("v-live", forKey: to.keyed(MaerSyncSession.playlistsVersionKey))
+        MaerSyncSession.carryRows(from: from, to: to, living: .target, defaults: defaults, rows: rows, documents: documents)
+        #expect(documents.body(to.keyed(MaerSyncSession.playlistsMirrorKey)) == Data("live".utf8), "the old picture replaced the living one")
+        #expect(defaults.string(forKey: to.keyed(MaerSyncSession.playlistsVersionKey)) == "v-live")
+    }
+
+    @Test("a target holding only removals, only a document's picture or only a version counts as holding state")
+    func targetHeldCountsEveryKey() throws {
+        let from = ServiceKeyIdentityTests.byAddress
+        let to = ServiceKeyIdentityTests.byKey
+        let fills: [(String, (UserDefaults, CarrierDocumentRows) -> Void)] = [
+            ("removals", { d, _ in StandMirrorStore.saveList(["rss:r:1"], key: to.keyed(MaerSyncSession.removalsKey), defaults: d) }),
+            ("choices picture", { _, docs in docs.setBody(to.keyed(MaerSyncSession.choicesMirrorKey), Data("c".utf8)) }),
+            ("playlists version", { d, _ in d.set("v", forKey: to.keyed(MaerSyncSession.playlistsVersionKey)) }),
+        ]
+        for (name, fill) in fills {
+            let suite = "maer-carry-held-\(UUID().uuidString)"
+            let defaults = try #require(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let rows = CarrierStandRows.matching(defaults)
+            let documents = CarrierDocumentRows.matching(defaults)
+            rows.set(from.keyed(MaerSyncSession.queueKey), ["rss:w:1": [1, 1_000]])
+            fill(defaults, documents)
+            #expect(MaerSyncSession.carryRows(from: from, to: to, living: .source, defaults: defaults, rows: rows, documents: documents),
+                    "a target with only \(name) counted as empty")
+        }
+    }
+
+    @Test("after carrying onto a target with state no stands write goes out before the stands were read")
+    func noWriteBeforeRead() async throws {
+        let suite = "maer-carry-order-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
+        let byKey = ServiceKeyIdentityTests.byKey
+        rows.set(ServiceKeyIdentityTests.byAddress.keyed(MaerSyncSession.queueKey), ["rss:w:1": [4, 4_000]])
+        rows.set(byKey.keyed(MaerSyncSession.mirrorKey), ["rss:b:1": [2, 2_000]])
+        let box = ServiceKeyIdentityTests.Box()
+        box.access = ServiceKeyIdentityTests.access
+        box.identity = byKey
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let session = MaerSyncSession(transport: transport, announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                      access: { box.access }, identity: { box.identity }, accessUnknown: { box.unknown },
+                                      deviceId: { "dev-a" }, defaults: defaults)
+        session.enqueue(upserts: ["rss:n:1": [5, 5_000]], removing: [], by: "witness")
+        for _ in 0..<50 { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(200))
+        let wroteStands = transport.writes.contains { $0.kind == MaerSyncSession.standsKind }
+        #expect(!wroteStands || transport.fetches.contains(MaerSyncSession.standsKind),
+                "a stands write went out before the stands were read")
+    }
+
     @Test("Fence G-39-37-b: every key of the three lists stands at the target after the carry")
     func everyListedKeyCarries() throws {
         let suite = "maer-carry-keys-\(UUID().uuidString)"
