@@ -171,18 +171,22 @@ nonisolated enum MusopenOrder {
     }
 
     /// Named composers first, then the recordings without one, then the
-    /// single parts; within each, by composer and work.
+    /// single parts; within each, by composer and work, and the movements
+    /// of a work by their number (`movementNumber`).
     static func ordered<T>(_ items: [T], title: (T) -> String, composer: (T) -> String?) -> [T] {
-        let keyed = items.map { item -> (rank: Int, composer: String, work: String, item: T) in
+        let keyed = items.map { item -> (rank: Int, composer: String, work: String, movement: Int, title: String, item: T) in
             let name = title(item)
             let key = composerKey(author: composer(item), title: name)
             let rank = isSinglePart(name) ? 2 : (key.isEmpty ? 1 : 0)
-            return (rank, key, folded(name), item)
+            let stem = workStem(name)
+            return (rank, key, stem ?? folded(name), stem == nil ? 0 : movementNumber(name) ?? 0, folded(name), item)
         }
         return keyed.sorted { a, b in
             if a.rank != b.rank { return a.rank < b.rank }
             if a.composer != b.composer { return a.composer < b.composer }
-            return a.work < b.work
+            if a.work != b.work { return a.work < b.work }
+            if a.movement != b.movement { return a.movement < b.movement }
+            return a.title < b.title
         }.map(\.item)
     }
 
@@ -197,24 +201,38 @@ nonisolated enum MusopenOrder {
         return stem.isEmpty ? nil : stem
     }
 
+    /// The number of a movement, read as a number from what follows the
+    /// last " - ": Roman ("IX. Air") or Arabic ("10. Air"). A text sort put
+    /// IX after IV and 10 after 1.
     static func movementNumber(_ title: String) -> Int? {
-        nil
+        guard let dash = title.range(of: " - ", options: .backwards),
+              let match = title[dash.upperBound...].range(of: #"^([IVXLC]+|[0-9]+)(?=[.)] )"#, options: .regularExpression)
+        else { return nil }
+        let digits = String(title[match])
+        if let arabic = Int(digits) { return arabic }
+        let values: [Character: Int] = ["I": 1, "V": 5, "X": 10, "L": 50, "C": 100]
+        let numerals = digits.compactMap { values[$0] }
+        return numerals.indices.reduce(0) { sum, i in
+            i + 1 < numerals.count && numerals[i] < numerals[i + 1] ? sum - numerals[i] : sum + numerals[i]
+        }
     }
 
     /// The next movement of the same work after a recording: the same
-    /// composer, performer and work, in the order of the page (`ordered`);
-    /// nil after the last movement and for a title without movements.
+    /// composer, performer and work, the movement whose number follows;
+    /// nil after the last movement, for a title without movements, and
+    /// where the next number is not among the recordings read, so nothing
+    /// is skipped.
     static func nextMovement<T>(after id: String, in items: [T], id key: (T) -> String, title: (T) -> String,
                                 composer: (T) -> String?, performer: (T) -> String?) -> T? {
-        guard let finished = items.first(where: { key($0) == id }), let stem = workStem(title(finished)) else { return nil }
+        guard let finished = items.first(where: { key($0) == id }), let stem = workStem(title(finished)),
+              let number = movementNumber(title(finished)) else { return nil }
         func sameWork(_ item: T) -> Bool {
             workStem(title(item)) == stem
                 && composerKey(author: composer(item), title: title(item)) == composerKey(author: composer(finished), title: title(finished))
                 && performer(item) == performer(finished)
         }
-        let page = ordered(items.filter(sameWork), title: title, composer: composer)
-        guard let at = page.firstIndex(where: { key($0) == id }), at + 1 < page.count else { return nil }
-        return page[at + 1]
+        return ordered(items.filter(sameWork), title: title, composer: composer)
+            .first { movementNumber(title($0)) == number + 1 }
     }
 
     private static func folded(_ text: String) -> String {

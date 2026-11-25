@@ -14,7 +14,9 @@ that nothing is in Up Next, and an empty mini player says so once.
 
 **Musopen plays the whole work.** When a movement ends and Up Next is
 empty, the next movement of the same work follows, in the order of the
-Musopen page. What waits in Up Next comes first.
+Musopen page. What waits in Up Next comes first. Movements follow by
+their number, so a work of more than nine movements keeps its order, and
+a movement that is missing ends the work instead of being skipped.
 
 **Statistics that add up.** Most Listened Shows counts the time measured
 while you listen, the same time Total counts, so the shows never add up
