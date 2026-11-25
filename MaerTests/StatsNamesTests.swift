@@ -82,8 +82,9 @@ struct StatsNamesTests {
     func thePageWiresTheRules() throws {
         let view = try Self.source("Sources/Views/StatsView.swift")
         #expect(!view.contains("?? entry.id") && !view.contains("?? showId"), "keine Kennung als Ersatz")
-        // A show without a name is no row (G-39-24); its name comes from
-        // the one place that also asks its episodes.
+        // A show without a name is no row, so one unknown show cannot sum
+        // what nobody can tell apart; its name comes from the one place that
+        // also asks its episodes.
         #expect(view.contains("PodcastShowSources.statsTitle(forShowId: $0, episodeIds: episodes[$0] ?? [])"))
         #expect(view.contains("RadioStore.stationName(forId: entry.id) ?? String(localized: \"Unknown Station\")"))
         #expect(view.components(separatedBy: "rankedRow(").count - 1 == 3, "beide Listen und die Definition")
