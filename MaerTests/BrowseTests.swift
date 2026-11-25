@@ -160,12 +160,13 @@ struct BrowseTests {
         #expect(BrowseSection.shown(in: .books, isAllowed: { _ in false }).isEmpty)
     }
 
-    @Test("without a server the sections of the area, with a server the one row, per tab with its server")
+    @Test("without stock the sections of the area, with stock the one row; books and music count their server")
     func sectionsWithoutServerRowWithServer() {
-        #expect(TabBrowse.form(hasServer: false) == .sections)
-        #expect(TabBrowse.form(hasServer: true) == .row)
+        #expect(TabBrowse.form(hasStock: false) == .sections)
+        #expect(TabBrowse.form(hasStock: true) == .row)
         func form(_ tab: MediaType, abs: Bool = false, music: Bool = false, podcasts: Bool = false) -> TabBrowse.Form {
-            TabBrowse.form(hasServer: TabBrowse.hasServer(for: tab, absSignedIn: abs, musicServer: music, absPodcasts: podcasts))
+            TabBrowse.form(hasStock: TabBrowse.hasStock(for: tab, absSignedIn: abs, musicServer: music,
+                                                        absPodcasts: podcasts, podcastShows: 0))
         }
         #expect(form(.audiobooks) == .sections)
         #expect(form(.audiobooks, abs: true) == .row)
@@ -191,7 +192,7 @@ struct BrowseTests {
                     ("Sources/Views/PodcastsView.swift", "podcasts")]
         for (path, area) in tabs {
             let code = try flat(path)
-            #expect(code.contains("switchTabBrowse.form(hasServer:"), "\(path) decides its form elsewhere")
+            #expect(code.contains("switchTabBrowse.form(hasStock:"), "\(path) decides its form elsewhere")
             #expect(code.contains("BrowsePage.rowTiles(in:.\(area))"), "\(path) builds its row past the page's sections")
             #expect(code.contains("area:.\(area))"), "\(path) draws no Browse row of its area")
             #expect(code.contains("OpenCatalogsHeading()"), "\(path) shows its sections without the heading")

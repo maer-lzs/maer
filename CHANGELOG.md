@@ -25,6 +25,13 @@ to more than Total. A show nobody can name no longer stands as one
 unknown show. The import guides translate Other apps (OPML) and no
 longer list Spotify, which gives nothing to import.
 
+**The Podcasts tab in a new order.** The folders stand under the new
+episodes and above the subscriptions, as one row of two tiles with the
+next one at the edge, and their heading leads to a page of all folders.
+The subscriptions show six shows before the link to all of them. Browse
+appears as one row once you follow a show, and its heading says Browse
+everywhere.
+
 ## v3.9.1 (Build 68)
 
 **Jamendo and Podcast Index work again.** The app's keys for the two

@@ -36,6 +36,8 @@ enum PodcastRoute: Hashable {
     case pinchflatGroup
     /// A folder of shows: its page with start, shuffle and its shows.
     case folder(id: String)
+    /// Every folder of shows, behind the heading of their row.
+    case folders
     /// X²·5: the book-category charts (1482) as a full grid. Measured: no
 
     /// H: the two-stage chart form. Charts page (genres as tile
@@ -73,6 +75,8 @@ extension View {
                 PodcastSubscriptionsPage(playerCoordinator: playerCoordinator)
             case .folder(let id):
                 PodcastFolderPage(folderId: id, playerCoordinator: playerCoordinator)
+            case .folders:
+                PodcastFoldersPage(playerCoordinator: playerCoordinator)
             case .pinchflatGroup:
                 PinchflatGroupPage(playerCoordinator: playerCoordinator)
             case .charts:

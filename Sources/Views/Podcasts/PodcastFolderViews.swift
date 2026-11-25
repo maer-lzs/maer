@@ -10,20 +10,35 @@ import SwiftUI
 /// start button; "+" makes a new folder. A folder is a Mär playlist of shows
 /// (`PodcastFolder`).
 struct PodcastFolderRow: View {
+    /// The side of a tile on a wide screen, where the rule would grow it.
     static let widestSide: CGFloat = 240
-    nonisolated static func side(forWidth width: CGFloat) -> CGFloat { 150 }
+
+    /// The side of a folder's tile from the width of the row: two tiles in
+    /// full and four tenths of the third at the edge, so the row says it
+    /// goes on. The width alone decides, so the row stands as high with
+    /// two folders as with eight; on a wide screen `widestSide` holds it.
+    nonisolated static func side(forWidth width: CGFloat) -> CGFloat {
+        let edge: CGFloat = 16, spacing: CGFloat = 14
+        return min(widestSide, max(0, (width - edge - 2 * spacing) / 2.4))
+    }
 
     /// The new episodes per feed key, as the subscription grid counts them.
     let newCounts: [String: Int]
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = MaerPlaylists.shared
     @State private var creating = false
+    /// The width of the row as laid out; a phone's until it is measured.
+    @State private var rowWidth: CGFloat = 393
 
     var body: some View {
         let folders = SharedRows.playlists(at: .podcasts).filter { PodcastFolder.isFolder($0.itemIds) }
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                RowHeading.plain("Folders")
+                if folders.isEmpty {
+                    RowHeading.plain("Folders")
+                } else {
+                    RowHeading.entry("Folders", destination: PodcastRoute.folders)
+                }
                 Spacer(minLength: 0)
                 Button { creating = true } label: {
                     Image(systemName: "plus.circle").font(.title3)
@@ -43,7 +58,8 @@ struct PodcastFolderRow: View {
                         ForEach(folders) { folder in
                             NavigationLink(value: PodcastRoute.folder(id: folder.id)) {
                                 PodcastFolderTile(folder: folder,
-                                                  newCount: PodcastFolder.newCount(folder.itemIds) { newCounts[$0] ?? 0 }) {
+                                                  newCount: PodcastFolder.newCount(folder.itemIds) { newCounts[$0] ?? 0 },
+                                                  side: PodcastFolderRow.side(forWidth: rowWidth)) {
                                     Task { await RoutinePlayback.start(folder, in: store, on: playerCoordinator) }
                                 }
                             }
@@ -55,6 +71,7 @@ struct PodcastFolderRow: View {
                 }
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
         .sheet(isPresented: $creating) {
             AddShowToFolderSheet(show: nil).followsAppearanceChoice()
         }
@@ -66,9 +83,12 @@ struct PodcastFolderRow: View {
 struct PodcastFolderTile: View {
     let folder: MaerPlaylists.Playlist
     let newCount: Int
+    /// The row's rule gives the side; the page's grid gives its column.
+    var side: CGFloat?
     let start: () -> Void
     @Environment(\.itemRouter) private var router
-    @ScaledMetric(relativeTo: .body) private var side: CGFloat = 150
+    /// The side measured where the grid decides it, for the marks.
+    @State private var measured: CGFloat = 150
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -76,10 +96,13 @@ struct PodcastFolderTile: View {
                             coverURLs: PlaylistCardSource.deviceCovers(folder, router: router),
                             cornerRadius: 12)
                 .frame(width: side, height: side)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: side == nil ? .infinity : nil)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     if newCount > 0 {
-                        StandardCoverMarks(count: newCount, coverSide: side)
+                        StandardCoverMarks(count: newCount, coverSide: side ?? measured)
                     }
                 }
                 .overlay(alignment: .bottomTrailing) {
@@ -90,12 +113,51 @@ struct PodcastFolderTile: View {
             Text(folder.name)
                 .font(.subheadline.bold())
                 .foregroundStyle(.primary)
-                .lineLimit(1)
+                .lineLimit(2)
             Text("\(folder.itemIds.count) shows")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(width: side, alignment: .leading)
+    }
+}
+
+/// Every folder of shows, behind the heading of the row: the same tiles in
+/// a grid, the newest change first as in the row.
+struct PodcastFoldersPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var store = MaerPlaylists.shared
+    /// The new episodes per feed key, counted as the folder page counts.
+    @State private var counts: [String: Int] = [:]
+
+    var body: some View {
+        let folders = SharedRows.playlists(at: .podcasts).filter { PodcastFolder.isFolder($0.itemIds) }
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: PodcastFolderRow.widestSide), spacing: 14)],
+                      alignment: .leading, spacing: 18) {
+                ForEach(folders) { folder in
+                    NavigationLink(value: PodcastRoute.folder(id: folder.id)) {
+                        PodcastFolderTile(folder: folder,
+                                          newCount: PodcastFolder.newCount(folder.itemIds) { counts[$0] ?? 0 }) {
+                            Task { await RoutinePlayback.start(folder, in: store, on: playerCoordinator) }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("podcast-folders-\(folder.id)")
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, TabContentLayout.topInset)
+            .bottomBarClearance()
+        }
+        .navigationTitle("Folders")
+        .navigationBarTitleDisplayMode(.inline)
+        .taskOnPodcastChange(folders.map { $0.itemIds.joined(separator: ",") }.joined(separator: ";")) {
+            let shows = folders.flatMap(\.itemIds).compactMap(PodcastFolder.feedKey(of:)).compactMap(RoutinePlayback.show(feedKey:))
+            let sections = await PodcastSections.computeDetached(shows: shows, snapshot: PodcastSections.snapshot(shows: shows))
+            counts = Dictionary(sections.recentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.newCount) },
+                                uniquingKeysWith: { first, _ in first })
+        }
     }
 }
 

@@ -1376,9 +1376,9 @@ struct LibraryView: View {
     /// The catalog row's switch holds in both forms.
     @ViewBuilder
     private var browseOffer: some View {
-        switch TabBrowse.form(hasServer: TabBrowse.hasServer(
+        switch TabBrowse.form(hasStock: TabBrowse.hasStock(
             for: .audiobooks, absSignedIn: session.authViewModel.isLoggedIn,
-            musicServer: false, absPodcasts: false)) {
+            musicServer: false, absPodcasts: false, podcastShows: 0)) {
         case .row:
             if freeAudiobooksArea { freeAudiobooksSection }
         case .sections:

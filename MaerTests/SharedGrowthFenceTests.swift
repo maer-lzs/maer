@@ -87,8 +87,10 @@ struct SharedGrowthFenceTests {
     /// `PodcastFolderViews`), the sheet observes the lists and reads the
     /// subscriptions once (two, `AddShowToFolderSheet`). 379: the Musopen
     /// row observes the catalog rows, on the Music tab and on the Classical
-    /// page that does not observe them itself (one, `MusopenRow`).
-    nonisolated static let stock = 379
+    /// page that does not observe them itself (one, `MusopenRow`). 380:
+    /// the page of all folders observes the lists, as the row does (one,
+    /// `PodcastFoldersPage`).
+    nonisolated static let stock = 380
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -191,7 +193,9 @@ struct SharedGrowthFenceTests {
     /// the catalog remember their recordings for playback as the Jamendo
     /// pages do (one, `MusopenLoader`). 777: the advance asks the catalog
     /// for the next movement of a Musopen work (one, `PlayerCoordinator`).
-    nonisolated static let sourcesStock = 777
+    /// 778: the page of all folders observes the lists (one,
+    /// `PodcastFoldersPage`).
+    nonisolated static let sourcesStock = 778
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

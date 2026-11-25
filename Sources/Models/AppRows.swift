@@ -196,6 +196,12 @@ nonisolated enum AppRows {
         AppRow(key: "podcasts.latestEpisodes", tab: .podcasts,
                title: String(localized: "Latest Episodes"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
+        // The podcast playlists are folders of shows; the key stays, so no
+        // stored choice resets. They stand under the new episodes, the
+        // lists that stay lists under the subscriptions.
+        AppRow(key: "podcasts.playlists", tab: .podcasts,
+               title: String(localized: "Folders"),
+               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.pinchflat", tab: .podcasts,
                title: "Pinchflat",
                // Shows of the person's own Pinchflat server, headed by its host.
@@ -206,11 +212,6 @@ nonisolated enum AppRows {
         AppRow(key: "podcasts.subscriptions", tab: .podcasts,
                title: String(localized: "Subscriptions"),
                // The subscription grid, in the sort chosen on its page.
-               sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
-        // The podcast playlists are folders of shows; the key stays, so no
-        // stored choice resets.
-        AppRow(key: "podcasts.playlists", tab: .podcasts,
-               title: String(localized: "Folders"),
                sourceKeys: [], storageKey: nil, fixed: .ownHoldings),
         AppRow(key: "podcasts.downloaded", tab: .podcasts,
                title: String(localized: "Downloads list"),

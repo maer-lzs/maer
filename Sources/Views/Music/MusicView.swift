@@ -165,7 +165,7 @@ struct MusicView: View {
             // The offer from outside: with a server its rows fold into the
             // one Browse row under the library, without one they stand
             // under the own stock as the music sections of the Browse page.
-            switch TabBrowse.form(hasServer: serverConfigured) {
+            switch TabBrowse.form(hasStock: serverConfigured) {
             case .row: browseRow
             case .sections: catalogSections
             }

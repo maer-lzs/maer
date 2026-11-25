@@ -168,14 +168,17 @@ nonisolated enum TabBrowse {
         }
     }
 
-    static func form(hasServer: Bool) -> Form {
-        hasServer ? .row : .sections
-    }
-
+    /// The tab's own stock decides its Browse: the server of the area for
+    /// books and music, where the server is the stock; for podcasts also
+    /// a subscription, because shows are followed without any server.
     static func hasStock(for tab: MediaType, absSignedIn: Bool, musicServer: Bool,
                          absPodcasts: Bool, podcastShows: Int) -> Bool {
-        hasServer(for: tab, absSignedIn: absSignedIn, musicServer: musicServer, absPodcasts: absPodcasts)
+        let server = hasServer(for: tab, absSignedIn: absSignedIn, musicServer: musicServer, absPodcasts: absPodcasts)
+        return tab == .podcasts ? server || podcastShows > 0 : server
     }
 
-    static func form(hasStock: Bool) -> Form { form(hasServer: hasStock) }
+    /// With stock of its own the one Browse row, without any the sections.
+    static func form(hasStock: Bool) -> Form {
+        hasStock ? .row : .sections
+    }
 }

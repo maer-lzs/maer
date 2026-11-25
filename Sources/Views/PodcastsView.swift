@@ -169,9 +169,13 @@ struct PodcastsView: View {
                     // not be followed here yet.
                     needsSignInSection
                     latestEpisodesSection
+                    // The folders under the new episodes and above the
+                    // subscriptions: a folder is started more often than
+                    // a show is looked for.
+                    foldersSection
                     // The server group and Premium are daily stock like the
-                    // subscriptions and stand right above them (a switch to
-                    // come folds them into the subscriptions).
+                    // subscriptions and stand right above them (a switch
+                    // folds them into the subscriptions).
                     pinchflatGroupSection
                     premiumSection
                     recentlyUpdatedSection
@@ -180,10 +184,10 @@ struct PodcastsView: View {
                     coListenedSection
                     // Own stock before the shop window: the curation of
                     // feeds stands under everything the person holds. With
-                    // a server of the area its rows fold into the one
-                    // Browse row, without one they stand as the podcast
-                    // sections of the Browse page.
-                    switch TabBrowse.form(hasServer: hasPodcastServer) {
+                    // stock of its own (a subscription or a server's shows)
+                    // its rows fold into the one Browse row, without any
+                    // they stand as the podcast sections of the Browse page.
+                    switch TabBrowse.form(hasStock: hasPodcastStock) {
                     case .row: browseRow
                     case .sections: catalogSections
                     }
@@ -427,11 +431,11 @@ RowHeading(title: "Keep Listening", font: .title2,
         CatalogMix.tiles(for: .podcasts, rows: freeCatalogStore.sourceRows)
     }
 
-    /// The server of the area (`TabBrowse.hasServer`): an Audiobookshelf
-    /// podcast library.
-    private var hasPodcastServer: Bool {
-        TabBrowse.hasServer(for: .podcasts, absSignedIn: absSignedIn,
-                            musicServer: false, absPodcasts: AppStorageKeys.absPodcastsActive)
+    /// The tab's own stock (`TabBrowse.hasStock`): a subscription, or an
+    /// Audiobookshelf podcast library.
+    private var hasPodcastStock: Bool {
+        TabBrowse.hasStock(for: .podcasts, absSignedIn: absSignedIn, musicServer: false,
+                           absPodcasts: AppStorageKeys.absPodcastsActive, podcastShows: allShows.count)
     }
 
     /// The podcast sections of the Browse page under one heading.
@@ -513,16 +517,20 @@ RowHeading(title: "Recommended",
 
     /// The folders of shows, with the new episodes of each show as the
     /// subscription grid counts them; it stands once there is a show to
-    /// put in one or a folder. Under it the podcast lists that stay lists
-    /// (episodes of the own Audiobookshelf, a mixed list, a rescued
-    /// version), in the one name list, only when there is one.
+    /// put in one or a folder.
     @ViewBuilder
-    private var playlistsSection: some View {
+    private var foldersSection: some View {
         if !allRecentShows.isEmpty || !SharedRows.playlists(at: .podcasts).isEmpty {
             PodcastFolderRow(newCounts: Dictionary(allRecentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.newCount) },
                                                    uniquingKeysWith: { first, _ in first }),
                              playerCoordinator: playerCoordinator)
         }
+    }
+
+    /// The podcast lists that stay lists (episodes of the own
+    /// Audiobookshelf, a mixed list, a rescued version), in the one name
+    /// list, only when there is one; under the subscriptions.
+    private var playlistsSection: some View {
         PlaylistHomeSection(home: .podcasts, playerCoordinator: playerCoordinator)
     }
 
@@ -548,10 +556,10 @@ RowHeading(title: "Recommended",
 
     @ViewBuilder
     private var recentlyUpdatedSection: some View {
-        // A PREVIEW now. 12 tiles, newest first, unfiltered; the full
+        // A PREVIEW now. 6 tiles, newest first, unfiltered; the full
         // subscription grid (and the sort/filter control with it) lives on
         // the page behind the counted chevron. The count rule shows the total
-        // ("Subscriptions · 27 ›"); with ≤ 12 shows the chevron falls away
+        // ("Subscriptions · 27 ›"); with ≤ 6 shows the chevron falls away
         // by pure counting. The zero-hits trap dies with the filter's move:
         // the preview is unfiltered, and the page. Where the filter lives.
         // Always shows its own way back out.
@@ -588,8 +596,9 @@ RowHeading(title: "Recommended",
         }
     }
 
-    /// Preview cut: 12 is one screenful of show tiles.
-    static let recentShowsPreviewCap = 12
+    /// Preview cut: six tiles, three rows of two on a phone, so the
+    /// folders and what follows stay within reach.
+    static let recentShowsPreviewCap = 6
     private var recentShowsPreview: [RecentShowInfo] {
         Array(recentShows.prefix(Self.recentShowsPreviewCap))
     }

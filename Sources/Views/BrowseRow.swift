@@ -127,12 +127,12 @@ struct BrowseTileView: View {
     }
 }
 
-/// The heading over the Browse sections a tab without a server of its
-/// area carries under its own stock (`TabBrowse.Form.sections`). It heads
-/// a group of rows, not a row.
+/// The heading over the Browse sections a tab without stock of its own
+/// carries (`TabBrowse.Form.sections`). It heads a group of rows, not a
+/// row, and says Browse as the row says it in every other form.
 struct OpenCatalogsHeading: View {
     var body: some View {
-        Text("From Open Catalogs")
+        Text("Browse")
             .font(.title2.bold())
             .accessibilityAddTraits(.isHeader)
             .padding(.horizontal)
