@@ -67,6 +67,24 @@ struct MovementNumberTests {
         #expect(Self.next(after: "mso:a12", in: arabic) == nil)
     }
 
+    @Test("Commons titles: a movement after a comma and in small Roman numerals is a movement too")
+    func commonsForms() {
+        #expect(MusopenOrder.movementNumber("Nocturne Op. 9, I. Allegro") == 1)
+        #expect(MusopenOrder.movementNumber("String Quartet op. 95 - ii. largo") == 2)
+        #expect(MusopenOrder.movementNumber("String Quartet op. 95, iv. allegretto agitato") == 4)
+        #expect(MusopenOrder.workStem("String Quartet op. 95 - ii. largo") == MusopenOrder.workStem("String Quartet op. 95 - iii. allegretto"))
+        #expect(MusopenOrder.workStem("Nocturne Op. 9, I. Allegro") == MusopenOrder.workStem("Nocturne Op. 9, II. Andante"))
+        let quartet = ["i. allegro con brio", "ii. allegretto", "iii. allegro assai", "iv. larghetto"].enumerated().map {
+            Recording(id: "q\($0.offset + 1)", title: "String Quartet op. 95 - \($0.element)")
+        }.reversed().map { $0 }
+        #expect(Self.next(after: "q1", in: quartet) == "q2")
+        #expect(Self.next(after: "q3", in: quartet) == "q4")
+        // A comma alone does not make a movement: a key after a comma and a
+        // name in initials stay what they are.
+        #expect(MusopenOrder.movementNumber("Prelude, C. major") == nil)
+        #expect(MusopenOrder.movementNumber("Bach, J. S. - Air") == nil)
+    }
+
     @Test("a movement missing from the recordings read ends the work; nothing is skipped")
     func noSkip() {
         let read = Self.work(roman: true).filter { $0.id != "mso:r2" }

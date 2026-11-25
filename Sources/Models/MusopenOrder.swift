@@ -217,6 +217,8 @@ nonisolated enum MusopenOrder {
         }
     }
 
+    static func needsReading(after title: String, readToEnd: Bool) -> Bool { false }
+
     /// The next movement of the same work after a recording: the same
     /// composer, performer and work, the movement whose number follows;
     /// nil after the last movement, for a title without movements, and

@@ -34,7 +34,7 @@ struct MusopenPageReading {
     /// a failure or a reader that no longer moves. A failure kept from
     /// before is cleared first: this is also "Try Again", which reads on
     /// from where it stood. `show` gets the state after every answer.
-    static func readAll(_ start: Self, fetch: (MusopenCatalog.Cursor) async -> Answer,
+    static func readAll(_ start: Self, maxAnswers: Int = .max, fetch: (MusopenCatalog.Cursor) async -> Answer,
                         show: (Self) -> Void) async -> Self {
         var state = start
         state.failed = false
