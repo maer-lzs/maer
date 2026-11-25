@@ -28,3 +28,7 @@ struct AirPlayButton: UIViewRepresentable {
         uiView.activeTintColor = activeTintColor ?? tintColor
     }
 }
+
+enum AudioRouteRule {
+    static func isExternal(_ outputs: [AVAudioSession.Port]) -> Bool { false }
+}
