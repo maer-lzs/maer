@@ -189,8 +189,9 @@ struct SharedGrowthFenceTests {
     /// session's library for Continue Listening and the series (two,
     /// `AudiobookPreloader`). 776: the Musopen row above, and the pages of
     /// the catalog remember their recordings for playback as the Jamendo
-    /// pages do (one, `MusopenLoader`).
-    nonisolated static let sourcesStock = 776
+    /// pages do (one, `MusopenLoader`). 777: the advance asks the catalog
+    /// for the next movement of a Musopen work (one, `PlayerCoordinator`).
+    nonisolated static let sourcesStock = 777
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

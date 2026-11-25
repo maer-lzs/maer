@@ -1117,6 +1117,9 @@ struct UserChoiceGateTests {
             "audiobookPreloadEnabled", "audiobookPreloadBudgetGB", "audiobookPreloadNextInSeries",
             // The names in the tab bar fit the screen of this device.
             "tabBarWords",
+            // What this device heard to its end, named by its idle mini
+            // player; the standby that travels stays empty.
+            "heardLastItemId",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.
