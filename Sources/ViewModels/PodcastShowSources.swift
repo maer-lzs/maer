@@ -79,6 +79,13 @@ enum PodcastShowSources {
     }
 
 
+    /// The name the statistics give a show: the known one, else the show
+    /// one of its heard episodes names; nil when nobody can name it.
+    static func statsTitle(forShowId showId: String, episodeIds: [String]) -> String? {
+        knownTitle(forShowId: showId)
+            ?? episodeIds.lazy.compactMap { show(forEpisodeId: $0)?.title }.first { !$0.isEmpty }
+    }
+
     /// Is this feed subscribed on either source? The subscribe badge and the
     /// source page asked this in their own words, in the same words.
     ///

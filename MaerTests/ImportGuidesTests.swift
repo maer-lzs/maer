@@ -18,15 +18,13 @@ struct ImportGuidesTests {
         #expect(ImportGuide.otherOPML.action == .pickFile(.opml))
         #expect(ImportGuide.antennaPod.action == .pickFile(.antennaPod))
         #expect(ImportGuide.pocketCasts.action == .signIn(.pocketCasts))
-        #expect(ImportGuide.spotify.action == .none)
     }
 
     @Test("What a source does not provide is not promised")
     func honestCarries() {
         #expect(ImportGuide.otherOPML.carries.subscriptions && !ImportGuide.otherOPML.carries.positions)
         #expect(ImportGuide.pocketCasts.carries.positions && !ImportGuide.pocketCasts.carries.moments)
-        #expect(ImportGuide.spotify.carries == ImportGuide.Carries(subscriptions: false, positions: false, playedMarks: false, moments: false))
-        for guide in ImportGuide.allCases where guide.action != .none {
+        for guide in ImportGuide.allCases {
             #expect(guide.carries.subscriptions, "\(guide) imports nothing?")
         }
         // The moments flag agrees with what the import actually records.
@@ -34,14 +32,10 @@ struct ImportGuidesTests {
         #expect(ImportGuide.applePodcasts.carries.moments == ForeignSource.applePodcasts.carriesMoments)
     }
 
-    @Test("Every guide with an action has steps, Spotify has only the sentence why")
+    @Test("Every guide has steps")
     func steps() {
         for guide in ImportGuide.allCases {
-            if guide.action == .none {
-                #expect(guide.steps.isEmpty && !guide.notes.isEmpty, "\(guide)")
-            } else {
-                #expect(!guide.steps.isEmpty, "\(guide)")
-            }
+            #expect(!guide.steps.isEmpty, "\(guide)")
         }
         // The file the copy step names; the step text is a catalog key, so
         // the name lives there and here, nowhere else.
@@ -79,7 +73,6 @@ struct ImportGuidesTests {
         #expect(ImportGuidesDone.isDone(.overcast))
         #expect(ImportGuidesDone.isDone(.otherOPML))
         #expect(!ImportGuidesDone.isDone(.applePodcasts))
-        #expect(!ImportGuidesDone.isDone(.spotify))
     }
 }
 #endif

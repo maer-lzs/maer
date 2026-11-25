@@ -85,29 +85,28 @@ struct StatsView: View {
         .bottomBarClearance()
     }
 
-    /// Podcast shows by listening time. **Derived, not measured**. And the
-    /// footer says so: the numbers come from the stored episode positions, so
-    /// listening twice counts once and a deleted episode is missing. The
-    /// alternative would be a new per-episode measurement that costs most of
-    /// the shared iCloud budget and would still know nothing about the past.
+    /// Podcast shows by MEASURED listening time: the seconds per title Total
+    /// counts by day, summed per show, so their sum never stands above
+    /// Total. A show nobody can name is no row.
     @ViewBuilder
     private var mostListenedShows: some View {
-        let top = ListeningByClass.top(
-            ListeningByClass.shows(positions: ListeningStore.positions(),
-                                   showId: AppStorageKeys.podcastShowId(forEpisodeId:),
-                                   excluding: ForeignMarks.importedIDs()),
-            limit: Self.topLimit, atLeast: Double(Self.shortest))
+        let measured = ListeningByClass.shows(seconds: stats.itemSeconds(matching: ItemNamespace.isPodcastEpisode),
+                                              showId: AppStorageKeys.podcastShowId(forEpisodeId:))
+        let episodes = Dictionary(grouping: stats.itemSeconds(matching: ItemNamespace.isPodcastEpisode).keys) {
+            AppStorageKeys.podcastShowId(forEpisodeId: $0) ?? ""
+        }
+        let top = ListeningByClass.namedTop(measured, limit: Self.topLimit, atLeast: Double(Self.shortest)) {
+            PodcastShowSources.statsTitle(forShowId: $0, episodeIds: episodes[$0] ?? [])
+        }
         if !top.isEmpty {
             Section {
                 ForEach(top, id: \.id) { entry in
-                    rankedRow(PodcastShowSources.knownTitle(forShowId: entry.id)
-                                  ?? String(localized: "Unknown Show"),
-                              seconds: Int(entry.seconds))
+                    rankedRow(entry.title, seconds: Int(entry.seconds))
                 }
             } header: {
                 Text("Most Listened Shows")
             } footer: {
-                Text("Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing.")
+                Text("Measured while you listen in Mär, from when it began counting.")
             }
         }
     }

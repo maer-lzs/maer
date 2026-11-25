@@ -16,6 +16,12 @@ that nothing is in Up Next, and an empty mini player says so once.
 empty, the next movement of the same work follows, in the order of the
 Musopen page. What waits in Up Next comes first.
 
+**Statistics that add up.** Most Listened Shows counts the time measured
+while you listen, the same time Total counts, so the shows never add up
+to more than Total. A show nobody can name no longer stands as one
+unknown show. The import guides translate Other apps (OPML) and no
+longer list Spotify, which gives nothing to import.
+
 ## v3.9.1 (Build 68)
 
 **Jamendo and Podcast Index work again.** The app's keys for the two

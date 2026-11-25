@@ -11692,34 +11692,6 @@
         }
       }
     },
-    "Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geschätzt aus deinen gespeicherten Positionen: erneutes Hören zählt nicht doppelt, und Folgen, die den Feed verlassen haben, fehlen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Estimado a partir de tus posiciones guardadas: volver a escuchar no cuenta dos veces y faltan los episodios que han salido del feed."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Estimé à partir de vos positions enregistrées : une réécoute ne compte pas deux fois, et les épisodes retirés du flux manquent."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Stimato dalle posizioni salvate: riascoltare non conta due volte, e mancano gli episodi usciti dal feed."
-          }
-        }
-      }
-    },
     "Every device Mär has played on. Swipe left to remove one; it then follows the default." : {
       "localizations" : {
         "de" : {
@@ -17927,6 +17899,34 @@
         }
       }
     },
+    "Measured while you listen in Mär, from when it began counting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemessen beim Hören in Mär, seit Mär zählt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Medido mientras escuchas en Mär, desde que empezó a contar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesuré pendant l’écoute dans Mär, depuis que Mär compte."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Misurato mentre ascolti in Mär, da quando ha iniziato a contare."
+          }
+        }
+      }
+    },
     "Measurements" : {
       "comment" : "Diagnostics page of recorded performance metrics.",
       "localizations" : {
@@ -23382,6 +23382,34 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Originale"
+          }
+        }
+      }
+    },
+    "Other apps (OPML)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Apps (OPML)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Otras apps (OPML)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autres apps (OPML)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Altre app (OPML)"
           }
         }
       }
@@ -31652,35 +31680,6 @@
         }
       }
     },
-    "Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spotify bietet keinen Export von Abos oder Hörfortschritt, deshalb lässt sich von dort nichts übernehmen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Spotify no ofrece exportar suscripciones ni progreso de escucha, así que no se puede importar nada de él."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spotify ne propose aucune exportation des abonnements ni de la progression d’écoute, rien ne peut donc en être importé."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Spotify non offre l'esportazione di iscrizioni o progressi di ascolto, quindi da lì non si può importare nulla."
-          }
-        }
-      }
-    },
     "Star a station, or listen to one. It will show up here." : {
       "localizations" : {
         "de" : {
@@ -38907,34 +38906,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Sconosciuto su questo dispositivo: segui il programma perché la routine lo trovi"
-          }
-        }
-      }
-    },
-    "Unknown Show" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unbekannte Sendung"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Programa desconocido"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Émission inconnue"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Programma sconosciuto"
           }
         }
       }

@@ -797,6 +797,12 @@ final class ListeningStatsStore: ObservableObject {
             .map { (id: $0.key, seconds: $0.value) }
     }
 
+    /// Seconds per title for the titles `isIncluded` keeps. Over Mär Sync
+    /// every device's titles arrive, over iCloud only the stations'.
+    func itemSeconds(matching isIncluded: (String) -> Bool) -> [String: Int] {
+        data.secondsPerItem.filter { isIncluded($0.key) }
+    }
+
     /// Seconds per radio station, across all devices. The measure the
     /// "Most Played" row ranks by.
     func radioSeconds() -> [String: Int] {

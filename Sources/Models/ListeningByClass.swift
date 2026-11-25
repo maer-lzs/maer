@@ -44,13 +44,30 @@ nonisolated enum ListeningByClass {
         return out
     }
 
+    /// Seconds per podcast SHOW from the MEASURED seconds per title, the
+    /// counter Total sums by day. The statistics ask this one: shows from
+    /// stored positions counted progress from the server, from other apps'
+    /// devices and from before the counting, and summed above Total.
     static func shows(seconds: [String: Int], showId: (String) -> String?) -> [String: Double] {
-        [:]
+        var out: [String: Double] = [:]
+        for (episodeId, measured) in seconds where measured > 0 && ItemNamespace.isPodcastEpisode(episodeId) {
+            guard let show = showId(episodeId) else { continue }
+            out[show, default: 0] += Double(measured)
+        }
+        return out
     }
 
+    /// The top entries that have a name, longest first. An entry nobody can
+    /// name is no row and takes no place: one "Unknown Show" summed what
+    /// nobody could tell apart.
     static func namedTop(_ seconds: [String: Double], limit: Int, atLeast: Double = 0,
                          title: (String) -> String?) -> [(id: String, title: String, seconds: Double)] {
-        []
+        var rows: [(id: String, title: String, seconds: Double)] = []
+        for entry in top(seconds, limit: seconds.count, atLeast: atLeast) where rows.count < limit {
+            guard let name = title(entry.id), !name.isEmpty else { continue }
+            rows.append((id: entry.id, title: name, seconds: entry.seconds))
+        }
+        return rows
     }
 
     /// Top entries of a per-key second count, longest first. Ties resolve by

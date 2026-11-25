@@ -15,15 +15,13 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
     case antennaPod
     case pocketCasts
     case otherOPML
-    case spotify
 
     var id: String { rawValue }
 
-    /// What the guide ends in: a file picker, a sign-in, or nothing.
+    /// What the guide ends in: a file picker or a sign-in.
     enum Action: Equatable, Sendable {
         case pickFile(ForeignSource)
         case signIn(ForeignSource)
-        case none
     }
 
     /// What the source carries. Honest per source.
@@ -45,8 +43,8 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
         case .overcast: return "Overcast"
         case .antennaPod: return "AntennaPod"
         case .pocketCasts: return "Pocket Casts"
-        case .otherOPML: return "Other apps (OPML)"
-        case .spotify: return "Spotify"
+        // A word, not a brand: the only title the catalog translates.
+        case .otherOPML: return String(localized: "Other apps (OPML)")
         }
     }
 
@@ -56,7 +54,6 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
         case .overcast, .otherOPML: return .pickFile(.opml)
         case .antennaPod: return .pickFile(.antennaPod)
         case .pocketCasts: return .signIn(.pocketCasts)
-        case .spotify: return .none
         }
     }
 
@@ -68,8 +65,6 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
             return Carries(subscriptions: true, positions: true, playedMarks: true, moments: false)
         case .otherOPML:
             return Carries(subscriptions: true, positions: false, playedMarks: false, moments: false)
-        case .spotify:
-            return Carries(subscriptions: false, positions: false, playedMarks: false, moments: false)
         }
     }
 
@@ -111,8 +106,6 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
                 "In the other app, export your subscriptions as OPML.",
                 "Save the file to this device and pick it below."
             ]
-        case .spotify:
-            return []
         }
     }
 
@@ -130,8 +123,6 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
             return ["The interface is unofficial and may stop working.", Self.pocketCastsPrivacyLine]
         case .otherOPML:
             return ["A plain OPML carries subscriptions, not listening progress."]
-        case .spotify:
-            return ["Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it."]
         default:
             return []
         }
@@ -157,7 +148,6 @@ nonisolated enum ImportGuidesDone {
     static func isDone(_ guide: ImportGuide) -> Bool {
         switch guide.action {
         case .pickFile(let source), .signIn(let source): return sources().contains(source.rawValue)
-        case .none: return false
         }
     }
 

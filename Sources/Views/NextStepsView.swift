@@ -213,8 +213,6 @@ struct ImportGuidePage: View {
                 }
                 .accessibilityIdentifier("import-guide-sign-in")
             }
-        case .none:
-            EmptyView()
         }
     }
 }
