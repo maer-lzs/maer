@@ -27,11 +27,18 @@ enum CoverBadge {
     }
 }
 
+enum CoverMarkSize {
+    enum Class { case tile, row }
+    static func diameter(_ kind: Class, _ size: DynamicTypeSize) -> CGFloat { 22 }
+    static func inset(_ kind: Class) -> CGFloat { 5 }
+}
+
 /// THE offline disc. A white wifi.slash on the disc of the tone, sized to
 /// MATCH the corner play glyph (`MediaTilePlayBadge`) so the two
 /// corner marks read equal on every tile; scales with Dynamic Type like the
 /// play glyph. Every tile draws it in its stack of marks (`CoverGlyphStack`).
 struct OfflineUnavailableBadge: View {
+    var size: DownloadedMark.Size = .large
     @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
 
     var body: some View {
