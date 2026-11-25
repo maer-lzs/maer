@@ -90,6 +90,7 @@ nonisolated enum ListeningStatsSync {
     /// carrier without a ceiling (Mär Sync) carries the whole pot, one
     /// with a ceiling (iCloud) only the stations' (`publishable`).
     static func itemsTravel(hasRoomLimit: Bool) -> Bool { !hasRoomLimit }
+    static func itemsTravel(hasRoomLimit: Bool, syncOn: Bool) -> Bool { !hasRoomLimit }
 
     /// What a device publishes: its days, and of its item seconds ONLY the ones
     /// no other channel already carries, capped to `itemCap` when the carrier

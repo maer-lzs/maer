@@ -46,6 +46,10 @@ struct SliceTwoFollowUpTests {
     func footerPerCarrier() {
         #expect(ListeningStatsSync.itemsTravel(hasRoomLimit: false), "Mär Sync carries every title's seconds")
         #expect(!ListeningStatsSync.itemsTravel(hasRoomLimit: true), "iCloud carries only the stations'")
+        // With the sync switch off no other device is read, over any carrier.
+        #expect(ListeningStatsSync.itemsTravel(hasRoomLimit: false, syncOn: true))
+        #expect(!ListeningStatsSync.itemsTravel(hasRoomLimit: false, syncOn: false), "Mär Sync with the switch off reads no other device")
+        #expect(!ListeningStatsSync.itemsTravel(hasRoomLimit: true, syncOn: false))
     }
 
     @Test("Fence: the statistics read the measured seconds once, group them by the rule and say per carrier where they count", .needsTheSources)
