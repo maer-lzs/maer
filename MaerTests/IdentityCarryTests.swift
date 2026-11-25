@@ -89,6 +89,29 @@ struct IdentityCarryTests {
         #expect(queue["rss:w:1"] == [4, 4_000])
     }
 
+    @Test("a cold start with the pin readable takes over a state stranded under the address (a device from before pins, or one ended in the window)")
+    func coldStartCarries() throws {
+        let suite = "maer-carry-cold-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
+        let byKey = ServiceKeyIdentityTests.byKey
+        let byAddress = ServiceKeyIdentityTests.byAddress
+        rows.set(byAddress.keyed(MaerSyncSession.queueKey), ["rss:w:1": [4, 4_000]])
+        rows.set(byKey.keyed(MaerSyncSession.queueKey), ["rss:b:2": [2, 2_000]])
+        let box = ServiceKeyIdentityTests.Box()
+        box.access = ServiceKeyIdentityTests.access
+        box.identity = byKey
+        let session = MaerSyncSession(transport: MaerSyncCarrierTests.FakeTransport(), announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                      access: { box.access }, identity: { box.identity }, accessUnknown: { box.unknown },
+                                      deviceId: { "dev-a" }, defaults: defaults)
+        #expect(session.identity == byKey)
+        let queue = rows.rows(byKey.keyed(MaerSyncSession.queueKey))
+        #expect(queue["rss:w:1"] == [4, 4_000], "the state under the address stayed stranded")
+        #expect(queue["rss:b:2"] == [2, 2_000])
+        #expect(!rows.holds(byAddress.keyed(MaerSyncSession.queueKey)))
+    }
+
     @Test("Fence: the carry asks the rule, also for an accepted changed key", .needsTheSources)
     func carryAsksTheRule() throws {
         let carriers = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
