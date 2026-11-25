@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import AVFoundation
+import Combine
 import SwiftUI
 
 /// Persistent bar at the bottom of the screen while playback is active. Floats
@@ -428,6 +430,9 @@ private struct MiniPlayerRing: View {
 /// Skip/AirPlay/play cluster. Observes for isPlaying and the skip-interval
 /// glyphs (the reliable-updates lesson lives HERE now, not on the whole bar).
 private struct MiniPlayerTransport: View {
+    /// Whether the sound goes to an output away from the device
+    /// (`AudioRouteRule`), read when the mark appears and on each change.
+    @State private var routeActive = false
     @ObservedObject var viewModel: PlayerViewModel
     let coordinator: PlayerCoordinator
     let showsSkip: Bool
@@ -491,10 +496,23 @@ private struct MiniPlayerTransport: View {
         playButton
     }
 
+    /// The AirPlay mark in the bar's own foreground, as the pause beside
+    /// it: SwiftUI draws it, so the glass adapts it. The system's picker
+    /// lies over it unseen and takes the tap; its own UIKit tint followed
+    /// only the light or dark mode and stood nearly black on glass gone
+    /// dark (measured on the device: RGB 56/61/69 beside a white pause).
     private var airPlayButton: some View {
-        AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
-            .frame(width: 26, height: 26)
+        Image(systemName: "airplay.audio")
+            .font(glyph)
+            .foregroundStyle(routeActive ? AppTheme.accent : .primary)
             .frame(width: 44, height: buttonHeight)
+            .overlay { AirPlayButton(tintColor: .clear) }
+            .accessibilityElement(children: .contain)
+            .onAppear { routeActive = AudioRouteRule.current }
+            .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.routeChangeNotification)
+                .receive(on: RunLoop.main)) { _ in
+                routeActive = AudioRouteRule.current
+            }
     }
 
     /// Play/pause: plain white icon, no own background. Again the same

@@ -42,7 +42,8 @@ feeds in the subscription list.
 downloaded mark no longer stands larger than the others and covers the
 title printed on a cover. In lists, the offline mark stands on the same
 disc as the downloaded mark. A failed download is marked in orange,
-like a feed that refused access.
+like a feed that refused access. The AirPlay mark of the mini player
+stands as clear as the pause beside it on every background.
 
 ## v3.9.1 (Build 68)
 

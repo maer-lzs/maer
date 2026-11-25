@@ -29,6 +29,21 @@ struct AirPlayButton: UIViewRepresentable {
     }
 }
 
+/// Whether the sound goes to an output away from the device: AirPlay,
+/// Bluetooth, the car, a screen. The device's speaker, receiver and wired
+/// headphones are its own. The mini player marks such a route in the
+/// accent colour, as the picker's active tint did.
 enum AudioRouteRule {
-    static func isExternal(_ outputs: [AVAudioSession.Port]) -> Bool { false }
+    static let external: Set<AVAudioSession.Port> = [
+        .airPlay, .bluetoothA2DP, .bluetoothLE, .bluetoothHFP, .carAudio, .HDMI, .usbAudio,
+    ]
+
+    static func isExternal(_ outputs: [AVAudioSession.Port]) -> Bool {
+        outputs.contains(where: external.contains)
+    }
+
+    /// The outputs of the route the session plays to now.
+    static var current: Bool {
+        isExternal(AVAudioSession.sharedInstance().currentRoute.outputs.map(\.portType))
+    }
 }
