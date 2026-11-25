@@ -46,7 +46,7 @@ nonisolated enum ServiceKeyPin {
     /// readable now (a locked device, an error). Unreadable is not none:
     /// reading it as none would hold the key on offer over the pin.
     enum PinRead: Equatable {
-        case held(String), none, unreadable
+        case held(String), none, unreadable, damaged
 
         var held: String? { if case .held(let value) = self { value } else { nil } }
     }

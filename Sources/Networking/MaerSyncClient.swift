@@ -62,6 +62,11 @@ nonisolated enum MaerSyncAccessRead: Equatable, Sendable {
 }
 
 extension MaerSyncIdentity {
+    static func read(access: MaerSyncAccess?, owner: String, pin: ServiceKeyPin.PinRead) -> ServiceKeyIdentityRead {
+        guard let access else { return .none }
+        return .known(MaerSyncIdentity(service: pin.held ?? "address:\(access.baseURL.absoluteString)", owner: owner))
+    }
+
     /// The identity of the access set up on this device, or nil while none
     /// is: the held fingerprint of the service's key and the account name.
     /// A service without a held key is named by its normalized address.

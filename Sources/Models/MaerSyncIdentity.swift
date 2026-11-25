@@ -33,3 +33,7 @@ nonisolated struct MaerSyncIdentity: Equatable, Sendable {
     /// The key a value of this identity is kept under.
     func keyed(_ base: String) -> String { "\(base).\(scope)" }
 }
+
+nonisolated enum ServiceKeyIdentityRead: Equatable, Sendable {
+    case known(MaerSyncIdentity), none, unknown
+}
