@@ -589,7 +589,7 @@ RowHeading(title: "Recommended",
     }
 
     /// Preview cut: 12 is one screenful of show tiles.
-    private static let recentShowsPreviewCap = 12
+    static let recentShowsPreviewCap = 12
     private var recentShowsPreview: [RecentShowInfo] {
         Array(recentShows.prefix(Self.recentShowsPreviewCap))
     }

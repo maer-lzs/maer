@@ -10,6 +10,9 @@ import SwiftUI
 /// start button; "+" makes a new folder. A folder is a Mär playlist of shows
 /// (`PodcastFolder`).
 struct PodcastFolderRow: View {
+    static let widestSide: CGFloat = 240
+    nonisolated static func side(forWidth width: CGFloat) -> CGFloat { 150 }
+
     /// The new episodes per feed key, as the subscription grid counts them.
     let newCounts: [String: Int]
     @ObservedObject var playerCoordinator: PlayerCoordinator

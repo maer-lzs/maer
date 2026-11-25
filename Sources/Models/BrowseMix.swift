@@ -171,4 +171,11 @@ nonisolated enum TabBrowse {
     static func form(hasServer: Bool) -> Form {
         hasServer ? .row : .sections
     }
+
+    static func hasStock(for tab: MediaType, absSignedIn: Bool, musicServer: Bool,
+                         absPodcasts: Bool, podcastShows: Int) -> Bool {
+        hasServer(for: tab, absSignedIn: absSignedIn, musicServer: musicServer, absPodcasts: absPodcasts)
+    }
+
+    static func form(hasStock: Bool) -> Form { form(hasServer: hasStock) }
 }
