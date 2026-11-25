@@ -42,6 +42,12 @@ nonisolated enum ServiceKeyPin {
         return "serviceKeyPin:\(host)\(port)"
     }
 
+    enum PinRead: Equatable { case held(String), none, unreadable }
+    static func reading(_ read: KeychainRead) -> PinRead {
+        if case .value(let v) = read, !v.isEmpty { return .held(v) }
+        return .none
+    }
+
     /// The fingerprint this device is holding for that service, or nil.
     static func held(for baseURL: URL) -> String? {
         guard let account = account(for: baseURL) else { return nil }

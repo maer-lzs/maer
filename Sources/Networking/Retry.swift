@@ -221,6 +221,8 @@ nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendabl
     /// `Location` the caller reads.
     static func followingNone() -> RedirectGuard { RedirectGuard(allows: { _ in false }) }
 
+    static func isSameOrigin(_ target: URL, as base: URL) -> Bool { true }
+
     var refused: Bool { refusals.withLock { $0 > 0 } }
 
     // The completion-handler form on purpose: the async form of this
