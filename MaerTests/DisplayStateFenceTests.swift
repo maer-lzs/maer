@@ -81,6 +81,8 @@ struct DisplayStateFenceTests {
         "FeedArtwork.swift": (1, "catalog titles, no feed"),
         "HomeView.swift": (1, "a book pick of Rediscover, no feed"),
         "MixedMediaPage.swift": (1, "a book, no feed"),
+        "MediaRowContent.swift": (2, "the row's two initialisers: a row of a book, a song or a station has no feed; the search hands in the one answer"),
+        "SearchModels.swift": (1, "a hit before the provider asks; only a followed show is asked (SearchHitLock)"),
     ]
 
     /// Every spelling of a hand-written no-lock in squeezed code: short

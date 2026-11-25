@@ -20,7 +20,7 @@ struct MediaRowContent<CoverOverride: View>: View {
     var offlineBadge = false
     var downloadedBadge = false
     /// The lock of a followed show's feed, in the size of a row's marks.
-    var lock: FeedLock = .none
+    let lock: FeedLock
     /// In-progress bar (0…1) below the title; nil hides it.
     var progressFraction: Double? = nil
     var meta: String? = nil
