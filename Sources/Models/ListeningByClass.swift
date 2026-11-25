@@ -57,6 +57,8 @@ nonisolated enum ListeningByClass {
         return out
     }
 
+    static func episodesByShow(_ ids: some Sequence<String>, showId: (String) -> String?) -> [String: [String]] { [:] }
+
     /// The top entries that have a name, longest first. An entry nobody can
     /// name is no row and takes no place: one "Unknown Show" summed what
     /// nobody could tell apart.
