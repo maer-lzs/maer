@@ -799,7 +799,9 @@ final class ListeningStatsStore: ObservableObject {
 
     /// Whether the seconds per title of the other devices arrive here; the
     /// footer of the shows says so per carrier.
-    var itemsTravel: Bool { ListeningStatsSync.itemsTravel(hasRoomLimit: carrier.hasRoomLimit) }
+    var itemsTravel: Bool {
+        ListeningStatsSync.itemsTravel(hasRoomLimit: carrier.hasRoomLimit, syncOn: AppStorageKeys.syncAcrossDevicesEnabled)
+    }
 
     /// Seconds per title for the titles `isIncluded` keeps. Over Mär Sync
     /// every device's titles arrive, over iCloud only the stations'.

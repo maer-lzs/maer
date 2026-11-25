@@ -90,7 +90,14 @@ nonisolated enum ListeningStatsSync {
     /// carrier without a ceiling (Mär Sync) carries the whole pot, one
     /// with a ceiling (iCloud) only the stations' (`publishable`).
     static func itemsTravel(hasRoomLimit: Bool) -> Bool { !hasRoomLimit }
-    static func itemsTravel(hasRoomLimit: Bool, syncOn: Bool) -> Bool { !hasRoomLimit }
+
+    /// The same with the sync switch: switched off, the store reads no other
+    /// device over any carrier (`start` and `publish` stop at the switch),
+    /// so only this device's titles count. Reachable: signed in to Mär Sync
+    /// with the switch off.
+    static func itemsTravel(hasRoomLimit: Bool, syncOn: Bool) -> Bool {
+        syncOn && itemsTravel(hasRoomLimit: hasRoomLimit)
+    }
 
     /// What a device publishes: its days, and of its item seconds ONLY the ones
     /// no other channel already carries, capped to `itemCap` when the carrier
