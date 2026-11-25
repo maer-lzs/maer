@@ -558,8 +558,8 @@ nonisolated enum CatalogStockFetch {
 /// is a clean answer.
 nonisolated enum ScrapeAnswerCheck {
     static func foreign(query: String, items: [(collections: [String], subjects: [String])]) -> Bool {
-        let collection = firstMatch(#"collection:([A-Za-z0-9_.-]+)"#, in: query)
-        let subjects = quoted(in: firstMatch(#"subject:(\([^)]*\)|"[^"]*")"#, in: query) ?? "")
+        let collection = term(after: "collection:", in: query)
+        let subjects = quoted(term(after: "subject:", in: query) ?? "")
         return items.contains { item in
             if let collection, !item.collections.contains(where: { $0.caseInsensitiveCompare(collection) == .orderedSame }) {
                 return true
@@ -571,23 +571,33 @@ nonisolated enum ScrapeAnswerCheck {
         }
     }
 
-    private static func firstMatch(_ pattern: String, in text: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let range = Range(match.range(at: 1), in: text) else { return nil }
-        return String(text[range])
+    /// What follows a field name in the query: a bracketed group, a quoted
+    /// phrase or a bare word.
+    private static func term(after field: String, in query: String) -> String? {
+        guard let at = query.range(of: field) else { return nil }
+        let rest = query[at.upperBound...]
+        if rest.hasPrefix("("), let close = rest.firstIndex(of: ")") { return String(rest[...close]) }
+        if rest.hasPrefix("\""), let close = rest.dropFirst().firstIndex(of: "\"") { return String(rest[...close]) }
+        return rest.split(separator: " ").first.map(String.init)
     }
 
-    private static func quoted(in text: String) -> [String] {
-        guard let regex = try? NSRegularExpression(pattern: #""([^"]*)""#) else { return [] }
-        return regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap {
-            Range($0.range(at: 1), in: text).map { String(text[$0]) }
-        }
+    /// The quoted phrases of a term.
+    private static func quoted(_ term: String) -> [String] {
+        term.split(separator: "\"", omittingEmptySubsequences: false).enumerated()
+            .filter { $0.offset % 2 == 1 }.map { String($0.element) }
     }
 
     /// The subject as a whole word of the value, case aside.
     private static func hasWord(_ word: String, in value: String) -> Bool {
-        let escaped = NSRegularExpression.escapedPattern(for: word)
-        return value.range(of: "(?i)(^|[^\\p{L}\\p{N}])\(escaped)($|[^\\p{L}\\p{N}])", options: .regularExpression) != nil
+        var from = value.startIndex
+        while let found = value.range(of: word, options: .caseInsensitive, range: from..<value.endIndex) {
+            let before = found.lowerBound == value.startIndex ? nil : value[value.index(before: found.lowerBound)]
+            let after = found.upperBound == value.endIndex ? nil : value[found.upperBound]
+            if !(before?.isLetter ?? false || before?.isNumber ?? false), !(after?.isLetter ?? false || after?.isNumber ?? false) {
+                return true
+            }
+            from = found.upperBound
+        }
+        return false
     }
 }

@@ -162,10 +162,11 @@ struct ListenHistoryRuleTests {
         #expect(rows == ["HistoryRow.swift"], "a history row is drawn twice: \(rows.sorted())")
         let podcasts = try code("Sources/Views/Podcasts/PodcastHistoryView.swift")
         #expect(podcasts.contains("HistoryRow(title: entry.episodeTitle"), "the episode history draws a row of its own")
-        // Read and sorted once per opening, off the main thread; one
-        // continuous list without steps or a spinner.
+        // Read and sorted off the main thread, once per listening event and
+        // not at every appearance; one continuous list without steps or a
+        // spinner.
         let screen = FetchAnswerTests.squeezed(try code("Sources/Views/ListenHistoryScreen.swift"))
-        #expect(screen.contains(".task { guard !loaded else { return } entries = await ListenHistory.shared.historyOffMain(family)"),
+        #expect(screen.contains(".task(id: revision.value) { guard readAt != revision.value else { return } readAt = revision.value let history = ListenHistory.shared entries = await history.historyOffMain(family)"),
                 "the page does not read off the main thread, or reads again whenever it appears")
         #expect(!screen.contains(".history(family)"), "the page reads on the main thread again")
         #expect(!screen.contains("ProgressView") && !screen.contains("prefix("), "the page loads in steps again")

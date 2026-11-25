@@ -15,6 +15,9 @@ struct ListenHistoryScreen: View {
     let family: ListenHistory.Family
     @State private var entries: [ListenHistory.Entry] = []
     @State private var loaded = false
+    /// The revision the page was read at: an appearance alone reads nothing
+    /// again, a listening event does.
+    @State private var readAt: Int?
     /// The rows could not be read: said, not shown as empty.
     @State private var unread = false
     /// Every listening event reads the page again.
@@ -52,6 +55,8 @@ struct ListenHistoryScreen: View {
         // Read and sorted off the main thread, at the opening and at every
         // listening event.
         .task(id: revision.value) {
+            guard readAt != revision.value else { return }
+            readAt = revision.value
             let history = ListenHistory.shared
             entries = await history.historyOffMain(family)
             unread = history.rowsUnread
