@@ -26,7 +26,11 @@ nonisolated enum IdentityCarry {
     /// they carry no moment, and an old one would delete a title made again
     /// elsewhere. A pending document is the source's when it has one, else
     /// the target's; a target's that gives way is named in `dropped`.
-    static func merged(source: Side, target: Side) -> (side: Side, dropped: [String]) {
+    enum Living: Equatable, Sendable { case source, target, tie }
+
+    static func living(source: Side, target: Side) -> Living { .source }
+
+    static func merged(source: Side, target: Side, living: Living) -> (side: Side, dropped: [String]) {
         var out = Side()
         if source.standsVersion != nil {
             out.stands = source.stands

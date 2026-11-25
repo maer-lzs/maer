@@ -439,7 +439,9 @@ final class MaerSyncSession {
     /// The rows of one identity carried onto another that may hold state
     /// (`IdentityCarry.merged`); nothing stays under the source. Static, so
     /// a cold start can carry before the session loads its state.
-    static func carryRows(from current: MaerSyncIdentity, to next: MaerSyncIdentity, defaults: UserDefaults,
+    var waitsForRead: Bool { false }
+
+    static func carryRows(from current: MaerSyncIdentity, to next: MaerSyncIdentity, living: IdentityCarry.Living = .source, defaults: UserDefaults,
                           rows: CarrierStandRows, documents: CarrierDocumentRows) {
         // The target may hold state (a device restored from a backup): the
         // one rule decides what of both stays (`IdentityCarry.merged`).
@@ -451,7 +453,7 @@ final class MaerSyncSession {
                                playlistsPending: documents.body(identity.keyed(Self.playlistsPendingKey)),
                                choicesPending: documents.body(identity.keyed(Self.choicesPendingKey)))
         }
-        let carried = IdentityCarry.merged(source: side(current), target: side(next))
+        let carried = IdentityCarry.merged(source: side(current), target: side(next), living: living)
         for kind in carried.dropped {
             Logger.library.notice("MAERSYNC carry: a pending \(kind, privacy: .public) document of the account it joins gave way to the one carried over")
         }

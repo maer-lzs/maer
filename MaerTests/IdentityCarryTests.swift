@@ -28,41 +28,41 @@ struct IdentityCarryTests {
 
     @Test("the queues join; on the same title the newer moment wins")
     func queuesJoin() {
-        let carried = IdentityCarry.merged(source: Self.window, target: Self.backup)
+        let carried = IdentityCarry.merged(source: Self.window, target: Self.backup, living: .source)
         #expect(carried.side.queue == ["rss:b:2": [2, 2_000], "rss:w:1": [4, 4_000], "rss:both:1": [6, 6_000]])
     }
 
     @Test("the picture is the source's whole when it has read, the target's whole when it has not; never mixed")
     func pictureWhole() {
-        let carried = IdentityCarry.merged(source: Self.window, target: Self.backup)
+        let carried = IdentityCarry.merged(source: Self.window, target: Self.backup, living: .source)
         #expect(carried.side.stands == ["rss:b:1": [5, 5_000]], "a title the service no longer holds came back from the backup")
         #expect(carried.side.standsVersion == "v-now")
         var unread = Self.window
         unread.standsVersion = nil
         unread.stands = [:]
-        let kept = IdentityCarry.merged(source: unread, target: Self.backup)
+        let kept = IdentityCarry.merged(source: unread, target: Self.backup, living: .target)
         #expect(kept.side.stands == Self.backup.stands && kept.side.standsVersion == "v-backup")
     }
 
     @Test("the removals are the source's alone")
     func removals() {
-        #expect(IdentityCarry.merged(source: Self.window, target: Self.backup).side.removals == ["rss:new:1"])
+        #expect(IdentityCarry.merged(source: Self.window, target: Self.backup, living: .source).side.removals == ["rss:new:1"])
     }
 
     @Test("pending documents: the source's when it has one, else the target's; a target's that gives way is named")
     func pendingDocuments() {
-        let carried = IdentityCarry.merged(source: Self.window, target: Self.backup)
+        let carried = IdentityCarry.merged(source: Self.window, target: Self.backup, living: .source)
         #expect(carried.side.playlistsPending == Data("window-lists".utf8))
         #expect(carried.dropped == ["playlists"], "the target's pending document fell without a word")
         var none = Self.window
         none.playlistsPending = nil
-        let kept = IdentityCarry.merged(source: none, target: Self.backup)
+        let kept = IdentityCarry.merged(source: none, target: Self.backup, living: .source)
         #expect(kept.side.playlistsPending == Data("backup-lists".utf8) && kept.dropped.isEmpty)
     }
 
     @Test("an empty target takes the source as it is")
     func emptyTarget() {
-        let carried = IdentityCarry.merged(source: Self.window, target: Side())
+        let carried = IdentityCarry.merged(source: Self.window, target: Side(), living: .source)
         #expect(carried.side == Self.window && carried.dropped.isEmpty)
     }
 
@@ -87,6 +87,97 @@ struct IdentityCarryTests {
         let queue = rows.rows(byKey.keyed(MaerSyncSession.queueKey))
         #expect(queue["rss:b:2"] == [2, 2_000], "the backup's queue was lost")
         #expect(queue["rss:w:1"] == [4, 4_000])
+    }
+
+    // MARK: Which side lives
+
+    @Test("where nobody knows, the newest moment over picture and queue tells which side lives; equal moments are a tie")
+    func livingByMoment() {
+        let old = Side(stands: ["rss:x:1": [1, 1_000]], standsVersion: "v-old")
+        let new = Side(stands: ["rss:x:1": [2, 9_000]], standsVersion: "v-new")
+        #expect(IdentityCarry.living(source: old, target: new) == .target)
+        #expect(IdentityCarry.living(source: new, target: old) == .source)
+        #expect(IdentityCarry.living(source: Side(queue: ["rss:q:1": [1, 9_000]]), target: old) == .source, "the queue counts")
+        #expect(IdentityCarry.living(source: old, target: Side()) == .source, "an empty side does not live")
+        #expect(IdentityCarry.living(source: old, target: old) == .tie)
+    }
+
+    @Test("cold start, the address old and the fingerprint living: everything of the target stays, the old queue joins by moment, what falls is named")
+    func coldStartLivingTarget() {
+        let address = Side(stands: ["rss:gone:1": [1, 1_000]], standsVersion: "v-old", queue: ["rss:q:1": [3, 3_000], "rss:both:1": [1, 1_500]],
+                           removals: ["rss:old:1"], playlistsPending: Data("old".utf8))
+        let fingerprint = Side(stands: ["rss:live:1": [5, 8_000]], standsVersion: "v-live", queue: ["rss:both:1": [7, 7_000]],
+                               removals: ["rss:new:1"], playlistsPending: Data("live".utf8))
+        let carried = IdentityCarry.merged(source: address, target: fingerprint, living: .target)
+        #expect(carried.side.stands == fingerprint.stands && carried.side.standsVersion == "v-live")
+        #expect(carried.side.removals == ["rss:new:1"])
+        #expect(carried.side.playlistsPending == Data("live".utf8))
+        #expect(carried.side.queue == ["rss:q:1": [3, 3_000], "rss:both:1": [7, 7_000]])
+        #expect(Set(carried.dropped) == ["removals", "playlists"])
+    }
+
+    @Test("a tie at a cold start: the target keeps picture, version and pending documents, and the removals of neither side apply")
+    func tieAtColdStart() {
+        let a = Side(stands: ["rss:x:1": [1, 1_000]], standsVersion: "v-a", removals: ["rss:a:1"], playlistsPending: Data("a".utf8))
+        let b = Side(stands: ["rss:x:1": [1, 1_000]], standsVersion: "v-b", removals: ["rss:b:1"], playlistsPending: Data("b".utf8))
+        let carried = IdentityCarry.merged(source: a, target: b, living: .tie)
+        #expect(carried.side.standsVersion == "v-b" && carried.side.playlistsPending == Data("b".utf8))
+        #expect(carried.side.removals.isEmpty, "an old removal applied deletes a title; a fallen one lets it come back")
+        #expect(carried.dropped.contains("removals"))
+    }
+
+    @Test("at a reload the caller knows the source lives, even when the backup holds a younger entry")
+    func reloadKnowsTheSourceLives() {
+        var backup = Self.backup
+        backup.queue["rss:young:1"] = [1, 99_000]
+        let carried = IdentityCarry.merged(source: Self.window, target: backup, living: .source)
+        #expect(carried.side.stands == Self.window.stands && carried.side.removals == Self.window.removals)
+        #expect(carried.side.queue["rss:young:1"] == [1, 99_000], "the backup's queue still joins")
+    }
+
+    @Test("after carrying onto a target with state, the session reads the service before it writes")
+    func readsBeforeWriting() throws {
+        let suite = "maer-carry-read-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
+        let byKey = ServiceKeyIdentityTests.byKey
+        let byAddress = ServiceKeyIdentityTests.byAddress
+        rows.set(byAddress.keyed(MaerSyncSession.queueKey), ["rss:w:1": [4, 4_000]])
+        rows.set(byKey.keyed(MaerSyncSession.mirrorKey), ["rss:b:1": [2, 2_000]])
+        let box = ServiceKeyIdentityTests.Box()
+        box.access = ServiceKeyIdentityTests.access
+        box.identity = byKey
+        let session = MaerSyncSession(transport: MaerSyncCarrierTests.FakeTransport(), announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                      access: { box.access }, identity: { box.identity }, accessUnknown: { box.unknown },
+                                      deviceId: { "dev-a" }, defaults: defaults)
+        #expect(session.waitsForRead, "the carry onto a target with state writes before reading the service")
+    }
+
+    @Test("Fence G-39-37-b: every key of the three lists stands at the target after the carry")
+    func everyListedKeyCarries() throws {
+        let suite = "maer-carry-keys-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let rows = CarrierStandRows.matching(defaults)
+        let documents = CarrierDocumentRows.matching(defaults)
+        let from = ServiceKeyIdentityTests.byAddress
+        let to = ServiceKeyIdentityTests.byKey
+        for key in MaerSyncSession.identityKeys {
+            if key == MaerSyncSession.removalsKey {
+                StandMirrorStore.saveList(["rss:r:1"], key: from.keyed(key), defaults: defaults)
+            } else {
+                defaults.set("v-\(key)", forKey: from.keyed(key))
+            }
+        }
+        for owner in MaerSyncSession.identityOwners { rows.set(from.keyed(owner), ["rss:\(owner):1": [1, 1_000]]) }
+        for owner in MaerSyncSession.identityDocuments { documents.setBody(from.keyed(owner), Data(owner.utf8)) }
+        MaerSyncSession.carryRows(from: from, to: to, living: .source, defaults: defaults, rows: rows, documents: documents)
+        for key in MaerSyncSession.identityKeys {
+            #expect(defaults.object(forKey: to.keyed(key)) != nil, "\(key) was cleared without being carried")
+        }
+        for owner in MaerSyncSession.identityOwners { #expect(rows.holds(to.keyed(owner)), "\(owner)") }
+        for owner in MaerSyncSession.identityDocuments { #expect(documents.body(to.keyed(owner)) != nil, "\(owner)") }
     }
 
     @Test("a cold start with the pin readable takes over a state stranded under the address (a device from before pins, or one ended in the window)")
