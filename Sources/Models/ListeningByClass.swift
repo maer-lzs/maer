@@ -44,6 +44,15 @@ nonisolated enum ListeningByClass {
         return out
     }
 
+    static func shows(seconds: [String: Int], showId: (String) -> String?) -> [String: Double] {
+        [:]
+    }
+
+    static func namedTop(_ seconds: [String: Double], limit: Int, atLeast: Double = 0,
+                         title: (String) -> String?) -> [(id: String, title: String, seconds: Double)] {
+        []
+    }
+
     /// Top entries of a per-key second count, longest first. Ties resolve by
     /// key so two devices rank the same list identically. `atLeast` keeps
     /// out what was barely heard, before the limit, so it takes no place.
