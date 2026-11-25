@@ -295,7 +295,9 @@ struct HostCourtesyTests {
         #expect(retry.components(separatedBy: "session.data(").count - 1 == 1)
         let http = try Self.code("Sources/Networking/HTTP.swift")
         // Each ask carries the redirect rule of the server headers as its delegate.
-        for ask in ["session(lane).data(for: prepared, delegate: RedirectGuard.following())",
+        // The data way asks with the guard its caller chose (a way to the
+        // sync service follows no redirect off its origin), else the rule.
+        for ask in ["session(lane).data(for: prepared, delegate: redirects ?? RedirectGuard.following())",
                     "session(.stream).bytes(for: prepared, delegate: RedirectGuard.following())",
                     "session(lane).download(for: prepared, delegate: RedirectGuard.following())",
                     "session(lane).upload(for: prepared, fromFile: file, delegate: RedirectGuard.following())"] {

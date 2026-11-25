@@ -867,11 +867,13 @@ struct ServerHeadersFenceTests {
         // guard through an expression counts as well.
         let delegates = http.components(separatedBy: "delegate: ").dropFirst().map { String($0.prefix(100)) }
         #expect(delegates.count == 5, "data, bytes, download, upload and the sign-in flow each ask with a delegate: \(delegates.count)")
-        let guarded = ["RedirectGuard.following()",
+        let guarded = ["RedirectGuard.following()", "redirects ?? RedirectGuard.following()",
                        "followsRedirects ? RedirectGuard.following() : RedirectGuard.followingNone()"]
         #expect(delegates.allSatisfy { delegate in guarded.contains { delegate.hasPrefix($0) } },
                 "a way asks without the redirect rule: \(delegates)")
-        #expect(http.contains("task.delegate = RedirectGuard.following()"), "the socket asks with the redirect rule")
+        // The socket asks with the guard its caller chose, the rule by default.
+        #expect(http.contains("redirects: RedirectGuard = .following()") && http.contains("task.delegate = redirects"),
+                "the socket asks without the redirect rule")
 
         let retry = try Self.code("Sources/Networking/Retry.swift")
         let set = try #require(retry.range(of: "ServerHeaders.apply(to: &request)"))
