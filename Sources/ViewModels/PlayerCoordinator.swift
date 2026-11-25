@@ -201,12 +201,10 @@ final class PlayerCoordinator: ObservableObject {
     /// Remembers the last played item id across app restarts so the book is
     /// ready in the mini-player right away on the next launch.
     private let lastItemKey = AppStorageKeys.lastPlayedItemId
-    /// The pointer as it stood before the running open attempt, kept only
-    /// until that attempt is decided. `Optional<Optional<String>>` would be
-    /// the honest type for "nothing pending" against "there was no
-    /// pointer"; the empty string is not a pointer, so nil for either is
-    /// enough and the witness drives both.
-    private var pointerBeforeOpen: String??
+    /// The standby as it stood before the running open attempt, the
+    /// pointer and the title heard last as one pair, kept only until that
+    /// attempt is decided; nil while nothing is pending.
+    private var standbyBeforeOpen: (pointer: String?, heardLast: String?)?
 
     /// `notices`: a witness hands in a channel of its own (own log file).
     init(provider: any AudioProvider, notices: PlaybackNotices? = nil) {
@@ -1499,23 +1497,29 @@ final class PlayerCoordinator: ObservableObject {
         // before", and that title never played either: A plays, a gesture
         // on B moves the pointer, a gesture on C overtakes B, C fails, and
         // the standby of every device would name B.
-        if pointerBeforeOpen == nil { pointerBeforeOpen = AppStorageKeys.lastPlayedItemIdValue }
+        // The title heard last goes with it: the start below forgets it,
+        // and a failed attempt has to give it back.
+        if standbyBeforeOpen == nil {
+            standbyBeforeOpen = (AppStorageKeys.lastPlayedItemIdValue, AppStorageKeys.heardLastItemIdValue)
+        }
         setStandbyPointer(item.id)
     }
 
     /// The open stands: the withdrawal has nothing left to take back.
-    func confirmOwnSession() { pointerBeforeOpen = nil }
+    func confirmOwnSession() { standbyBeforeOpen = nil }
 
-    /// The open failed: the pointer says again what it said before.
+    /// The open failed: the pointer says again what it said before, and
+    /// the title heard last is again the one heard last.
     ///
     /// Not nil, which would be a second wrong statement: the title before
     /// is still the honest standby, it was played. Noted again so the other
     /// devices hear the correction, on the same channel that carried the
     /// claim out.
     func withdrawOwnSession() {
-        guard let before = pointerBeforeOpen else { return }
-        pointerBeforeOpen = nil
-        setStandbyPointer(before)
+        guard let before = standbyBeforeOpen else { return }
+        standbyBeforeOpen = nil
+        setStandbyPointer(before.pointer)
+        AppStorageKeys.heardLastItemIdValue = before.heardLast
     }
 
     /// A title heard to its end leaves the standby (nothing finished is

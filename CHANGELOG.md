@@ -10,7 +10,8 @@ of the two switches of the subscriptions say plainly what each does.
 
 **Heard last after the end.** When a title has played to its end and
 nothing waits, the mini player names it as heard last instead of saying
-that nothing is in Up Next, and an empty mini player says so once.
+that nothing is in Up Next, and an empty mini player says so once. A
+title that cannot be opened leaves it as it was.
 
 **Musopen plays the whole work.** When a movement ends and Up Next is
 empty, the next movement of the same work follows, in the order of the
