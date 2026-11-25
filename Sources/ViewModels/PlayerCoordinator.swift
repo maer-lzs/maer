@@ -205,6 +205,8 @@ final class PlayerCoordinator: ObservableObject {
     /// pointer and the title heard last as one pair, kept only until that
     /// attempt is decided; nil while nothing is pending.
     private var standbyBeforeOpen: (pointer: String?, heardLast: String?)?
+    /// The reading of the Musopen catalog begun with a movement.
+    private let musopenPrefetch = MusopenPrefetch()
 
     /// `notices`: a witness hands in a channel of its own (own log file).
     init(provider: any AudioProvider, notices: PlaybackNotices? = nil) {
@@ -1023,7 +1025,10 @@ final class PlayerCoordinator: ObservableObject {
             var found: LibraryItem?
             _ = await MusopenReload.run(
                 title: title, readToEnd: MusopenLoader.musopenReadToEnd,
-                read: { await !MusopenLoader.readAll().failed },
+                read: { [weak self] in
+                    guard let self else { return false }
+                    return await self.musopenPrefetch.result { await !MusopenLoader.readAll().failed }
+                },
                 stillEnded: { [weak self] in
                     guard let self else { return false }
                     return !self.isChangingTitle && (self.activeItem?.id ?? finishedId) == finishedId
@@ -1515,6 +1520,13 @@ final class PlayerCoordinator: ObservableObject {
             if songsBefore.count > Self.songsBeforeLimit { songsBefore.removeFirst() }
         }
         activeItem = item
+        // A numbered Musopen movement begins the reading of the catalog
+        // now, so its end does not wait 6.6 s for it.
+        if MusopenCoverArt.applies(to: item.id) {
+            musopenPrefetch.begin(title: item.title, readToEnd: MusopenLoader.musopenReadToEnd) {
+                await !MusopenLoader.readAll().failed
+            }
+        }
         guard origin == .gesture else { return }
         ownOpenedAtMs = Date().timeIntervalSince1970 * 1000
         // What the pointer said before this attempt. The note goes out

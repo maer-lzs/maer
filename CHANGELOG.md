@@ -19,7 +19,8 @@ Musopen page. What waits in Up Next comes first. Movements follow by
 their number, so a work of more than nine movements keeps its order, and
 a movement that is missing ends the work instead of being skipped. When
 Mär was restarted and the Musopen page has not been opened since, the
-end of a movement reads the catalog once and goes on. Movements written
+catalog is read once while the first movement plays, so the next one
+follows without a pause. Movements written
 after a comma or in small Roman numerals count too.
 
 **Statistics that add up.** Most Listened Shows counts the time measured

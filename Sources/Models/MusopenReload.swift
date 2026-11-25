@@ -39,9 +39,29 @@ enum MusopenReload {
     }
 }
 
+/// The reading of the catalog begun with a numbered movement: a full
+/// reading took 6.6 s, too long a pause at the movement's end. The start
+/// of the movement begins it (the same rule `needsReading`, once per run);
+/// the end waits for it, or reads itself when nothing began.
 @MainActor
 final class MusopenPrefetch {
-    var isReading: Bool { false }
-    func begin(title: String, readToEnd: Bool, read: @escaping @MainActor () async -> Bool) {}
-    func result(read: () async -> Bool) async -> Bool { await read() }
+    private var reading: Task<Bool, Never>?
+
+    var isReading: Bool { reading != nil }
+
+    func begin(title: String, readToEnd: Bool, read: @escaping @MainActor () async -> Bool) {
+        guard reading == nil, MusopenOrder.needsReading(after: title, readToEnd: readToEnd) else { return }
+        reading = Task { await read() }
+    }
+
+    /// The reading begun at the start, or `read` when none began.
+    func result(read: () async -> Bool) async -> Bool {
+        if let reading {
+            let read = await reading.value
+            // A failed reading may be begun again by the next movement.
+            if !read { self.reading = nil }
+            return read
+        }
+        return await read()
+    }
 }
