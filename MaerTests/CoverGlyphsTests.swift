@@ -72,7 +72,9 @@ struct CoverGlyphsTests {
         let stack = try FetchAnswerTests.squeezedSource("Sources/Views/CoverGlyphStack.swift")
         #expect(stack.contains("static var largestSize: DynamicTypeSize { .accessibility1 }"))
         #expect(stack.contains(".dynamicTypeSize(...Self.largestSize)"), "the marks grow with every text size again")
-        #expect(stack.contains("@ScaledMetric(relativeTo: .title3) private var glyphSide")
+        // The height of a mark is the rule's side with its inset, read
+        // under the capped size.
+        #expect(stack.contains("let glyphSide = CoverMarkSize.diameter(.tile, type) + 2 * CoverMarkSize.inset(.tile)")
                     && stack.contains("CoverGlyphs.room(coverSide: coverSide.map(Double.init), glyphSide: glyphSide,"),
                 "the room is not measured inside the capped size")
     }

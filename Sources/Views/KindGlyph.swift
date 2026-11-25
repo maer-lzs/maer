@@ -13,14 +13,15 @@ import SwiftUI
 /// marks at the top right (`stackedKind`).
 struct KindGlyph: View {
     let kind: MediaType
+    @Environment(\.dynamicTypeSize) private var type
 
     var body: some View {
+        let diameter = CoverMarkSize.diameter(.tile, type)
         Image(systemName: kind.systemImage)
-            .font(.caption2)
+            .font(.system(size: diameter * 0.5, weight: .semibold))
             .foregroundStyle(.white)
-            .padding(5)
+            .frame(width: diameter, height: diameter)
             .glyphDisc()
-            .padding(6)
             .allowsHitTesting(false)
             .accessibilityLabel(Text(verbatim: kind.label))
     }

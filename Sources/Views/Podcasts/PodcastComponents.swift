@@ -597,7 +597,7 @@ struct PodcastDownloadButton: View {
         if downloads.isDownloaded(itemId: item.id) {
             if showsDownloadedState {
                 // The downloaded mark means stored; the check means heard.
-                DownloadedMark(size: .large)
+                DownloadedMark(size: .control)
                     .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
             }
         } else if case .downloading(let f) = downloads.phase[item.id] {

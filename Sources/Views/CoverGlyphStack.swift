@@ -71,11 +71,12 @@ struct CoverGlyphStack<Glyph: View>: View {
         let cornerSide: CGFloat
         let label: (CoverGlyph) -> Text
         let glyph: (CoverGlyph) -> Glyph
-        /// The height one mark takes in the stack: the offline disc and the
-        /// lock with their insets.
-        @ScaledMetric(relativeTo: .title3) private var glyphSide: CGFloat = 32
+        @Environment(\.dynamicTypeSize) private var type
 
         var body: some View {
+            // The height one mark takes in the stack: the rule's side with
+            // its inset on both sides.
+            let glyphSide = CoverMarkSize.diameter(.tile, type) + 2 * CoverMarkSize.inset(.tile)
             let room = CoverGlyphs.room(coverSide: coverSide.map(Double.init), glyphSide: glyphSide,
                                         cornerSide: cornerSide)
             let split = CoverGlyphs.stack(present, room: room)
@@ -109,7 +110,8 @@ struct StandardCoverMarks: View {
     var count: Int? = nil
     let coverSide: CGFloat?
     var cornerSide: CGFloat = 0
-    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
+    @Environment(\.dynamicTypeSize) private var type
+    private var diameter: CGFloat { CoverMarkSize.diameter(.tile, type) }
 
     private var marks: [CoverGlyph] {
         CoverGlyphs.marks(hasKind: kind != nil, locked: (lock ?? .none) != .none, availability: availability,
@@ -118,6 +120,13 @@ struct StandardCoverMarks: View {
 
     var body: some View {
         CoverGlyphStack(present: marks, coverSide: coverSide, cornerSide: cornerSide, label: label) { mark in
+            glyph(mark).padding(CoverMarkSize.inset(.tile))
+        }
+    }
+
+    /// One mark, without its inset: the stack gives every mark the same.
+    @ViewBuilder
+    private func glyph(_ mark: CoverGlyph) -> some View {
             switch mark {
             case .kind: if let kind { KindGlyph(kind: kind) }
             case .lock: if let lock { PremiumLockBadge(lock: lock) }
@@ -126,15 +135,15 @@ struct StandardCoverMarks: View {
             case .favourite: disc("star.fill").accessibilityLabel(Text("Favorite"))
             case .count:
                 if let count {
+                    // A capsule as high as the discs beside it.
                     Text("\(count)")
-                        .font(.caption2.bold()).foregroundStyle(.white)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .font(.system(size: diameter * 0.55, weight: .bold)).foregroundStyle(.white)
+                        .padding(.horizontal, diameter * 0.3)
+                        .frame(minWidth: diameter, minHeight: diameter, maxHeight: diameter)
                         .background(Capsule().fill(.red))
-                        .padding(7)
                         .accessibilityIdentifier("show-tile-count")
                 }
             }
-        }
     }
 
     private func label(_ mark: CoverGlyph) -> Text {
@@ -163,10 +172,9 @@ struct StandardCoverMarks: View {
                 .foregroundStyle(.white)
                 .frame(width: diameter, height: diameter)
                 .background(Circle().fill(AppTheme.accent))
-                .padding(5)
                 .accessibilityLabel(Text("Download failed"))
-        case .downloaded: DownloadedMark(size: .large).padding(4).accessibilityIdentifier("download-done")
-        case .offline: OfflineUnavailableBadge().padding(5)
+        case .downloaded: DownloadedMark(size: .tile).accessibilityIdentifier("download-done")
+        case .offline: OfflineUnavailableBadge()
         case nil: EmptyView()
         }
     }
@@ -178,6 +186,5 @@ struct StandardCoverMarks: View {
             .foregroundStyle(.white)
             .frame(width: diameter, height: diameter)
             .glyphDisc()
-            .padding(5)
     }
 }

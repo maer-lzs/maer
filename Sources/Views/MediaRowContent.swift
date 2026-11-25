@@ -129,17 +129,14 @@ struct MediaRowContent<CoverOverride: View>: View {
         .opacity(coverDimmed ? 0.5 : 1)
         .overlay(alignment: .topTrailing) {
             if offlineBadge {
-                Image(systemName: "wifi.slash")
-                    .font(.caption2)
-                    .foregroundStyle(.white)   // full symbol white
-                    .padding(3)
-                    .accessibilityLabel(Text("Not available offline"))
+                OfflineUnavailableBadge(size: .row)
+                    .padding(CoverMarkSize.inset(.row))
             }
         }
         .overlay(alignment: .bottomTrailing) {
             if downloadedBadge {
                 DownloadedMark(size: .row)
-                    .padding(2)
+                    .padding(CoverMarkSize.inset(.row))
             }
         }
     }

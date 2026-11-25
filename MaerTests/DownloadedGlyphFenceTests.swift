@@ -111,7 +111,9 @@ struct DownloadedGlyphFenceTests {
         #expect(mark.contains(".foregroundStyle(.white, .clear)") && mark.contains(".glyphDisc()"),
                 "white on the disc of the tone")
         #expect(!mark.contains(".secondary"), "never a grey glyph (GT-17)")
-        #expect(mark.contains("min(rowDiameter, Self.rowCap)") && mark.contains("min(largeDiameter, CoverBadge.detailControl)"),
+        // Its size is its cover's, from the one rule, which caps it where
+        // the cover still carries it (`CoverMarkSizeTests`).
+        #expect(mark.contains("CoverMarkSize.diameter(size, type)"),
                 "the mark grows with the text only as far as its cover carries it")
     }
 

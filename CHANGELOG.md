@@ -32,6 +32,11 @@ The subscriptions show six shows before the link to all of them. Browse
 appears as one row once you follow a show, and its heading says Browse
 everywhere.
 
+**Marks of one size.** The marks on a cover share one size: the
+downloaded mark no longer stands larger than the others and covers the
+title printed on a cover. In lists, the offline mark stands on the same
+disc as the downloaded mark.
+
 ## v3.9.1 (Build 68)
 
 **Jamendo and Podcast Index work again.** The app's keys for the two

@@ -20,24 +20,24 @@ import SwiftUI
 /// locks once per render and hand them here.
 struct PremiumLockBadge: View {
     let lock: FeedLock
+    @Environment(\.dynamicTypeSize) private var type
 
     var body: some View {
+        let diameter = CoverMarkSize.diameter(.tile, type)
         switch lock {
         case .refused:
             Image(systemName: "lock.trianglebadge.exclamationmark.fill")
-                .font(.caption2)
+                .font(.system(size: diameter * 0.5, weight: .semibold))
                 .foregroundStyle(.white)
-                .padding(5)
+                .frame(width: diameter, height: diameter)
                 .background(Circle().fill(Color.orange))
-                .padding(6)
                 .accessibilityLabel(Text("Access refused"))
         case .premium:
             Image(systemName: "lock.fill")
-                .font(.caption2)
+                .font(.system(size: diameter * 0.5, weight: .semibold))
                 .foregroundStyle(.white)
-                .padding(5)
+                .frame(width: diameter, height: diameter)
                 .glyphDisc()
-                .padding(6)
                 .accessibilityLabel(Text("Premium Feed"))
         case .none:
             EmptyView()

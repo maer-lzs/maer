@@ -27,10 +27,46 @@ enum CoverBadge {
     }
 }
 
+/// THE size of the marks on a cover, one per class of cover, so the marks
+/// of one cover stand equal: a tile's stack (kind, lock, availability,
+/// finished, favourite, count) and a row's two marks. The downloaded mark
+/// of a tile stood at 30 pt among marks of 22 and covered the title
+/// printed on the cover. Grows with the text: a tile's marks up to the
+/// first accessibility size (measured at AX3, a 150 pt tile held one
+/// grown mark above its control), a row's up to 24 pt (an uncapped mark
+/// hid half of a row's cover).
 enum CoverMarkSize {
-    enum Class { case tile, row }
-    static func diameter(_ kind: Class, _ size: DynamicTypeSize) -> CGFloat { 22 }
-    static func inset(_ kind: Class) -> CGFloat { 5 }
+    enum Class {
+        /// The stack at the top right of a tile or card.
+        case tile
+        /// The cover of a list row.
+        case row
+        /// The downloaded state in an episode row's column of controls,
+        /// beside the 44 pt controls; not on a cover.
+        case control
+    }
+
+    static func diameter(_ kind: Class, _ size: DynamicTypeSize) -> CGFloat {
+        switch kind {
+        case .tile: scaled(22, .title3, min(size, .accessibility1))
+        case .row: min(scaled(18, .caption1, size), 24)
+        case .control: min(scaled(30, .title3, size), CoverBadge.detailControl)
+        }
+    }
+
+    /// The distance of a mark from the cover's edge.
+    static func inset(_ kind: Class) -> CGFloat {
+        switch kind {
+        case .tile: 5
+        case .row: 2
+        case .control: 0
+        }
+    }
+
+    private static func scaled(_ value: CGFloat, _ style: UIFont.TextStyle, _ size: DynamicTypeSize) -> CGFloat {
+        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(size))
+        return UIFontMetrics(forTextStyle: style).scaledValue(for: value, compatibleWith: traits).rounded()
+    }
 }
 
 /// THE offline disc. A white wifi.slash on the disc of the tone, sized to
@@ -38,10 +74,11 @@ enum CoverMarkSize {
 /// corner marks read equal on every tile; scales with Dynamic Type like the
 /// play glyph. Every tile draws it in its stack of marks (`CoverGlyphStack`).
 struct OfflineUnavailableBadge: View {
-    var size: DownloadedMark.Size = .large
-    @ScaledMetric(relativeTo: .title3) private var diameter: CGFloat = 22
+    var size: CoverMarkSize.Class = .tile
+    @Environment(\.dynamicTypeSize) private var type
 
     var body: some View {
+        let diameter = CoverMarkSize.diameter(size, type)
         Image(systemName: "wifi.slash")
             .font(.system(size: diameter * 0.5, weight: .semibold))
             .foregroundStyle(.white)
@@ -63,25 +100,16 @@ struct OfflineUnavailableBadge: View {
 struct DownloadedMark: View {
     static let symbol = "arrow.down.circle.fill"
 
-    enum Size {
-        /// The cover of a list row.
-        case row
-        /// Tiles, cards and detail pages.
-        case large
-    }
-
-    let size: Size
-    @ScaledMetric(relativeTo: .caption) private var rowDiameter: CGFloat = 18
-    @ScaledMetric(relativeTo: .title3) private var largeDiameter: CGFloat = 30
-    /// The mark grows with the text, the cover under it does not: measured
-    /// at AX3, an uncapped mark hid half of a row's cover. So it stops at
-    /// a size the cover still carries.
-    static let rowCap: CGFloat = 24
+    /// The class of cover it stands on; its size is the class's
+    /// (`CoverMarkSize`), as large as every other mark there.
+    let size: CoverMarkSize.Class
+    @Environment(\.dynamicTypeSize) private var type
 
     var body: some View {
+        let diameter = CoverMarkSize.diameter(size, type)
         Image(systemName: Self.symbol)
-            .font(.system(size: size == .row ? min(rowDiameter, Self.rowCap)
-                                             : min(largeDiameter, CoverBadge.detailControl)))
+            .font(.system(size: diameter))
+            .frame(width: diameter, height: diameter)
             .symbolRenderingMode(.palette)
             .foregroundStyle(.white, .clear)
             .glyphDisc()
