@@ -998,6 +998,8 @@ struct UserChoiceGateTests {
         let decidedScalars: Set<String> = [
             "librarySortOption", "librarySortAscending", "libraryFilterOption",
             "podcastSortOption", "podcastFilterOption", "musicSortOption",
+            // The sort of the podcast folders, like the books' sort.
+            "podcastFoldersSort",
             "radioGenreCountryCodes",
             "radioChosenCountryCode", "radioChosenCountryName",
             "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
@@ -1069,6 +1071,8 @@ struct UserChoiceGateTests {
             "podcastFreeTwin.",
             // Where a show's new episodes go in Up Next.
             "podcastUpNextAdd.",
+            // The three settings of a podcast folder travel with it.
+            "podcastFolderStart.", "podcastFolderCount.", "podcastFolderOrder.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))

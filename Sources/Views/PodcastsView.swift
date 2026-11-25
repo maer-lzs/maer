@@ -523,6 +523,10 @@ RowHeading(title: "Recommended",
         if !allRecentShows.isEmpty || !SharedRows.playlists(at: .podcasts).isEmpty {
             PodcastFolderRow(newCounts: Dictionary(allRecentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.newCount) },
                                                    uniquingKeysWith: { first, _ in first }),
+                             newest: Dictionary(allRecentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.lastUpdated) },
+                                                uniquingKeysWith: { first, _ in first }),
+                             unplayed: Dictionary(allRecentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.unplayedCount) },
+                                                  uniquingKeysWith: { first, _ in first }),
                              playerCoordinator: playerCoordinator)
         }
     }

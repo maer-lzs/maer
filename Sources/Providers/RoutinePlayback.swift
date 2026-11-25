@@ -243,6 +243,28 @@ enum RoutinePlayback {
         let itemIds = PodcastFolder.isFolder(list.itemIds) ? PodcastFolder.ruleIds(list.itemIds) : list.itemIds
         let fresh = online ? await refreshed(itemIds.compactMap(RoutineRule.init(id:))) : [:]
         await DownloadManager.shared.ensureScanned()
+        // A folder set to all unheard plays every unheard episode of its
+        // shows, oldest first (`PodcastFolderPlay.allUnheard`).
+        if PodcastFolder.isFolder(list.itemIds), PodcastFolderSettings.read(folderId: list.id).start == .allUnheard {
+            var byId: [String: LibraryItem] = [:]
+            var perShow: [[RoutineRule.Episode]] = []
+            for key in list.itemIds.compactMap(PodcastFolder.feedKey(of:)) {
+                guard let show = fresh[key] ?? show(feedKey: key) else { continue }
+                let pairs = show.episodes.filter(\.isPlayable).map { ($0, podcastLibraryItem(show: show, episode: $0)) }
+                for (_, item) in pairs { byId[item.id] = item }
+                perShow.append(pairs.map { episode, item in
+                    let mark = podcastPlayState(for: item)
+                    return RoutineRule.Episode(guid: item.id, pubDate: episode.pubDate, isPlayed: mark == .played,
+                                               isStarted: PodcastAutoDownloadRules.isStarted(mark, duration: episode.duration),
+                                               isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id))
+                })
+            }
+            let items = PodcastFolderPlay.allUnheard(perShow, online: online).compactMap { byId[$0] }
+            Logger.library.notice("ROUTINE folder all unheard: shows=\(perShow.count) episodes=\(items.count)")
+            shuffled ? await coordinator.shufflePlay(items: items, contextSource: list.name, resuming: [])
+                : await coordinator.playInOrder(items: items, contextSource: list.name, resuming: [])
+            return !items.isEmpty
+        }
         let start = expand(itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
             let said = answer(rule, in: fresh[rule.feedKey] ?? show(feedKey: rule.feedKey), online: online)
             logAbsence(rule, said)

@@ -30,6 +30,8 @@ nonisolated enum UserChoiceCatalog {
         "librarySortAscending": .travels,
         "libraryFilterOption": .travels,
         "podcastSortOption": .travels,
+        // The sort of the podcast folders, like the books' sort.
+        "podcastFoldersSort": .travels,
         "podcastFilterOption": .travels,
         "musicSortOption": .travels,
         // Travels: browse choices
@@ -316,6 +318,10 @@ nonisolated enum UserChoiceCatalog {
         // and the tab's travels. The id is the feed hash or the server's
         // item id, the same on every device.
         "podcastSort.": .travels,
+        // The three settings of a podcast folder travel with the folder.
+        "podcastFolderStart.": .travels,
+        "podcastFolderCount.": .travels,
+        "podcastFolderOrder.": .travels,
         "podcastFilter.": .travels,
         // What a Subsonic server said about itself, kept per server: the
         // API version, the negotiated sign-in mode, the reported type and
@@ -344,6 +350,7 @@ nonisolated enum UserChoiceCatalog {
     static let travelingScalars: [String] = [
         "librarySortOption", "librarySortAscending", "libraryFilterOption",
         "podcastSortOption", "podcastFilterOption", "musicSortOption",
+        "podcastFoldersSort",
         "radioGenreCountryCodes",
         "radioChosenCountryCode", "radioChosenCountryName",
         "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
@@ -379,6 +386,7 @@ nonisolated enum UserChoiceCatalog {
         "playbackRate.", "podcastInboxMode.", "podcastUpNextAdd.", "podcastNotify.",
         "podcastShowRate.", "podcastSort.", "podcastFilter.", "podcastAutoDownloadDirection.",
         "playedTail.", "podcastFreeTwin.",
+        "podcastFolderStart.", "podcastFolderCount.", "podcastFolderOrder.",
     ]
 
     /// Choices that used to travel and whose feature is gone. Leaving the

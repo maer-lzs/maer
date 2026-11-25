@@ -23,12 +23,15 @@ struct AddShowToFolderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var newName: String
     @State private var chosen: Set<String>
+    /// The folder's own settings, shown when it is edited.
+    @State private var settings: PodcastFolderSettings
 
     init(show: PodcastShow?, editing: MaerPlaylists.Playlist? = nil) {
         self.show = show
         self.editing = editing
         _newName = State(initialValue: editing?.name ?? "")
         _chosen = State(initialValue: Set(editing?.itemIds.compactMap(PodcastFolder.feedKey(of:)) ?? []))
+        _settings = State(initialValue: editing.map { PodcastFolderSettings.read(folderId: $0.id) } ?? PodcastFolderSettings())
     }
 
     var body: some View {
@@ -62,6 +65,23 @@ struct AddShowToFolderSheet: View {
                                 Label(candidate.title, systemImage: chosen.contains(key) ? "checkmark.circle.fill" : "circle")
                             }
                         }
+                    }
+                }
+                if editing != nil {
+                    Section("Settings") {
+                        Picker("Play starts", selection: $settings.start) {
+                            Text("Newest episode of each show").tag(PodcastFolderStart.newestPerShow)
+                            Text("All unheard, oldest first").tag(PodcastFolderStart.allUnheard)
+                        }
+                        .accessibilityIdentifier("podcast-folder-start")
+                        Toggle("Show the number of new episodes", isOn: $settings.showsCount)
+                            .accessibilityIdentifier("podcast-folder-count")
+                        Picker("Order of the shows", selection: $settings.order) {
+                            Text("Newest episode first").tag(PodcastFolderOrderChoice.newestEpisode)
+                            Text("Name").tag(PodcastFolderOrderChoice.name)
+                            Text("By hand").tag(PodcastFolderOrderChoice.manual)
+                        }
+                        .accessibilityIdentifier("podcast-folder-order")
                     }
                 }
             }
@@ -101,6 +121,11 @@ struct AddShowToFolderSheet: View {
     private func save(_ folder: MaerPlaylists.Playlist) {
         let edit = PodcastFolder.edit(folder.itemIds, candidates: candidates, chosen: chosen)
         store.editFolder(id: folder.id, name: newName, join: edit.join, leave: edit.leave)
+        if settings != PodcastFolderSettings.read(folderId: folder.id) {
+            PodcastFolderSettings.write(settings, folderId: folder.id) { key, value in
+                UserChoiceCloudSync.shared.noteScalar(key: key, value: value)
+            }
+        }
         dismiss()
     }
 

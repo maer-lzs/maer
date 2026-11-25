@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+**Settings for each folder.** Editing a podcast folder now offers three
+settings of its own: whether its play button starts the newest episode
+of each show or every unheard episode, oldest first; whether its tile
+shows the number of new episodes; and the order of its shows, by newest
+episode, by name or your own. The folders themselves can be sorted on
+the page of all folders, by recent updates, name or most unplayed, and
+their row follows the same sort. Settings and sort travel to your other
+devices like your other choices, and a deleted folder takes its settings
+with it.
+
 **Edit a folder.** The menu of a podcast folder offers Edit Folder: the
 sheet it was made in, with its name and its shows chosen, to add and
 remove shows and rename it. Saving changes that folder. Create and Save

@@ -24,14 +24,30 @@ struct PodcastFolderRow: View {
 
     /// The new episodes per feed key, as the subscription grid counts them.
     let newCounts: [String: Int]
+    /// The newest episode (ms) and the unplayed episodes per feed key, for
+    /// the sort of the folders.
+    var newest: [String: Double] = [:]
+    var unplayed: [String: Int] = [:]
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// The one sort of the folders, here and on the page of all folders.
+    @AppStorage(AppStorageKeys.podcastFoldersSort) private var sortRaw = PodcastSortOption.zuletztAktualisiert.rawValue
+
+    /// The folders in the chosen sort, by the shows they hold.
+    static func ordered(_ folders: [MaerPlaylists.Playlist], by option: PodcastSortOption,
+                        newest: [String: Double], unplayed: [String: Int]) -> [MaerPlaylists.Playlist] {
+        PodcastFolderSort.sorted(folders, by: option, name: \.name,
+                                 newest: { $0.itemIds.compactMap(PodcastFolder.feedKey(of:)).compactMap { newest[$0] }.max() ?? 0 },
+                                 unplayed: { $0.itemIds.compactMap(PodcastFolder.feedKey(of:)).reduce(0) { $0 + (unplayed[$1] ?? 0) } })
+    }
     @ObservedObject private var store = MaerPlaylists.shared
     @State private var creating = false
     /// The width of the row as laid out; a phone's until it is measured.
     @State private var rowWidth: CGFloat = 393
 
     var body: some View {
-        let folders = SharedRows.playlists(at: .podcasts).filter { PodcastFolder.isFolder($0.itemIds) }
+        let folders = Self.ordered(SharedRows.playlists(at: .podcasts).filter { PodcastFolder.isFolder($0.itemIds) },
+                                   by: PodcastSortOption(rawValue: sortRaw) ?? .zuletztAktualisiert,
+                                   newest: newest, unplayed: unplayed)
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 if folders.isEmpty {
@@ -101,7 +117,7 @@ struct PodcastFolderTile: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(alignment: .topTrailing) {
-                    if newCount > 0 {
+                    if newCount > 0, PodcastFolderSettings.read(folderId: folder.id).showsCount {
                         StandardCoverMarks(count: newCount, coverSide: side ?? measured)
                     }
                 }
@@ -123,16 +139,37 @@ struct PodcastFolderTile: View {
 }
 
 /// Every folder of shows, behind the heading of the row: the same tiles in
-/// a grid, the newest change first as in the row.
+/// a grid, in the one sort of the folders chosen here and kept by the row.
 struct PodcastFoldersPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = MaerPlaylists.shared
     /// The new episodes per feed key, counted as the folder page counts.
     @State private var counts: [String: Int] = [:]
+    @State private var newest: [String: Double] = [:]
+    @State private var unplayed: [String: Int] = [:]
+    /// The one sort of the folders, as in their row; it travels like the
+    /// books' sort.
+    @AppStorage(AppStorageKeys.podcastFoldersSort) private var sortRaw = PodcastSortOption.zuletztAktualisiert.rawValue
+
+    private var sort: PodcastSortOption { PodcastSortOption(rawValue: sortRaw) ?? .zuletztAktualisiert }
 
     var body: some View {
-        let folders = SharedRows.playlists(at: .podcasts).filter { PodcastFolder.isFolder($0.itemIds) }
+        let all = SharedRows.playlists(at: .podcasts).filter { PodcastFolder.isFolder($0.itemIds) }
+        let folders = PodcastFolderRow.ordered(all, by: sort, newest: newest, unplayed: unplayed)
         ScrollView {
+            HStack {
+                Spacer(minLength: 12)
+                SectionSortControl(activeLabel: SortIndicator.summary([
+                    SortIndicator.part(sort.label, ifNot: sort == .zuletztAktualisiert),
+                ])) {
+                    Picker("Sort", selection: $sortRaw) {
+                        ForEach(PodcastSortOption.allCases) { option in
+                            Text(option.label).tag(option.rawValue)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: PodcastFolderRow.widestSide), spacing: 14)],
                       alignment: .leading, spacing: 18) {
                 ForEach(folders) { folder in
@@ -152,11 +189,19 @@ struct PodcastFoldersPage: View {
         }
         .navigationTitle("Folders")
         .navigationBarTitleDisplayMode(.inline)
-        .taskOnPodcastChange(folders.map { $0.itemIds.joined(separator: ",") }.joined(separator: ";")) {
-            let shows = folders.flatMap(\.itemIds).compactMap(PodcastFolder.feedKey(of:)).compactMap(RoutinePlayback.show(feedKey:))
+        // A chosen sort is a user statement that travels.
+        .onChange(of: sortRaw) { _, new in
+            UserChoiceCloudSync.shared.noteScalar(key: AppStorageKeys.podcastFoldersSort, value: new)
+        }
+        .taskOnPodcastChange(all.map { $0.itemIds.joined(separator: ",") }.joined(separator: ";")) {
+            let shows = all.flatMap(\.itemIds).compactMap(PodcastFolder.feedKey(of:)).compactMap(RoutinePlayback.show(feedKey:))
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: PodcastSections.snapshot(shows: shows))
             counts = Dictionary(sections.recentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.newCount) },
                                 uniquingKeysWith: { first, _ in first })
+            newest = Dictionary(sections.recentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.lastUpdated) },
+                                uniquingKeysWith: { first, _ in first })
+            unplayed = Dictionary(sections.recentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.unplayedCount) },
+                                  uniquingKeysWith: { first, _ in first })
         }
     }
 }
@@ -218,7 +263,10 @@ struct PodcastFolderPage: View {
             let shows = entries.compactMap(PodcastFolder.feedKey(of:)).compactMap(RoutinePlayback.show(feedKey:))
             let snapshot = PodcastSections.snapshot(shows: shows)
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
-            infos = RecentShowInfo.inFolder(sections.recentShows, entries: entries)
+            infos = PodcastFolderOrder.sorted(RecentShowInfo.inFolder(sections.recentShows, entries: entries),
+                                              by: PodcastFolderSettings.read(folderId: folderId).order,
+                                              key: { PodcastIdentity.feedKey($0.show.feedURL) },
+                                              title: { $0.show.title }, newest: { $0.lastUpdated })
         }
     }
 

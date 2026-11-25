@@ -91,8 +91,10 @@ struct SharedGrowthFenceTests {
     /// the page of all folders observes the lists, as the row does (one,
     /// `PodcastFoldersPage`). 382: the book page and the history page
     /// follow the listening revision (two, `BookDetailScreen`,
-    /// `ListenHistoryScreen`).
-    nonisolated static let stock = 382
+    /// `ListenHistoryScreen`). 384: a folder's settings saved in the edit
+    /// sheet and the sort of the folders chosen on their page travel as
+    /// choices (two, `AddShowToFolderSheet`, `PodcastFoldersPage`).
+    nonisolated static let stock = 384
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -198,8 +200,12 @@ struct SharedGrowthFenceTests {
     /// 778: the page of all folders observes the lists (one,
     /// `PodcastFoldersPage`). 779: the search asks the lock of its show
     /// hits once per search (one, `RSSProvider.search`). 781: the book page
-    /// and the history page follow the listening revision (two).
-    nonisolated static let sourcesStock = 781
+    /// and the history page follow the listening revision (two). 785: the
+    /// two choices of the folders above (two), a folder that goes clears
+    /// its settings on the other devices (one, `PodcastFolderSettings`),
+    /// and a folder's start of all unheard asks which episodes are
+    /// downloaded (one, `RoutinePlayback`).
+    nonisolated static let sourcesStock = 785
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

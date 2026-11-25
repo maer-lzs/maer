@@ -4050,6 +4050,35 @@
         }
       }
     },
+    "All unheard, oldest first" : {
+      "comment" : "Folder setting choice: play every unheard episode of the folder's shows, oldest first.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle ungehörten, älteste zuerst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Todos los no escuchados, el más antiguo primero"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tous les non écoutés, du plus ancien"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tutti i non ascoltati, dal più vecchio"
+          }
+        }
+      }
+    },
     "All unplayed" : {
       "localizations" : {
         "de" : {
@@ -6655,6 +6684,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Per genere"
+          }
+        }
+      }
+    },
+    "By hand" : {
+      "comment" : "Folder show order choice: the order the user set in the folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eigene Reihenfolge"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Orden manual"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordre manuel"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ordine manuale"
           }
         }
       }
@@ -19372,6 +19430,64 @@
         }
       }
     },
+    "Newest episode first" : {
+      "comment" : "Folder show order choice: the show with the newest episode first.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neueste Folge zuerst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Episodio más reciente primero"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier épisode en premier"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Episodio più recente per primo"
+          }
+        }
+      }
+    },
+    "Newest episode of each show" : {
+      "comment" : "Folder setting choice: play the newest episode of each show in the folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neueste Folge jeder Sendung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Episodio más reciente de cada programa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier épisode de chaque émission"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Episodio più recente di ogni programma"
+          }
+        }
+      }
+    },
     "Newest episodes" : {
       "localizations" : {
         "de" : {
@@ -23385,6 +23501,35 @@
         }
       }
     },
+    "Order of the shows" : {
+      "comment" : "Folder setting: the order of the shows on the folder's page.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reihenfolge der Sendungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Orden de los programas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordre des émissions"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ordine dei programmi"
+          }
+        }
+      }
+    },
     "Original" : {
       "comment" : "Sound preset name: the sound as recorded, unchanged (no EQ).",
       "localizations" : {
@@ -24343,6 +24488,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Riproduci qualcosa a caso"
+          }
+        }
+      }
+    },
+    "Play starts" : {
+      "comment" : "Settings of a podcast folder: what its play button starts.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiedergabe startet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La reproducción empieza"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La lecture commence"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La riproduzione inizia"
           }
         }
       }
@@ -29950,6 +30124,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Mostra i feed premium nell'elenco delle iscrizioni"
+          }
+        }
+      }
+    },
+    "Show the number of new episodes" : {
+      "comment" : "Folder setting toggle: show the count of new episodes on the folder's tile.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anzahl neuer Folgen zeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostrar el número de episodios nuevos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher le nombre de nouveaux épisodes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Mostra il numero di nuovi episodi"
           }
         }
       }

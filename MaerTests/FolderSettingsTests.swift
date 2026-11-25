@@ -147,7 +147,10 @@ struct FolderSettingsTests {
         let views = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/Views/Podcasts/PodcastFolderViews.swift"), encoding: .utf8))
         #expect(views.contains("SectionSortControl(activeLabel:"), "the page of all folders has no sort")
-        #expect(views.components(separatedBy: "PodcastFolderSort.sorted(").count - 1 >= 2, "the row and the page do not share the sort")
+        // One sort for the row and the page: the row's `ordered` asks the
+        // rule, the page asks the row's `ordered`.
+        #expect(views.contains("PodcastFolderSort.sorted(") && views.contains("PodcastFolderRow.ordered(all, by: sort,"),
+                "the row and the page do not share the sort")
         #expect(views.contains("PodcastFolderSettings.read(folderId: folder.id).showsCount"), "the tile counts whatever the setting")
         #expect(views.contains("PodcastFolderOrder.sorted("), "the folder page keeps one order")
         let sheet = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
