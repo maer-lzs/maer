@@ -310,6 +310,15 @@ final class MaerSyncSession {
         self.access = self.accessUnknown ? nil : readAccess
         self.identity = current
         if let current { Self.adoptPlainKeys(into: current, defaults: defaults, rows: rows, documents: documentRows) }
+        // A cold start with the pin readable: a state left under the address
+        // (a device from before pins, or one ended between its first contact
+        // and the next reload) is taken over before anything is loaded.
+        if let current, !current.isByAddress, let readAccess = self.access {
+            let stranded = MaerSyncIdentity(service: "address:\(readAccess.baseURL.absoluteString)", owner: current.owner)
+            if Self.identityOwners.contains(where: { rows.holds(stranded.keyed($0)) }) {
+                Self.carryRows(from: stranded, to: current, defaults: defaults, rows: rows, documents: documentRows)
+            }
+        }
         let key: (String) -> String = { base in current?.keyed(base) ?? base }
         stands = rows.rows(key(Self.mirrorKey))
         queue = rows.rows(key(Self.queueKey))
@@ -427,11 +436,11 @@ final class MaerSyncSession {
         Logger.library.notice("MAERSYNC identity changed from=\(from, privacy: .public) to=\(next?.scope ?? "none", privacy: .public); its state is read before anything is written")
     }
 
-    /// A changed service key the person accepted names the same account:
-    /// the state moves to the new identity unread-free, nothing restarts.
-    func carryIdentity(to next: MaerSyncIdentity) {
-        guard let current = identity, current != next else { identity = next; return }
-        persist()
+    /// The rows of one identity carried onto another that may hold state
+    /// (`IdentityCarry.merged`); nothing stays under the source. Static, so
+    /// a cold start can carry before the session loads its state.
+    static func carryRows(from current: MaerSyncIdentity, to next: MaerSyncIdentity, defaults: UserDefaults,
+                          rows: CarrierStandRows, documents: CarrierDocumentRows) {
         // The target may hold state (a device restored from a backup): the
         // one rule decides what of both stays (`IdentityCarry.merged`).
         func side(_ identity: MaerSyncIdentity) -> IdentityCarry.Side {
@@ -439,8 +448,8 @@ final class MaerSyncSession {
                                standsVersion: defaults.string(forKey: identity.keyed(Self.versionKey)),
                                queue: rows.rows(identity.keyed(Self.queueKey)),
                                removals: Set(StandMirrorStore.loadList(identity.keyed(Self.removalsKey), defaults: defaults)),
-                               playlistsPending: documentRows.body(identity.keyed(Self.playlistsPendingKey)),
-                               choicesPending: documentRows.body(identity.keyed(Self.choicesPendingKey)))
+                               playlistsPending: documents.body(identity.keyed(Self.playlistsPendingKey)),
+                               choicesPending: documents.body(identity.keyed(Self.choicesPendingKey)))
         }
         let carried = IdentityCarry.merged(source: side(current), target: side(next))
         for kind in carried.dropped {
@@ -450,21 +459,29 @@ final class MaerSyncSession {
         rows.set(next.keyed(Self.queueKey), carried.side.queue)
         defaults.set(carried.side.standsVersion, forKey: next.keyed(Self.versionKey))
         StandMirrorStore.saveList(Array(carried.side.removals), key: next.keyed(Self.removalsKey), defaults: defaults)
-        documentRows.setBody(next.keyed(Self.playlistsPendingKey), carried.side.playlistsPending)
-        documentRows.setBody(next.keyed(Self.choicesPendingKey), carried.side.choicesPending)
+        documents.setBody(next.keyed(Self.playlistsPendingKey), carried.side.playlistsPending)
+        documents.setBody(next.keyed(Self.choicesPendingKey), carried.side.choicesPending)
         // The documents' pictures and versions, by the same rule: the side
         // that read, whole.
         for (body, version) in [(Self.playlistsMirrorKey, Self.playlistsVersionKey), (Self.choicesMirrorKey, Self.choicesVersionKey)] {
             let sourceRead = defaults.string(forKey: current.keyed(version)) != nil
             if sourceRead {
-                documentRows.setBody(next.keyed(body), documentRows.body(current.keyed(body)))
+                documents.setBody(next.keyed(body), documents.body(current.keyed(body)))
                 defaults.set(defaults.string(forKey: current.keyed(version)), forKey: next.keyed(version))
             }
         }
         // Nothing stays behind under the source.
         for base in Self.identityKeys { defaults.removeObject(forKey: current.keyed(base)) }
         for owner in Self.identityOwners { rows.set(current.keyed(owner), [:]) }
-        for owner in Self.identityDocuments { documentRows.setBody(current.keyed(owner), nil) }
+        for owner in Self.identityDocuments { documents.setBody(current.keyed(owner), nil) }
+    }
+
+    /// A changed service key the person accepted names the same account:
+    /// the state moves to the new identity unread-free, nothing restarts.
+    func carryIdentity(to next: MaerSyncIdentity) {
+        guard let current = identity, current != next else { identity = next; return }
+        persist()
+        Self.carryRows(from: current, to: next, defaults: defaults, rows: rows, documents: documentRows)
         identity = next
         loadIdentityState()
     }

@@ -118,7 +118,11 @@ struct IdentityCarryTests {
             .appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
         let carry = carriers.components(separatedBy: "func carryIdentity(to next: MaerSyncIdentity) {").dropFirst().first?
             .components(separatedBy: "\n    }\n").first ?? ""
-        #expect(carry.contains("IdentityCarry.merged("), "the carry lays the source over the target")
-        #expect(!carry.contains("rows.rename(owner:"), "the rows are still renamed over the target")
+        #expect(carry.contains("Self.carryRows(from: current, to: next,"), "the carry lays the source over the target")
+        let rule = carriers.components(separatedBy: "static func carryRows(").dropFirst().first?
+            .components(separatedBy: "\n    }\n").first ?? ""
+        #expect(rule.contains("IdentityCarry.merged("))
+        #expect(!rule.contains("rename(owner:") && !carry.contains("rename(owner:"), "the rows are still renamed over the target")
+        #expect(carriers.components(separatedBy: "Self.carryRows(").count - 1 == 2, "the reload and the cold start carry by the one rule")
     }
 }
