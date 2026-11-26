@@ -22,6 +22,8 @@ nonisolated enum SmartFolderSuggestion {
     /// Loose shows (in no folder) by their first topic; a suggestion from
     /// two shows on, the largest first, then by name. A show without a
     /// topic or in a folder stays out: a suggestion never moves a show.
+    static func suggest(_ shows: [Show], folderNames: Set<String>) -> [Suggestion] { suggest(shows) }
+
     static func suggest(_ shows: [Show]) -> [Suggestion] {
         var order: [String] = []
         var keys: [String: [String]] = [:]

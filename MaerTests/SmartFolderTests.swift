@@ -40,6 +40,27 @@ struct SmartFolderTests {
         #expect(found.count == 1 && found.first?.category == "News")
     }
 
+    @Test("no suggestion for a topic whose name a folder already carries, in any case")
+    func existingName() {
+        let found = SmartFolderSuggestion.suggest(Self.shows, folderNames: [SmartFolderSuggestion.name(for: "News").uppercased()])
+        #expect(found.map(\.category) == ["True Crime"])
+    }
+
+    @Test("a topic is compared without case and with its entities decoded; Apple's spelling names the group")
+    func spelling() {
+        let shows = [
+            Show(key: "a", title: "A", categories: ["news"], inFolder: false),
+            Show(key: "b", title: "B", categories: ["News"], inFolder: false),
+            Show(key: "c", title: "C", categories: ["Society &amp; Culture"], inFolder: false),
+            Show(key: "d", title: "D", categories: ["society & culture"], inFolder: false),
+            Show(key: "e", title: "E", categories: ["Hörspiel"], inFolder: false),
+            Show(key: "f", title: "F", categories: ["hörspiel"], inFolder: false),
+        ]
+        let found = SmartFolderSuggestion.suggest(shows)
+        #expect(Set(found.map(\.category)) == ["News", "Society & Culture", "Hörspiel"])
+        #expect(found.allSatisfy { $0.keys.count == 2 })
+    }
+
     @Test("the name is the topic in the device's language; a topic outside Apple's list stands as given")
     func names() {
         #expect(SmartFolderSuggestion.name(for: "True Crime") == String(localized: "True Crime"))
