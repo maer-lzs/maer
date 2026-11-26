@@ -615,7 +615,9 @@ nonisolated enum RadioStore {
     }
 
     /// The step of a run, pure: a failed run never replaces what stands.
-    nonisolated static func showsStaleLine(after step: DiscoveryStep) -> Bool { false }
+    /// Rows that stand after a failed run say so in a line; an answered
+    /// run takes it away, and a page with nothing says it itself.
+    nonisolated static func showsStaleLine(after step: DiscoveryStep) -> Bool { step == .keep }
 
     nonisolated static func discoveryStep(failed: Bool, standing: Bool) -> DiscoveryStep {
         guard failed else { return .replace }
@@ -1392,6 +1394,11 @@ nonisolated enum RadioCatalog {
     }
 }
 
+/// What the radio tab says when the catalog did not answer: online it is
+/// the source, said as every catalog says it; offline the failed view
+/// keeps its own sentence about the connection.
 nonisolated enum RadioFailureLine {
-    static func sentence(online: Bool) -> String? { nil }
+    static func sentence(online: Bool) -> String? {
+        online ? String(localized: "The source did not answer.") : nil
+    }
 }

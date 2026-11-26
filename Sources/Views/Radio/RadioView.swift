@@ -38,6 +38,8 @@ struct RadioView: View {
     /// unconditionally. A failed first run counted as "loaded", and the
     /// empty text advised searching a catalog that had simply not arrived.
     @State private var discoveryFailed = false
+    /// The last run failed while its rows stand: a line says so above them.
+    @State private var discoveryStale = false
     private let localeCode = RadioCatalog.deviceRegionCode()
     /// The browse-layer choices live in the ONE observed source. Private
     /// `@State` copies were two truths, and an adopted foreign
@@ -123,6 +125,10 @@ struct RadioView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                if discoveryStale && hasAnyContent {
+                    // The rows stand from before; the catalog did not answer.
+                    failedView(.line).padding(.horizontal)
+                }
                 // "My Stations" (favorites + most played) is the
                 // first row and a CARD; "Recently Played" sits right below it
                 // as a small tile.
@@ -196,10 +202,8 @@ struct RadioView: View {
                         // A failed load is not "no stations". The old advice
                         // ("search the catalog") pointed at a catalog that had
                         // simply not arrived.
-                        LoadFailedView(form: .page(title: Text("Radio"), systemImage: "dot.radiowaves.left.and.right")) {
-                            Task { await loadDiscovery(force: true) }
-                        }
-                        .padding(.top, 60)
+                        failedView(.page(title: Text("Radio"), systemImage: "dot.radiowaves.left.and.right"))
+                            .padding(.top, 60)
                     } else if isOnline && !discoveryLoaded {
                         HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                             .frame(maxWidth: .infinity).padding(.top, 60)
@@ -503,7 +507,7 @@ struct RadioView: View {
                         if !regionalFailed { ProgressView().controlSize(.small) }
                     }
                     if regionalFailed {
-                        LoadFailedView(form: .line) { Task { await loadDiscovery(force: true) } }
+                        failedView(.line)
                     }
                 }
                 .padding(.horizontal)
@@ -647,7 +651,9 @@ struct RadioView: View {
         // A throw is not an end: the failed run does NOT count as loaded and
         // the next attempt is free. Rows that stand stay, cache included; with
         // none the section says so with a way back in.
-        switch RadioStore.discoveryStep(failed: topFailed, standing: !popular.isEmpty) {
+        let step = RadioStore.discoveryStep(failed: topFailed, standing: !popular.isEmpty)
+        discoveryStale = RadioStore.showsStaleLine(after: step)
+        switch step {
         case .failed:
             discoveryFailed = true
             Logger.library.error("RADIO discovery failed, retry offered, not counted as loaded")
@@ -731,6 +737,16 @@ struct RadioView: View {
         if ProcessInfo.processInfo.arguments.contains("-uitest") { return 20_260_101 }
         #endif
         return RediscoverSections.daySeed(for: Date())
+    }
+
+    /// A failed load of the catalog: online the source did not answer,
+    /// offline the view's own sentence about the connection.
+    private func failedView(_ form: LoadFailedView.Form) -> LoadFailedView {
+        let retry: () -> Void = { Task { await loadDiscovery(force: true) } }
+        if let sentence = RadioFailureLine.sentence(online: isOnline) {
+            return LoadFailedView(form: form, sentence: Text(sentence), retry: retry)
+        }
+        return LoadFailedView(form: form, retry: retry)
     }
 
     private static func nationalPopular(_ countryCode: String?) async -> (stations: [RadioStation], failed: Bool) {

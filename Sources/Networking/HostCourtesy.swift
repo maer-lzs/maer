@@ -5,6 +5,7 @@
 
 import Foundation
 import OSLog
+import os
 
 /// The one place every request to a server passes before it is sent and
 /// after its answer: at most `HostCourtesyRule.concurrent` requests at once
@@ -89,7 +90,17 @@ actor HostCourtesy {
         }
     }
 
-    nonisolated func rests(_ url: URL) -> Bool { false }
+    /// Whether the host of an address rests now, readable without awaiting
+    /// for the ways that pass the gate by (AVFoundation builds its items at
+    /// once). The same rests as the gate's, written where they are set.
+    nonisolated func rests(_ url: URL) -> Bool {
+        guard let host = url.host()?.lowercased() else { return false }
+        let group = HostCourtesyRule.group(of: host)
+        let now = clock.now
+        return board.withLock { ($0[group]).map { $0 > now } ?? false }
+    }
+
+    private nonisolated let board = OSAllocatedUnfairLock<[String: ContinuousClock.Instant]>(initialState: [:])
 
     nonisolated static func knownServerHosts() -> Set<String> {
         KnownServers.ownHosts()
@@ -166,6 +177,8 @@ actor HostCourtesy {
             if state.restsForRefusal { state.restUntil = nil }
         }
         states[pass.group] = state
+        let restUntil = state.restUntil
+        board.withLock { $0[pass.group] = restUntil }
     }
 
     /// One line per group for the session so far: asked, held, refused.

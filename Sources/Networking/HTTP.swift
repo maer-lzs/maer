@@ -87,14 +87,18 @@ nonisolated enum HTTP {
         let prepared = prepare(request, lane: lane)
         do {
             try ServerHeaders.admit(prepared)
-            // A way with its own guard (`redirects`) runs once, through it.
-            if lane == .stream || !retry || redirects != nil {
-                let (data, response) = try await courteously(prepared) {
-                    try await session(lane).data(for: prepared, delegate: redirects ?? RedirectGuard.following())
+            // Gutenberg's mirror, once, when www answers a server error or
+            // rests (covers, the catalog dump, every file of www).
+            return try await GutenbergMirror.fetch(prepared) { prepared in
+                // A way with its own guard (`redirects`) runs once, through it.
+                if lane == .stream || !retry || redirects != nil {
+                    let (data, response) = try await courteously(prepared) {
+                        try await session(lane).data(for: prepared, delegate: redirects ?? RedirectGuard.following())
+                    }
+                    return (data, response as? HTTPURLResponse)
                 }
-                return (data, response as? HTTPURLResponse)
+                return try await RequestRetryPolicy.fetch(prepared, session: session(lane), repeatable: repeatable)
             }
-            return try await RequestRetryPolicy.fetch(prepared, session: session(lane), repeatable: repeatable)
         } catch {
             log(failure: error, request: prepared, lane: lane)
             throw error

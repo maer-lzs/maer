@@ -226,6 +226,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// a local file to the server (`FailedLoad.TrackAttempts`). Guards
     /// against a rebuild loop on a persistently broken track.
     private var trackAttempts = FailedLoad.TrackAttempts()
+    /// The tracks of this item that went to Gutenberg's mirror after www
+    /// failed them; each goes once (`gutenbergMirrorStep`).
+    private var gutenbergMirrored: Set<Int> = []
     /// The playing item failed to load and playback stopped for it; the
     /// next play or the network's return builds the queue anew. A failure
     /// before the title's first progress is said (`failedBeforeProgress`):
@@ -638,6 +641,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         shortLocalTracks = []
         dropShortLocalFiles(tracks: sortedTracks)
         trackAttempts = FailedLoad.TrackAttempts()
+        gutenbergMirrored = []
         observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
         // exactly those in the background (valid ones are skipped). Only for
@@ -1213,8 +1217,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // stations, two podcast CDNs): none answers the app's name
             // differently from CoreMedia's, and the download of the same
             // episode already carried it.
-            let asset = AVURLAsset(url: target.url, options: ["AVURLAssetHTTPHeaderFieldsKey": target.headers,
-                                                             AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
+            // A file of Gutenberg's www goes to its mirror while www rests;
+            // the track keeps the address of www.
+            let asset = AVURLAsset(url: GutenbergMirror.address(for: target.url),
+                                   options: ["AVURLAssetHTTPHeaderFieldsKey": target.headers,
+                                             AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
             item = AVPlayerItem(asset: asset)
         } else {
             Logger.player.notice("PLAY not requested, the sign-in cannot be read now: track=\(index)")
@@ -1953,6 +1960,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// playback with a visible hint instead of silent stalling.
     private func handleTrackFailure(_ playerItem: AVPlayerItem) {
         guard let index = itemTrackIndex[ObjectIdentifier(playerItem)] else { return }
+        if gutenbergMirrorStep(index: index, cause: .server, then: { [weak self] in self?.handleTrackFailure(playerItem) }) { return }
         // Only drop the file when streaming can take over; offline the
         // retry re-reads the same file (it may fail transiently) and keeps
         // the file's way to the server for a later failure with network.
@@ -2042,6 +2050,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// of item, and the next play builds the queue anew.
     private func handleItemLoadFailure(trackIndex index: Int, item failedItem: ObjectIdentifier,
                                        errorDescription: String?, cause errorCause: NoticeCause) {
+        if gutenbergMirrorStep(index: index, cause: errorCause, then: { [weak self] in
+            self?.handleItemLoadFailure(trackIndex: index, item: failedItem, errorDescription: errorDescription, cause: errorCause)
+        }) { return }
         let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
         let cause = isOnline() ? errorCause : .network
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
@@ -2197,6 +2208,26 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func rebuildAfterPathChange(_ path: MaerSyncPath) {
         guard FailedLoad.rebuildsOnPathChange(noted: loadFailureNoted, satisfied: path.satisfied) else { return }
         rebuildAtHeldPosition(reason: "network back")
+    }
+
+    /// A streamed track of Gutenberg's www failed for the server: www is
+    /// asked once through the door (the gate learns its rest), and when it
+    /// is down the queue is built again at the held place, its Gutenberg
+    /// tracks through the mirror (`GutenbergMirror.address`). An absence,
+    /// another host or a second failure goes the usual way (`then`).
+    /// Returns whether it took the failure.
+    private func gutenbergMirrorStep(index: Int, cause: NoticeCause, then: @escaping () -> Void) -> Bool {
+        guard cause == .server, isOnline(), !gutenbergMirrored.contains(index), localTrackFiles[index] == nil,
+              let url = resolveTrackURL(index: index), GutenbergMirror.isMainFile(url) else { return false }
+        gutenbergMirrored.insert(index)
+        Task { [weak self] in
+            let down = await GutenbergMirror.probe(url)
+            guard let self else { return }
+            guard down else { then(); return }
+            Logger.player.notice("PLAY gutenberg www down, track=\(index) and the ones after through the mirror")
+            self.rebuildAtHeldPosition(reason: "gutenberg mirror")
+        }
+        return true
     }
 
     private func rebuildAtHeldPosition(reason: String) {

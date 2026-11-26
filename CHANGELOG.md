@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+**When a source stops answering.** When Project Gutenberg's main server
+answers with an error or asks for a pause, Mär asks Gutenberg's own
+mirror once instead, for the title's record, its covers and its sound
+files, so a Gutenberg audiobook opens and plays on; a file that is gone
+stays gone. Radio Browser is asked at its one remaining server and then at
+its general address; the two servers that no longer exist are no longer
+tried. When the radio catalog does not answer while you are online, the
+Radio tab says that the source did not answer instead of asking you to
+check your connection, and stations that are still shown from before
+carry a line saying so.
+
 **Settings for each folder.** Editing a podcast folder now offers three
 settings of its own: whether its play button starts the newest episode
 of each show or every unheard episode, oldest first; whether its tile

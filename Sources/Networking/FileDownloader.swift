@@ -172,6 +172,36 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         onProgress: @escaping (Double) -> Void,
         onTask: ((URLSessionDownloadTask) -> Void)? = nil
     ) async throws {
+        // A file of Gutenberg's www: pglaf while www rests, and once after
+        // www failed for a server error. The file keeps its place and its
+        // track the address of www.
+        guard let url = request.url, GutenbergMirror.isMainFile(url) else {
+            return try await downloadOnce(request: request, to: destination, resumeData: resumeData, statedBytes: statedBytes,
+                                          claim: claim, onProgress: onProgress, onTask: onTask)
+        }
+        var asked = request
+        asked.url = GutenbergMirror.address(for: url)
+        do {
+            try await downloadOnce(request: asked, to: destination, resumeData: asked.url == url ? resumeData : nil,
+                                   statedBytes: statedBytes, claim: claim, onProgress: onProgress, onTask: onTask)
+        } catch {
+            guard asked.url == url, !error.isCancellation, let mirror = await GutenbergMirror.mirrorIfDown(url) else { throw error }
+            Logger.library.notice("DOWNLOAD gutenberg www failed, once more through the mirror")
+            asked.url = mirror
+            try await downloadOnce(request: asked, to: destination, resumeData: nil, statedBytes: statedBytes,
+                                   claim: claim, onProgress: onProgress, onTask: onTask)
+        }
+    }
+
+    private func downloadOnce(
+        request: URLRequest,
+        to destination: URL,
+        resumeData: Data?,
+        statedBytes: Int64?,
+        claim: TrackFileSize.Claim?,
+        onProgress: @escaping (Double) -> Void,
+        onTask: ((URLSessionDownloadTask) -> Void)?
+    ) async throws {
         // The background session is the one way out past the HTTP door;
         // the identity is set here like there.
         var identified = request

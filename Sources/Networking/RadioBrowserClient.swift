@@ -11,16 +11,32 @@ import OSLog
 /// order (the de-dupe against double-serves lives in `RadioMapping`). Every
 /// request rides the shared retry policy.
 nonisolated enum RadioBrowserClient {
-    /// Known stable mirrors, tried in order. Deliberately NOT the round-robin
-    /// `all.api.radio-browser.info` host: its DNS answer varies per lookup,
-    /// which makes failures unreproducible.
+    /// The servers, tried in order. Measured 26.11.2026: `at1` and `nl1`
+    /// no longer resolve, `de1`, `de2` and `all` are one machine, and the
+    /// service names only `de1` (`/json/servers`, the SRV record). `de1`
+    /// first; `all` follows the service when servers come back.
     static let mirrors = [
         "https://de1.api.radio-browser.info",
-        "https://at1.api.radio-browser.info",
-        "https://nl1.api.radio-browser.info",
+        "https://all.api.radio-browser.info",
     ]
 
-    static func weightiest(_ errors: [Error]) -> Error { errors.last ?? URLError(.cannotConnectToHost) }
+    /// The error that counts when every server failed: a server that
+    /// answered says most, one that timed out more than a host not found
+    /// (a fallback's missing name would otherwise cover the main server's
+    /// answer); on a tie the first of the list.
+    static func weightiest(_ errors: [Error]) -> Error {
+        func weight(_ error: Error) -> Int {
+            guard let code = (error as? URLError)?.code else { return 3 }
+            switch code {
+            case .cannotFindHost, .dnsLookupFailed: return 0
+            case .timedOut, .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet: return 1
+            default: return 2
+            }
+        }
+        var best: Error?
+        for error in errors where best.map({ weight(error) > weight($0) }) ?? true { best = error }
+        return best ?? URLError(.cannotConnectToHost)
+    }
 
     static let catalogLimit = 40
 
@@ -317,17 +333,18 @@ nonisolated enum RadioBrowserClient {
         guard ExternalSources.isAllowed(ExternalSources.radioBrowser) else {
             throw CancellationError()
         }
-        var lastError: Error = URLError(.cannotConnectToHost)
+        // Every server's error; the weightiest counts (`weightiest`).
+        var errors: [Error] = []
         for mirror in mirrors {
             // A cancelled task must not walk the remaining mirrors.
             try Task.checkCancellation()
             guard var comps = URLComponents(string: mirror + query.path) else {
-                lastError = URLError(.badURL)
+                errors.append(URLError(.badURL))
                 continue
             }
             comps.setQuery(query.queryItems)
             guard let url = comps.url else {
-                lastError = URLError(.badURL)
+                errors.append(URLError(.badURL))
                 continue
             }
             // The API asks clients to identify themselves; the fetch does.
@@ -342,12 +359,12 @@ nonisolated enum RadioBrowserClient {
                     // the number is no longer dropped on the way.
                     let meaning = StatusMeaning.from(status: status)
                     Logger.library.notice("RADIO browser mirror refused status=\(status) meaning=\(String(describing: meaning), privacy: .public)")
-                    lastError = URLError(.badServerResponse)
+                    errors.append(URLError(.badServerResponse))
                     if meaning == .throttled { break }
                     continue
                 }
                 guard http != nil else {
-                    lastError = URLError(.badServerResponse)
+                    errors.append(URLError(.badServerResponse))
                     continue
                 }
                 return try decode(data)
@@ -356,10 +373,10 @@ nonisolated enum RadioBrowserClient {
                 throw CancellationError()
             } catch {
                 // Next mirror. The policy already retried transients here.
-                lastError = error
+                errors.append(error)
             }
         }
-        throw lastError
+        throw weightiest(errors)
     }
 
     static func stations(_ query: Query) async throws -> [RadioStation] {

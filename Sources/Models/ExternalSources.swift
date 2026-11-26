@@ -87,7 +87,7 @@ nonisolated enum ExternalSources {
         title: "Project Gutenberg",
         effectLine: String(localized: "The Gutenberg rows then load nothing new; anything you started stays and keeps playing."),
         staysLine: String(localized: "anything you started stays and keeps playing"),
-        hosts: ["gutendex.com", "www.gutenberg.org"],
+        hosts: ["gutendex.com", "www.gutenberg.org", GutenbergRoute.mirrorHost],
         storageKey: AppStorageKeys.gutenbergSourceEnabled)
 
     static let internetArchive = ExternalSource(
@@ -140,8 +140,7 @@ nonisolated enum ExternalSources {
         title: "Radio Browser",
         effectLine: String(localized: "Radio keeps your saved and recently played stations; new ones are no longer found through the catalog."),
         staysLine: String(localized: "Radio keeps your saved and recently played stations"),
-        hosts: ["de1.api.radio-browser.info", "at1.api.radio-browser.info",
-                "nl1.api.radio-browser.info", "all.api.radio-browser.info"],
+        hosts: ["de1.api.radio-browser.info", "all.api.radio-browser.info"],
         // The radio AREA switch was always the answer to exactly this
         // question (it gates the catalog fetches via SourceActivation), so
         // the source REUSES it. A fresh key would have meant two switches

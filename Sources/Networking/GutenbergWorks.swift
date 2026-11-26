@@ -30,14 +30,17 @@ actor GutenbergWorks {
         static let live = Wire(
             record: { number in
                 let request = URLRequest(url: GutenbergRDF.url(number: number))
-                let (data, response) = try await RequestRetryPolicy.fetch(request)
+                // pglaf once when www answers a server error or rests.
+                let (data, response) = try await GutenbergMirror.fetch(request) { try await RequestRetryPolicy.fetch($0) }
                 return (data, response?.statusCode)
             },
             duration: { url in
                 do {
                     // The asset asks gutenberg.org itself, past every door,
                     // so it names the app the way the doors do.
-                    let asset = AVURLAsset(url: url, options: [AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
+                    // pglaf while www rests; the part keeps the address of www.
+                    let asset = AVURLAsset(url: GutenbergMirror.address(for: url),
+                                           options: [AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
                     return GutenbergPartReading.outcome(seconds: try await asset.load(.duration).seconds)
                 } catch {
                     return GutenbergPartReading.outcome(error: error as NSError)
@@ -75,7 +78,14 @@ actor GutenbergWorks {
     }
 
     private func resolve(number: Int, id: String) async throws -> GutenbergWork? {
-        let (data, status) = try await wire.record(number)
+        let data: Data
+        let status: Int?
+        do {
+            (data, status) = try await wire.record(number)
+        } catch is HostCourtesy.Resting {
+            // www rests and pglaf does too: Gutenberg does not answer.
+            throw GutenbergUnavailable()
+        }
         if let status, !(200...299).contains(status) {
             // Only an absence is a finding about the work; a refusal, a
             // pause or a server error keeps nothing and the next open asks.
@@ -85,6 +95,8 @@ actor GutenbergWorks {
                 return nil
             }
             Logger.library.notice("GUTENBERG \(id, privacy: .public) record failed status=\(status)")
+            // A server error, of www and pglaf both: Gutenberg does not answer.
+            if (500...599).contains(status) { throw GutenbergUnavailable() }
             throw URLError(.badServerResponse)
         }
         guard let record = GutenbergRDF.parse(data) else {
