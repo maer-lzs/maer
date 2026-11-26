@@ -61,16 +61,65 @@ actor GutenbergWorks {
         self.defaults = suiteName.flatMap(UserDefaults.init(suiteName:)) ?? .standard
     }
 
+    /// A start: the work, and the parts whose durations are estimated.
     struct Resolution: Sendable {
         var work: GutenbergWork
         var estimated: Set<Int>
     }
 
+    /// The reads behind of the last estimated start.
+    private var behind: Task<Void, Never>?
+
+    /// For a witness: returns when the reads behind are done.
+    func awaitBehind() async { await behind?.value }
+
+    /// The work for a start. A kept work as it is. A start inside the book
+    /// reads every duration first. A start at the beginning reads the first
+    /// three (`GutenbergEstimate.readFirst`) and, when they allow it,
+    /// answers with the others estimated; the rest is read behind, four at
+    /// once, and only the work with every real duration is kept.
     func start(number: Int, atBeginning: Bool) async throws -> Resolution? {
-        try await work(number: number).map { Resolution(work: $0, estimated: []) }
+        let id = FreeCatalog.gutenbergPrefix + String(number)
+        if kept == nil {
+            kept = store.load(defaults: defaults, rule: { _ in GutenbergWork.rule })
+        }
+        if let known = kept?[id] { return known.map { Resolution(work: $0, estimated: []) } }
+        guard atBeginning else { return try await work(number: number).map { Resolution(work: $0, estimated: []) } }
+        guard let (record, files) = try await readRecord(number: number, id: id) else { return nil }
+        let first = GutenbergEstimate.readFirst(count: files.count)
+        let read = try await readDurations(first, of: files, id: id)
+        let seconds = read.compactMapValues { $0 }
+        guard let estimate = GutenbergEstimate.estimate(sizes: files.map { record.sizes[$0] }, read: seconds) else {
+            let rest = try await readDurations(Array(files.indices).filter { read[$0] == nil }, of: files, id: id)
+            return Resolution(work: finish(record: record, files: files, read: read.merging(rest) { a, _ in a }, id: id), estimated: [])
+        }
+        let parts = files.enumerated().map { index, file in
+            GutenbergWork.Part(url: file, seconds: read[index] ?? estimate[index])
+        }
+        let estimated = GutenbergWork(title: record.title, author: record.author, parts: parts, rights: record.rights)
+        Logger.library.notice("GUTENBERG \(id, privacy: .public) starts with \(estimate.count) of \(files.count) durations estimated")
+        behind = Task { [self] in await self.readBehind(record: record, files: files, read: read, estimate: estimate, id: id) }
+        return Resolution(work: estimated, estimated: Set(estimate.keys))
     }
 
-    func awaitBehind() async {}
+    /// Reads the rest behind; keeps the real work, and tells the app.
+    private func readBehind(record: GutenbergRDF.Record, files: [String], read: [Int: Double?],
+                            estimate: [Int: Double], id: String) async {
+        do {
+            let rest = try await readDurations(Array(estimate.keys).sorted(), of: files, id: id)
+            let all = read.merging(rest) { a, _ in a }
+            let deviated = estimate.contains { index, guess in
+                (all[index] ?? nil).map { GutenbergEstimate.deviates(estimate: guess, real: $0) } ?? true
+            }
+            _ = finish(record: record, files: files, read: all, id: id)
+            Logger.library.notice("GUTENBERG \(id, privacy: .public) durations read behind, deviated=\(deviated, privacy: .public)")
+            await MainActor.run {
+                NotificationCenter.default.post(name: .gutenbergDurationsResolved, object: nil, userInfo: ["id": id])
+            }
+        } catch {
+            Logger.library.notice("GUTENBERG \(id, privacy: .public) durations behind failed: \(FailureReason.of(error), privacy: .public); nothing kept")
+        }
+    }
 
     /// The work behind `gut:<number>`, or nil when its record names no
     /// sound file. Throws when the source could not be reached.
@@ -88,7 +137,9 @@ actor GutenbergWorks {
         return found
     }
 
-    private func resolve(number: Int, id: String) async throws -> GutenbergWork? {
+    /// The record and its reading files; nil when it names no sound file
+    /// (kept as such).
+    private func readRecord(number: Int, id: String) async throws -> (GutenbergRDF.Record, [String])? {
         let data: Data
         let status: Int?
         do {
@@ -120,20 +171,50 @@ actor GutenbergWorks {
             Logger.library.notice("GUTENBERG \(id, privacy: .public) no sound file among \(record.audio.count)")
             return nil
         }
-        var parts: [GutenbergWork.Part] = []
-        for file in files {
-            guard let url = URL(string: file) else {
-                parts.append(.init(url: file, seconds: nil))
-                continue
+        return (record, files)
+    }
+
+    private func resolve(number: Int, id: String) async throws -> GutenbergWork? {
+        guard let (record, files) = try await readRecord(number: number, id: id) else { return nil }
+        let read = try await readDurations(Array(files.indices), of: files, id: id)
+        return finish(record: record, files: files, read: read, id: id)
+    }
+
+    /// The durations of the given parts, four at once; nil seconds for a
+    /// part that cannot be read. A failed read throws and keeps nothing.
+    private func readDurations(_ indices: [Int], of files: [String], id: String) async throws -> [Int: Double?] {
+        let wire = self.wire
+        var out: [Int: Double?] = [:]
+        var failed = false
+        await withTaskGroup(of: (Int, PartDuration?).self) { group in
+            var next = indices.makeIterator()
+            func add() {
+                guard let index = next.next() else { return }
+                group.addTask {
+                    guard let url = URL(string: files[index]) else { return (index, nil) }
+                    return (index, await wire.duration(url))
+                }
             }
-            switch await wire.duration(url) {
-            case .seconds(let seconds): parts.append(.init(url: file, seconds: seconds))
-            case .unreadable: parts.append(.init(url: file, seconds: nil))
-            case .failed:
-                Logger.library.notice("GUTENBERG \(id, privacy: .public) duration failed at part \(parts.count + 1) of \(files.count); nothing kept")
-                throw URLError(.networkConnectionLost)
+            for _ in 0..<GutenbergEstimate.concurrent { add() }
+            for await (index, outcome) in group {
+                switch outcome {
+                case .seconds(let seconds)?: out[index] = .some(seconds)
+                case .unreadable?, nil: out[index] = .some(nil)
+                case .failed?: failed = true
+                }
+                add()
             }
         }
+        if failed {
+            Logger.library.notice("GUTENBERG \(id, privacy: .public) a duration failed; nothing kept")
+            throw URLError(.networkConnectionLost)
+        }
+        return out
+    }
+
+    /// The real work from the record and every duration; kept.
+    private func finish(record: GutenbergRDF.Record, files: [String], read: [Int: Double?], id: String) -> GutenbergWork {
+        let parts = files.enumerated().map { index, file in GutenbergWork.Part(url: file, seconds: read[index] ?? nil) }
         let work = GutenbergWork(title: record.title, author: record.author, parts: parts, rights: record.rights)
         keep(work, id: id)
         let unreadable = parts.filter { $0.seconds == nil }.count
@@ -145,4 +226,10 @@ actor GutenbergWorks {
         kept?[id] = .some(work)
         store.store(work.map { .found($0) } ?? .absent, for: id, rule: GutenbergWork.rule, defaults: defaults)
     }
+}
+
+extension Notification.Name {
+    /// A Gutenberg work's durations were read behind its estimated start;
+    /// `userInfo["id"]` names the work.
+    static let gutenbergDurationsResolved = Notification.Name("gutenbergDurationsResolved")
 }

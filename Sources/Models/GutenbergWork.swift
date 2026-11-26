@@ -131,7 +131,7 @@ nonisolated enum GutenbergRDF {
         let parser = XMLParser(data: data)
         parser.delegate = reader
         guard parser.parse() else { return nil }
-        return Record(title: reader.title, author: reader.author, audio: reader.audio, rights: reader.rights)
+        return Record(title: reader.title, author: reader.author, audio: reader.audio, rights: reader.rights, sizes: reader.sizes)
     }
 
     /// The files that are the reading, in order. One quality rule: the same
@@ -176,6 +176,7 @@ nonisolated enum GutenbergRDF {
         var author: String?
         var rights: String?
         var audio: [String] = []
+        var sizes: [String: Int] = [:]
         private var text = ""
         private var fileAbout: String?
         private var inFormat = false
@@ -202,6 +203,8 @@ nonisolated enum GutenbergRDF {
             case "dcterms:rights" where rights == nil && fileAbout == nil: rights = value
             case "pgterms:name" where inCreator && author == nil: author = value
             case "dcterms:creator": inCreator = false
+            case "dcterms:extent" where fileAbout != nil:
+                if let fileAbout, let size = Int(value) { sizes[fileAbout] = size }
             case "rdf:value" where inFormat && value == "audio/mpeg":
                 if let fileAbout { audio.append(fileAbout) }
             case "dcterms:format": inFormat = false
@@ -213,9 +216,42 @@ nonisolated enum GutenbergRDF {
     }
 }
 
+/// The first sound of a work not kept yet: the durations of the first
+/// part (it plays first) and the two after it are read; when the bitrates
+/// of parts two and three agree, the others are estimated from their size
+/// in the record. Measured 26.11.2026 on eleven works: nine of ten within
+/// 0.39 percent; 9727 opens with an introduction of another bitrate, so the
+/// first part never gives the bitrate.
 nonisolated enum GutenbergEstimate {
-    static let concurrent = 1
-    static func readFirst(count: Int) -> [Int] { Array(0..<count) }
-    static func estimate(sizes: [Int?], read: [Int: Double]) -> [Int: Double]? { nil }
-    static func deviates(estimate: Double, real: Double) -> Bool { false }
+    /// Reads at once, behind and for a start inside the book.
+    static let concurrent = 4
+    /// Parts two and three agree within this share.
+    static let agreement = 0.01
+    /// A real duration this far off its estimate drops the estimate.
+    static let deviation = 0.02
+    /// Plausible bitrates, bit/s (measured 32 to 128 kbit/s).
+    static let plausible = 16_000.0...320_000.0
+
+    /// The parts read before the first sound.
+    static func readFirst(count: Int) -> [Int] { Array(0..<min(count, 3)) }
+
+    /// Seconds per unread part, or nil: read every part instead.
+    static func estimate(sizes: [Int?], read: [Int: Double]) -> [Int: Double]? {
+        guard sizes.count >= 4, let s1 = sizes[1], let s2 = sizes[2],
+              let d1 = read[1], let d2 = read[2], d1 > 0, d2 > 0 else { return nil }
+        let b1 = Double(s1) * 8 / d1, b2 = Double(s2) * 8 / d2
+        guard abs(b1 - b2) <= agreement * max(b1, b2) else { return nil }
+        let bitrate = (b1 + b2) / 2
+        guard plausible.contains(bitrate) else { return nil }
+        var out: [Int: Double] = [:]
+        for index in sizes.indices where read[index] == nil {
+            guard let size = sizes[index] else { return nil }
+            out[index] = Double(size) * 8 / bitrate
+        }
+        return out
+    }
+
+    static func deviates(estimate: Double, real: Double) -> Bool {
+        abs(real - estimate) > deviation * real
+    }
 }

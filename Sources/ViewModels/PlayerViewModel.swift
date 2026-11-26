@@ -192,6 +192,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // unsafe because main actor and deinit are the only places that touch them.
     nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
     nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
+    /// Some durations of this title are estimated (a Gutenberg work started
+    /// before all were read): no stand from them, no total on the screen.
+    @Published private(set) var durationsEstimated = false
+    /// The track of the place, for the stand's own file.
+    var placeTrackIndex: Int { currentTrackIndex }
+    /// Waits for the real durations of an estimated title.
+    private var resolvedWatch: Task<Void, Never>?
     /// A later track of this queue that failed to load: the queue ends before
     /// it. At its start playback stops, or, when its local file was dropped
     /// for the server, goes on from there. Cleared by every new queue.
@@ -625,6 +632,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let sortedTracks = ChapterModel.ordered(item.media.tracks ?? [])
         tracks = sortedTracks
         duration = ChapterModel.duration(of: item.media, ordered: sortedTracks)
+        watchResolvedDurations(of: item, trackCount: sortedTracks.count)
 
         // Resolve the chapter list once. Validated chapters if they
         // cover the book, otherwise a track/rest fallback (ABS ships items with
@@ -1935,6 +1943,35 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Estimated durations
+
+    private func watchResolvedDurations(of item: LibraryItemDetail, trackCount: Int) {
+        resolvedWatch?.cancel()
+        durationsEstimated = provider.estimatesDurations(itemId: item.id, beforeTrack: trackCount)
+        guard durationsEstimated else { return }
+        let id = item.id
+        resolvedWatch = Task { [weak self] in
+            for await note in NotificationCenter.default.notifications(named: .gutenbergDurationsResolved) {
+                guard (note.userInfo?["id"] as? String) == id else { continue }
+                await self?.adoptResolvedDurations(itemId: id)
+                return
+            }
+        }
+    }
+
+    /// The real durations of a title that started with estimated ones: the
+    /// tracks take them in place, playback goes on, stands are written again.
+    func adoptResolvedDurations(itemId: String) async {
+        guard item?.id == itemId, let detail = try? await provider.fetchItemDetail(itemId: itemId),
+              item?.id == itemId else { return }
+        let resolved = ChapterModel.ordered(detail.media.tracks ?? [])
+        guard resolved.count == tracks.count else { return }
+        tracks = resolved
+        duration = ChapterModel.duration(of: detail.media, ordered: resolved)
+        durationsEstimated = provider.estimatesDurations(itemId: itemId, beforeTrack: resolved.count)
+        Logger.player.notice("PLAY durations read behind, taken in place track=\(self.currentTrackIndex)")
     }
 
     // MARK: - Failed-Track-Recovery

@@ -132,6 +132,12 @@ extension PlayerViewModel {
     /// exits before the write take nothing.
     @discardableResult
     private func performSync(_ origin: SyncOrigin, restoredAt: Double?) async -> Bool {
+        // No stand from estimated durations: the place counts seconds over
+        // every track before it.
+        if let id = item?.id, provider.estimatesDurations(itemId: id, beforeTrack: placeTrackIndex) {
+            Logger.player.notice("SYNC skipped: durations before the place are estimated")
+            return false
+        }
         guard let item else { return false }
         let plan = SyncRules.plan(origin: origin, state: syncState(for: item))
         switch plan.gate {

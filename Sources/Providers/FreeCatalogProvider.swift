@@ -74,6 +74,13 @@ final class FreeCatalogProvider: AudioProvider {
     private var statedLicence: Set<String> = []
     /// The Gutenberg readings whose record says public domain, as read this run.
     private var gutenbergPublicDomain: Set<String> = []
+    /// The tracks of a Gutenberg work whose durations are estimated until
+    /// they are read behind (`GutenbergWorks.start`).
+    private var gutenbergEstimated: [String: Set<Int>] = [:]
+
+    func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool {
+        gutenbergEstimated[itemId]?.contains { $0 < index } ?? false
+    }
     /// Deliberately false. Discover-only surface, never a tab/search source.
     var isAvailable: Bool { false }
 
@@ -834,10 +841,16 @@ final class FreeCatalogProvider: AudioProvider {
     /// read says so rather than resuming in the wrong file.
     func gutenbergDetail(itemId: String, works: GutenbergWorks? = nil) async throws -> LibraryItemDetail {
         let works = works ?? gutenbergWorks
+        // A start at the beginning may answer before every duration is read;
+        // a start inside the book waits for all (a stand counts seconds over
+        // every part before it).
+        let atBeginning = (ListeningStore.position(itemId) ?? 0) < 1
         guard let number = Int(itemId.dropFirst(FreeCatalog.gutenbergPrefix.count)),
-              let work = try await works.work(number: number) else {
+              let started = try await works.start(number: number, atBeginning: atBeginning) else {
             throw URLError(.resourceUnavailable)
         }
+        let work = started.work
+        gutenbergEstimated[itemId] = started.estimated.isEmpty ? nil : started.estimated
         let tracks = try work.tracks()
         // The rights line comes from the record, verbatim reading.
         licences[itemId] = FreeCatalog.gutenbergRightsLabel(work.rights)

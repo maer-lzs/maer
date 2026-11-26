@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**Project Gutenberg audiobooks start sooner.** Opening a Gutenberg
+audiobook for the first time no longer waits until the length of every
+part has been read: it starts after the first three, and the lengths of
+the others are estimated from their file sizes and read in the
+background. Until they are, the player shows the time left in the part
+but not when the book ends, and no listening position is saved from the
+estimate. Resuming inside a book still waits for the real lengths, which
+are now read several at a time.
+
 **Clearer folder settings and a home for suggested folders.** The edit
 sheet of a folder carries the folder's name as its title, and its
 choices are short ("Newest per show", "All unheard"). A folder set to

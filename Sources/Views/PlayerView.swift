@@ -522,7 +522,8 @@ struct PlayerView: View {
                 PlaybackTimeReader(clock: viewModel.clock) { time in
                     let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time))
                     let whole = remainingLine(form, left: left, end: estimatedFinishTime(at: time))
-                    (shortLine ? Text(verbatim: left) : whole)
+                    // With estimated durations no end of the whole is known.
+                    (shortLine || viewModel.durationsEstimated ? Text(verbatim: left) : whole)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.55))
                         .monospacedDigit()

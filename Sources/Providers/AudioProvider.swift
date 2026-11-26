@@ -167,6 +167,11 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
 }
 
 extension AudioProvider {
+    /// Whether a duration of a track before `index` is estimated (a
+    /// Gutenberg work started before all its durations were read): no
+    /// stand that depends on it is written. Most sources know every one.
+    func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool { false }
+
     func largeCoverURL(forItemId itemId: String) -> URL? {
         CoverAddressHistory.large(coverURL(forItemId: itemId))
     }
