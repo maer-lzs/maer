@@ -28,7 +28,12 @@ struct PodcastFolderRow: View {
     /// the sort of the folders.
     var newest: [String: Double] = [:]
     var unplayed: [String: Int] = [:]
+    /// The subscriptions, for the suggested folders.
+    var subscriptions: [PodcastShow] = []
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// The hint to suggest folders, put away on this device.
+    @AppStorage(AppStorageKeys.smartFoldersHintDismissed) private var hintDismissed = false
+    @State private var suggesting: [SmartFolderSuggestion.Suggestion]?
     /// The one sort of the folders, here and on the page of all folders.
     @AppStorage(AppStorageKeys.podcastFoldersSort) private var sortRaw = PodcastSortOption.zuletztAktualisiert.rawValue
 
@@ -63,6 +68,11 @@ struct PodcastFolderRow: View {
                 .accessibilityIdentifier("podcast-folder-new")
                 .padding(.trailing)
             }
+            let suggestions = SmartFolderSuggestion.suggest(SmartFolders.shows(subscriptions, folders: store.playlists.filter { PodcastFolder.isFolder($0.itemIds) }))
+            if SmartFolderSuggestion.showsHint(subscriptions: subscriptions.count, suggestions: suggestions.count, dismissed: hintDismissed) {
+                SmartFolderHint(open: { suggesting = suggestions }, putAway: { hintDismissed = true })
+                    .padding(.horizontal)
+            }
             if folders.isEmpty {
                 Text("Put shows together in a folder and start them in one tap.")
                     .font(.footnote)
@@ -90,6 +100,12 @@ struct PodcastFolderRow: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { rowWidth = $0 }
         .sheet(isPresented: $creating) {
             AddShowToFolderSheet(show: nil).followsAppearanceChoice()
+        }
+        .sheet(item: Binding(get: { suggesting.map(SmartFolderPreview.init) }, set: { suggesting = $0?.suggestions })) { preview in
+            SmartFolderSheet(suggestions: preview.suggestions, titles: Dictionary(
+                subscriptions.map { (PodcastIdentity.feedKey($0.feedURL), $0.title) }, uniquingKeysWith: { first, _ in first }),
+                store: store)
+                .followsAppearanceChoice()
         }
     }
 }

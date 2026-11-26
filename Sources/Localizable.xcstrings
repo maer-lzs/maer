@@ -5048,6 +5048,35 @@
         }
       }
     },
+    "Arts" : {
+      "comment" : "Podcast topic (Apple's category), name of a suggested folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Arte"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arts"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Arte"
+          }
+        }
+      }
+    },
     "As for all (%@)" : {
       "localizations" : {
         "de" : {
@@ -12740,6 +12769,35 @@
         }
       }
     },
+    "Folders by Topic" : {
+      "comment" : "Title of the preview sheet of suggested podcast folders.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner nach Thema"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Carpetas por tema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dossiers par thème"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cartelle per argomento"
+          }
+        }
+      }
+    },
     "Folk" : {
       "comment" : "Genre of books, podcasts or music",
       "localizations" : {
@@ -13530,6 +13588,35 @@
         }
       }
     },
+    "Government" : {
+      "comment" : "Podcast topic (Apple's category), name of a suggested folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Politik & Verwaltung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gobierno"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gouvernement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Governo"
+          }
+        }
+      }
+    },
     "gpodder is paused: it cannot be read which account the subscriptions belong to." : {
       "localizations" : {
         "de" : {
@@ -13925,6 +14012,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nascondi canale"
+          }
+        }
+      }
+    },
+    "Hide Suggestion" : {
+      "comment" : "Accessibility label: puts the folder suggestion hint away on this device.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorschlag ausblenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ocultar sugerencia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer la suggestion"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nascondi suggerimento"
           }
         }
       }
@@ -15780,6 +15896,35 @@
         }
       }
     },
+    "Kids & Family" : {
+      "comment" : "Podcast topic (Apple's category), name of a suggested folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kinder & Familie"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Niños y familia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enfants et famille"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Bambini e famiglia"
+          }
+        }
+      }
+    },
     "Labels in Tab Bar" : {
       "localizations" : {
         "de" : {
@@ -16112,6 +16257,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Solo l'ultimo"
+          }
+        }
+      }
+    },
+    "Leisure" : {
+      "comment" : "Podcast topic (Apple's category), name of a suggested folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freizeit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ocio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loisirs"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tempo libero"
           }
         }
       }
@@ -27386,6 +27560,35 @@
         }
       }
     },
+    "Religion & Spirituality" : {
+      "comment" : "Podcast topic (Apple's category), name of a suggested folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Religion & Spiritualität"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Religión y espiritualidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Religion et spiritualité"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Religione e spiritualità"
+          }
+        }
+      }
+    },
     "Reload Catalog Data" : {
       "localizations" : {
         "de" : {
@@ -33038,6 +33241,35 @@
         }
       }
     },
+    "Suggest Folders" : {
+      "comment" : "Hint in the podcast folders row: opens a preview of folders by topic.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner vorschlagen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sugerir carpetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggérer des dossiers"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Suggerisci cartelle"
+          }
+        }
+      }
+    },
     "Support" : {
       "comment" : "Link to a podcast's funding page (support the show with money); fallback label.",
       "localizations" : {
@@ -36294,6 +36526,35 @@
         }
       }
     },
+    "The topics come from each show's own feed. Shows already in a folder stay where they are." : {
+      "comment" : "Footnote in the preview of suggested podcast folders.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Themen nennt jede Sendung in ihrem eigenen Feed. Sendungen, die schon in einem Ordner stehen, bleiben, wo sie sind."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Los temas vienen del propio feed de cada programa. Los programas que ya están en una carpeta se quedan donde están."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les thèmes viennent du flux de chaque émission. Les émissions déjà dans un dossier restent où elles sont."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gli argomenti vengono dal feed di ogni programma. I programmi già in una cartella restano dove sono."
+          }
+        }
+      }
+    },
     "The two new passwords differ." : {
       "localizations" : {
         "de" : {
@@ -38910,6 +39171,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Trasforma i canali YouTube in feed di podcast."
+          }
+        }
+      }
+    },
+    "TV & Film" : {
+      "comment" : "Podcast topic (Apple's category), name of a suggested folder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TV & Film"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "TV y cine"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Télévision et cinéma"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "TV e cinema"
           }
         }
       }

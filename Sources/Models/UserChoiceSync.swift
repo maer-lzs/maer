@@ -83,6 +83,8 @@ nonisolated enum UserChoiceCatalog {
         // Up Next and its own notice.
         "podcastFoldersEnqueued": .device,
         "podcastFoldersNoticePending": .device,
+        // The hint to suggest folders, put away on this device only.
+        "smartFoldersHintDismissed": .device,
         // Which server this device wrote its own rows of a Subsonic title
         // under; another device reaches the server by another address.
         "musicServerStamps": .device,

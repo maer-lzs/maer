@@ -527,6 +527,7 @@ RowHeading(title: "Recommended",
                                                 uniquingKeysWith: { first, _ in first }),
                              unplayed: Dictionary(allRecentShows.map { (PodcastIdentity.feedKey($0.show.feedURL), $0.unplayedCount) },
                                                   uniquingKeysWith: { first, _ in first }),
+                             subscriptions: subs.shows,
                              playerCoordinator: playerCoordinator)
         }
     }

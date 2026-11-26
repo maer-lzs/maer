@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Folders by topic.** With eight or more subscriptions, the folders row
+can suggest folders by topic, using the topic each show names in its own
+feed. A preview shows every suggested folder with its shows; untick any
+you do not want and create the rest, or create nothing. Shows already in
+a folder stay where they are, and nothing changes without a tap. The
+suggestion can be hidden on this device.
+
 **When a source stops answering.** When Project Gutenberg's main server
 answers with an error or asks for a pause, Mär asks Gutenberg's own
 mirror once instead, for the title's record, its covers and its sound
