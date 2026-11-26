@@ -290,7 +290,7 @@ enum UITestSeed {
             ("topic-4", "Akte Nord", "True Crime"), ("topic-5", "Tatort Archiv", "True Crime"),
             ("topic-6", "Lachen am Abend", "Comedy"),
         ].map { id, title, topic in
-            PodcastShow(id: "seed-\(id)", title: title, author: "Seed Studio",
+            PodcastShow(id: "seed-\(id)", title: title, author: "Studio Nord",
                         artworkURL: nil, description: nil, feedURL: "https://seed.example/\(id).xml",
                         episodes: (1...2).map { episode(guid: "rss:seed:\(id)-ep-\($0)", title: "\(title) \($0)") },
                         categories: [topic], link: nil)
