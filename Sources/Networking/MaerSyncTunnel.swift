@@ -74,21 +74,21 @@ actor MaerSyncTunnel {
         let (key, offered) = (offeredKey.key, offeredKey.fingerprint)
         // A pin this device cannot read now is unknown, not absent: the
         // handshake stops instead of holding the offered key over it.
+        // The one rule of a meeting, as the sign-in asks it: a pin that
+        // cannot be read now stops; a damaged one asks like a changed key,
+        // with not readable as the held side; a different key asks; the
+        // first meeting of a device signed in before there was a key holds.
         let pin = ServiceKeyPin.read(for: base)
-        if pin == .unreadable || pin == .damaged {
-            Logger.library.error("MAERSYNC the held key of \(base.host ?? "-", privacy: .public) \(pin == .damaged ? "is damaged" : "cannot be read now", privacy: .public); nothing runs until it can")
+        switch ServiceKeyTrust.meeting(pin: pin, offered: offered, accepting: nil) {
+        case .stopUnreadable:
+            Logger.library.error("MAERSYNC the held key of \(base.host ?? "-", privacy: .public) cannot be read now; nothing runs until it can")
             throw MaerSyncFailure.unreadable
-        }
-        switch ServiceKeyTrust.standing(held: pin.held, offered: offered) {
-        case .changed(let held, let offered):
-            Logger.library.error("MAERSYNC the service at \(base.host ?? "-", privacy: .public) offers a different key than the one held; nothing runs until somebody looks")
-            throw MaerSyncFailure.serviceKeyChanged(held: held, offered: offered)
-        case .first:
-            // The first meeting of a device that is already signed in: the
-            // sign-in holds the key for new sign-ins, this holds it for
-            // devices that were signed in before there was a key to hold.
-            ServiceKeyPin.hold(offered, for: base)
-        case .unchanged:
+        case .ask(let held, let offeredKey):
+            Logger.library.error("MAERSYNC the service at \(base.host ?? "-", privacy: .public) offers a different key than the one held, or the held one is damaged; nothing runs until somebody looks")
+            throw MaerSyncFailure.serviceKeyChanged(held: held, offered: offeredKey)
+        case .hold(let key):
+            ServiceKeyPin.hold(key, for: base)
+        case .proceed:
             break
         }
         let handshake = NoiseHandshake(initiator: true, remoteStatic: key)

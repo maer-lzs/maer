@@ -93,7 +93,7 @@ extension ServiceKeyTrust {
     /// with not readable as the held side; accepting the offered key holds
     /// it over the damaged one. A pin that cannot be read now stops: it may
     /// read in a moment.
-    static func meeting(pin: ServiceKeyPin.PinRead, offered: String, accepting: String?) -> Meeting {
+    nonisolated static func meeting(pin: ServiceKeyPin.PinRead, offered: String, accepting: String?) -> Meeting {
         switch pin {
         case .unreadable:
             return .stopUnreadable
