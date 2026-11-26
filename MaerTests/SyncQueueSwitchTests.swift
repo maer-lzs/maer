@@ -64,7 +64,7 @@ struct SyncQueueSwitchTests {
             storage.dict = ["a": Self.entry(Self.server), "b": Self.entry(Self.server)]
             let queue = SyncQueue(storage: storage, defaults: defaults)
             let api = API()
-            queue.holdForSwitch(server: Self.server)
+            queue.holdForSwitch(server: Self.server, toUser: "b")
             await flush(queue, api)
             #expect(api.written.isEmpty, "a stand of the user before went out")
             queue.release(server: Self.server)
@@ -80,7 +80,7 @@ struct SyncQueueSwitchTests {
             storage.dict = ["a": Self.entry(Self.server)]
             let queue = SyncQueue(storage: storage, defaults: defaults)
             let api = API()
-            api.onFetch = { queue.holdForSwitch(server: Self.server) }
+            api.onFetch = { queue.holdForSwitch(server: Self.server, toUser: "b") }
             await flush(queue, api)
             #expect(api.written.isEmpty, "the flush sent with the new token")
         }
@@ -114,7 +114,7 @@ struct SyncQueueSwitchTests {
             storage.dict = ["a": Self.entry(Self.server)]
             let queue = SyncQueue(storage: storage, defaults: defaults)
             let api = API()
-            queue.holdForSwitch(server: Self.server)
+            queue.holdForSwitch(server: Self.server, toUser: "b")
             await queue.forgetPending(onServer: Self.server)
             queue.release(server: Self.server)
             await queue.enqueue(itemId: "new", currentTime: 5, duration: 100, isFinished: false)
@@ -130,27 +130,101 @@ struct SyncQueueSwitchTests {
             storage.dict = ["a": Self.entry(Self.server)]
             let queue = SyncQueue(storage: storage, defaults: defaults)
             let api = API()
-            queue.holdForSwitch(server: Self.server)
+            queue.holdForSwitch(server: Self.server, toUser: "b")
             queue.release(server: Self.server)
             await flush(queue, api)
             #expect(api.written == ["a"])
         }
     }
 
-    @Test("9: ended after the hold and before the forget: after the start nothing of the server goes and the forget is made up")
+    @Test("9: ended after the hold and the stored token, before the forget: the first flush after the start forgets and releases by itself")
     func endedInTheWindow() async throws {
         try await withServer { defaults in
             let storage = Storage()
             storage.dict = ["a": Self.entry(Self.server), "c": Self.entry(nil)]
-            SyncQueue(storage: storage, defaults: defaults).holdForSwitch(server: Self.server)
+            let first = SyncQueue(storage: storage, defaults: defaults)
+            first.holdForSwitch(server: Self.server, toUser: "b")
+            first.markSwitched(server: Self.server)
             // The app ends; a new start reads the same rows and the same device.
             let again = SyncQueue(storage: storage, defaults: defaults)
             let api = API()
             await flush(again, api)
             #expect(api.written == ["c"], "the first flush after the start sent the user before")
-            await again.forgetPending(onServer: Self.server)
-            again.release(server: Self.server)
-            #expect(storage.dict["a"] == nil)
+            #expect(storage.dict["a"] == nil, "the forget was not made after the start")
+            await again.enqueue(itemId: "new", currentTime: 5, duration: 100, isFinished: false)
+            await flush(again, api)
+            #expect(api.written.last == "new", "the server stayed held for ever")
+        }
+    }
+
+    @Test("c: a hold found at the start without the mark of a switch: the first flush releases without a forget, the stands go with the user before")
+    func endedBeforeTheToken() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["a": Self.entry(Self.server)]
+            SyncQueue(storage: storage, defaults: defaults).holdForSwitch(server: Self.server, toUser: "b")
+            let again = SyncQueue(storage: storage, defaults: defaults)
+            let api = API()
+            await flush(again, api)
+            #expect(api.written == ["a"])
+        }
+    }
+
+    @Test("c: a music server knows the switch by its stored user name after the start")
+    func musicAfterTheStart() async throws {
+        try await withServer { defaults in
+            for (stored, sent) in [("b", [String]()), ("a", ["a"])] {
+                let storage = Storage()
+                storage.dict = ["a": Self.entry(Self.server)]
+                SyncQueue(storage: storage, defaults: defaults).holdForSwitch(server: Self.server, toUser: "b")
+                let again = SyncQueue(storage: storage, defaults: defaults, storedUser: { _ in stored })
+                let api = API()
+                await flush(again, api)
+                #expect(api.written == sent, "stored user \(stored)")
+            }
+        }
+    }
+
+    @Test("c: a switch found at the start with a queue that does not read owes the forget and sends nothing of the server")
+    func startUnreadOwes() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            let first = SyncQueue(storage: storage, defaults: defaults)
+            first.holdForSwitch(server: Self.server, toUser: "b")
+            first.markSwitched(server: Self.server)
+            storage.unread = true
+            let again = SyncQueue(storage: storage, defaults: defaults)
+            await flush(again, API())
+            #expect(again.owedForgets == [Self.server])
+        }
+    }
+
+    @Test("c: a hold of this run is not resolved by a flush; the sign-in still runs")
+    func holdOfThisRun() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["a": Self.entry(Self.server)]
+            let queue = SyncQueue(storage: storage, defaults: defaults)
+            queue.holdForSwitch(server: Self.server, toUser: "b")
+            queue.markSwitched(server: Self.server)
+            let api = API()
+            await flush(queue, api)
+            #expect(api.written.isEmpty && storage.dict["a"] != nil)
+        }
+    }
+
+    @Test("d: an entry without a server whose title belongs to the server is held and forgotten like the others")
+    func entryWithoutServer() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["x": Self.entry(nil), "y": Self.entry(nil)]
+            let queue = SyncQueue(storage: storage, defaults: defaults, ownerOf: { $0 == "x" ? Self.server : nil })
+            let api = API()
+            queue.holdForSwitch(server: Self.server, toUser: "b")
+            await flush(queue, api)
+            #expect(api.written == ["y"], "an entry of the server without its stamp went out")
+            await queue.forgetPending(onServer: Self.server)
+            #expect(storage.dict["x"] == nil, "the entry without its stamp was not forgotten")
         }
     }
 
@@ -160,7 +234,8 @@ struct SyncQueueSwitchTests {
             let storage = Storage()
             storage.unread = true
             let first = SyncQueue(storage: storage, defaults: defaults)
-            first.holdForSwitch(server: Self.server)
+            first.holdForSwitch(server: Self.server, toUser: "b")
+            first.markSwitched(server: Self.server)
             await first.forgetPending(onServer: Self.server)
             first.release(server: Self.server)
             let again = SyncQueue(storage: storage, defaults: defaults)
@@ -200,9 +275,16 @@ struct SyncQueueSwitchTests {
     func signInOrder() throws {
         let auth = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
-        let hold = try #require(auth.range(of: "if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress) }"))
+        let hold = try #require(auth.range(of: "if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress, toUser: userId) }"))
         let token = try #require(auth.range(of: "apiClient.updateToken(token)", range: hold.upperBound..<auth.endIndex))
         #expect(!auth[hold.upperBound..<token.lowerBound].contains("await"), "a wait between the hold and the token")
+        // The switch is marked before the token is stored: never stands of
+        // one account in another; OLD releases without a forget.
+        let stored = try #require(auth.range(of: "let stored = TokenStore.store(token)"))
+        let marked = try #require(auth.range(of: "queue.markSwitched(server: formerAddress)", range: hold.upperBound..<stored.lowerBound),
+                                  "the switch is not marked between the hold and the stored token")
+        #expect(!auth[hold.lowerBound..<stored.lowerBound].contains("await"))
+        _ = marked
         let forget = try #require(auth.range(of: "await queue.forgetPending(onServer: formerAddress)", range: token.upperBound..<auth.endIndex))
         let release = try #require(auth.range(of: "queue.release(server: formerAddress)", range: forget.upperBound..<auth.endIndex))
         // Nothing between the token and the end of the sign-in can throw:
@@ -212,13 +294,15 @@ struct SyncQueueSwitchTests {
         for file in ["SubsonicProvider.swift", "JellyfinProvider.swift"] {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
                 .appendingPathComponent("Sources/Providers/\(file)"), encoding: .utf8))
-            let held = try #require(code.range(of: "if userOnly { queue.holdForSwitch(server: former) }"), "\(file) does not hold")
+            let held = try #require(code.range(of: "if userOnly { queue.holdForSwitch(server: former, toUser: newUser ?? storedUser) }"), "\(file) does not hold")
             let task = try #require(code.range(of: "Task {", range: held.upperBound..<code.endIndex))
             #expect(code[task.upperBound...].prefix(300).contains("queue.release(server: former)"), "\(file) does not release after its forget")
         }
         let queue = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/Networking/SyncQueue.swift"), encoding: .utf8))
-        #expect(queue.contains("guard !isHeldOrOwed(update.server) else"), "the flush does not check before each send")
+        #expect(queue.contains("guard !isHeldOrOwed(itemId, update) else"), "the flush does not check before each send")
+        // One place answers whose an entry is: hold, forget and send.
+        #expect(queue.components(separatedBy: "owner(of: ").count - 1 >= 3, "hold, forget and send ask another owner each")
     }
 }
 #endif

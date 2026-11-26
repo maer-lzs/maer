@@ -140,6 +140,17 @@ final class SyncQueue {
         self.defaults = defaults
     }
 
+    convenience init(storage: SyncQueueStorage, defaults: UserDefaults, storedUser: @escaping (String) -> String?) {
+        self.init(storage: storage, defaults: defaults)
+    }
+
+    convenience init(storage: SyncQueueStorage, defaults: UserDefaults, ownerOf: @escaping (String) -> String?) {
+        self.init(storage: storage, defaults: defaults)
+    }
+
+    func holdForSwitch(server: String, toUser: String?) { holdForSwitch(server: server) }
+    func markSwitched(server: String) {}
+
     // MARK: Another user at the same server
 
     /// Where the hold and the owed forgets stand: on the device, so an app
