@@ -164,12 +164,15 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark]
     func createBookmark(itemId: String, time: Double, title: String) async throws
     func deleteBookmark(itemId: String, time: Double) async throws
+    /// Whether a duration of a track before `index` is estimated (a
+    /// Gutenberg work started before all its durations were read): no
+    /// stand that depends on it is written. A requirement, so the player,
+    /// which holds `any AudioProvider`, asks the source and not the default.
+    func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool
 }
 
 extension AudioProvider {
-    /// Whether a duration of a track before `index` is estimated (a
-    /// Gutenberg work started before all its durations were read): no
-    /// stand that depends on it is written. Most sources know every one.
+    /// Most sources know every duration.
     func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool { false }
 
     func largeCoverURL(forItemId itemId: String) -> URL? {

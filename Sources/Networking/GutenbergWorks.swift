@@ -69,6 +69,9 @@ actor GutenbergWorks {
 
     /// The reads behind of the last estimated start.
     private var behind: Task<Void, Never>?
+    /// The estimated starts whose reads behind still run: a second start of
+    /// the same work answers the same and reads nothing twice.
+    private var running: [String: Resolution] = [:]
 
     /// For a witness: returns when the reads behind are done.
     func awaitBehind() async { await behind?.value }
@@ -84,6 +87,7 @@ actor GutenbergWorks {
             kept = store.load(defaults: defaults, rule: { _ in GutenbergWork.rule })
         }
         if let known = kept?[id] { return known.map { Resolution(work: $0, estimated: []) } }
+        if let started = running[id] { return started }
         guard atBeginning else { return try await work(number: number).map { Resolution(work: $0, estimated: []) } }
         guard let (record, files) = try await readRecord(number: number, id: id) else { return nil }
         let first = GutenbergEstimate.readFirst(count: files.count)
@@ -98,13 +102,18 @@ actor GutenbergWorks {
         }
         let estimated = GutenbergWork(title: record.title, author: record.author, parts: parts, rights: record.rights)
         Logger.library.notice("GUTENBERG \(id, privacy: .public) starts with \(estimate.count) of \(files.count) durations estimated")
+        // A start that came while these reads ran answers what they started.
+        if let started = running[id] { return started }
+        let resolution = Resolution(work: estimated, estimated: Set(estimate.keys))
+        running[id] = resolution
         behind = Task { [self] in await self.readBehind(record: record, files: files, read: read, estimate: estimate, id: id) }
-        return Resolution(work: estimated, estimated: Set(estimate.keys))
+        return resolution
     }
 
     /// Reads the rest behind; keeps the real work, and tells the app.
     private func readBehind(record: GutenbergRDF.Record, files: [String], read: [Int: Double?],
                             estimate: [Int: Double], id: String) async {
+        defer { running[id] = nil }
         do {
             let rest = try await readDurations(Array(estimate.keys).sorted(), of: files, id: id)
             let all = read.merging(rest) { a, _ in a }
