@@ -21,6 +21,8 @@ protocol SyncQueueStorage {
 }
 
 extension SyncQueueStorage {
+    func readAgainNow() -> Bool { !startReadFailed }
+
     /// A storage without rows misses nothing.
     var startIncomplete: Bool { false }
 }
@@ -133,6 +135,12 @@ final class SyncQueue {
     private let reconcileThreshold: Double = 5
 
     /// For tests: inject a custom storage.
+    var owedForgets: Set<String> { [] }
+    func holdForSwitch(server: String) {}
+    func release(server: String) {}
+
+    convenience init(storage: SyncQueueStorage, defaults: UserDefaults) { self.init(storage: storage) }
+
     init(storage: SyncQueueStorage) {
         self.storage = storage
     }
