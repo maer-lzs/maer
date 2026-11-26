@@ -156,19 +156,31 @@ final class SyncQueue {
 
     /// One held server: the user it was held for, and whether the switch
     /// was marked (the sign-in passed the point where the new account holds).
-    struct Hold: Codable, Equatable, Sendable {
+    struct Hold: Equatable, Sendable {
         var toUser: String?
         var switched: Bool
     }
 
+    /// Kept as a plain dictionary, nothing to decode: a server whose entry
+    /// has another form stays held (unknown is never empty), without a user
+    /// and without the mark.
     private var holds: [String: Hold] {
         get {
-            guard let data = defaults.data(forKey: AppStorageKeys.syncQueueHeldServers),
-                  let read = try? JSONDecoder().decode([String: Hold].self, from: data) else { return [:] }
+            guard let raw = defaults.dictionary(forKey: AppStorageKeys.syncQueueHeldServers) else { return [:] }
+            var read: [String: Hold] = [:]
+            for (name, value) in raw {
+                let fields = value as? [String: Any]
+                read[name] = Hold(toUser: fields?["toUser"] as? String, switched: fields?["switched"] as? Bool ?? false)
+            }
             return read
         }
         set {
-            defaults.set(newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue), forKey: AppStorageKeys.syncQueueHeldServers)
+            let raw: [String: [String: Any]] = newValue.mapValues { hold in
+                var fields: [String: Any] = ["switched": hold.switched]
+                if let toUser = hold.toUser { fields["toUser"] = toUser }
+                return fields
+            }
+            defaults.set(raw.isEmpty ? nil : raw, forKey: AppStorageKeys.syncQueueHeldServers)
         }
     }
 
