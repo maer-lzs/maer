@@ -94,6 +94,8 @@ nonisolated enum SmartFolderSuggestion {
 
     /// The hint shows from eight subscriptions on, when there is something
     /// to suggest, and not after it was put away on this device.
+    static func offersPreview(suggestions: Int) -> Bool { false }
+
     static func showsHint(subscriptions: Int, suggestions: Int, dismissed: Bool) -> Bool {
         subscriptions >= 8 && suggestions > 0 && !dismissed
     }
