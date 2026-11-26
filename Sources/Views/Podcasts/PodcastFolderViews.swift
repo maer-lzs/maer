@@ -68,7 +68,9 @@ struct PodcastFolderRow: View {
                 .accessibilityIdentifier("podcast-folder-new")
                 .padding(.trailing)
             }
-            let suggestions = SmartFolderSuggestion.suggest(SmartFolders.shows(subscriptions, folders: store.playlists.filter { PodcastFolder.isFolder($0.itemIds) }))
+            let folderLists = store.playlists.filter { PodcastFolder.isFolder($0.itemIds) }
+            let suggestions = SmartFolderSuggestion.suggest(SmartFolders.shows(subscriptions, folders: folderLists),
+                                                            folderNames: Set(folderLists.map(\.name)))
             if SmartFolderSuggestion.showsHint(subscriptions: subscriptions.count, suggestions: suggestions.count, dismissed: hintDismissed) {
                 SmartFolderHint(open: { suggesting = suggestions }, putAway: { hintDismissed = true })
                     .padding(.horizontal)

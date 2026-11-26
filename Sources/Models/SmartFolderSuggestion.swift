@@ -22,23 +22,48 @@ nonisolated enum SmartFolderSuggestion {
     /// Loose shows (in no folder) by their first topic; a suggestion from
     /// two shows on, the largest first, then by name. A show without a
     /// topic or in a folder stays out: a suggestion never moves a show.
-    static func suggest(_ shows: [Show], folderNames: Set<String>) -> [Suggestion] { suggest(shows) }
-
-    static func suggest(_ shows: [Show]) -> [Suggestion] {
+    /// Loose shows (in no folder) by their first topic; a suggestion from
+    /// two shows on, the largest first, then by name. A show without a
+    /// topic or in a folder stays out: a suggestion never moves a show. A
+    /// topic is compared without case and with its entities decoded, and
+    /// named in Apple's spelling or the first one seen. No suggestion goes
+    /// under a name a folder already carries.
+    static func suggest(_ shows: [Show], folderNames: Set<String> = []) -> [Suggestion] {
+        let taken = Set(folderNames.map(comparable))
         var order: [String] = []
+        var spelling: [String: String] = [:]
         var keys: [String: [String]] = [:]
         for show in shows where !show.inFolder {
-            guard let topic = show.categories?.first?.trimmingCharacters(in: .whitespaces), !topic.isEmpty else { continue }
-            if keys[topic] == nil { order.append(topic) }
-            keys[topic, default: []].append(show.key)
+            guard let raw = show.categories?.first else { continue }
+            let topic = decoded(raw).trimmingCharacters(in: .whitespaces)
+            guard !topic.isEmpty else { continue }
+            let key = comparable(topic)
+            if keys[key] == nil {
+                order.append(key)
+                spelling[key] = appleTopics.first { comparable($0) == key } ?? topic
+            }
+            keys[key, default: []].append(show.key)
         }
-        return order.compactMap { topic in
-            guard let found = keys[topic], found.count >= 2 else { return nil }
+        return order.compactMap { key in
+            guard let found = keys[key], found.count >= 2, let topic = spelling[key],
+                  !taken.contains(comparable(name(for: topic))) else { return nil }
             return Suggestion(category: topic, keys: found)
         }.sorted { a, b in
             a.keys.count != b.keys.count ? a.keys.count > b.keys.count
                 : name(for: a.category).localizedStandardCompare(name(for: b.category)) == .orderedAscending
         }
+    }
+
+    /// Without case and width, as a person reads the same word.
+    static func comparable(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespaces).folding(options: [.caseInsensitive, .widthInsensitive], locale: nil)
+    }
+
+    /// The five entities of XML, for a feed that escaped its topic twice.
+    static func decoded(_ text: String) -> String {
+        text.replacingOccurrences(of: "&lt;", with: "<").replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"").replacingOccurrences(of: "&apos;", with: "'")
+            .replacingOccurrences(of: "&amp;", with: "&")
     }
 
     /// The topic in the device's language; one outside Apple's list as given.
