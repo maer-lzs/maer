@@ -174,6 +174,28 @@ struct SyncQueueSwitchTests {
         }
     }
 
+    @Test("12: the new token is stored and read back before it holds: stored is NEW, a store that kept the old one is OLD, an empty one NONE")
+    func storeOutcome() {
+        #expect(TokenStore.store("b", save: { _ in true }, read: { "b" }) == .new)
+        #expect(TokenStore.store("b", save: { _ in false }, read: { "a" }) == .old, "the keychain refused and kept the token before")
+        #expect(TokenStore.store("b", save: { _ in false }, read: { nil }) == .none)
+        #expect(TokenStore.store("b", save: { _ in false }, read: { "b" }) == .new, "what is read back decides")
+    }
+
+    @Test("13, Fence: the sign-in stores the token before it holds; OLD keeps the user before and releases without a forget; NONE and NEW go on", .needsTheSources)
+    func signInStoresFirst() throws {
+        let auth = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
+        let store = try #require(auth.range(of: "let stored = TokenStore.store(token)"))
+        let token = try #require(auth.range(of: "apiClient.updateToken(token)", range: store.upperBound..<auth.endIndex))
+        let old = try #require(auth.range(of: "if stored == .old {", range: store.upperBound..<token.lowerBound))
+        let oldBranch = auth[old.upperBound...].prefix(600)
+        #expect(oldBranch.contains("queue.release(server: formerAddress)") && !oldBranch.contains("forgetPending"),
+                "OLD forgets the user before")
+        #expect(auth.components(separatedBy: "KeychainStore.save(token, forKey: KeychainKey.apiToken)").count == 1,
+                "the token is stored a second time, unread")
+    }
+
     @Test("7, 8 and 11, Fence: the sign-in holds before the token without a wait between, only for another user at the same server, and nothing after the token can fail it", .needsTheSources)
     func signInOrder() throws {
         let auth = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
