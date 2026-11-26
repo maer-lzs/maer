@@ -89,6 +89,8 @@ actor HostCourtesy {
         }
     }
 
+    nonisolated func rests(_ url: URL) -> Bool { false }
+
     nonisolated static func knownServerHosts() -> Set<String> {
         KnownServers.ownHosts()
     }

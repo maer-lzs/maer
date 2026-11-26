@@ -615,6 +615,8 @@ nonisolated enum RadioStore {
     }
 
     /// The step of a run, pure: a failed run never replaces what stands.
+    nonisolated static func showsStaleLine(after step: DiscoveryStep) -> Bool { false }
+
     nonisolated static func discoveryStep(failed: Bool, standing: Bool) -> DiscoveryStep {
         guard failed else { return .replace }
         return standing ? .keep : .failed
@@ -1388,4 +1390,8 @@ nonisolated enum RadioCatalog {
     static func showsGenres(isConnected: Bool) -> Bool {
         isConnected
     }
+}
+
+nonisolated enum RadioFailureLine {
+    static func sentence(online: Bool) -> String? { nil }
 }

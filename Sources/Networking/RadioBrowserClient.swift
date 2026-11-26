@@ -20,6 +20,8 @@ nonisolated enum RadioBrowserClient {
         "https://nl1.api.radio-browser.info",
     ]
 
+    static func weightiest(_ errors: [Error]) -> Error { errors.last ?? URLError(.cannotConnectToHost) }
+
     static let catalogLimit = 40
 
     /// A catalog request as pure data (path + query). Built without a network
