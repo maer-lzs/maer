@@ -36246,6 +36246,35 @@
         }
       }
     },
+    "The sign-in could not be stored on this device. You stay signed in as before." : {
+      "comment" : "Sign-in error: the keychain refused the new token and kept the one before.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anmeldung ließ sich auf diesem Gerät nicht speichern. Du bleibst wie vorher angemeldet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No se pudo guardar el inicio de sesión en este dispositivo. Sigues conectado como antes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La connexion n'a pas pu être enregistrée sur cet appareil. Tu restes connecté comme avant."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Non è stato possibile salvare l'accesso su questo dispositivo. Resti connesso come prima."
+          }
+        }
+      }
+    },
     "The sign-in page of this server's provider is not secured with HTTPS. Mär does not open it." : {
       "localizations" : {
         "de" : {

@@ -5,7 +5,21 @@
 
 import Foundation
 
+/// The token of a sign-in is stored and read back before it holds: what
+/// the keychain holds afterwards decides, not what the write answered. A
+/// keychain that refuses keeps the token before (measured at
+/// `KeychainStore.save`: a failed add or update deletes nothing).
 nonisolated enum TokenStore {
+    /// NEW: the new token is stored. OLD: another token stands, the one
+    /// before. NONE: no token stands.
     enum Outcome: Equatable, Sendable { case new, old, none }
-    static func store(_ token: String, save: (String) -> Bool, read: () -> String?) -> Outcome { .new }
+
+    static func store(_ token: String, save: (String) -> Bool, read: () -> String?) -> Outcome {
+        _ = save(token)
+        switch read() {
+        case token?: return .new
+        case let other? where !other.isEmpty: return .old
+        default: return .none
+        }
+    }
 }

@@ -323,6 +323,19 @@ final class AuthViewModel: ObservableObject {
             // before the new token holds, in the same step, on the device.
             let queue = SyncQueue.shared
             if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress) }
+            // The token is stored and read back before it holds: a keychain
+            // that kept the token before keeps the user before (the queue is
+            // released, nothing forgotten); none stored goes on as a switch.
+            let stored = TokenStore.store(token)
+            if stored == .old {
+                queue.release(server: formerAddress)
+                Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored, the one before stands")
+                errorMessage = String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+                return
+            }
+            if stored == .none {
+                Logger.library.error("AUTH sign-in token not stored host=\(url.host ?? "-", privacy: .public): it holds for this run only")
+            }
             // The shared client takes the server only now that it answered.
             apiClient.updateBaseURL(url)
             apiClient.updateToken(token)
@@ -334,7 +347,6 @@ final class AuthViewModel: ObservableObject {
             // that failed keeps the note it found.
             if userId != nil || switched { AppStorageKeys.set(userId, for: AppStorageKeys.absSignedInUser) }
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
-            KeychainStore.save(token, forKey: KeychainKey.apiToken)
             apiToken = ""
             password = ""
             isLoggedIn = true
@@ -490,5 +502,13 @@ nonisolated enum SignInState {
         if url == .unreadable || token == .unreadable { return (true, true) }
         let signedIn = !(url.value ?? "").isEmpty && !(token.value ?? "").isEmpty
         return (signedIn, false)
+    }
+}
+
+extension TokenStore {
+    /// The app's keychain place of the Audiobookshelf token.
+    static func store(_ token: String) -> Outcome {
+        store(token, save: { KeychainStore.save($0, forKey: KeychainKey.apiToken) },
+              read: { KeychainStore.load(forKey: KeychainKey.apiToken) })
     }
 }
