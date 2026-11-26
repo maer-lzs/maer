@@ -71,6 +71,10 @@ enum UITestSeed {
     /// launch (the shape of a takeover or a pot adoption): the journeys
     /// prove that the rows follow it without a tab switch or a pull.
     static var seedsLateEntry: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-late-entry") }
+    /// Shows with the topics of their feeds, nine subscriptions in all, so
+    /// the folders row offers its suggestion (`-uitest-topics`, only beside
+    /// `-uitest`). Throwaway feeds under `seed.example`.
+    static var seedsTopics: Bool { isActive && ProcessInfo.processInfo.arguments.contains("-uitest-topics") }
 
     /// The started episode lands in Continue; the finished one drops the
     /// show tile's unplayed count by one.
@@ -281,7 +285,25 @@ enum UITestSeed {
                         episodes: (1...3).map { episode(guid: "rss:seed:s3-ep-\($0)", title: "Werkstatt \($0)") },
                         link: nil),
         ]
-        PodcastSubscriptions.shared._seedForUITest([show] + moreShows)
+        let topicShows: [PodcastShow] = seedsTopics ? [
+            ("topic-1", "Morgenlage", "News"), ("topic-2", "Der Tag", "News"), ("topic-3", "Weltblick Nacht", "News"),
+            ("topic-4", "Akte Nord", "True Crime"), ("topic-5", "Tatort Archiv", "True Crime"),
+            ("topic-6", "Lachen am Abend", "Comedy"),
+        ].map { id, title, topic in
+            PodcastShow(id: "seed-\(id)", title: title, author: "Seed Studio",
+                        artworkURL: nil, description: nil, feedURL: "https://seed.example/\(id).xml",
+                        episodes: (1...2).map { episode(guid: "rss:seed:\(id)-ep-\($0)", title: "\(title) \($0)") },
+                        categories: [topic], link: nil)
+        } : []
+        // The seed show and Abendfunk carry topics too, so two suggestions
+        // stand: News with four shows, True Crime with three.
+        var seeded = [show] + moreShows
+        if seedsTopics {
+            seeded[0].categories = ["Comedy"]
+            seeded[1].categories = ["News", "Daily News"]
+            seeded[2].categories = ["True Crime"]
+        }
+        PodcastSubscriptions.shared._seedForUITest(seeded + topicShows)
         if seedsLateEntry { scheduleLateEntry() }
 
         // Music: make the tab AVAILABLE (fake config → a non-nil client) and
