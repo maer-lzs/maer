@@ -61,6 +61,17 @@ actor GutenbergWorks {
         self.defaults = suiteName.flatMap(UserDefaults.init(suiteName:)) ?? .standard
     }
 
+    struct Resolution: Sendable {
+        var work: GutenbergWork
+        var estimated: Set<Int>
+    }
+
+    func start(number: Int, atBeginning: Bool) async throws -> Resolution? {
+        try await work(number: number).map { Resolution(work: $0, estimated: []) }
+    }
+
+    func awaitBehind() async {}
+
     /// The work behind `gut:<number>`, or nil when its record names no
     /// sound file. Throws when the source could not be reached.
     func work(number: Int) async throws -> GutenbergWork? {

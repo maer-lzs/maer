@@ -123,6 +123,7 @@ nonisolated enum GutenbergRDF {
         let audio: [String]
         /// The work's `dcterms:rights`, verbatim.
         var rights: String? = nil
+        var sizes: [String: Int] = [:]
     }
 
     static func parse(_ data: Data) -> Record? {
@@ -210,4 +211,11 @@ nonisolated enum GutenbergRDF {
             text = ""
         }
     }
+}
+
+nonisolated enum GutenbergEstimate {
+    static let concurrent = 1
+    static func readFirst(count: Int) -> [Int] { Array(0..<count) }
+    static func estimate(sizes: [Int?], read: [Int: Double]) -> [Int: Double]? { nil }
+    static func deviates(estimate: Double, real: Double) -> Bool { false }
 }
