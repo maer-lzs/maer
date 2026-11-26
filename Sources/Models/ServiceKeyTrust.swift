@@ -39,9 +39,13 @@ nonisolated enum ServiceKeyTrust {
     /// taken from the answer. So there is one value: it hangs on the key,
     /// it is what is held, and it is what a person reads and compares with
     /// the service's own printout.
+    /// The held side of the question when the held key is damaged: the
+    /// page names it in words, not as a fingerprint.
     static let unreadableHeld = "unreadable"
+
+    /// What a meeting with the service does: go on, hold the offered key,
+    /// ask the person, or stop because the held key cannot be read now.
     enum Meeting: Equatable { case proceed, hold(String), ask(held: String, offered: String), stopUnreadable }
-    static func meeting(pin: ServiceKeyPin.PinRead, offered: String, accepting: String?) -> Meeting { .proceed }
 
     static func standing(held: String?, offered: String) -> Standing {
         guard let held, !held.isEmpty else { return .first }

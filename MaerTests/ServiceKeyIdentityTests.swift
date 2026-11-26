@@ -119,6 +119,6 @@ struct ServiceKeyIdentityTests {
         }
         let page = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/Views/MaerSyncSettingsView.swift"), encoding: .utf8))
-        #expect(page.contains("Text(\"The held key cannot be read right now.\")"))
+        #expect(page.contains("Text(\"The stored key cannot be read right now.\")"))
     }
 }

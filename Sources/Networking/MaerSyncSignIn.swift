@@ -270,27 +270,21 @@ enum MaerSyncSignIn {
             Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")
             return Self.outcome(forTransportError: error)
         }
-        let pin = ServiceKeyPin.read(for: base)
-        if pin == .damaged {
-            // Until a decision on its own way out: it stops as an unreadable one.
-            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the held key is damaged")
-            return .keyPinUnreadable
-        }
-        if pin == .unreadable {
+        switch ServiceKeyTrust.meeting(pin: ServiceKeyPin.read(for: base), offered: offered, accepting: acceptingKey) {
+        case .stopUnreadable:
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the held key cannot be read now")
             return .keyPinUnreadable
-        }
-        let standing = ServiceKeyTrust.standing(held: pin.held, offered: offered)
-        if case .changed(let held, _) = standing, offered != acceptingKey {
-            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the service offers a different key than the one held")
-            return .keyChanged(held: held, offered: offered)
-        }
-        // Held at the MEETING, before the secret travels: the token goes
-        // through the tunnel, and the tunnel opens only against a held key
-        // that is this one. A refused password afterwards does not unhold
-        // it; this device did meet the service it talked to.
-        if standing != .unchanged {
-            ServiceKeyPin.hold(offered, for: base)
+        case .ask(let held, let offeredKey):
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the service offers a different key than the one held, or the held one is damaged")
+            return .keyChanged(held: held, offered: offeredKey)
+        case .hold(let key):
+            // Held at the MEETING, before the secret travels: the token goes
+            // through the tunnel, and the tunnel opens only against a held key
+            // that is this one. A refused password afterwards does not unhold
+            // it; this device did meet the service it talked to.
+            ServiceKeyPin.hold(key, for: base)
+        case .proceed:
+            break
         }
         return nil
     }

@@ -277,6 +277,8 @@ struct SettingsView: View {
             PodcastGeneralSection()
             // Where the mirror's and the premium shows stand.
             PodcastSubscriptionFoldSection()
+            // Folders by the topic each show names: the hint and the preview.
+            SmartFolderSettingsSection()
             recommendationsSection
         case .music:
             musicSection

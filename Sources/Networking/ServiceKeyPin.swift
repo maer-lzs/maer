@@ -86,3 +86,25 @@ nonisolated enum ServiceKeyPin {
     // really changed its key is accepted through the event, and accepting
     // overwrites.
 }
+
+extension ServiceKeyTrust {
+    /// The meeting by what the pin reads. A damaged pin (there, not
+    /// decodable; reading again does not heal it) asks like a changed key
+    /// with not readable as the held side; accepting the offered key holds
+    /// it over the damaged one. A pin that cannot be read now stops: it may
+    /// read in a moment.
+    static func meeting(pin: ServiceKeyPin.PinRead, offered: String, accepting: String?) -> Meeting {
+        switch pin {
+        case .unreadable:
+            return .stopUnreadable
+        case .damaged:
+            return accepting == offered ? .hold(offered) : .ask(held: unreadableHeld, offered: offered)
+        case .held, .none:
+            switch standing(held: pin.held, offered: offered) {
+            case .first: return .hold(offered)
+            case .unchanged: return .proceed
+            case .changed(let held, _): return accepting == offered ? .hold(offered) : .ask(held: held, offered: offered)
+            }
+        }
+    }
+}

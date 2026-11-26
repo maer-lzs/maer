@@ -4050,31 +4050,31 @@
         }
       }
     },
-    "All unheard, oldest first" : {
-      "comment" : "Folder setting choice: play every unheard episode of the folder's shows, oldest first.",
+    "All unheard" : {
+      "comment" : "Folder setting choice, short: play every unheard episode, oldest first.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle ungehörten, älteste zuerst"
+            "value" : "Alle ungehörten"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Todos los no escuchados, el más antiguo primero"
+            "value" : "Todos los no escuchados"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tous les non écoutés, du plus ancien"
+            "value" : "Tous les non écoutés"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Tutti i non ascoltati, dal più vecchio"
+            "value" : "Tutti i non ascoltati"
           }
         }
       }
@@ -12769,31 +12769,60 @@
         }
       }
     },
-    "Folders by Topic" : {
-      "comment" : "Title of the preview sheet of suggested podcast folders.",
+    "Folders by Topic…" : {
+      "comment" : "Podcast settings: opens the preview of folders suggested by topic.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ordner nach Thema"
+            "value" : "Ordner nach Thema …"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Carpetas por tema"
+            "value" : "Carpetas por tema…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dossiers par thème"
+            "value" : "Dossiers par thème…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cartelle per argomento"
+            "value" : "Cartelle per argomento…"
+          }
+        }
+      }
+    },
+    "Folders from the topic each show names in its own feed." : {
+      "comment" : "Podcast settings footer of the suggested folders.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordner aus dem Thema, das jede Sendung in ihrem eigenen Feed nennt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Carpetas según el tema que cada programa indica en su feed."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Des dossiers selon le thème que chaque émission indique dans son flux."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cartelle secondo l'argomento che ogni programma indica nel suo feed."
           }
         }
       }
@@ -19633,35 +19662,6 @@
         }
       }
     },
-    "Newest episode of each show" : {
-      "comment" : "Folder setting choice: play the newest episode of each show in the folder.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neueste Folge jeder Sendung"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Episodio más reciente de cada programa"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dernier épisode de chaque émission"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Episodio più recente di ogni programma"
-          }
-        }
-      }
-    },
     "Newest episodes" : {
       "localizations" : {
         "de" : {
@@ -19714,6 +19714,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Prima i più recenti"
+          }
+        }
+      }
+    },
+    "Newest per show" : {
+      "comment" : "Folder setting choice, short: play the newest episode of each show.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neueste je Sendung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Más reciente por programa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La plus récente par émission"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Più recente per programma"
           }
         }
       }
@@ -21064,6 +21093,35 @@
         }
       }
     },
+    "No topic is shared by two shows that are not in a folder yet." : {
+      "comment" : "Podcast settings footer when there is nothing to suggest.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Thema teilen zwei Sendungen, die noch in keinem Ordner stehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ningún tema lo comparten dos programas que aún no están en una carpeta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun thème n'est partagé par deux émissions qui ne sont pas encore dans un dossier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nessun argomento è condiviso da due programmi non ancora in una cartella."
+          }
+        }
+      }
+    },
     "No tracks" : {
       "localizations" : {
         "de" : {
@@ -21762,6 +21820,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Non raggiunto"
+          }
+        }
+      }
+    },
+    "not readable" : {
+      "comment" : "Mär Sync key change: the held key is damaged and cannot be read, shown instead of its fingerprint.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nicht lesbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "no legible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "illisible"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "illeggibile"
           }
         }
       }
@@ -25203,6 +25290,35 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Riproduce un audiolibro specifico dalla tua libreria."
+          }
+        }
+      }
+    },
+    "Plays every unheard episode, oldest first." : {
+      "comment" : "Line under a folder's play when it plays all unheard episodes.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spielt alle ungehörten Folgen, die älteste zuerst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Reproduce todos los episodios no escuchados, el más antiguo primero."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lit tous les épisodes non écoutés, le plus ancien d'abord."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Riproduce tutti gli episodi non ascoltati, dal più vecchio."
           }
         }
       }
@@ -33270,6 +33386,35 @@
         }
       }
     },
+    "Suggestions" : {
+      "comment" : "Title of the sheet of suggested podcast folders.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorschläge"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sugerencias"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Suggerimenti"
+          }
+        }
+      }
+    },
     "Support" : {
       "comment" : "Link to a podcast's funding page (support the show with money); fallback label.",
       "localizations" : {
@@ -34675,34 +34820,6 @@
         }
       }
     },
-    "The held key cannot be read right now." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der gehaltene Schlüssel lässt sich gerade nicht lesen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "La clave guardada no se puede leer ahora."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La clé gardée ne peut pas être lue pour le moment."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "La chiave conservata non può essere letta ora."
-          }
-        }
-      }
-    },
     "The import stopped at show %lld of %lld while Mär was in the background. What it took over is kept. Start the import again to continue." : {
       "localizations" : {
         "de" : {
@@ -34896,34 +35013,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Le misurazioni conservate non erano leggibili e sono state messe da parte. Le nuove arrivano circa una volta al giorno."
-          }
-        }
-      }
-    },
-    "The key this device holds for the service cannot be read right now. Unlock the device and try again. Nothing was sent." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Schlüssel, den dieses Gerät für den Dienst hält, lässt sich gerade nicht lesen. Entsperre das Gerät und versuche es noch einmal. Nichts wurde gesendet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "La clave que este dispositivo guarda para el servicio no se puede leer ahora. Desbloquea el dispositivo y vuelve a intentarlo. No se envió nada."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La clé que cet appareil garde pour le service ne peut pas être lue pour le moment. Déverrouille l’appareil et réessaie. Rien n’a été envoyé."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "La chiave che questo dispositivo conserva per il servizio non può essere letta ora. Sblocca il dispositivo e riprova. Non è stato inviato nulla."
           }
         }
       }
@@ -36495,6 +36584,64 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Le statistiche di questo account non sono leggibili su questo dispositivo, quindi il tempo di ascolto di questo dispositivo non viene mostrato."
+          }
+        }
+      }
+    },
+    "The stored key cannot be read right now." : {
+      "comment" : "Mär Sync settings: the stored key of the service cannot be read right now.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der gespeicherte Schlüssel lässt sich gerade nicht lesen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La clave guardada no se puede leer ahora."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé enregistrée ne peut pas être lue pour le moment."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La chiave salvata non può essere letta ora."
+          }
+        }
+      }
+    },
+    "The stored key of this service cannot be read right now. Try again in a moment. Your password was not sent." : {
+      "comment" : "Mär Sync sign-in stopped: the stored key of the service cannot be read right now.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der gespeicherte Schlüssel dieses Dienstes lässt sich gerade nicht lesen. Versuche es gleich noch einmal. Dein Passwort wurde nicht gesendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La clave guardada de este servicio no se puede leer ahora. Inténtalo de nuevo en un momento. Tu contraseña no se ha enviado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé enregistrée de ce service ne peut pas être lue pour le moment. Réessaie dans un instant. Ton mot de passe n'a pas été envoyé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La chiave salvata di questo servizio non può essere letta ora. Riprova tra poco. La tua password non è stata inviata."
           }
         }
       }

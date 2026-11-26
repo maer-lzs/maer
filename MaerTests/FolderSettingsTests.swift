@@ -116,10 +116,10 @@ struct FolderSettingsTests {
         #expect(playback.contains("PodcastFolderPlay.allUnheard("))
     }
 
-    @Test("the line under the folder's play says what its start plays; for all unheard no line until its sentence is chosen")
+    @Test("the line under the folder's play says what its start plays")
     func startLine() {
         #expect(PodcastFolderPlay.line(for: .newestPerShow) == String(localized: "Plays the newest unheard episode of each show, by date."))
-        #expect(PodcastFolderPlay.line(for: .allUnheard) == nil, "rather no sentence than a wrong one")
+        #expect(PodcastFolderPlay.line(for: .allUnheard) == String(localized: "Plays every unheard episode, oldest first."))
     }
 
     @Test("Fence: the folder page takes its line from the folder's setting", .needsTheSources)

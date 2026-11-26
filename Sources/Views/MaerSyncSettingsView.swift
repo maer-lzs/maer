@@ -202,7 +202,7 @@ struct MaerSyncSettingsView: View {
                 if heldKey == .unreadable || heldKey == .damaged {
                     // A held key that cannot be read is said, not hidden as none.
                     Label {
-                        Text("The held key cannot be read right now.")
+                        Text("The stored key cannot be read right now.")
                             .font(.footnote)
                     } icon: {
                         Image(systemName: "key")
@@ -318,7 +318,11 @@ struct MaerSyncSettingsView: View {
             }
             .accessibilityIdentifier("maer-sync-key-changed")
             LabeledContent("Held") {
-                Text(change.held).font(.system(.footnote, design: .monospaced))
+                if change.held == ServiceKeyTrust.unreadableHeld {
+                    Text("not readable").font(.footnote)
+                } else {
+                    Text(change.held).font(.system(.footnote, design: .monospaced))
+                }
             }
             LabeledContent("Offered") {
                 Text(change.offered).font(.system(.footnote, design: .monospaced))
@@ -434,7 +438,7 @@ struct MaerSyncSettingsView: View {
         case .serviceHasNoKey:
             setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
         case .keyPinUnreadable:
-            setStatus(String(localized: "The key this device holds for the service cannot be read right now. Unlock the device and try again. Nothing was sent."), isError: true)
+            setStatus(String(localized: "The stored key of this service cannot be read right now. Try again in a moment. Your password was not sent."), isError: true)
         case .serviceIsOlder:
             setStatus(String(localized: "The service does not offer a key, so it is older than this Mär. Update the service."), isError: true)
         case .serviceIsNewer:

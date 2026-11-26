@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+**Clearer folder settings and a home for suggested folders.** The edit
+sheet of a folder carries the folder's name as its title, and its
+choices are short ("Newest per show", "All unheard"). A folder set to
+play all unheard episodes says so under its play button. The podcast
+settings have a place for suggested folders: a switch for the hint in the
+folders row, and the preview of folders by topic, which opens there even
+with fewer than eight subscriptions. When the key Mär holds for a Mär
+Sync service is damaged, signing in asks like a changed key, with the
+held one shown as not readable; when it only cannot be read right now,
+the message says so and that the password was not sent.
+
 **Another user on the same server.** When you sign in as another user on
 the same Audiobookshelf, Jellyfin or Subsonic server, listening progress
 the previous user had not yet sent stays with that user: it is no longer

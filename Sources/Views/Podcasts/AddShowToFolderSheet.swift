@@ -70,8 +70,8 @@ struct AddShowToFolderSheet: View {
                 if editing != nil {
                     Section("Settings") {
                         Picker("Play starts", selection: $settings.start) {
-                            Text("Newest episode of each show").tag(PodcastFolderStart.newestPerShow)
-                            Text("All unheard, oldest first").tag(PodcastFolderStart.allUnheard)
+                            Text("Newest per show").tag(PodcastFolderStart.newestPerShow)
+                            Text("All unheard").tag(PodcastFolderStart.allUnheard)
                         }
                         .accessibilityIdentifier("podcast-folder-start")
                         AppSwitch(isOn: $settings.showsCount) { Text("Show the number of new episodes") }
@@ -106,7 +106,7 @@ struct AddShowToFolderSheet: View {
     }
 
     private var title: Text {
-        if editing != nil { return Text("Edit Folder") }
+        if let editing { return Text(verbatim: editing.name) }
         return show == nil ? Text("New Folder") : Text("Add to Folder")
     }
 

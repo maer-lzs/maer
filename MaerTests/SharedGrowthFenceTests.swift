@@ -94,7 +94,10 @@ struct SharedGrowthFenceTests {
     /// `ListenHistoryScreen`). 384: a folder's settings saved in the edit
     /// sheet and the sort of the folders chosen on their page travel as
     /// choices (two, `AddShowToFolderSheet`, `PodcastFoldersPage`).
-    nonisolated static let stock = 384
+    /// 386: the place of the suggested folders in the settings observes the
+    /// subscriptions and the lists, as the folders row does (two,
+    /// `SmartFolderSettingsSection`).
+    nonisolated static let stock = 386
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -207,7 +210,8 @@ struct SharedGrowthFenceTests {
     /// downloaded (one, `RoutinePlayback`).
     /// 786: the way to Gutenberg's mirror reads the gate's rest of www
     /// (one, `GutenbergMirror.wwwRests`).
-    nonisolated static let sourcesStock = 786
+    /// 788: the two of the settings place above.
+    nonisolated static let sourcesStock = 788
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

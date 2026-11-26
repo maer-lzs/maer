@@ -72,7 +72,7 @@ struct SmartFolderSheet: View {
                     }
                 }
             }
-            .navigationTitle(Text("Folders by Topic"))
+            .navigationTitle(Text("Suggestions"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
