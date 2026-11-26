@@ -138,6 +138,31 @@ final class SyncQueue {
     init(storage: SyncQueueStorage, defaults: UserDefaults = AppStorageKeys.store) {
         self.storage = storage
         self.defaults = defaults
+        adoptOlderHoldForm()
+    }
+
+    /// The holds of the older form (a list of servers, written by builds
+    /// between the first hold and its user and mark) and entries of a
+    /// foreign form become marked switches, each with a line.
+    private func adoptOlderHoldForm() {
+        let key = AppStorageKeys.syncQueueHeldServers
+        if let list = defaults.stringArray(forKey: key) {
+            var moved: [String: Hold] = [:]
+            for server in list { moved[ABSServerScope.identity(of: server)] = Hold(toUser: nil, switched: true) }
+            defaults.removeObject(forKey: key)
+            holds = moved
+            Logger.library.notice("SYNCQUEUE account switch: \(list.count) holds of the older form taken as marked switches")
+            return
+        }
+        guard let raw = defaults.dictionary(forKey: key) else {
+            if defaults.object(forKey: key) != nil {
+                Logger.library.error("SYNCQUEUE account switch: the holds stand in a foreign form, kept as they are")
+            }
+            return
+        }
+        for (name, value) in raw where !(value is [String: Any]) {
+            Logger.library.notice("SYNCQUEUE account switch: the hold of \(name, privacy: .private(mask: .hash)) has a foreign form, taken as a marked switch")
+        }
     }
 
     /// A witness names the stored user per server and the owner of a title.
@@ -161,16 +186,21 @@ final class SyncQueue {
         var switched: Bool
     }
 
-    /// Kept as a plain dictionary, nothing to decode: a server whose entry
-    /// has another form stays held (unknown is never empty), without a user
-    /// and without the mark.
+    /// Kept as a plain dictionary, nothing to decode. An entry of a foreign
+    /// form counts as a marked switch: unknown never becomes no switch, so
+    /// the first flush forgets its stands rather than send them with
+    /// another account's token. The older form, a list of servers, is moved
+    /// to this one at the start (`adoptOlderHoldForm`), each as a marked switch.
     private var holds: [String: Hold] {
         get {
             guard let raw = defaults.dictionary(forKey: AppStorageKeys.syncQueueHeldServers) else { return [:] }
             var read: [String: Hold] = [:]
             for (name, value) in raw {
-                let fields = value as? [String: Any]
-                read[name] = Hold(toUser: fields?["toUser"] as? String, switched: fields?["switched"] as? Bool ?? false)
+                guard let fields = value as? [String: Any] else {
+                    read[name] = Hold(toUser: nil, switched: true)
+                    continue
+                }
+                read[name] = Hold(toUser: fields["toUser"] as? String, switched: fields["switched"] as? Bool ?? true)
             }
             return read
         }
@@ -262,6 +292,12 @@ final class SyncQueue {
         for (name, hold) in holds where !heldThisRun.contains(name) {
             let switched = hold.switched || (hold.toUser != nil && storedUser(name) == hold.toUser)
             if switched { await forgetPending(onServer: name) }
+            // After the wait only the hold that was found is released: a new
+            // switch at the same server may have held it again meanwhile.
+            guard holds[name] == hold, !heldThisRun.contains(name) else {
+                Logger.library.notice("SYNCQUEUE account switch: a new hold came while a stranded one was resolved; it stays")
+                continue
+            }
             release(server: name)
             Logger.library.notice("SYNCQUEUE account switch: a hold from before the start resolved switched=\(switched, privacy: .public)")
         }
@@ -289,6 +325,7 @@ final class SyncQueue {
     private init() {
         self.storage = SyncQueueRowStorage(database: MaerDatabase.shared)
         self.defaults = AppStorageKeys.store
+        adoptOlderHoldForm()
     }
 
     /// Returns when the entry has landed on disk.
@@ -367,10 +404,6 @@ final class SyncQueue {
         return pending.count - kept.count
     }
 
-    /// The entries without those queued under `server` (one name, `ABSServerScope.identity`).
-    nonisolated static func without(server: String, in pending: [String: PendingUpdate]) -> [String: PendingUpdate] {
-        pending.filter { $0.value.server != server }
-    }
 
     /// All pending updates. For the library, so it can show the locally newest
     /// (not-yet-sent) state.
