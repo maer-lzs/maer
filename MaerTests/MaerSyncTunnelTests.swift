@@ -188,6 +188,36 @@ struct MaerSyncTunnelTests {
         #expect(await service.handshakes == 1)
     }
 
+    @Test("a damaged held key asks like a changed one: the handshake throws the changed key with not readable as the held side, before anything goes out")
+    func aDamagedKeyAsks() async throws {
+        let base = host()
+        let account = try #require(ServiceKeyPin.account(for: base))
+        defer { KeychainStore.delete(forKey: account) }
+        // Bytes that do not decode: the pin is there and damaged.
+        let item: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: KeychainStore.service,
+                                   kSecAttrAccount as String: account, kSecAttrSynchronizable as String: kCFBooleanFalse as Any,
+                                   kSecValueData as String: Data([0xFF, 0xFE, 0xFD]),
+                                   kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        SecItemDelete(item as CFDictionary)
+        #expect(SecItemAdd(item as CFDictionary, nil) == errSecSuccess)
+        #expect(ServiceKeyPin.read(for: base) == .damaged, "the precondition: the pin reads damaged")
+        let service = FakeService()
+        let tunnel = tunnel(service, at: base)
+        let offered = await service.fingerprint
+        await #expect(throws: MaerSyncFailure.serviceKeyChanged(held: ServiceKeyTrust.unreadableHeld, offered: offered)) {
+            try await tunnel.exchange(method: "GET", target: "/v1/doc/stands", headers: [:], body: Data())
+        }
+        #expect(await service.handshakes == 0, "nothing was sent to whoever offered the key")
+    }
+
+    @Test("Fence: the tunnel asks the one rule of a meeting and keeps no branch of its own for a damaged key", .needsTheSources)
+    func tunnelAsksTheRule() throws {
+        let tunnel = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/Networking/MaerSyncTunnel.swift"), encoding: .utf8))
+        #expect(tunnel.contains("ServiceKeyTrust.meeting(pin:"))
+        #expect(!tunnel.contains("pin == .damaged"))
+    }
+
     @Test("a different key halts everything before a handshake goes out")
     func aDifferentKeyStopsBeforeAnyHandshake() async throws {
         let base = host()

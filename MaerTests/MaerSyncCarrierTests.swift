@@ -461,6 +461,20 @@ struct MaerSyncCarrierTests {
         #expect(session.unauthorized && !session.passwordWithdrawn, "a refused token is not a withdrawn one")
     }
 
+    @Test("a damaged held key reaches the page as the question, with not readable as the held side")
+    func aDamagedKeyIsTheQuestion() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        let session = session(transport, FakeAnnouncer(), defaults: defaults)
+        let carrier = MaerSyncStandCarrier(session: session)
+        transport.keyChanged = (held: ServiceKeyTrust.unreadableHeld, offered: "CCCC-DDDD")
+        carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(session.keyChange == MaerSyncKeyChange(held: ServiceKeyTrust.unreadableHeld, offered: "CCCC-DDDD"))
+        #expect(!session.unauthorized)
+    }
+
     @Test("a different key of the service halts every round until someone has accepted it")
     func aChangedServiceKeyStopsUntilSomebodyLooks() async {
         let (defaults, name) = suite()
