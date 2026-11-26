@@ -995,6 +995,8 @@ nonisolated enum AppStorageKeys {
     static let librarySortAscending = "librarySortAscending"
     // Per-tab sort/filter (audiobooks reuse the library* keys above).
     static let podcastFoldersSort = "podcastFoldersSort"
+    /// The hint to suggest folders was put away on this device.
+    static let smartFoldersHintDismissed = "smartFoldersHintDismissed"
     static let podcastSortOption = "podcastSortOption"
     static let podcastFilterOption = "podcastFilterOption"
     static let musicSortOption = "musicSortOption"
