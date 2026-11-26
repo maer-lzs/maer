@@ -124,6 +124,29 @@ struct GutenbergFirstSoundTests {
                 "only the extension declares it: through any AudioProvider the default answers for every source")
     }
 
+    @Test("the Gutenberg source, asked as the player asks it, says estimated after an estimated start; its plan writes no stand then and writes again once the durations are read")
+    func providerAnswersThroughTheProtocol() async throws {
+        let number = 990_000 + Int.random(in: 1...9_999)
+        let id = FreeCatalog.gutenbergPrefix + String(number)
+        let sizes = [967_056] + Array(repeating: 2_000_000, count: 11)
+        let data = Self.record(number, sizes: sizes)
+        let reads = Reads()
+        for (index, size) in sizes.enumerated() { reads.sizes[String(format: "%d-%03d.mp3", number, index)] = size }
+        let works = GutenbergWorks(wire: GutenbergWorks.Wire(record: { _ in (data, 200) }, duration: { await reads.read($0) }),
+                                   suiteName: "first-sound-\(UUID().uuidString)")
+        let provider: any AudioProvider = FreeCatalogProvider.shared
+        _ = try await FreeCatalogProvider.shared.gutenbergDetail(itemId: id, works: works)
+        #expect(provider.estimatesDurations(itemId: id, beforeTrack: 5), "the source said nothing is estimated")
+        var state = SyncPlanTests.state()
+        state.durationsEstimated = provider.estimatesDurations(itemId: id, beforeTrack: 5)
+        #expect(SyncRules.plan(origin: .pause, state: state).gate == .estimatedDurations, "a stand was written from estimated durations")
+        await works.awaitBehind()
+        _ = try await FreeCatalogProvider.shared.gutenbergDetail(itemId: id, works: works)
+        #expect(!provider.estimatesDurations(itemId: id, beforeTrack: 5), "the real durations did not end the estimate")
+        state.durationsEstimated = provider.estimatesDurations(itemId: id, beforeTrack: 5)
+        #expect(SyncRules.plan(origin: .pause, state: state).gate == .write)
+    }
+
     @Test("a second start while the reads behind run answers the same estimate and reads nothing twice")
     func secondStartCoalesces() async throws {
         let sizes = [967_056] + Array(repeating: 2_000_000, count: 11)
