@@ -22,6 +22,7 @@ struct SourceOutageTests {
     }
 
     /// The ask of a witness: answers by host, records every request.
+    /// Unchecked because one test owns it and asks it in sequence.
     final class Asked: @unchecked Sendable {
         var urls: [URL] = []
         var headers: [[String: String]] = []
@@ -141,7 +142,7 @@ struct SourceOutageTests {
         let works = try code("Sources/Networking/GutenbergWorks.swift")
         #expect(works.contains("GutenbergMirror.fetch("), "the record")
         #expect(works.contains("GutenbergMirror.address(for: url)"), "the duration read")
-        #expect(try code("Sources/ViewModels/PlayerViewModel.swift").contains("GutenbergMirror.address(for: target.url)"), "the stream")
+        #expect(try code("Sources/ViewModels/PlayerViewModel.swift").contains("AVURLAsset(url: target.url.viaGutenbergMirror"), "the stream")
         #expect(try code("Sources/Networking/FileDownloader.swift").contains("GutenbergMirror."), "the download")
         for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("GutenbergRoute.swift") {
             #expect(!SyncContractFenceTests.stripped(try SourceTree.text(file)).contains("pglaf"), "\(file.lastPathComponent) names pglaf")

@@ -60,6 +60,8 @@ struct StatusMeaningFenceTests {
         "MusopenClient.swift": "a non-2xx answer of Commons travels with its number and Retry-After to the log line; the row and the page say only that the catalog could not be loaded",
         "PodcastRecommendationsStore.swift": "a HEAD probe reduced to a Bool that orders tiles; a transport failure keeps the tile usable",
         "FileDownloader.swift": "non-2xx bytes are not a track; there is no reader for a meaning on that path",
+        "GutenbergRoute.swift": "only a 5xx of Gutenberg's www sends a request to its mirror; the meaning `server` would send a 400 too, and an absence stays a finding",
+        "GutenbergMirror.swift": "hands the status of www to the mirror rule and keeps the mirror's answer only when it is a 2xx",
         "RadioLogoReport.swift": "the diagnosis label names the status on purpose, for the clipboard",
         "RadioView.swift": "the diagnosis probe hands the status to the label and books nothing",
         "Lyrics.swift": "everything but 200 is a failed outcome that the lyrics cache already refuses to remember",

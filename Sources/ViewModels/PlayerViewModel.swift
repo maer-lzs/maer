@@ -1219,9 +1219,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // episode already carried it.
             // A file of Gutenberg's www goes to its mirror while www rests;
             // the track keeps the address of www.
-            let asset = AVURLAsset(url: GutenbergMirror.address(for: target.url),
-                                   options: ["AVURLAssetHTTPHeaderFieldsKey": target.headers,
-                                             AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
+            let asset = AVURLAsset(url: target.url.viaGutenbergMirror, options: ["AVURLAssetHTTPHeaderFieldsKey": target.headers,
+                                                             AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
             item = AVPlayerItem(asset: asset)
         } else {
             Logger.player.notice("PLAY not requested, the sign-in cannot be read now: track=\(index)")

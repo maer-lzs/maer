@@ -205,7 +205,9 @@ struct SharedGrowthFenceTests {
     /// its settings on the other devices (one, `MaerPlaylists`),
     /// and a folder's start of all unheard asks which episodes are
     /// downloaded (one, `RoutinePlayback`).
-    nonisolated static let sourcesStock = 785
+    /// 786: the way to Gutenberg's mirror reads the gate's rest of www
+    /// (one, `GutenbergMirror.wwwRests`).
+    nonisolated static let sourcesStock = 786
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

@@ -12,8 +12,11 @@ import OSLog
 /// address while www rests. What is kept carries the address of www; the
 /// mirror is only the way of this request.
 enum GutenbergMirror {
+    /// The gate's rest of www, the one reach of this way to the gate.
+    nonisolated static func wwwRests(_ url: URL) -> Bool { HostCourtesy.shared.rests(url) }
+
     /// The address to ask now: the mirror's while www rests, else the same.
-    nonisolated static func address(for url: URL, rests: (URL) -> Bool = { HostCourtesy.shared.rests($0) }) -> URL {
+    nonisolated static func address(for url: URL, rests: (URL) -> Bool = wwwRests) -> URL {
         guard let mirror = GutenbergRoute.mirror(of: url), GutenbergRoute.asksMirror(status: nil, resting: rests(url)) else {
             return url
         }
@@ -23,7 +26,7 @@ enum GutenbergMirror {
     /// One request through `ask`; a server error or a rest of www asks the
     /// mirror once with the same headers. When the mirror fails too, the
     /// answer of www stands (or its error), never a second round.
-    static func fetch(_ request: URLRequest, rests: (URL) -> Bool = { HostCourtesy.shared.rests($0) },
+    static func fetch(_ request: URLRequest, rests: (URL) -> Bool = wwwRests,
                       ask: (URLRequest) async throws -> (Data, HTTPURLResponse?)) async throws -> (Data, HTTPURLResponse?) {
         guard let url = request.url, let mirror = GutenbergRoute.mirror(of: url) else {
             return try await ask(request)
@@ -67,18 +70,23 @@ enum GutenbergMirror {
     /// the mirror is the way now. An absence is not.
     static func probe(_ url: URL) async -> Bool {
         guard GutenbergRoute.mirror(of: url) != nil else { return false }
-        if HostCourtesy.shared.rests(url) { return true }
+        if wwwRests(url) { return true }
         var request = URLRequest(url: url)
         request.setValue("bytes=0-0", forHTTPHeaderField: "Range")
         do {
             // Straight to www, once: through the door it would go on to the
             // mirror and answer for it.
             let (_, response) = try await RequestRetryPolicy.fetch(request, once: true)
-            return GutenbergRoute.asksMirror(status: response?.statusCode, resting: HostCourtesy.shared.rests(url))
+            return GutenbergRoute.asksMirror(status: response?.statusCode, resting: wwwRests(url))
         } catch is HostCourtesy.Resting {
             return true
         } catch {
             return false
         }
     }
+}
+
+extension URL {
+    /// The address a way past the door asks now (`GutenbergMirror.address`).
+    nonisolated var viaGutenbergMirror: URL { GutenbergMirror.address(for: self) }
 }

@@ -5,7 +5,7 @@
 
 import Foundation
 import OSLog
-import os
+import Synchronization
 
 /// The one place every request to a server passes before it is sent and
 /// after its answer: at most `HostCourtesyRule.concurrent` requests at once
@@ -100,7 +100,7 @@ actor HostCourtesy {
         return board.withLock { ($0[group]).map { $0 > now } ?? false }
     }
 
-    private nonisolated let board = OSAllocatedUnfairLock<[String: ContinuousClock.Instant]>(initialState: [:])
+    private nonisolated let board = Mutex<[String: ContinuousClock.Instant]>([:])
 
     nonisolated static func knownServerHosts() -> Set<String> {
         KnownServers.ownHosts()
