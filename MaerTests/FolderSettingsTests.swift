@@ -126,7 +126,7 @@ struct FolderSettingsTests {
     func startLineAsks() throws {
         let views = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/Views/Podcasts/PodcastFolderViews.swift"), encoding: .utf8))
-        #expect(views.contains("PodcastFolderPlay.line(for: PodcastFolderSettings.read(folderId: folderId).start)"))
+        #expect(views.contains("PodcastFolderPlay.line(for: settings.start)"))
         #expect(!views.contains("Text(\"Plays the newest unheard episode of each show, by date.\")"), "the page says one start whatever the setting")
     }
 

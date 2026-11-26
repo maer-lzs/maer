@@ -240,6 +240,10 @@ struct PodcastFolderPage: View {
     @Environment(\.dismiss) private var dismiss
     @State private var infos: [RecentShowInfo] = []
     @State private var editing: MaerPlaylists.Playlist?
+    /// The folder's settings as the page shows them: read when it appears,
+    /// when the edit sheet closes and when choices arrive from another
+    /// device, so the line and the order follow a change.
+    @State private var settings = PodcastFolderSettings()
     @State private var confirmingDelete = false
 
     var body: some View {
@@ -265,7 +269,7 @@ struct PodcastFolderPage: View {
                 Label("Delete Folder", systemImage: "trash")
             }
         }
-        .sheet(item: $editing) { folder in
+        .sheet(item: $editing, onDismiss: { settings = PodcastFolderSettings.read(folderId: folderId) }) { folder in
             AddShowToFolderSheet(show: nil, editing: folder).followsAppearanceChoice()
         }
         .confirmationDialog("Delete Folder", isPresented: $confirmingDelete) {
@@ -276,13 +280,15 @@ struct PodcastFolderPage: View {
         } message: {
             Text("The shows stay subscribed and return to Subscriptions.")
         }
-        .taskOnPodcastChange(store.playlist(id: folderId)?.itemIds.joined(separator: ",") ?? "") {
+        .onAppear { settings = PodcastFolderSettings.read(folderId: folderId) }
+        .onReceive(NotificationCenter.default.publisher(for: .userChoicesAdopted)) { _ in settings = PodcastFolderSettings.read(folderId: folderId) }
+        .taskOnPodcastChange((store.playlist(id: folderId)?.itemIds.joined(separator: ",") ?? "") + "|" + settings.order.rawValue) {
             let entries = store.playlist(id: folderId)?.itemIds ?? []
             let shows = entries.compactMap(PodcastFolder.feedKey(of:)).compactMap(RoutinePlayback.show(feedKey:))
             let snapshot = PodcastSections.snapshot(shows: shows)
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
             infos = PodcastFolderOrder.sorted(RecentShowInfo.inFolder(sections.recentShows, entries: entries),
-                                              by: PodcastFolderSettings.read(folderId: folderId).order,
+                                              by: settings.order,
                                               key: { PodcastIdentity.feedKey($0.show.feedURL) },
                                               title: { $0.show.title }, newest: { $0.lastUpdated })
         }
@@ -316,7 +322,7 @@ struct PodcastFolderPage: View {
                     }
                 }
                 .padding(.horizontal)
-                if let line = PodcastFolderPlay.line(for: PodcastFolderSettings.read(folderId: folderId).start) {
+                if let line = PodcastFolderPlay.line(for: settings.start) {
                     Text(line)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
