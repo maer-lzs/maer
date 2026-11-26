@@ -130,6 +130,17 @@ struct FolderSettingsTests {
         #expect(!views.contains("Text(\"Plays the newest unheard episode of each show, by date.\")"), "the page says one start whatever the setting")
     }
 
+    @Test("Fence: the folder page reads its settings again when the edit sheet closes or choices arrive, and its shows follow the order", .needsTheSources)
+    func pageFollowsTheSettings() throws {
+        let views = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/Views/Podcasts/PodcastFolderViews.swift"), encoding: .utf8))
+        #expect(views.contains(".sheet(item: $editing, onDismiss: { settings = PodcastFolderSettings.read(folderId: folderId) })"),
+                "the page keeps the settings from before the sheet")
+        #expect(views.contains("PodcastFolderPlay.line(for: settings.start)"))
+        #expect(views.contains("by: settings.order,"))
+        #expect(views.contains(".onReceive(NotificationCenter.default.publisher(for: .userChoicesAdopted)) { _ in settings = PodcastFolderSettings.read(folderId: folderId) }"))
+    }
+
     // MARK: The order of the shows in a folder
 
     @Test("the shows of a folder: newest episode first, by name, or in the folder's own order")
