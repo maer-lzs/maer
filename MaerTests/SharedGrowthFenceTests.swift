@@ -202,7 +202,7 @@ struct SharedGrowthFenceTests {
     /// hits once per search (one, `RSSProvider.search`). 781: the book page
     /// and the history page follow the listening revision (two). 785: the
     /// two choices of the folders above (two), a folder that goes clears
-    /// its settings on the other devices (one, `PodcastFolderSettings`),
+    /// its settings on the other devices (one, `MaerPlaylists`),
     /// and a folder's start of all unheard asks which episodes are
     /// downloaded (one, `RoutinePlayback`).
     nonisolated static let sourcesStock = 785

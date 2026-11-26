@@ -524,7 +524,7 @@ final class MaerPlaylists: ObservableObject {
     func delete(playlistId: String) {
         playlists.removeAll { $0.id == playlistId }
         // A folder's settings leave with it, and the clear travels.
-        PodcastFolderSettings.forgetGone([playlistId], noting: true)
+        PodcastFolderSettings.forgetGone([playlistId]) { UserChoiceCloudSync.shared.noteScalar(key: $0, value: $1) }
         // The deletion needs to be a FACT, not the absence of one. Otherwise
         // the next reconcile hands the list back.
         var marks = Self.tombstones
@@ -559,7 +559,7 @@ final class MaerPlaylists: ObservableObject {
         // Folders the merge took away (deleted on another device): their
         // settings go here too; that device's clear travels on its own.
         let gone = Set(playlists.map(\.id)).subtracting(next.map(\.id))
-        PodcastFolderSettings.forgetGone(gone, noting: false)
+        PodcastFolderSettings.forgetGone(gone, note: nil)
         playlists = next.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         // The merge carries the removal marks of the account: a list deleted
         // on another device leaves here as well, the last one too.

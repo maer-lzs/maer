@@ -22,16 +22,16 @@ nonisolated enum PodcastFolderOrderChoice: String, CaseIterable, Sendable {
 }
 
 /// The three settings of one folder, each a choice of that folder that
-/// travels (`podcastFolderStart.<id>` and its siblings) and leaves with the
+/// travels (`folderStart.<id>` and its siblings) and leaves with the
 /// folder on every device.
 nonisolated struct PodcastFolderSettings: Equatable, Sendable {
     var start: PodcastFolderStart = .newestPerShow
     var showsCount = true
     var order: PodcastFolderOrderChoice = .manual
 
-    static let startPrefix = "podcastFolderStart."
-    static let countPrefix = "podcastFolderCount."
-    static let orderPrefix = "podcastFolderOrder."
+    static let startPrefix = "folderStart."
+    static let countPrefix = "folderCount."
+    static let orderPrefix = "folderOrder."
 
     static func keys(folderId: String) -> [String] {
         [startPrefix + folderId, countPrefix + folderId, orderPrefix + folderId]
@@ -39,7 +39,7 @@ nonisolated struct PodcastFolderSettings: Equatable, Sendable {
 
     /// The settings as stored; a folder without any plays, counts and
     /// orders as before.
-    static func read(folderId: String, in defaults: UserDefaults = .standard) -> PodcastFolderSettings {
+    static func read(folderId: String, in defaults: UserDefaults = AppStorageKeys.store) -> PodcastFolderSettings {
         var out = PodcastFolderSettings()
         if let raw = defaults.string(forKey: startPrefix + folderId), let start = PodcastFolderStart(rawValue: raw) { out.start = start }
         if let count = defaults.object(forKey: countPrefix + folderId) as? Bool { out.showsCount = count }
@@ -49,7 +49,7 @@ nonisolated struct PodcastFolderSettings: Equatable, Sendable {
 
     /// Stores the settings and notes each to travel (`note`, the choice
     /// sync's `noteScalar` in the app).
-    static func write(_ settings: PodcastFolderSettings, folderId: String, in defaults: UserDefaults = .standard,
+    static func write(_ settings: PodcastFolderSettings, folderId: String, in defaults: UserDefaults = AppStorageKeys.store,
                       note: (String, Any?) -> Void) {
         let values: [(String, Any)] = [(startPrefix + folderId, settings.start.rawValue),
                                        (countPrefix + folderId, settings.showsCount),
@@ -62,7 +62,7 @@ nonisolated struct PodcastFolderSettings: Equatable, Sendable {
 
     /// The folder went here: its settings go, and the removal travels as a
     /// clear so the other devices drop them too.
-    static func forget(folderId: String, in defaults: UserDefaults = .standard, note: (String, Any?) -> Void) {
+    static func forget(folderId: String, in defaults: UserDefaults = AppStorageKeys.store, note: (String, Any?) -> Void) {
         for key in keys(folderId: folderId) {
             defaults.removeObject(forKey: key)
             note(key, nil)
@@ -71,12 +71,11 @@ nonisolated struct PodcastFolderSettings: Equatable, Sendable {
 
     /// Folders that left the store, by a delete here or the merge of
     /// another device: their settings go on this device too.
-    @MainActor
-    static func forgetGone(_ folderIds: some Sequence<String>, noting: Bool) {
+    /// The caller notes each clear to travel, or passes nil when the
+    /// clear came from another device.
+    static func forgetGone(_ folderIds: some Sequence<String>, note: ((String, Any?) -> Void)?) {
         for id in folderIds {
-            forget(folderId: id) { key, value in
-                if noting { UserChoiceCloudSync.shared.noteScalar(key: key, value: value) }
-            }
+            forget(folderId: id) { key, value in note?(key, value) }
         }
     }
 }

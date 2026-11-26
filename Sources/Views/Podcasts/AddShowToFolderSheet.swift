@@ -74,7 +74,7 @@ struct AddShowToFolderSheet: View {
                             Text("All unheard, oldest first").tag(PodcastFolderStart.allUnheard)
                         }
                         .accessibilityIdentifier("podcast-folder-start")
-                        Toggle("Show the number of new episodes", isOn: $settings.showsCount)
+                        AppSwitch(isOn: $settings.showsCount) { Text("Show the number of new episodes") }
                             .accessibilityIdentifier("podcast-folder-count")
                         Picker("Order of the shows", selection: $settings.order) {
                             Text("Newest episode first").tag(PodcastFolderOrderChoice.newestEpisode)

@@ -1072,7 +1072,7 @@ struct UserChoiceGateTests {
             // Where a show's new episodes go in Up Next.
             "podcastUpNextAdd.",
             // The three settings of a podcast folder travel with it.
-            "podcastFolderStart.", "podcastFolderCount.", "podcastFolderOrder.",
+            "folderStart.", "folderCount.", "folderOrder.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))

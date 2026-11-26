@@ -319,9 +319,9 @@ nonisolated enum UserChoiceCatalog {
         // item id, the same on every device.
         "podcastSort.": .travels,
         // The three settings of a podcast folder travel with the folder.
-        "podcastFolderStart.": .travels,
-        "podcastFolderCount.": .travels,
-        "podcastFolderOrder.": .travels,
+        "folderStart.": .travels,
+        "folderCount.": .travels,
+        "folderOrder.": .travels,
         "podcastFilter.": .travels,
         // What a Subsonic server said about itself, kept per server: the
         // API version, the negotiated sign-in mode, the reported type and
@@ -386,7 +386,7 @@ nonisolated enum UserChoiceCatalog {
         "playbackRate.", "podcastInboxMode.", "podcastUpNextAdd.", "podcastNotify.",
         "podcastShowRate.", "podcastSort.", "podcastFilter.", "podcastAutoDownloadDirection.",
         "playedTail.", "podcastFreeTwin.",
-        "podcastFolderStart.", "podcastFolderCount.", "podcastFolderOrder.",
+        "folderStart.", "folderCount.", "folderOrder.",
     ]
 
     /// Choices that used to travel and whose feature is gone. Leaving the
