@@ -114,6 +114,31 @@ struct GutenbergFirstSoundTests {
         #expect(reads.most > 1 && reads.most <= 4, "read one after the other or more than four at once: \(reads.most)")
     }
 
+    @Test("Fence: the question is a requirement of the protocol, so the player asks the source and not the default", .needsTheSources)
+    func requirementOfTheProtocol() throws {
+        let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/Providers/AudioProvider.swift"), encoding: .utf8))
+        let start = try #require(text.range(of: "protocol AudioProvider:"))
+        let end = try #require(text.range(of: "extension AudioProvider {", range: start.upperBound..<text.endIndex))
+        #expect(text[start.upperBound..<end.lowerBound].contains("func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool"),
+                "only the extension declares it: through any AudioProvider the default answers for every source")
+    }
+
+    @Test("a second start while the reads behind run answers the same estimate and reads nothing twice")
+    func secondStartCoalesces() async throws {
+        let sizes = [967_056] + Array(repeating: 2_000_000, count: 11)
+        let data = Self.record(9727, sizes: sizes)
+        let reads = Reads()
+        for (index, size) in sizes.enumerated() { reads.sizes[String(format: "9727-%03d.mp3", index)] = size }
+        let works = GutenbergWorks(wire: GutenbergWorks.Wire(record: { _ in (data, 200) }, duration: { await reads.read($0) }),
+                                   suiteName: "first-sound-\(UUID().uuidString)")
+        let first = try #require(try await works.start(number: 9727, atBeginning: true))
+        let second = try #require(try await works.start(number: 9727, atBeginning: true))
+        #expect(second.estimated == first.estimated)
+        await works.awaitBehind()
+        #expect(reads.count == 12, "the durations were read \(reads.count) times for 12 parts")
+    }
+
     @Test("the plan writes no stand while durations before the place are estimated, not even a deliberate one")
     func planGate() {
         var state = SyncPlanTests.state()
