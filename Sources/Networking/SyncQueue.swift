@@ -200,7 +200,7 @@ final class SyncQueue {
                     read[name] = Hold(toUser: nil, switched: true)
                     continue
                 }
-                read[name] = Hold(toUser: fields["toUser"] as? String, switched: fields["switched"] as? Bool ?? true)
+                read[name] = Hold(toUser: fields["toUser"] as? String, switched: (fields["switched"] as? Bool) != false)
             }
             return read
         }
