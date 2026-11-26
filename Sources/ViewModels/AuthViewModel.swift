@@ -319,6 +319,10 @@ final class AuthViewModel: ObservableObject {
             let switched = ServerAddressSwitch.signInSwitches(fromAddress: formerAddress, storedUser: formerUser,
                                                               toAddress: url.absoluteString, answer: answer)
             let userId: String? = if case .id(let id) = answer { id } else { nil }
+            // Another user at the same server: its queued stands are held
+            // before the new token holds, in the same step, on the device.
+            let queue = SyncQueue.shared
+            if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress) }
             // The shared client takes the server only now that it answered.
             apiClient.updateBaseURL(url)
             apiClient.updateToken(token)
@@ -350,7 +354,10 @@ final class AuthViewModel: ObservableObject {
             if switched { await Self.forgetFormerServer() }
             // The stands the user before queued at this server stay theirs;
             // another server keeps its own waiting under its name.
-            if switched, !serverSwitched { await SyncQueue.shared.forgetPending(onServer: formerAddress) }
+            if switched, !serverSwitched {
+                await queue.forgetPending(onServer: formerAddress)
+                queue.release(server: formerAddress)
+            }
             // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {

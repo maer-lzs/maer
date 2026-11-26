@@ -106,9 +106,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         let former = AppStorageKeys.subsonicServerURLValue
         let userOnly = !ServerAddressSwitch.isSwitch(from: former, to: newURL)
         MusicAccountSwitch.generation += 1
+        // Held at once, before the new account's access is stored: no
+        // stand of the user before goes out with it, also after an end of
+        // the app before the forget.
+        let queue = SyncQueue.shared
+        if userOnly { queue.holdForSwitch(server: former) }
         Task {
             await ServerLeaving.forget(ItemNamespace.isSubsonic, covers: .subsonic, player: player)
-            if userOnly { await SyncQueue.shared.forgetPending(onServer: former) }
+            if userOnly {
+                await queue.forgetPending(onServer: former)
+                queue.release(server: former)
+            }
         }
         Logger.music.notice("SUBSONIC account switch: the titles of the stored account are forgotten")
         return true

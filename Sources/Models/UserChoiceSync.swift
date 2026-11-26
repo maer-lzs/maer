@@ -83,6 +83,10 @@ nonisolated enum UserChoiceCatalog {
         // Up Next and its own notice.
         "podcastFoldersEnqueued": .device,
         "podcastFoldersNoticePending": .device,
+        // The sync queue's hold and owed forgets of an account switch: this
+        // device's queue only.
+        "syncQueueHeldServers": .device,
+        "syncQueueOwedForgets": .device,
         // The hint to suggest folders, put away on this device only.
         "smartFoldersHintDismissed": .device,
         // Which server this device wrote its own rows of a Subsonic title

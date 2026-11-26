@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Another user on the same server.** When you sign in as another user on
+the same Audiobookshelf, Jellyfin or Subsonic server, listening progress
+the previous user had not yet sent stays with that user: it is no longer
+sent to the new account, also not when Mär is closed during the sign-in
+or the queue could not be read at the start.
+
 **Folders by topic.** With eight or more subscriptions, the folders row
 can suggest folders by topic, using the topic each show names in its own
 feed. A preview shows every suggested folder with its shows; untick any

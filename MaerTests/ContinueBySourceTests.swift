@@ -583,7 +583,7 @@ struct ContinueBySourceTests {
             let user = key.replacingOccurrences(of: "ServerURLValue", with: "UsernameValue")
             #expect(place.contains("static func forgetAccessOnSwitch(to newURL: String, user newUser: String? = nil, player: PlayerCoordinator? = nil) -> Bool { let storedUser = AppStorageKeys.\(user) guard ServerAddressSwitch.isAccountSwitch(fromAddress: AppStorageKeys.\(key), fromUser: storedUser, toAddress: newURL, toUser: newUser ?? storedUser) else { return false }"),
                     "\(family.place) does not ask the switch first")
-            #expect(place.contains("Task { await ServerLeaving.forget(\(family.owns), player: player) if userOnly { await SyncQueue.shared.forgetPending(onServer: former) } }"),
+            #expect(place.contains("Task { await ServerLeaving.forget(\(family.owns), player: player) if userOnly { await queue.forgetPending(onServer: former) queue.release(server: former) } }"),
                     "\(family.place) does not let the former server leave the device")
         }
         let writer = try FetchAnswerTests.squeezedSource("Sources/Providers/ContinueRowsWriter.swift")

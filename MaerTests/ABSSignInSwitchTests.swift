@@ -253,7 +253,7 @@ struct ABSSignInSwitchTests {
         }
         #expect(auth.contains("AppSession.shared.notifySourcesChanged() Task { await Self.forgetFormerServer() } }"),
                 "the sign out does not forget the former server")
-        #expect(auth.contains("if switched { await Self.forgetFormerServer() } if switched, !serverSwitched { await SyncQueue.shared.forgetPending(onServer: formerAddress) } AppSession.shared.notifySourcesChanged() } catch {"),
+        #expect(auth.contains("if switched { await Self.forgetFormerServer() } if switched, !serverSwitched { await queue.forgetPending(onServer: formerAddress) queue.release(server: formerAddress) } AppSession.shared.notifySourcesChanged() } catch {"),
                 "the switch does not forget the former server before the sources change")
     }
 

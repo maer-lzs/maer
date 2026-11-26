@@ -135,20 +135,72 @@ final class SyncQueue {
     private let reconcileThreshold: Double = 5
 
     /// For tests: inject a custom storage.
-    var owedForgets: Set<String> { [] }
-    func holdForSwitch(server: String) {}
-    func release(server: String) {}
-
-    convenience init(storage: SyncQueueStorage, defaults: UserDefaults) { self.init(storage: storage) }
-
-    init(storage: SyncQueueStorage) {
+    init(storage: SyncQueueStorage, defaults: UserDefaults = AppStorageKeys.store) {
         self.storage = storage
+        self.defaults = defaults
+    }
+
+    // MARK: Another user at the same server
+
+    /// Where the hold and the owed forgets stand: on the device, so an app
+    /// ended between the new token and the forget starts with them.
+    private let defaults: UserDefaults
+
+    /// Servers held while another user signs in there: no stand of them
+    /// goes out. Set before the new token, in the same step.
+    private(set) var heldServers: Set<String> {
+        get { Set(defaults.stringArray(forKey: AppStorageKeys.syncQueueHeldServers) ?? []) }
+        set { defaults.set(newValue.isEmpty ? nil : Array(newValue).sorted(), forKey: AppStorageKeys.syncQueueHeldServers) }
+    }
+
+    /// Servers whose stands are to be forgotten once the queue reads (its
+    /// start could not); none of them goes out before.
+    private(set) var owedForgets: Set<String> {
+        get { Set(defaults.stringArray(forKey: AppStorageKeys.syncQueueOwedForgets) ?? []) }
+        set { defaults.set(newValue.isEmpty ? nil : Array(newValue).sorted(), forKey: AppStorageKeys.syncQueueOwedForgets) }
+    }
+
+    /// Holds a server before the new user's token: written at once.
+    func holdForSwitch(server: String) {
+        heldServers.insert(ABSServerScope.identity(of: server))
+        Logger.library.notice("SYNCQUEUE account switch: the server is held until its stands are forgotten")
+    }
+
+    /// Releases a held server: after its stands were forgotten (or owed),
+    /// or when the sign-in failed before the token.
+    func release(server: String) {
+        heldServers.remove(ABSServerScope.identity(of: server))
+    }
+
+    /// Whether a stand of this server may not go out now.
+    private func isHeldOrOwed(_ server: String?) -> Bool {
+        guard let server else { return false }
+        let name = ABSServerScope.identity(of: server)
+        return heldServers.contains(name) || owedForgets.contains(name)
+    }
+
+    /// An owed forget is made once the queue reads; true when none is left.
+    @discardableResult
+    private func settleOwedForgets() async -> Bool {
+        let owed = owedForgets
+        guard !owed.isEmpty else { return true }
+        guard storage.readAgainNow(), !storage.startReadFailed else { return false }
+        let pending = loadAll()
+        let kept = pending.filter { entry in !owed.contains(entry.value.server.map(ABSServerScope.identity(of:)) ?? "") }
+        if kept.count != pending.count {
+            save(kept)
+            await storage.awaitPendingWrites()
+        }
+        owedForgets = []
+        Logger.library.notice("SYNCQUEUE account switch: an owed forget made after a late read, \(pending.count - kept.count) stands removed")
+        return true
     }
 
     /// No default argument: it would be evaluated in the (nonisolated) caller
     /// context and clash with the MainActor isolation.
     private init() {
         self.storage = SyncQueueRowStorage(database: MaerDatabase.shared)
+        self.defaults = AppStorageKeys.store
     }
 
     /// Returns when the entry has landed on disk.
@@ -211,8 +263,10 @@ final class SyncQueue {
     /// read the entries.
     @discardableResult
     func forgetPending(onServer address: String) async -> Int {
-        guard !storage.startReadFailed else {
-            Logger.library.error("SYNCQUEUE account switch: the entries did not read at the start, nothing removed")
+        guard storage.readAgainNow(), !storage.startReadFailed else {
+            // Owed: made when the queue reads, nothing of it goes out before.
+            owedForgets.insert(ABSServerScope.identity(of: address))
+            Logger.library.error("SYNCQUEUE account switch: the entries did not read, the forget is owed")
             return 0
         }
         let pending = loadAll()
@@ -325,6 +379,7 @@ final class SyncQueue {
         defer { flushInFlight = false }
 
         await normalizeServers()
+        await settleOwedForgets()
         let pending = loadAll()
         guard !pending.isEmpty else { return }
         let flushStarted = Date()
@@ -389,6 +444,12 @@ final class SyncQueue {
                 continue
             case .send:
                 break
+            }
+            // Checked right before the send: a sign-in of another user may
+            // have held the server while this flush waited for it.
+            guard !isHeldOrOwed(update.server) else {
+                Logger.library.notice("SYNCQUEUE held for an account switch item=\(itemId, privacy: .private(mask: .hash))")
+                continue
             }
             do {
                 try await apiClient.updateProgress(

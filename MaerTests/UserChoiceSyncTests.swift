@@ -1114,6 +1114,8 @@ struct UserChoiceGateTests {
             // What this device did when podcast lists became folders: its
             // own Up Next and its own notice.
             "podcastFoldersEnqueued", "podcastFoldersNoticePending",
+            // The sync queue's hold and owed forgets: this device's queue.
+            "syncQueueHeldServers", "syncQueueOwedForgets",
             // The hint to suggest folders, put away on this device.
             "smartFoldersHintDismissed",
             // The server stamps of this device's own rows.

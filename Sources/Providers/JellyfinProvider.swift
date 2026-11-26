@@ -99,9 +99,17 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // queued there stay theirs and are not written into the new account.
         let former = AppStorageKeys.jellyfinServerURLValue
         let userOnly = !ServerAddressSwitch.isSwitch(from: former, to: newURL)
+        // Held at once, before the new account's access is stored: no
+        // stand of the user before goes out with it, also after an end of
+        // the app before the forget.
+        let queue = SyncQueue.shared
+        if userOnly { queue.holdForSwitch(server: former) }
         Task {
             await ServerLeaving.forget(ItemNamespace.isJellyfin, covers: .jellyfin, player: player)
-            if userOnly { await SyncQueue.shared.forgetPending(onServer: former) }
+            if userOnly {
+                await queue.forgetPending(onServer: former)
+                queue.release(server: former)
+            }
         }
         Logger.music.notice("JELLYFIN account switch: the access of the stored account is forgotten")
         return true

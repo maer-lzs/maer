@@ -178,14 +178,22 @@ struct SyncQueueSwitchTests {
     func signInOrder() throws {
         let auth = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
-        let hold = try #require(auth.range(of: "if switched, !serverSwitched { SyncQueue.shared.holdForSwitch(server: formerAddress) }"))
+        let hold = try #require(auth.range(of: "if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress) }"))
         let token = try #require(auth.range(of: "apiClient.updateToken(token)", range: hold.upperBound..<auth.endIndex))
         #expect(!auth[hold.upperBound..<token.lowerBound].contains("await"), "a wait between the hold and the token")
-        let forget = try #require(auth.range(of: "await SyncQueue.shared.forgetPending(onServer: formerAddress)", range: token.upperBound..<auth.endIndex))
-        let release = try #require(auth.range(of: "SyncQueue.shared.release(server: formerAddress)", range: forget.upperBound..<auth.endIndex))
+        let forget = try #require(auth.range(of: "await queue.forgetPending(onServer: formerAddress)", range: token.upperBound..<auth.endIndex))
+        let release = try #require(auth.range(of: "queue.release(server: formerAddress)", range: forget.upperBound..<auth.endIndex))
         // Nothing between the token and the end of the sign-in can throw:
         // a sign-in that failed after the token would be a switch half done.
         #expect(!auth[token.upperBound..<release.upperBound].contains("try "), "a step after the token can fail the sign-in")
+        // The music servers hold the same way, before their forget task.
+        for file in ["SubsonicProvider.swift", "JellyfinProvider.swift"] {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+                .appendingPathComponent("Sources/Providers/\(file)"), encoding: .utf8))
+            let held = try #require(code.range(of: "if userOnly { queue.holdForSwitch(server: former) }"), "\(file) does not hold")
+            let task = try #require(code.range(of: "Task {", range: held.upperBound..<code.endIndex))
+            #expect(code[task.upperBound...].prefix(300).contains("queue.release(server: former)"), "\(file) does not release after its forget")
+        }
         let queue = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/Networking/SyncQueue.swift"), encoding: .utf8))
         #expect(queue.contains("guard !isHeldOrOwed(update.server) else"), "the flush does not check before each send")
