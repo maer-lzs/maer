@@ -11,7 +11,8 @@ import Foundation
 /// `KeychainStore.save`: a failed add or update deletes nothing).
 nonisolated enum TokenStore {
     /// NEW: the new token is stored. OLD: another token stands, the one
-    /// before. NONE: no token stands.
+    /// before. NONE: no token stands. UNREADABLE: a token stands that
+    /// cannot be read now; it stops like OLD.
     enum Outcome: Equatable, Sendable { case new, old, none, unreadable }
 
     static func store(_ token: String, save: (String) -> Bool, read: () -> KeychainRead) -> Outcome {
@@ -19,6 +20,8 @@ nonisolated enum TokenStore {
         switch read() {
         case .value(let value) where value == token: return .new
         case .value(let value) where !value.isEmpty: return .old
+        // There but not readable now: unknown is never empty, it stops.
+        case .unreadable, .undecodable: return .unreadable
         default: return .none
         }
     }

@@ -309,7 +309,13 @@ final class AuthViewModel: ObservableObject {
             // fails is no switch and forgets nothing.
             let formerAddress = apiClient.baseURL.absoluteString
             let serverSwitched = ServerAddressSwitch.isSwitch(from: formerAddress, to: url.absoluteString)
-            let formerAccess = !(KeychainStore.load(forKey: KeychainKey.apiToken) ?? "").isEmpty
+            // An access there but not readable now is an access (unknown is
+            // never empty).
+            let formerAccess: Bool = switch KeychainStore.read(forKey: KeychainKey.apiToken) {
+            case .value(let value): !value.isEmpty
+            case .unreadable, .undecodable: true
+            case .missing: false
+            }
             let answer = await Self.userId(of: trial, side: "new")
             var formerUser = AppStorageKeys.string(AppStorageKeys.absSignedInUser) ?? ""
             if formerUser.isEmpty, formerAccess, !serverSwitched,
@@ -332,10 +338,12 @@ final class AuthViewModel: ObservableObject {
             // that kept the token before keeps the user before (the queue is
             // released, nothing forgotten); none stored goes on as a switch.
             let stored = TokenStore.store(token)
-            if stored == .old {
+            if stored == .old || stored == .unreadable {
                 queue.release(server: formerAddress)
-                Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored, the one before stands")
-                errorMessage = String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+                Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored, the one before stands or cannot be read")
+                errorMessage = stored == .old
+                    ? String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+                    : String(localized: "The server access can be read once this device is unlocked.")
                 return
             }
             if stored == .none {
