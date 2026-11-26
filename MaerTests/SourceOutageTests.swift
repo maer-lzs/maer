@@ -201,6 +201,21 @@ struct SourceOutageTests {
         #expect(player.contains("queueBuilds += 1"), "a built queue counts")
     }
 
+    @Test("Fence: a pause in the window keeps the rebuild paused: pause clears isPlaying, the rebuild plays only when it was playing", .needsTheSources)
+    func pauseInTheWindow() throws {
+        let player = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
+        let squeezed = player.components(separatedBy: .whitespacesAndNewlines).joined()
+        let pause = try #require(player.range(of: "func pause(caller: String = #function) {"))
+        #expect(String(player[pause.lowerBound...].prefix(600)).contains("isPlaying = false"), "a pause leaves isPlaying set")
+        // The held rebuild goes through the one build of the queue, which
+        // starts sound only when the player was playing when it was built.
+        #expect(squeezed.contains("letwasPlaying=isPlayingplayer=newPlayer"))
+        #expect(squeezed.contains("ifwasPlaying{newPlayer.rate=playbackRate}"))
+        let held = try #require(player.range(of: "private func rebuildAtHeldPosition(reason: String) {"))
+        #expect(String(player[held.lowerBound...].prefix(500)).contains("rebuildAfterLoadFailure(from:"))
+    }
+
     // MARK: Radio Browser
 
     @Test("the list is de1, then all; the source's hosts are the same")
