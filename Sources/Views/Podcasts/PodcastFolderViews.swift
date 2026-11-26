@@ -298,10 +298,12 @@ struct PodcastFolderPage: View {
                     }
                 }
                 .padding(.horizontal)
-                Text("Plays the newest unheard episode of each show, by date.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
+                if let line = PodcastFolderPlay.line(for: PodcastFolderSettings.read(folderId: folderId).start) {
+                    Text(line)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
                           alignment: .leading, spacing: 18) {
                     ForEach(infos) { info in

@@ -81,7 +81,15 @@ nonisolated struct PodcastFolderSettings: Equatable, Sendable {
 }
 
 nonisolated enum PodcastFolderPlay {
-    static func line(for start: PodcastFolderStart) -> String? { String(localized: "Plays the newest unheard episode of each show, by date.") }
+    /// The line under a folder's play: what its start plays. All unheard
+    /// has none yet: its sentence waits for a choice, and no sentence is
+    /// better than a wrong one.
+    static func line(for start: PodcastFolderStart) -> String? {
+        switch start {
+        case .newestPerShow: return String(localized: "Plays the newest unheard episode of each show, by date.")
+        case .allUnheard: return nil
+        }
+    }
 
     /// Every unheard episode of every show, oldest first; offline only
     /// what is downloaded; the same date by the episode's id.
