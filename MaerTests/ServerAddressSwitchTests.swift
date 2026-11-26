@@ -132,7 +132,10 @@ struct ServerAddressSwitchTests {
             "jf:book:1": Update(currentTime: 20, duration: 100, isFinished: false, server: "https://jf.example"),
             "li_old": Update(currentTime: 30, duration: 100, isFinished: false),
         ]
-        let kept = SyncQueue.without(server: ABSServerScope.identity(of: "HTTPS://abs.a.example/"), in: pending)
+        // The one place that says whose an entry is; an entry without a
+        // server whose title has no owner belongs to none.
+        let name = ABSServerScope.identity(of: "HTTPS://abs.a.example/")
+        let kept = pending.filter { SyncQueue.entryOwner($0.key, $0.value, ownerOf: { _ in nil }) != name }
         #expect(Set(kept.keys) == ["jf:book:1", "li_old"], "the stands of the account before stayed: \(kept.keys.sorted())")
     }
 

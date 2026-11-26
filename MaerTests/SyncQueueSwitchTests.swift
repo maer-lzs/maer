@@ -21,7 +21,14 @@ struct SyncQueueSwitchTests {
         var unread = false
         func load() -> [String: SyncQueue.PendingUpdate] { unread ? [:] : dict }
         func save(_ pending: [String: SyncQueue.PendingUpdate]) { dict = pending }
-        func awaitPendingWrites() async {}
+        /// Runs once inside the wait for the writes: a seam for what may
+        /// happen while the queue waits.
+        var onAwait: (() -> Void)?
+        func awaitPendingWrites() async {
+            let hook = onAwait
+            onAwait = nil
+            hook?()
+        }
         var startReadFailed: Bool { unread }
         func readAgainNow() -> Bool { !unread }
     }
@@ -274,6 +281,78 @@ struct SyncQueueSwitchTests {
                 "OLD forgets the user before")
         #expect(auth.components(separatedBy: "KeychainStore.save(token, forKey: KeychainKey.apiToken)").count == 1,
                 "the token is stored a second time, unread")
+    }
+
+    @Test("f: a new switch at the same server while a stranded hold is resolved keeps its own hold; the new sign-in forgets and releases by itself")
+    func newSwitchInTheWait() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["a": Self.entry(Self.server)]
+            let first = SyncQueue(storage: storage, defaults: defaults)
+            first.holdForSwitch(server: Self.server, toUser: "b")
+            first.markSwitched(server: Self.server)
+            let again = SyncQueue(storage: storage, defaults: defaults)
+            // While the forget waits for its write, another user signs in at
+            // the same server, and a stand of the user before that queues.
+            storage.onAwait = {
+                again.holdForSwitch(server: Self.server, toUser: "c")
+                storage.dict["n"] = Self.entry(Self.server)
+            }
+            let api = API()
+            await flush(again, api)
+            #expect(again.heldServers == [ABSServerScope.identity(of: Self.server)], "the new hold was released by the old one")
+            #expect(api.written.isEmpty, "a stand went out while the new sign-in held the server")
+            // The new sign-in goes on by itself.
+            again.markSwitched(server: Self.server)
+            await again.forgetPending(onServer: Self.server)
+            again.release(server: Self.server)
+            #expect(again.heldServers.isEmpty && storage.dict["n"] == nil)
+        }
+    }
+
+    @Test("g: a hold in the older form, a list of servers, counts as a marked switch: the first flush forgets and releases")
+    func olderForm() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["a": Self.entry(Self.server), "c": Self.entry(nil)]
+            defaults.set([Self.server], forKey: AppStorageKeys.syncQueueHeldServers)
+            let queue = SyncQueue(storage: storage, defaults: defaults)
+            let api = API()
+            await flush(queue, api)
+            #expect(api.written == ["c"], "a stand of the user before went out under a hold of the older form")
+            #expect(storage.dict["a"] == nil && queue.heldServers.isEmpty)
+        }
+    }
+
+    @Test("g: an entry of a foreign form counts as a marked switch too: unknown is never no switch")
+    func foreignEntry() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["a": Self.entry(Self.server)]
+            defaults.set([ABSServerScope.identity(of: Self.server): "broken"], forKey: AppStorageKeys.syncQueueHeldServers)
+            let queue = SyncQueue(storage: storage, defaults: defaults)
+            let api = API()
+            await flush(queue, api)
+            #expect(api.written.isEmpty, "a stand of the user before went out under a hold of a foreign form")
+            #expect(storage.dict["a"] == nil && queue.heldServers.isEmpty)
+        }
+    }
+
+    @Test("the named rest, held as it is: marked, the token before still stored when the app ended; the start forgets the user before")
+    func namedRest() async throws {
+        try await withServer { defaults in
+            let storage = Storage()
+            storage.dict = ["a": Self.entry(Self.server)]
+            let first = SyncQueue(storage: storage, defaults: defaults)
+            first.holdForSwitch(server: Self.server, toUser: "b")
+            first.markSwitched(server: Self.server)
+            // Ended before the token was stored: the token before stands.
+            let again = SyncQueue(storage: storage, defaults: defaults)
+            let api = API()
+            await flush(again, api)
+            #expect(api.written.isEmpty && storage.dict["a"] == nil,
+                    "the weighed rest: the unsent stands of the user before are lost, never sent to another account")
+        }
     }
 
     @Test("7, 8 and 11, Fence: the sign-in holds before the token without a wait between, only for another user at the same server, and nothing after the token can fail it", .needsTheSources)
