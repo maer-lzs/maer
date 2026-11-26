@@ -1114,6 +1114,8 @@ struct UserChoiceGateTests {
             // What this device did when podcast lists became folders: its
             // own Up Next and its own notice.
             "podcastFoldersEnqueued", "podcastFoldersNoticePending",
+            // The hint to suggest folders, put away on this device.
+            "smartFoldersHintDismissed",
             // The server stamps of this device's own rows.
             "musicServerStamps",
             // Downloading audiobooks while you listen, on the device that

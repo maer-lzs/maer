@@ -86,5 +86,6 @@ struct SmartFolderSheet: View {
                 }
             }
         }
+        .softTopScrollEdge()
     }
 }
