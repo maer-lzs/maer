@@ -114,6 +114,15 @@ struct GutenbergFirstSoundTests {
         #expect(reads.most > 1 && reads.most <= 4, "read one after the other or more than four at once: \(reads.most)")
     }
 
+    @Test("the plan writes no stand while durations before the place are estimated, not even a deliberate one")
+    func planGate() {
+        var state = SyncPlanTests.state()
+        state.durationsEstimated = true
+        #expect(SyncRules.plan(origin: .pause, state: state).gate == .estimatedDurations)
+        state.durationsEstimated = false
+        #expect(SyncRules.plan(origin: .pause, state: state).gate == .write)
+    }
+
     @Test("Fence: the player writes no stand while durations before its place are estimated, takes the real ones when they come, and shows no total it does not know", .needsTheSources)
     func playerFences() throws {
         func code(_ path: String) throws -> String {

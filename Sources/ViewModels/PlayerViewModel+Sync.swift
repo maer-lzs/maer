@@ -123,7 +123,10 @@ extension PlayerViewModel {
                   progressSync: provider.capabilities.contains(.progressSync),
                   podcastEpisode: ItemNamespace.isPodcastEpisode(item.id),
                   potCarries: PodcastCloudSync.potCarries(item.id),
-                  owesStand: isPlaying || pauseRecordPending)
+                  owesStand: isPlaying || pauseRecordPending,
+                  // No stand from estimated durations: the place counts
+                  // seconds over every track before it.
+                  durationsEstimated: provider.estimatesDurations(itemId: item.id, beforeTrack: placeTrackIndex))
     }
 
     /// Carries out the plan of `SyncRules.plan`, and decides nothing of its
@@ -132,15 +135,13 @@ extension PlayerViewModel {
     /// exits before the write take nothing.
     @discardableResult
     private func performSync(_ origin: SyncOrigin, restoredAt: Double?) async -> Bool {
-        // No stand from estimated durations: the place counts seconds over
-        // every track before it.
-        if let id = item?.id, provider.estimatesDurations(itemId: id, beforeTrack: placeTrackIndex) {
-            Logger.player.notice("SYNC skipped: durations before the place are estimated")
-            return false
-        }
+
         guard let item else { return false }
         let plan = SyncRules.plan(origin: origin, state: syncState(for: item))
         switch plan.gate {
+        case .estimatedDurations:
+            Logger.player.notice("SYNC skipped: durations before the place are estimated")
+            return false
         case .unresolvedStart, .belowThreshold:
             // A start that no source answered may not push, not even
             // forced: at 00:00 in a fresh session this would overwrite a

@@ -518,12 +518,12 @@ struct PlayerView: View {
                 let form = remainingLineForm
                 // At the accessibility sizes the line keeps only the time
                 // left in the part, in one line; VoiceOver still hears all of it.
-                let shortLine = isAccessibilitySize
+                // With estimated durations no end of the whole is known.
+                let shortLine = isAccessibilitySize || viewModel.durationsEstimated
                 PlaybackTimeReader(clock: viewModel.clock) { time in
                     let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time))
                     let whole = remainingLine(form, left: left, end: estimatedFinishTime(at: time))
-                    // With estimated durations no end of the whole is known.
-                    (shortLine || viewModel.durationsEstimated ? Text(verbatim: left) : whole)
+                    (shortLine ? Text(verbatim: left) : whole)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.55))
                         .monospacedDigit()

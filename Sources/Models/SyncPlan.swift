@@ -25,6 +25,9 @@ nonisolated struct SyncState: Equatable, Sendable {
     /// that stand has not landed yet. A device that only holds the item
     /// owes no stand.
     var owesStand: Bool = true
+    /// Durations before the place are estimated (a Gutenberg work started
+    /// before all were read): the place is not a stand yet.
+    var durationsEstimated: Bool = false
 }
 
 /// Everything a sync does, decided before it does it. The player only
@@ -32,6 +35,9 @@ nonisolated struct SyncState: Equatable, Sendable {
 nonisolated struct SyncPlan: Equatable, Sendable {
     enum Gate: Equatable, Sendable {
         case write
+        /// Durations before the place are estimated: no stand is written
+        /// from them, not even a deliberate one.
+        case estimatedDurations
         /// No source answered the start; not even a deliberate sync pushes.
         case unresolvedStart
         /// A tick, less than five seconds from the last written position.
@@ -98,6 +104,8 @@ nonisolated extension SyncRules {
         let gate: SyncPlan.Gate
         if !mayPushProgress(startSourceResolved: state.startSourceResolved) {
             gate = .unresolvedStart
+        } else if state.durationsEstimated {
+            gate = .estimatedDurations
         } else if origin.needsOwnStand, !state.owesStand {
             gate = .noOwnStand
         } else if !(deliberate || abs(state.currentTime - state.lastSyncedTime) >= 5) {
