@@ -514,6 +514,6 @@ extension TokenStore {
     /// The app's keychain place of the Audiobookshelf token.
     static func store(_ token: String) -> Outcome {
         store(token, save: { KeychainStore.save($0, forKey: KeychainKey.apiToken) },
-              read: { KeychainStore.load(forKey: KeychainKey.apiToken) })
+              read: { KeychainStore.read(forKey: KeychainKey.apiToken) })
     }
 }

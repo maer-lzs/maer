@@ -12,13 +12,13 @@ import Foundation
 nonisolated enum TokenStore {
     /// NEW: the new token is stored. OLD: another token stands, the one
     /// before. NONE: no token stands.
-    enum Outcome: Equatable, Sendable { case new, old, none }
+    enum Outcome: Equatable, Sendable { case new, old, none, unreadable }
 
-    static func store(_ token: String, save: (String) -> Bool, read: () -> String?) -> Outcome {
+    static func store(_ token: String, save: (String) -> Bool, read: () -> KeychainRead) -> Outcome {
         _ = save(token)
         switch read() {
-        case token?: return .new
-        case let other? where !other.isEmpty: return .old
+        case .value(let value) where value == token: return .new
+        case .value(let value) where !value.isEmpty: return .old
         default: return .none
         }
     }
