@@ -322,7 +322,12 @@ final class AuthViewModel: ObservableObject {
             // Another user at the same server: its queued stands are held
             // before the new token holds, in the same step, on the device.
             let queue = SyncQueue.shared
-            if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress) }
+            if switched, !serverSwitched { queue.holdForSwitch(server: formerAddress, toUser: userId) }
+            // Marked before the token is stored: a start that finds the hold
+            // forgets the user before rather than send them with another
+            // account's token (never one account's data in another). OLD
+            // below releases without a forget.
+            if switched, !serverSwitched { queue.markSwitched(server: formerAddress) }
             // The token is stored and read back before it holds: a keychain
             // that kept the token before keeps the user before (the queue is
             // released, nothing forgotten); none stored goes on as a switch.

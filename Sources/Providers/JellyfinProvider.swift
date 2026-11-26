@@ -103,7 +103,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // stand of the user before goes out with it, also after an end of
         // the app before the forget.
         let queue = SyncQueue.shared
-        if userOnly { queue.holdForSwitch(server: former) }
+        if userOnly { queue.holdForSwitch(server: former, toUser: newUser ?? storedUser) }
         Task {
             await ServerLeaving.forget(ItemNamespace.isJellyfin, covers: .jellyfin, player: player)
             if userOnly {

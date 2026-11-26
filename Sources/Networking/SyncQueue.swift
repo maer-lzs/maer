@@ -140,16 +140,13 @@ final class SyncQueue {
         self.defaults = defaults
     }
 
-    convenience init(storage: SyncQueueStorage, defaults: UserDefaults, storedUser: @escaping (String) -> String?) {
+    /// A witness names the stored user per server and the owner of a title.
+    convenience init(storage: SyncQueueStorage, defaults: UserDefaults,
+                     storedUser: ((String) -> String?)? = nil, ownerOf: ((String) -> String?)? = nil) {
         self.init(storage: storage, defaults: defaults)
+        if let storedUser { self.storedUser = storedUser }
+        if let ownerOf { self.ownerOf = ownerOf }
     }
-
-    convenience init(storage: SyncQueueStorage, defaults: UserDefaults, ownerOf: @escaping (String) -> String?) {
-        self.init(storage: storage, defaults: defaults)
-    }
-
-    func holdForSwitch(server: String, toUser: String?) { holdForSwitch(server: server) }
-    func markSwitched(server: String) {}
 
     // MARK: Another user at the same server
 
@@ -157,12 +154,42 @@ final class SyncQueue {
     /// ended between the new token and the forget starts with them.
     private let defaults: UserDefaults
 
+    /// One held server: the user it was held for, and whether the switch
+    /// was marked (the sign-in passed the point where the new account holds).
+    struct Hold: Codable, Equatable, Sendable {
+        var toUser: String?
+        var switched: Bool
+    }
+
+    private var holds: [String: Hold] {
+        get {
+            guard let data = defaults.data(forKey: AppStorageKeys.syncQueueHeldServers),
+                  let read = try? JSONDecoder().decode([String: Hold].self, from: data) else { return [:] }
+            return read
+        }
+        set {
+            defaults.set(newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue), forKey: AppStorageKeys.syncQueueHeldServers)
+        }
+    }
+
+    /// The holds this run set; a flush leaves them to their sign-in.
+    private var heldThisRun: Set<String> = []
+
+    /// The user name a music server stores now; nil for Audiobookshelf,
+    /// whose switch is marked.
+    private var storedUser: (String) -> String? = { server in
+        let name = ABSServerScope.identity(of: server)
+        if name == ABSServerScope.identity(of: AppStorageKeys.subsonicServerURLValue) { return AppStorageKeys.subsonicUsernameValue }
+        if name == ABSServerScope.identity(of: AppStorageKeys.jellyfinServerURLValue) { return AppStorageKeys.jellyfinUsernameValue }
+        return nil
+    }
+
+    /// The owner of a title without a server of its own (`ItemOwners`).
+    private var ownerOf: (String) -> String? = { itemId in ItemOwnerShelf.app?.read().value?.owner(of: itemId) }
+
     /// Servers held while another user signs in there: no stand of them
     /// goes out. Set before the new token, in the same step.
-    private(set) var heldServers: Set<String> {
-        get { Set(defaults.stringArray(forKey: AppStorageKeys.syncQueueHeldServers) ?? []) }
-        set { defaults.set(newValue.isEmpty ? nil : Array(newValue).sorted(), forKey: AppStorageKeys.syncQueueHeldServers) }
-    }
+    var heldServers: Set<String> { Set(holds.keys) }
 
     /// Servers whose stands are to be forgotten once the queue reads (its
     /// start could not); none of them goes out before.
@@ -172,22 +199,60 @@ final class SyncQueue {
     }
 
     /// Holds a server before the new user's token: written at once.
-    func holdForSwitch(server: String) {
-        heldServers.insert(ABSServerScope.identity(of: server))
+    func holdForSwitch(server: String, toUser: String?) {
+        let name = ABSServerScope.identity(of: server)
+        holds[name] = Hold(toUser: toUser, switched: false)
+        heldThisRun.insert(name)
         Logger.library.notice("SYNCQUEUE account switch: the server is held until its stands are forgotten")
     }
 
-    /// Releases a held server: after its stands were forgotten (or owed),
-    /// or when the sign-in failed before the token.
-    func release(server: String) {
-        heldServers.remove(ABSServerScope.identity(of: server))
+    /// The switch happened: marked before the token is stored, so a start
+    /// that finds the hold forgets rather than send one account's stands
+    /// with another's token.
+    func markSwitched(server: String) {
+        let name = ABSServerScope.identity(of: server)
+        guard var hold = holds[name] else { return }
+        hold.switched = true
+        holds[name] = hold
     }
 
-    /// Whether a stand of this server may not go out now.
-    private func isHeldOrOwed(_ server: String?) -> Bool {
-        guard let server else { return false }
+    /// Releases a held server: after its stands were forgotten (or owed),
+    /// or when the sign-in did not switch.
+    func release(server: String) {
         let name = ABSServerScope.identity(of: server)
-        return heldServers.contains(name) || owedForgets.contains(name)
+        holds[name] = nil
+        heldThisRun.remove(name)
+    }
+
+    /// The one place that says whose an entry is: its stamped server, or
+    /// the owner of its title for an entry from before the stamp. Hold,
+    /// forget and send ask it.
+    nonisolated static func entryOwner(_ itemId: String, _ update: PendingUpdate,
+                                       ownerOf: (String) -> String?) -> String? {
+        (update.server ?? ownerOf(itemId)).map(ABSServerScope.identity(of:))
+    }
+
+    private func owner(of itemId: String, _ update: PendingUpdate) -> String? {
+        Self.entryOwner(itemId, update, ownerOf: ownerOf)
+    }
+
+    /// Whether a stand may not go out now.
+    private func isHeldOrOwed(_ itemId: String, _ update: PendingUpdate) -> Bool {
+        guard let name = owner(of: itemId, update) else { return false }
+        return holds[name] != nil || owedForgets.contains(name)
+    }
+
+    /// A hold the start found (its sign-in ended with the app) is resolved
+    /// before anything is sent: a marked switch, or a music server whose
+    /// stored user is the new one, forgets (or owes) and releases; any
+    /// other releases without a forget.
+    private func settleStrandedHolds() async {
+        for (name, hold) in holds where !heldThisRun.contains(name) {
+            let switched = hold.switched || (hold.toUser != nil && storedUser(name) == hold.toUser)
+            if switched { await forgetPending(onServer: name) }
+            release(server: name)
+            Logger.library.notice("SYNCQUEUE account switch: a hold from before the start resolved switched=\(switched, privacy: .public)")
+        }
     }
 
     /// An owed forget is made once the queue reads; true when none is left.
@@ -197,7 +262,7 @@ final class SyncQueue {
         guard !owed.isEmpty else { return true }
         guard storage.readAgainNow(), !storage.startReadFailed else { return false }
         let pending = loadAll()
-        let kept = pending.filter { entry in !owed.contains(entry.value.server.map(ABSServerScope.identity(of:)) ?? "") }
+        let kept = pending.filter { entry in !owed.contains(owner(of: entry.key, entry.value) ?? "") }
         if kept.count != pending.count {
             save(kept)
             await storage.awaitPendingWrites()
@@ -247,7 +312,7 @@ final class SyncQueue {
         let owners: ItemOwners?
 
         func fate(_ itemId: String, _ update: PendingUpdate) -> ABSServerScope.QueueFate {
-            ABSServerScope.queueFate(itemId: itemId, entryServer: update.server ?? owners?.owner(of: itemId),
+            ABSServerScope.queueFate(itemId: itemId, entryServer: SyncQueue.entryOwner(itemId, update, ownerOf: { owners?.owner(of: $0) }),
                                      queuedAt: update.queuedAt, current: servers, switchedAt: switchedAt)
         }
     }
@@ -281,7 +346,8 @@ final class SyncQueue {
             return 0
         }
         let pending = loadAll()
-        let kept = Self.without(server: ABSServerScope.identity(of: address), in: pending)
+        let name = ABSServerScope.identity(of: address)
+        let kept = pending.filter { owner(of: $0.key, $0.value) != name }
         guard kept.count != pending.count else { return 0 }
         save(kept)
         await storage.awaitPendingWrites()
@@ -390,6 +456,7 @@ final class SyncQueue {
         defer { flushInFlight = false }
 
         await normalizeServers()
+        await settleStrandedHolds()
         await settleOwedForgets()
         let pending = loadAll()
         guard !pending.isEmpty else { return }
@@ -458,7 +525,7 @@ final class SyncQueue {
             }
             // Checked right before the send: a sign-in of another user may
             // have held the server while this flush waited for it.
-            guard !isHeldOrOwed(update.server) else {
+            guard !isHeldOrOwed(itemId, update) else {
                 Logger.library.notice("SYNCQUEUE held for an account switch item=\(itemId, privacy: .private(mask: .hash))")
                 continue
             }

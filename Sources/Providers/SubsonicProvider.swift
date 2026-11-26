@@ -110,7 +110,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // stand of the user before goes out with it, also after an end of
         // the app before the forget.
         let queue = SyncQueue.shared
-        if userOnly { queue.holdForSwitch(server: former) }
+        if userOnly { queue.holdForSwitch(server: former, toUser: newUser ?? storedUser) }
         Task {
             await ServerLeaving.forget(ItemNamespace.isSubsonic, covers: .subsonic, player: player)
             if userOnly {
