@@ -50,5 +50,11 @@ nonisolated enum GutenbergRoute {
     }
 }
 
+nonisolated enum GutenbergMirrorStep {
+    struct Moment: Equatable, Sendable { var itemId: String?; var queueBuild: Int; var stopped: Bool }
+    enum Next: Equatable, Sendable { case rebuild, usual, nothing }
+    static func next(asked: Moment, now: Moment, down: Bool) -> Next { down ? .rebuild : .usual }
+}
+
 /// Gutenberg did not answer, its main server nor its mirror.
 nonisolated struct GutenbergUnavailable: Error, Equatable {}

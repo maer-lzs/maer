@@ -26,11 +26,13 @@ struct SourceOutageTests {
     final class Asked: @unchecked Sendable {
         var urls: [URL] = []
         var headers: [[String: String]] = []
+        var timeouts: [TimeInterval] = []
         var byHost: [String: Int] = [:]
         func ask(_ request: URLRequest) async throws -> (Data, HTTPURLResponse?) {
             let url = try #require(request.url)
             urls.append(url)
             headers.append(request.allHTTPHeaderFields ?? [:])
+            timeouts.append(request.timeoutInterval)
             return SourceOutageTests.answer(url, byHost[url.host() ?? ""] ?? 200)
         }
     }
@@ -78,6 +80,20 @@ struct SourceOutageTests {
         #expect(asked.urls.map { $0.host() ?? "" } == ["www.gutenberg.org", "gutenberg.pglaf.org"])
         #expect(asked.headers.last?["Range"] == "bytes=0-99")
         #expect(response?.statusCode == 200)
+    }
+
+    @Test("pglaf answers large records slowly: its request waits at least a minute, a longer wait of the caller stays")
+    func mirrorWaitsLonger() async throws {
+        let asked = Asked()
+        asked.byHost = ["www.gutenberg.org": 503]
+        var request = URLRequest(url: URL(string: Self.www + "/cache/epub/26471/pg26471.rdf")!)
+        request.timeoutInterval = 20
+        _ = try await GutenbergMirror.fetch(request, rests: { _ in false }, ask: asked.ask)
+        #expect(asked.timeouts == [20, 60])
+        request.timeoutInterval = 120
+        let again = Asked()
+        _ = try await GutenbergMirror.fetch(request, rests: { _ in true }, ask: again.ask)
+        #expect(again.timeouts == [120])
     }
 
     @Test("www rests: pglaf at once, www is not asked")
@@ -156,6 +172,33 @@ struct SourceOutageTests {
             .appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
         #expect(player.contains("await GutenbergMirror.probe("))
         #expect(player.contains("rebuildAtHeldPosition(reason: \"gutenberg mirror\")"))
+    }
+
+    @Test("after the wait for www: the same title and queue rebuild through pglaf or go the usual way; another title, a stop or a new queue do nothing")
+    func afterTheWait() {
+        let asked = GutenbergMirrorStep.Moment(itemId: "gut:9272", queueBuild: 3, stopped: false)
+        #expect(GutenbergMirrorStep.next(asked: asked, now: asked, down: true) == .rebuild)
+        #expect(GutenbergMirrorStep.next(asked: asked, now: asked, down: false) == .usual)
+        var other = asked; other.itemId = "gut:1342"
+        #expect(GutenbergMirrorStep.next(asked: asked, now: other, down: true) == .nothing, "another title in the window")
+        var stopped = asked; stopped.stopped = true
+        #expect(GutenbergMirrorStep.next(asked: asked, now: stopped, down: true) == .nothing, "a stop or a sign out in the window")
+        #expect(GutenbergMirrorStep.next(asked: asked, now: stopped, down: false) == .nothing)
+        var rebuilt = asked; rebuilt.queueBuild = 4
+        #expect(GutenbergMirrorStep.next(asked: asked, now: rebuilt, down: true) == .nothing, "the queue that failed is gone")
+    }
+
+    @Test("Fence: the step takes its moment before the wait and asks the rule after it", .needsTheSources)
+    func stepAsksAfterTheWait() throws {
+        let player = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
+        let step = try #require(player.range(of: "private func gutenbergMirrorStep("))
+        let body = String(player[step.lowerBound...].prefix(2_000))
+        let moment = try #require(body.range(of: "let asked = mirrorMoment()"))
+        let wait = try #require(body.range(of: "await GutenbergMirror.probe("))
+        let rule = try #require(body.range(of: "GutenbergMirrorStep.next(asked: asked, now: self.mirrorMoment(), down: down)"))
+        #expect(moment.lowerBound < wait.lowerBound && wait.lowerBound < rule.lowerBound)
+        #expect(player.contains("queueBuilds += 1"), "a built queue counts")
     }
 
     // MARK: Radio Browser
