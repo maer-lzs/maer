@@ -174,6 +174,7 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
 extension AudioProvider {
     /// Most sources know every duration.
     func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool { false }
+    func resolveDurations(itemId: String) async -> Bool { true }
 
     func largeCoverURL(forItemId itemId: String) -> URL? {
         CoverAddressHistory.large(coverURL(forItemId: itemId))
