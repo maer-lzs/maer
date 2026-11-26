@@ -229,6 +229,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The tracks of this item that went to Gutenberg's mirror after www
     /// failed them; each goes once (`gutenbergMirrorStep`).
     private var gutenbergMirrored: Set<Int> = []
+    /// Every queue built counts, so a step that waited knows whether the
+    /// queue it failed in is still the one.
+    private var queueBuilds = 0
     /// The playing item failed to load and playback stopped for it; the
     /// next play or the network's return builds the queue anew. A failure
     /// before the title's first progress is said (`failedBeforeProgress`):
@@ -1092,6 +1095,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// (chapter, scrubber, device switch) the queue must be rebuilt.
     @discardableResult
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
+        queueBuilds += 1
         // A queue that is not built waited for no sign-in either.
         queueWaitedForSignIn = false
         if isStopped {
@@ -2219,14 +2223,27 @@ final class PlayerViewModel: NSObject, ObservableObject {
         guard cause == .server, isOnline(), !gutenbergMirrored.contains(index), localTrackFiles[index] == nil,
               let url = resolveTrackURL(index: index), GutenbergMirror.isMainFile(url) else { return false }
         gutenbergMirrored.insert(index)
+        let asked = mirrorMoment()
         Task { [weak self] in
+            // Waits up to the session's 20 s: in the window the title may
+            // change, the player stop or the server be signed out.
             let down = await GutenbergMirror.probe(url)
             guard let self else { return }
-            guard down else { then(); return }
-            Logger.player.notice("PLAY gutenberg www down, track=\(index) and the ones after through the mirror")
-            self.rebuildAtHeldPosition(reason: "gutenberg mirror")
+            switch GutenbergMirrorStep.next(asked: asked, now: self.mirrorMoment(), down: down) {
+            case .rebuild:
+                Logger.player.notice("PLAY gutenberg www down, track=\(index) and the ones after through the mirror")
+                self.rebuildAtHeldPosition(reason: "gutenberg mirror")
+            case .usual:
+                then()
+            case .nothing:
+                Logger.player.notice("PLAY gutenberg step dropped: the title, the queue or the player changed while www was asked")
+            }
         }
         return true
+    }
+
+    private func mirrorMoment() -> GutenbergMirrorStep.Moment {
+        GutenbergMirrorStep.Moment(itemId: item?.id, queueBuild: queueBuilds, stopped: isStopped)
     }
 
     private func rebuildAtHeldPosition(reason: String) {

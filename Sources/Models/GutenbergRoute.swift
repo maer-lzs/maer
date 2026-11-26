@@ -14,6 +14,9 @@ import Foundation
 nonisolated enum GutenbergRoute {
     static let mainHost = "www.gutenberg.org"
     static let mirrorHost = "gutenberg.pglaf.org"
+    /// pglaf answers large records slowly (measured 8 to 23 s): its request
+    /// waits at least this long.
+    static let mirrorTimeout: TimeInterval = 60
 
     /// The mirror's address of a file of www over https; nil for every
     /// other address, a page included.
@@ -50,10 +53,22 @@ nonisolated enum GutenbergRoute {
     }
 }
 
+/// After a Gutenberg track failed, the player asks www once and waits
+/// for it (up to the session's 20 s). In that window the title may change,
+/// the player stop or the server be signed out; the step goes on only for
+/// the moment it was taken in.
 nonisolated enum GutenbergMirrorStep {
+    /// The title, the count of built queues and whether the player stopped.
     struct Moment: Equatable, Sendable { var itemId: String?; var queueBuild: Int; var stopped: Bool }
     enum Next: Equatable, Sendable { case rebuild, usual, nothing }
-    static func next(asked: Moment, now: Moment, down: Bool) -> Next { down ? .rebuild : .usual }
+
+    /// Another title, a stop or a queue built in the window: nothing (the
+    /// queue that failed is gone). Otherwise www down rebuilds through the
+    /// mirror, anything else goes the usual way of a failure.
+    static func next(asked: Moment, now: Moment, down: Bool) -> Next {
+        guard !now.stopped, now.itemId == asked.itemId, now.queueBuild == asked.queueBuild else { return .nothing }
+        return down ? .rebuild : .usual
+    }
 }
 
 /// Gutenberg did not answer, its main server nor its mirror.

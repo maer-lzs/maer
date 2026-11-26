@@ -33,6 +33,7 @@ enum GutenbergMirror {
         }
         var onMirror = request
         onMirror.url = mirror
+        onMirror.timeoutInterval = max(request.timeoutInterval, GutenbergRoute.mirrorTimeout)
         if GutenbergRoute.asksMirror(status: nil, resting: rests(url)) {
             Logger.library.notice("GUTENBERG www rests, asking the mirror")
             return try await ask(onMirror)
