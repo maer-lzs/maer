@@ -81,6 +81,8 @@ nonisolated struct PodcastFolderSettings: Equatable, Sendable {
 }
 
 nonisolated enum PodcastFolderPlay {
+    static func line(for start: PodcastFolderStart) -> String? { String(localized: "Plays the newest unheard episode of each show, by date.") }
+
     /// Every unheard episode of every show, oldest first; offline only
     /// what is downloaded; the same date by the episode's id.
     static func allUnheard(_ shows: [[RoutineRule.Episode]], online: Bool) -> [String] {

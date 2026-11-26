@@ -116,6 +116,20 @@ struct FolderSettingsTests {
         #expect(playback.contains("PodcastFolderPlay.allUnheard("))
     }
 
+    @Test("the line under the folder's play says what its start plays; for all unheard no line until its sentence is chosen")
+    func startLine() {
+        #expect(PodcastFolderPlay.line(for: .newestPerShow) == String(localized: "Plays the newest unheard episode of each show, by date."))
+        #expect(PodcastFolderPlay.line(for: .allUnheard) == nil, "rather no sentence than a wrong one")
+    }
+
+    @Test("Fence: the folder page takes its line from the folder's setting", .needsTheSources)
+    func startLineAsks() throws {
+        let views = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
+            .appendingPathComponent("Sources/Views/Podcasts/PodcastFolderViews.swift"), encoding: .utf8))
+        #expect(views.contains("PodcastFolderPlay.line(for: PodcastFolderSettings.read(folderId: folderId).start)"))
+        #expect(!views.contains("Text(\"Plays the newest unheard episode of each show, by date.\")"), "the page says one start whatever the setting")
+    }
+
     // MARK: The order of the shows in a folder
 
     @Test("the shows of a folder: newest episode first, by name, or in the folder's own order")
