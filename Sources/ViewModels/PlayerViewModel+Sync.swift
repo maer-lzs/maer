@@ -126,7 +126,7 @@ extension PlayerViewModel {
                   owesStand: isPlaying || pauseRecordPending,
                   // No stand from estimated durations: the place counts
                   // seconds over every track before it.
-                  durationsEstimated: provider.estimatesDurations(itemId: item.id, beforeTrack: placeTrackIndex))
+                  durationsEstimated: !StandWrite.allowed(itemId: item.id, provider: provider))
     }
 
     /// Carries out the plan of `SyncRules.plan`, and decides nothing of its
@@ -433,6 +433,8 @@ extension PlayerViewModel {
             return nil
         }
         return await underTheMarkGuard {
+            // With estimated durations the mark reads the real ones first.
+            guard await realDurationsForAMark(item.id) else { return (ErrorSentence.of(GutenbergUnavailable()), false) }
             let target = !isFinished
             let progress = BookProgress(fraction: duration > 0 ? min(currentTime / duration, 1) : 0,
                                         isFinished: isFinished,
@@ -457,6 +459,8 @@ extension PlayerViewModel {
 
     /// The mark itself, under the guard; true when it set the title finished.
     private func toggleFinishedMark(of item: LibraryItemDetail) async -> Bool {
+        // With estimated durations the mark reads the real ones first.
+        guard await realDurationsForAMark(item.id) else { return false }
         let target = !isFinished
         // Marking as finished sets the progress explicitly to the book end;
         // undoing keeps the current state and only flips the flag.
@@ -495,7 +499,7 @@ extension PlayerViewModel {
         isFinished = target
         // Providers without server sync (RSS/local): the played state lives in
         // `localPosition`. Set or remove it directly here.
-        if !provider.capabilities.contains(.progressSync) {
+        if !provider.capabilities.contains(.progressSync), StandWrite.allowed(itemId: item.id, provider: provider) {
             let nowMs = ownStampMs(item.id)
             ownStandMs = nowMs
             if target {

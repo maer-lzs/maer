@@ -81,6 +81,25 @@ final class FreeCatalogProvider: AudioProvider {
     func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool {
         gutenbergEstimated[itemId]?.contains { $0 < index } ?? false
     }
+
+    /// The works that answered an estimated start, so the real durations
+    /// are asked of the same.
+    private var gutenbergEstimatedBy: [String: GutenbergWorks] = [:]
+
+    func resolveDurations(itemId: String) async -> Bool {
+        guard gutenbergEstimated[itemId] != nil else { return true }
+        guard let number = Int(itemId.dropFirst(FreeCatalog.gutenbergPrefix.count)) else { return false }
+        let works = gutenbergEstimatedBy[itemId] ?? gutenbergWorks
+        do {
+            guard try await works.start(number: number, atBeginning: false) != nil else { return false }
+            gutenbergEstimated[itemId] = nil
+            gutenbergEstimatedBy[itemId] = nil
+            return true
+        } catch {
+            Logger.library.notice("GUTENBERG \(itemId, privacy: .public) the real durations could not be read: \(FailureReason.of(error), privacy: .public)")
+            return false
+        }
+    }
     /// Deliberately false. Discover-only surface, never a tab/search source.
     var isAvailable: Bool { false }
 
@@ -851,6 +870,7 @@ final class FreeCatalogProvider: AudioProvider {
         }
         let work = started.work
         gutenbergEstimated[itemId] = started.estimated.isEmpty ? nil : started.estimated
+        gutenbergEstimatedBy[itemId] = started.estimated.isEmpty ? nil : works
         let tracks = try work.tracks()
         // The rights line comes from the record, verbatim reading.
         licences[itemId] = FreeCatalog.gutenbergRightsLabel(work.rights)

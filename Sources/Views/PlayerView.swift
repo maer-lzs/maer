@@ -522,7 +522,7 @@ struct PlayerView: View {
                 let shortLine = isAccessibilitySize || viewModel.durationsEstimated
                 PlaybackTimeReader(clock: viewModel.clock) { time in
                     let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter, at: time))
-                    let whole = remainingLine(form, left: left, end: estimatedFinishTime(at: time))
+                    let whole = viewModel.durationsEstimated ? Text(verbatim: left) : remainingLine(form, left: left, end: estimatedFinishTime(at: time))
                     (shortLine ? Text(verbatim: left) : whole)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.55))

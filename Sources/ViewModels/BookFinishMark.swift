@@ -74,6 +74,20 @@ enum BookFinishMark {
         // The source says whether it writes a stand at all: a local file's
         // does not, and a mark sent there was gone at the next start.
         let keptHere = isCatalog || provider.keepsMarksOnDevice
+        // A mark is a person's act: with estimated durations it reads the
+        // real ones first and writes with them, never with the estimate.
+        var realDuration: Double?
+        if !StandWrite.allowed(itemId: entry.id, provider: provider) {
+            guard await provider.resolveDurations(itemId: entry.id) else {
+                Logger.library.error("BOOK finish mark waits: the real durations could not be read")
+                return Outcome(step: .refuse, reason: ErrorSentence.of(GutenbergUnavailable()))
+            }
+            do {
+                realDuration = try await provider.fetchItemDetail(itemId: entry.id).media.duration
+            } catch {
+                return Outcome(step: .refuse, reason: ErrorSentence.of(error))
+            }
+        }
         var fetch = Fetch.failed
         var reason: String?
         if !keptHere {
@@ -90,7 +104,7 @@ enum BookFinishMark {
                 }
             }
         }
-        let duration = entry.item.media?.duration ?? (keptHere ? progress?.currentTime : nil) ?? 0
+        let duration = realDuration ?? entry.item.media?.duration ?? (keptHere ? progress?.currentTime : nil) ?? 0
         let step = step(keptHere: keptHere, target: target, fetch: fetch,
                         knownDuration: duration, knownFraction: progress?.fraction ?? 0)
         switch step {

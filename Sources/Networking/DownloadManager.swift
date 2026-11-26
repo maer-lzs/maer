@@ -1203,7 +1203,17 @@ final class DownloadManager {
             // opening. Without it even a downloaded book would still need a
             // server request on open. The row lands before anything below
             // runs; the cover persist can go to the network.
-            await saveDetail(item)
+            // Kept for offline only with real durations: a title with
+            // estimated ones reads them first.
+            var detail = item
+            if provider.estimatesDurations(itemId: item.id, beforeTrack: .max) {
+                if await provider.resolveDurations(itemId: item.id) {
+                    do { detail = try await provider.fetchItemDetail(itemId: item.id) } catch {
+                        Logger.library.error("DOWNLOADS detail kept without real durations unread: \(FailureReason.of(error), privacy: .public)")
+                    }
+                }
+            }
+            await saveDetail(detail)
 
             // Fix extensions right away (ABS content URLs often carry no
             // extension; the real container decides what AVFoundation can play).

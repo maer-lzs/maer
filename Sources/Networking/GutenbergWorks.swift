@@ -67,6 +67,19 @@ actor GutenbergWorks {
         var estimated: Set<Int>
     }
 
+    /// Reads free at once across every work (`GutenbergEstimate.concurrent`).
+    private var freeReads = GutenbergEstimate.concurrent
+    private var waitingReads: [CheckedContinuation<Void, Never>] = []
+
+    private func takeRead() async {
+        if freeReads > 0 { freeReads -= 1; return }
+        await withCheckedContinuation { waitingReads.append($0) }
+    }
+
+    private func giveRead() {
+        if waitingReads.isEmpty { freeReads += 1 } else { waitingReads.removeFirst().resume() }
+    }
+
     /// The reads behind of the last estimated start.
     private var behind: Task<Void, Never>?
     /// The estimated starts whose reads behind still run: a second start of
@@ -87,8 +100,14 @@ actor GutenbergWorks {
             kept = store.load(defaults: defaults, rule: { _ in GutenbergWork.rule })
         }
         if let known = kept?[id] { return known.map { Resolution(work: $0, estimated: []) } }
+        guard atBeginning else {
+            // A start inside the book never takes an estimate: it waits for
+            // a read that runs, then reads what is still missing.
+            if running[id] != nil { await behind?.value }
+            if let known = kept?[id] { return known.map { Resolution(work: $0, estimated: []) } }
+            return try await work(number: number).map { Resolution(work: $0, estimated: []) }
+        }
         if let started = running[id] { return started }
-        guard atBeginning else { return try await work(number: number).map { Resolution(work: $0, estimated: []) } }
         guard let (record, files) = try await readRecord(number: number, id: id) else { return nil }
         let first = GutenbergEstimate.readFirst(count: files.count)
         let read = try await readDurations(first, of: files, id: id)
@@ -199,9 +218,12 @@ actor GutenbergWorks {
             var next = indices.makeIterator()
             func add() {
                 guard let index = next.next() else { return }
-                group.addTask {
+                group.addTask { [self] in
                     guard let url = URL(string: files[index]) else { return (index, nil) }
-                    return (index, await wire.duration(url))
+                    await self.takeRead()
+                    let outcome = await wire.duration(url)
+                    await self.giveRead()
+                    return (index, outcome)
                 }
             }
             for _ in 0..<GutenbergEstimate.concurrent { add() }

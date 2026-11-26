@@ -1384,6 +1384,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     func play(caller: String = #function) {
+        // A title still on estimated durations (the reads behind failed or
+        // were not taken): every start reads the real ones again.
+        if durationsEstimated, let id = item?.id {
+            Task { [weak self] in _ = await self?.realDurationsForAMark(id) }
+        }
         guard !isStopped else {
             Logger.player.notice("PLAYER play on a stopped model, nothing starts from=\(caller, privacy: .public)")
             return
@@ -1549,9 +1554,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// queued one, and the flush of the next start would write the older.
     func recordHaltStand() {
         let stampMs = ownStampMs(item?.id)
-        if let id = item?.id {
+        // No stand from estimated durations (`StandWrite`).
+        if let id = item?.id, StandWrite.allowed(itemId: id, provider: provider) {
             ListeningStore.record(id, position: currentTime, duration: duration,
                                   atMs: stampMs, epoch: standEpoch)
+        } else if let id = item?.id {
+            Logger.player.notice("STAND not written: durations of item=\(id, privacy: .private(mask: .hash)) are estimated")
         }
         ownStandMs = stampMs
     }
@@ -1896,6 +1904,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // The PHASE, not the state: an in-progress state carries
                     // the position and differs on every tick, which had the
                     // whole podcast tab recompute every five seconds.
+                    // No stand from estimated durations (`StandWrite`).
+                    guard StandWrite.allowed(itemId: id, provider: self.provider) else { return }
                     let tail = PlayedTail.seconds(forItemId: id)
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     let stampMs = self.ownStampMs(id)
@@ -1961,6 +1971,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// A mark is a person's act: with estimated durations it reads the real
+    /// ones first and takes them in, then writes. False when they could not
+    /// be read.
+    func realDurationsForAMark(_ itemId: String) async -> Bool {
+        guard !StandWrite.allowed(itemId: itemId, provider: provider) else { return true }
+        guard await provider.resolveDurations(itemId: itemId) else {
+            Logger.player.notice("MARK waits: the real durations could not be read")
+            return false
+        }
+        await adoptResolvedDurations(itemId: itemId)
+        return true
+    }
+
     /// The real durations of a title that started with estimated ones: the
     /// tracks take them in place, playback goes on, stands are written again.
     func adoptResolvedDurations(itemId: String) async {
@@ -1970,6 +1993,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         guard resolved.count == tracks.count else { return }
         tracks = resolved
         duration = ChapterModel.duration(of: detail.media, ordered: resolved)
+        // The chapters come with the real bounds.
+        let resolvedChapters = ChapterModel.resolved(detail: detail)
+        chapters = resolvedChapters.chapters
+        chaptersAreFallback = resolvedChapters.isFallback
         durationsEstimated = provider.estimatesDurations(itemId: itemId, beforeTrack: resolved.count)
         Logger.player.notice("PLAY durations read behind, taken in place track=\(self.currentTrackIndex)")
     }

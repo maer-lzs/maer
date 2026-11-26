@@ -200,7 +200,12 @@ struct GutenbergFirstSoundTests {
                 counted += 1
                 let start = text.index(hit.lowerBound, offsetBy: -900, limitedBy: text.startIndex) ?? text.startIndex
                 let before = String(text[start..<hit.lowerBound])
-                #expect(before.contains("StandWrite.allowed(") || before.contains("resolveDurations("), "\(path) writes a stand without asking")
+                // The synchronisation asks through its plan: its state reads
+                // the question, its execution only follows the gate.
+                let wide = String(text[(text.index(hit.lowerBound, offsetBy: -4_000, limitedBy: text.startIndex) ?? text.startIndex)..<hit.lowerBound])
+                let byThePlan = text.contains("durationsEstimated: !StandWrite.allowed(") && wide.contains("case .estimatedDurations:")
+                #expect(before.contains("StandWrite.allowed(") || before.contains("resolveDurations(") || byThePlan,
+                        "\(path) writes a stand without asking")
                 from = hit.upperBound
             }
         }
@@ -277,7 +282,7 @@ struct GutenbergFirstSoundTests {
         let adopt = try #require(player.range(of: "func adoptResolvedDurations("))
         #expect(player[adopt.upperBound...].prefix(1_200).contains("ChapterModel.resolved(detail:"), "the chapters stay on the estimated bounds")
         let downloads = try code("Sources/Networking/DownloadManager.swift")
-        let save = try #require(downloads.range(of: "await saveDetail(item)"))
+        let save = try #require(downloads.range(of: "await saveDetail(detail)"))
         #expect(downloads[..<save.lowerBound].suffix(900).contains("resolveDurations(itemId:"), "a download keeps estimated durations")
         #expect(try code("Sources/Views/PlayerView.swift").contains("let whole = viewModel.durationsEstimated ? Text(verbatim: left) :"))
     }
@@ -312,7 +317,7 @@ struct GutenbergFirstSoundTests {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
         let sync = try code("Sources/ViewModels/PlayerViewModel+Sync.swift")
-        #expect(sync.contains("provider.estimatesDurations(itemId:"), "a stand is written from estimated durations")
+        #expect(sync.contains("StandWrite.allowed(itemId: item.id, provider: provider)"), "a stand is written from estimated durations")
         let player = try code("Sources/ViewModels/PlayerViewModel.swift")
         #expect(player.contains("func adoptResolvedDurations("))
         #expect(player.contains(".gutenbergDurationsResolved"))

@@ -169,6 +169,10 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// stand that depends on it is written. A requirement, so the player,
     /// which holds `any AudioProvider`, asks the source and not the default.
     func estimatesDurations(itemId: String, beforeTrack index: Int) -> Bool
+    /// Reads the real durations of a work whose durations are estimated,
+    /// waiting for a read that already runs; true when they stand. A mark
+    /// waits for it before it writes.
+    func resolveDurations(itemId: String) async -> Bool
 }
 
 extension AudioProvider {
