@@ -22,7 +22,9 @@ maintenance, its rows say "Gutenberg is not answering right now." instead
 of a reading error, and a Gutenberg title shows without its subtitle on
 tiles. An AntennaPod import that cannot read part of the database now
 says so instead of importing a part. Subscribing during a gpodder sync
-is sent with a second sync right after it.
+is sent with a second sync right after it. A sign-in whose server address
+cannot be stored on the device keeps the sign-in before instead of
+pairing the old address with the new access after the next start.
 
 **Music from Project Gutenberg has its own rows.** The recordings in the
 Gutenberg catalog that are music (about one in eight) no longer stand
