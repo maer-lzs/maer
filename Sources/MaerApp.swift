@@ -30,8 +30,15 @@ enum ResumeRequest {
     /// the id of its list.
     static var pendingRoutineId: String?
 
-    static func take() -> Bool { true }
-    static func release() {}
+    /// One caller runs a resume request at a time; a second that comes while
+    /// the first waits for its title comes back instead of running it again.
+    private static var taken = false
+    static func take() -> Bool {
+        guard !taken else { return false }
+        taken = true
+        return true
+    }
+    static func release() { taken = false }
 
     /// Ends a routine request that waits for its list. A later request
     /// ends it (the routine's intent clears the others when it sets its

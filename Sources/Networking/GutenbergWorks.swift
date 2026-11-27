@@ -80,14 +80,17 @@ actor GutenbergWorks {
         if waitingReads.isEmpty { freeReads += 1 } else { waitingReads.removeFirst().resume() }
     }
 
-    /// The reads behind of the last estimated start.
-    private var behind: Task<Void, Never>?
+    /// The reads behind of each estimated start, per work: a start inside
+    /// one book waits only for its own.
+    private var behind: [String: Task<Void, Never>] = [:]
     /// The estimated starts whose reads behind still run: a second start of
     /// the same work answers the same and reads nothing twice.
     private var running: [String: Resolution] = [:]
 
     /// For a witness: returns when the reads behind are done.
-    func awaitBehind() async { await behind?.value }
+    func awaitBehind() async {
+        for task in behind.values { await task.value }
+    }
 
     /// The work for a start. A kept work as it is. A start inside the book
     /// reads every duration first. A start at the beginning reads the first
@@ -103,7 +106,7 @@ actor GutenbergWorks {
         guard atBeginning else {
             // A start inside the book never takes an estimate: it waits for
             // a read that runs, then reads what is still missing.
-            if running[id] != nil { await behind?.value }
+            if running[id] != nil { await behind[id]?.value }
             if let known = kept?[id] { return known.map { Resolution(work: $0, estimated: []) } }
             return try await work(number: number).map { Resolution(work: $0, estimated: []) }
         }
@@ -125,14 +128,14 @@ actor GutenbergWorks {
         if let started = running[id] { return started }
         let resolution = Resolution(work: estimated, estimated: Set(estimate.keys))
         running[id] = resolution
-        behind = Task { [self] in await self.readBehind(record: record, files: files, read: read, estimate: estimate, id: id) }
+        behind[id] = Task { [self] in await self.readBehind(record: record, files: files, read: read, estimate: estimate, id: id) }
         return resolution
     }
 
     /// Reads the rest behind; keeps the real work, and tells the app.
     private func readBehind(record: GutenbergRDF.Record, files: [String], read: [Int: Double?],
                             estimate: [Int: Double], id: String) async {
-        defer { running[id] = nil }
+        defer { running[id] = nil; behind[id] = nil }
         do {
             let rest = try await readDurations(Array(estimate.keys).sorted(), of: files, id: id)
             let all = read.merging(rest) { a, _ in a }

@@ -219,7 +219,7 @@ final class FreeCatalogProvider: AudioProvider {
         let item = LibraryItem(
             id: entry.id,
             media: LibraryItemMedia(
-                metadata: LibraryItemMetadata(title: FreeCatalog.shownTitle(entry.title, itemId: entry.id),
+                metadata: LibraryItemMetadata(title: FreeCatalog.tileTitle(FreeCatalog.shownTitle(entry.title, itemId: entry.id)),
                                               authorName: parts.composer,
                                               narratorName: parts.performer, seriesName: nil,
                                               genres: nil, publishedYear: nil, description: nil),
@@ -256,7 +256,7 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: FreeCatalog.shownTitle(book.title, itemId: id),
+                    title: FreeCatalog.tileTitle(FreeCatalog.shownTitle(book.title, itemId: id)),
                     authorName: FreeCatalog.gutenbergAuthor(book.authors?.compactMap(\.name).first),
                     narratorName: nil, seriesName: nil,
                     genres: FreeCatalog.gutenbergGenres(book.subjects),

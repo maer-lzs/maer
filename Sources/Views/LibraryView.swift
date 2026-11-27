@@ -1832,6 +1832,9 @@ struct LibraryView: View {
             Logger.library.notice("RESUME request dropped: it waited longer than \(Int(ResumeAsk.standsAtMost))s")
             return
         }
+        // One caller at a time: the request counts as taken before the wait.
+        guard ResumeRequest.take() else { return }
+        defer { ResumeRequest.release() }
         // Siri "Play <book>" names a title; a quick action, Siri's
         // "continue" and the widget's link only ask. The decision is the
         // door's, the same one the widget's command asks.

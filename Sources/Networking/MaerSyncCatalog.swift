@@ -248,7 +248,16 @@ nonisolated enum CatalogIndexRun {
                 continue
             }
             guard isDue(state, nowMs: now) else { continue }
-            if await run(source, store: store, ask: ask, nowMs: now) == .noCatalog { return }
+            if await run(source, store: store, ask: ask, nowMs: now) == .noCatalog {
+                // A service without a catalogue is asked again the next day,
+                // not once per source.
+                for other in sources where other != source {
+                    do { try await store.noteIndexRead(other.rawValue, atMs: now, notBeforeMs: nil) } catch {
+                        Logger.library.error("CATALOG index \(other.rawValue, privacy: .public) read not noted: \(FailureReason.of(error), privacy: .public)")
+                    }
+                }
+                return
+            }
         }
     }
 }

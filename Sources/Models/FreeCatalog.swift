@@ -1005,7 +1005,12 @@ nonisolated enum FreeCatalog {
     /// form (an item, a downloaded detail, a carried snapshot). Both rules
     /// leave a readable name and readable genres as they are; only these two
     /// fields change, and any other title passes unchanged.
-    static func tileTitle(_ title: String) -> String { title }
+    /// A Gutenberg title on a tile or a row: up to its first line break,
+    /// where the subtitle starts. The page of the work shows the whole title.
+    static func tileTitle(_ title: String) -> String {
+        let firstLine = title.split(whereSeparator: \.isNewline).first.map(String.init) ?? title
+        return firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     static func gutenbergReadable(_ item: LibraryItem) -> LibraryItem {
         guard item.id.hasPrefix(gutenbergPrefix), let media = item.media else { return item }

@@ -448,7 +448,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     init(provider: any AudioProvider,
          localTracks: @escaping (String) -> [Int: URL] = { DownloadManager.shared.localTrackMap(forItemId: $0) },
          isOnline: @escaping () -> Bool = { NetworkMonitor.shared.isConnected },
-         estimatedPlaces: EstimatedPlace = EstimatedPlace(database: .shared)) {
+         estimatedPlaces: EstimatedPlace = .shared) {
         self.estimatedPlaces = estimatedPlaces
         self.provider = provider
         self.localTracks = localTracks

@@ -1006,10 +1006,6 @@ final class DownloadManager {
         }
     }
 
-    /// `kind` is the kind the surface that starts the download shows the
-    /// title as. `nil` only where no surface is involved (the player healing
-    /// its own tracks); such a download is left out of every deletion per
-    /// kind and falls only with its own delete or with deleting everything.
     /// The detail a download keeps for offline: never one with estimated
     /// durations. It reads the real ones first; when they cannot be read the
     /// download fails with Gutenberg's sentence, its files stay, and the next
@@ -1023,6 +1019,10 @@ final class DownloadManager {
         return try await provider.fetchItemDetail(itemId: item.id)
     }
 
+    /// `kind` is the kind the surface that starts the download shows the
+    /// title as. `nil` only where no surface is involved (the player healing
+    /// its own tracks); such a download is left out of every deletion per
+    /// kind and falls only with its own delete or with deleting everything.
     func download(item: LibraryItemDetail, provider: any AudioProvider, kind: DownloadKind?) async {
         guard !isDownloading(itemId: item.id) else { return }
         // The offer asks the same question; a way past it (a self-heal, an
@@ -1212,12 +1212,12 @@ final class DownloadManager {
                 throw URLError(.resourceUnavailable)
             }
 
+            // Kept for offline only with real durations (`detailToKeep`).
+            let item = try await Self.detailToKeep(item, provider: provider)
             // Save book details (chapters, duration, tracks) for real offline
             // opening. Without it even a downloaded book would still need a
             // server request on open. The row lands before anything below
             // runs; the cover persist can go to the network.
-            // Kept for offline only with real durations (`detailToKeep`).
-            let item = try await Self.detailToKeep(item, provider: provider)
             await saveDetail(item)
 
             // Fix extensions right away (ABS content URLs often carry no

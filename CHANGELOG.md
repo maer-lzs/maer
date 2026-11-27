@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+**Smaller fixes.** With "Sync premium feeds" on, the premium feeds
+settings no longer say that such a feed is never synced to a gpodder
+server; with it off, playing an episode of a premium feed no longer sends
+its address to the gpodder server. Search no longer shows "No matches"
+in the moment before it searches. When Project Gutenberg is down for
+maintenance, its rows say "Gutenberg is not answering right now." instead
+of a reading error, and a Gutenberg title shows without its subtitle on
+tiles. An AntennaPod import that cannot read part of the database now
+says so instead of importing a part. Subscribing during a gpodder sync
+is sent with a second sync right after it.
+
 **Music from Project Gutenberg is under Classical.** The recordings in
 the Gutenberg catalog that are music (scores and recordings, about one in
 eight) no longer stand among the audiobooks; the Classical page shows

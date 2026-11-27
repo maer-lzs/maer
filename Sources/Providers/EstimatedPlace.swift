@@ -25,6 +25,9 @@ final class EstimatedPlace {
     private(set) var writes = 0
     private var places: [String: [Double]] = [:]
 
+    /// The app's one store of kept places, read once.
+    static let shared = EstimatedPlace(database: .shared)
+
     /// `database` nil keeps the places in memory only.
     init(database: MaerDatabase?) {
         keeper = database.map { RowKeeper(database: $0, table: .estimatedPlace, label: "ESTIMATEDPLACE") }
@@ -38,10 +41,12 @@ final class EstimatedPlace {
         }
     }
 
+    /// Written only when the part changed or the place moved by five
+    /// seconds; the clock asks every five seconds, and a row per ask is a
+    /// write per ask.
     func note(_ itemId: String, track: Int, offset: Double, atMs: Double) {
-        let row = [Double(track), offset, atMs]
-        guard places[itemId] != row else { return }
-        places[itemId] = row
+        if let held = places[itemId], held.count >= 2, Int(held[0]) == track, abs(held[1] - offset) < 5 { return }
+        places[itemId] = [Double(track), offset, atMs]
         save()
     }
 
@@ -56,6 +61,7 @@ final class EstimatedPlace {
     }
 
     private func save() {
+        writes += 1
         keeper?.write(emptying: .allowed) { [weak self] in self?.places ?? [:] }
     }
 

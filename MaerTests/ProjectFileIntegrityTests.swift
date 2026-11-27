@@ -1768,7 +1768,9 @@ extension ProjectFileIntegrityTests {
     /// three digits in front (`(128-44)`) is not.
     static func letterShorthands(in comment: String) -> [String] {
         (matches(of: #"(?<![A-Za-z0-9_.-])[A-Z]{1,3}-?[0-9]{1,3}[a-z]?(?:-[0-9]+)?(?![A-Za-z0-9_])"#, in: comment)
-            + matches(of: #"(?<=\()[0-9]{1,2}-[0-9]{1,2}(?=\))"#, in: comment))
+            + matches(of: #"(?<=\()[0-9]{1,2}-[0-9]{1,2}(?=\))"#, in: comment)
+            // A digit and a small letter before the dash (`5b-4`, `8f-3`).
+            + matches(of: #"(?<![A-Za-z0-9_.-])[0-9]{1,2}[a-z]-[0-9]{1,3}(?![A-Za-z0-9_])"#, in: comment))
             .filter { !outsideVocabulary.contains($0) }
     }
 

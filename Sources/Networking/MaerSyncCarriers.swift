@@ -441,9 +441,6 @@ final class MaerSyncSession {
         Logger.library.notice("MAERSYNC identity changed from=\(from, privacy: .public) to=\(next?.scope ?? "none", privacy: .public); its state is read before anything is written")
     }
 
-    /// The rows of one identity carried onto another that may hold state
-    /// (`IdentityCarry.merged`); nothing stays under the source. Static, so
-    /// a cold start can carry before the session loads its state.
     /// Whether a kind waits to be read before anything of it is written.
     var waitsForRead: Bool { !unreadKinds.isEmpty }
 
@@ -460,6 +457,10 @@ final class MaerSyncSession {
     /// Every kind the session reads and writes.
     static let allKinds: Set<String> = [standsKind, playlistsKind, choicesKind, claimKind, statsKind, feedAuthKind]
 
+    /// The rows of one identity carried onto another that may hold state
+    /// (`IdentityCarry.merged`); nothing stays under the source. Static, so
+    /// a cold start can carry before the session loads its state.
+    ///
     /// Returns whether the target held state; then the caller reads every
     /// kind before it writes, the net under the estimate of `living`. Nil
     /// for `living` estimates it (a cold start); a reload says the source.
