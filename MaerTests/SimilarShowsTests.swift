@@ -88,5 +88,12 @@ struct SimilarShowsTests {
         let page = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))
         #expect(page.contains("SimilarShowsSection(show:"))
     }
+
+    @Test("Fence: a tile of the similar shows takes its slot in the row like every row of tiles", .needsTheSources)
+    func tileTakesItsSlot() throws {
+        let view = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/SimilarShowsSection.swift"), encoding: .utf8))
+        let tile = try #require(view.range(of: "RecommendationTile("))
+        #expect(view[tile.upperBound...].prefix(500).contains(".cardRowSlot("), "the tile has no width in the row and shrinks to its cover's least size")
+    }
 }
 #endif
