@@ -172,12 +172,20 @@ actor CatalogIndexShelfReader {
             return (try? await store.indexState(source))?.version
         })
 
-    /// The page from the index, nil when the question is no row's, or the
-    /// index does not carry its source (no run yet, no rows).
+    /// The page from the index, nil when the question is no row's, the
+    /// index does not carry its source (no run yet, no rows) or the page
+    /// would be empty.
     func answer(query: String, rows: Int, page: Int) async -> (docs: [ArchivePopularDoc], total: Int)? {
         guard let target = CatalogIndexShelf.target(query: query),
               let ordered = await ordered(target.source) else { return nil }
         let answer = CatalogIndexShelf.answer(ordered, target: target, rows: rows, page: page)
+        // An empty page is no answer of the index: a source it holds fewer
+        // rows of than the rotation reckons, or a shelf it holds none of,
+        // goes to archive.org instead of standing empty.
+        guard !answer.docs.isEmpty else {
+            Logger.library.notice("CATALOG index \(target.source, privacy: .public) shelf=\(target.shelf ?? "-", privacy: .public) page=\(page) empty of=\(answer.total), asking the source")
+            return nil
+        }
         Logger.library.notice("CATALOG index \(target.source, privacy: .public) shelf=\(target.shelf ?? "-", privacy: .public) page=\(page) docs=\(answer.docs.count) of=\(answer.total)")
         return answer
     }
