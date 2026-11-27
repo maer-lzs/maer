@@ -304,4 +304,44 @@ struct IdentityCarryTests {
         #expect(!rule.contains("rename(owner:") && !carry.contains("rename(owner:"), "the rows are still renamed over the target")
         #expect(carriers.components(separatedBy: "Self.carryRows(").count - 1 == 2, "the reload and the cold start carry by the one rule")
     }
+
+    @Test("two pending documents are joined by the given rule; without one the living side's stays and the other is named")
+    func pendingJoined() {
+        var source = IdentityCarry.Side(); source.playlistsPending = Data("A".utf8); source.choicesPending = Data("c".utf8)
+        var target = IdentityCarry.Side(); target.playlistsPending = Data("B".utf8); target.choicesPending = Data("d".utf8)
+        let joined = IdentityCarry.merged(source: source, target: target, living: .source,
+                                          mergePending: { _, live, other in live + other })
+        #expect(joined.side.playlistsPending == Data("AB".utf8))
+        #expect(joined.side.choicesPending == Data("cd".utf8))
+        #expect(joined.dropped.isEmpty, "a joined document is named as fallen")
+        let unjoined = IdentityCarry.merged(source: source, target: target, living: .source,
+                                            mergePending: { _, _, _ in nil })
+        #expect(unjoined.side.playlistsPending == Data("A".utf8))
+        #expect(unjoined.dropped.contains("playlists"))
+    }
+
+    @Test("the playlists of both pending documents stand after the carry, by the merge of the service")
+    func playlistsJoined() throws {
+        func body(_ id: String, _ name: String) throws -> Data {
+            try MaerSyncPlaylistWire.encode(MaerPlaylistMerge.Snapshot(lists: [id: MaerPlaylistMerge.Entry(
+                name: name, updatedAt: 10, itemIds: ["x"])]))
+        }
+        let joined = try #require(MaerSyncSession.mergedPending(kind: MaerSyncSession.playlistsKind,
+                                                                 live: try body("one", "One"), other: try body("two", "Two")))
+        let lists = try #require(MaerSyncPlaylistWire.decode(joined)).lists
+        #expect(Set(lists.keys) == ["one", "two"])
+    }
+
+    @Test("the choices of both pending documents stand after the carry, the newer stamp winning per key")
+    func choicesJoined() throws {
+        func body(_ entries: [String: Double]) throws -> Data {
+            try MaerSyncChoiceWire.encode(entries.mapValues { ["t": $0] as [String: Any] })
+        }
+        let joined = try #require(MaerSyncSession.mergedPending(kind: MaerSyncSession.choicesKind,
+                                                                 live: try body(["a": 5, "shared": 1]),
+                                                                 other: try body(["b": 6, "shared": 9])))
+        let blob = try #require(MaerSyncChoiceWire.decode(joined))
+        #expect(Set(blob.keys) == ["a", "b", "shared"])
+        #expect(((blob["shared"] as? [String: Any])?["t"] as? Double) == 9)
+    }
 }

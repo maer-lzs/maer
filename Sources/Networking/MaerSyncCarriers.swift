@@ -1663,6 +1663,10 @@ final class MaerSyncPlaylistCarrier: PlaylistCarrier {
 /// needless write is a byte-for-byte match the runner already skips. A
 /// field added later reads through the tolerant helpers, never throws.
 /// Format 1.
+extension MaerSyncSession {
+    nonisolated static func mergedPending(kind: String, live: Data, other: Data) -> Data? { nil }
+}
+
 nonisolated enum MaerSyncPlaylistWire {
     static let format = 1
 

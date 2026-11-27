@@ -46,7 +46,10 @@ nonisolated enum IdentityCarry {
     /// the target (the identity the device runs under) and applies the
     /// removals of neither side: a fallen removal lets a title come back,
     /// an old one applied deletes it; the first error is the smaller.
-    static func merged(source: Side, target: Side, living: Living) -> (side: Side, dropped: [String]) {
+    typealias PendingMerge = @Sendable (_ kind: String, _ live: Data, _ other: Data) -> Data?
+
+    static func merged(source: Side, target: Side, living: Living,
+                       mergePending: PendingMerge? = nil) -> (side: Side, dropped: [String]) {
         let live = living == .source ? source : target
         let other = living == .source ? target : source
         var out = Side()
