@@ -233,6 +233,72 @@ struct ABSSignInSwitchTests {
         #expect(auth.errorMessage == String(localized: "Signed out."))
     }
 
+    @Test("a token not taken and the address before put back: the pair before stands in the keychain and the person stays signed in as before")
+    func theAddressBeforeGoesBack() async throws {
+        let stand = Stand()
+        defer { stand.restore() }
+        KeychainStore.save("https://abs.a.example", forKey: KeychainKey.serverURL)
+        KeychainStore.save("token-of-a", forKey: KeychainKey.apiToken)
+        let server = try await ABSLoopback.start(login: .accept("token-of-b"), libraries: .accept)
+        defer { server.stop() }
+        var saved: [String] = []
+        let auth = AuthViewModel(read: { key in
+            switch key {
+            case KeychainKey.serverURL: return .value("https://abs.a.example")
+            case KeychainKey.apiToken: return .value("token-of-a")
+            default: return .missing
+            }
+        }, saveAddress: { address in
+            saved.append(address)
+            KeychainStore.save(address, forKey: KeychainKey.serverURL)
+            return true
+        }, storeToken: { _ in .old })
+        auth.serverURLString = server.address
+        auth.loginMode = .password
+        auth.username = "hoerer"
+        auth.password = "passwort-fuer-b"
+        await auth.connect()
+        #expect(saved.count == 2 && saved.last == "https://abs.a.example", "the address before did not go back: \(saved)")
+        #expect(KeychainStore.load(forKey: KeychainKey.serverURL) == "https://abs.a.example")
+        #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == "token-of-a")
+        #expect(auth.errorMessage == String(localized: "The sign-in could not be stored on this device. You stay signed in as before."))
+    }
+
+    @Test("an address before that cannot be read stops the sign-in before the new one is stored: nothing saved, the token not touched, the sentence of a locked device")
+    func anUnreadableAddressBeforeStopsTheSignIn() async throws {
+        let stand = Stand()
+        defer { stand.restore() }
+        KeychainStore.save("https://abs.a.example", forKey: KeychainKey.serverURL)
+        KeychainStore.save("token-of-a", forKey: KeychainKey.apiToken)
+        let server = try await ABSLoopback.start(login: .accept("token-of-b"), libraries: .accept)
+        defer { server.stop() }
+        var saves = 0
+        var tokens = 0
+        let auth = AuthViewModel(read: { key in
+            switch key {
+            case KeychainKey.serverURL: return .unreadable
+            case KeychainKey.apiToken: return .value("token-of-a")
+            default: return .missing
+            }
+        }, saveAddress: { _ in
+            saves += 1
+            return true
+        }, storeToken: { _ in
+            tokens += 1
+            return .new
+        })
+        auth.serverURLString = server.address
+        auth.loginMode = .password
+        auth.username = "hoerer"
+        auth.password = "passwort-fuer-b"
+        await auth.connect()
+        #expect(saves == 0, "the new address was stored over one that could not be read")
+        #expect(tokens == 0, "the token was stored")
+        #expect(KeychainStore.load(forKey: KeychainKey.serverURL) == "https://abs.a.example")
+        #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == "token-of-a")
+        #expect(auth.errorMessage == String(localized: "The server access can be read once this device is unlocked."))
+    }
+
     @Test("Fence: the address is stored before the token, and put back when the token is not taken", .needsTheSources)
     func addressBeforeToken() throws {
         let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))

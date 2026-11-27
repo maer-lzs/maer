@@ -119,5 +119,47 @@ struct ExportStaysHomeTests {
         let doc = OPMLExport.document(shows: [show], states: kept, generatedAt: Date(timeIntervalSince1970: 0))
         #expect(!doc.contains("SECRET1") && !doc.contains("SECRET2"), "an episode's access went into the file")
     }
+
+    /// An episode without a guid is known by its audio address; when that
+    /// address carries access, the state it names stays out of the file.
+    @Test("Export through the feed: an episode without a guid and a signed audio address leaves its state out of the file")
+    func aStateKnownByAnAddressWithAccessStaysOut() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("export-guid-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = "export-guid-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let closeTheGate = PodcastPublishCountTests.openTheRSSGate()
+        defer {
+            closeTheGate()
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let subs = PodcastSubscriptions(fileURL: folder.appendingPathComponent("podcast_subscriptions.json"),
+                                        database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
+                                        defaults: defaults, isTheApp: false)
+        try #require(AppStorageKeys.rssActive, "the RSS gate is closed, the case measures nothing")
+        await subs.ensureLoaded()
+        let feed = "https://feeds.open.example/\(UUID().uuidString.prefix(8))/show.xml"
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0"><channel><title>Offen</title>
+        <item><title>Eins</title><enclosure url="https://cdn.example/e1.mp3?token=GEHEIM7" type="audio/mpeg" length="1"/></item>
+        </channel></rss>
+        """
+        subs._testFeedFetcher = { url in
+            guard let show = RSSFeedParser(feedURL: url.absoluteString).parse(Data(xml.utf8)) else { return .failed(.timeout) }
+            return .show(show)
+        }
+        try #require(await subs.subscribe(urlString: feed, notesCloud: false))
+        let episode = try #require(subs.shows.first?.episodes.first)
+        ListeningStore.store(episode.guid, entry: [100, 1_700_000_000_000, 3000], in: defaults)
+        let all = subs.exportableStates()
+        try #require(all.count == 1, "the state was not read: the case measures nothing")
+        let show = (title: "Offen", feedURL: feed)
+        let kept = OPMLExport.states(all, for: [show])
+        #expect(kept.isEmpty, "a state known by an address with access travels: \(kept.map(\.episodeGUID))")
+        let doc = OPMLExport.document(shows: [show], states: kept, generatedAt: Date(timeIntervalSince1970: 0))
+        #expect(!doc.contains("GEHEIM7"), "an episode's access went into the file")
+    }
 }
 #endif

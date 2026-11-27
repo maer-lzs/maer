@@ -7,6 +7,7 @@
 import Testing
 import Foundation
 import Synchronization
+import OSLog
 @testable import Maer
 
 /// The rows of the free catalogues built from the index of a Mär Sync
@@ -150,6 +151,19 @@ struct CatalogIndexShelfTests {
         let reads = Reads([Self.json("lva:net-a", step: 1)])
         let reader = CatalogIndexShelfReader(read: reads.read)
         #expect(await reader.answer(query: "collection:librivoxaudio AND subject:\"poetry\"", rows: 12, page: 1) == nil)
+    }
+
+    @Test("a row of the index that is not JSON is passed over with a log line naming its source and its reason; the rows beside it stand")
+    func aRowNotJSONIsLogged() async throws {
+        let since = Date()
+        let reader = CatalogIndexShelfReader(read: { _ in (version: 1, rows: [Data("{kaputt".utf8), Self.json("lva:net-a", step: 1)]) })
+        let answer = await reader.answer(query: ArchiveMusicCatalog.netlabels.query, rows: 12, page: 1)
+        #expect(answer?.docs.compactMap(\.identifier) == ["net-a"])
+        let logStore = try OSLogStore(scope: .currentProcessIdentifier)
+        let lines = try logStore.getEntries(at: logStore.position(date: since)).compactMap { $0 as? OSLogEntryLog }
+            .filter { $0.subsystem == AppLogSubsystem.value && $0.category == "library" }
+            .map(\.composedMessage).filter { $0.hasPrefix("CATALOG index netlabel row passed over") }
+        #expect(lines.count == 1 && lines.first?.contains("reason=") == true, "the line: \(lines)")
     }
 
     @Test("a page behind the end of the index, or a shelf it holds no row of, goes to archive.org instead of an empty row")
