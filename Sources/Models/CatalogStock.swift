@@ -24,6 +24,7 @@ nonisolated struct CatalogStockEntry: Codable, Sendable, Equatable {
     /// not stated" and the download path stays closed. Never guessed.
     var licenseurl: String?
     var year: String?
+    var music: Bool?
 }
 
 /// A whole collection, as kept. The stock is DERIVED data: it can be thrown
