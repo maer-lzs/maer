@@ -52,7 +52,15 @@ final class FreeCatalogStore: ObservableObject {
     /// The rows the database kept, before any fetch and without a network;
     /// only into rows that are still empty and whose source is on. Once per
     /// store; a missing or unreadable database leaves them empty.
-    var hasKeptRows: Bool { false }
+    /// Whether any catalogue row stands, kept or fetched: content for a
+    /// page that would otherwise wait for a fetch.
+    var hasKeptRows: Bool {
+        let rows = storedRows, sources = storedSourceRows
+        return !(rows.discoverBooks.isEmpty && rows.tabBooks.isEmpty && rows.classical.isEmpty
+                 && rows.netlabels.isEmpty && rows.musopen.isEmpty && sources.librivoxNew.isEmpty
+                 && sources.librivoxPopular.isEmpty && sources.archiveBooks.isEmpty
+                 && sources.gutenberg.isEmpty && sources.oldTimeRadio.isEmpty)
+    }
 
     func restore() async {
         if let restoring { return await restoring.value }

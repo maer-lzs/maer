@@ -672,6 +672,13 @@ RowHeading(title: "Rediscover",
         }
         async let freeRowsTask: Void = SourceBudget.run { await freeCatalogStore.ensureLoaded() }
         async let freeSourcesTask: Void = SourceBudget.run { await freeCatalogStore.ensureSourcesLoaded() }
+        // The catalogue rows the database kept are there NOW, like the radio
+        // recents above: the page is usable with them before any fetch
+        // answers, also without a network.
+        await freeCatalogStore.restore()
+        if freeCatalogStore.hasKeptRows, !ready {
+            ScrollCalm.run { ready = true }
+        }
 
         await SourceBudget.run { await PodcastSubscriptions.shared.ensureLoaded() }
         await SourceBudget.run { await ABSPodcastProvider.shared.refreshIfStale() }
