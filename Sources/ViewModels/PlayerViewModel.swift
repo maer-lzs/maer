@@ -2032,8 +2032,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
               item?.id == itemId else { return }
         let resolved = ChapterModel.ordered(detail.media.tracks ?? [])
         guard resolved.count == tracks.count else { return }
+        // The time in the part is real; its start is not. Taken before the
+        // parts change, put on the real start after: the shown time and any
+        // stand written from it stand in the real coordinates at once, also
+        // while the player stands and no tick recounts it.
+        let inPart = tracks.indices.contains(currentTrackIndex)
+            ? max(0, currentTime - (tracks[currentTrackIndex].startOffset ?? 0)) : nil
         tracks = resolved
         duration = ChapterModel.duration(of: detail.media, ordered: resolved)
+        // The time in the part now is fresher than the kept place, which a
+        // tick writes every five seconds; the place counts when no part stands.
+        if let inPart {
+            currentTime = (resolved[currentTrackIndex].startOffset ?? 0) + inPart
+        } else if let place = estimatedPlaces.place(itemId) {
+            currentTime = EstimatedPlace.position(of: place, tracks: resolved)
+        }
         // The chapters come with the real bounds.
         let resolvedChapters = ChapterModel.resolved(detail: detail)
         chapters = resolvedChapters.chapters
