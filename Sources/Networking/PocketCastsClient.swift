@@ -32,6 +32,8 @@ nonisolated enum PocketCastsClient {
     static let refreshHost = "refresh.pocketcasts.com"
     static let cacheHost = "cache.pocketcasts.com"
 
+    static func followsTo(_ target: URL) -> Bool { true }
+
     static func readLibrary(email: String, password: String,
                             progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }) async throws -> ForeignLibrary {
         let token = try await signIn(email: email, password: password)
