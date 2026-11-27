@@ -49,6 +49,8 @@ nonisolated enum GPodderVisibleSubscriptions {
         premiumOptIn || !PodcastFeedAddress.isTokenFeedURL(feedURL)
     }
 
+    static func saysNeverSynced(premiumOptIn: Bool) -> Bool { true }
+
     static func split(_ shows: [(feedURL: String, origin: String?)],
                       premiumOptIn: Bool = false) -> Result {
         var byNorm: [String: String] = [:]

@@ -29,5 +29,20 @@ struct GPodderTokenActionsTests {
         let batch = try #require(sync.range(of: "let candidates: [(feed: String, audioURL: String, guid: String, duration: Double)] ="))
         #expect(sync[batch.lowerBound...].prefix(400).contains("GPodderVisibleSubscriptions.mayCarryActions(feedURL: show.feedURL"))
     }
+
+    @Test("the sentence that a token feed is never synced stands only while it is true, with the switch off")
+    func sentence() {
+        #expect(GPodderVisibleSubscriptions.saysNeverSynced(premiumOptIn: false))
+        #expect(!GPodderVisibleSubscriptions.saysNeverSynced(premiumOptIn: true))
+    }
+
+    @Test("Fence: both places of the sentence ask the switch", .needsTheSources)
+    func sentencePlaces() throws {
+        for path in ["Sources/Views/PodcastSourceView.swift", "Sources/Views/Podcasts/PremiumFeedsSection.swift"] {
+            let view = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+            let sentence = try #require(view.range(of: "never synced to a gpodder server"), "\(path)")
+            #expect(view[..<sentence.lowerBound].suffix(500).contains("GPodderVisibleSubscriptions.saysNeverSynced(premiumOptIn:"), "\(path) says it whatever the switch")
+        }
+    }
 }
 #endif
