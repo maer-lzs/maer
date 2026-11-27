@@ -211,6 +211,11 @@ final class GlobalSearchModel: ObservableObject {
             return
         }
         let delay = debounceOverride ?? Self.debounce
+        // The wait is part of the search: until this text has run, nothing
+        // stands as its answer, neither "no matches" nor another text's hits.
+        sections = []
+        allSourcesFailed = false
+        isSearching = true
         runTask = Task { [weak self] in
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
