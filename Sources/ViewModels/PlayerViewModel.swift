@@ -1908,45 +1908,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 }
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let id = self.item?.id {
                     self.lastLocalSaveAt = now
-                    // The stock decides what a local state IS for this class:
-                    // a live stream has no end to be at, so it gets no growing
-                    // number that a later surface would read as progress.
-                    // The tile counts and the sections read the play STATE,
-                    // not the position: when this tick moves an episode from
-                    // unplayed to in progress or across the played line, the
-                    // podcast surfaces must recompute now, not at the next
-                    // restart.
-                    // The PHASE, not the state: an in-progress state carries
-                    // the position and differs on every tick, which had the
-                    // whole podcast tab recompute every five seconds.
-                    // No stand from estimated durations (`StandWrite`).
-                    guard StandWrite.allowed(itemId: id, provider: self.provider) else {
-                        self.keepEstimatedPlace(id)
-                        return
-                    }
-                    let tail = PlayedTail.seconds(forItemId: id)
-                    let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
-                    let stampMs = self.ownStampMs(id)
-                    ListeningStore.record(id, position: self.currentTime,
-                                          duration: self.duration, atMs: stampMs, epoch: self.standEpoch)
-                    self.ownStandMs = stampMs
-                    let phaseAfter = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
-                    self.noteListeningHistory(id: id, phaseBefore: phaseBefore, phaseAfter: phaseAfter)
-                    if ItemNamespace.isPodcastEpisode(id), phaseAfter != phaseBefore {
-                        PodcastProgressStore.shared.reload()
-                        // A change of phase is one of the pot's occasions.
-                        self.sendStateToPot(deliberate: true)
-                    }
-                    // Listen log: a podcast crossing its played threshold in
-                    // normal playback lands in the show-independent history
-                    // (cheap + idempotent; threshold logic stays in the store).
-                    if let detail = self.item, ItemNamespace.isPodcastEpisode(detail.id) {
-                        PodcastListenLog.shared.noteIfPlayed(
-                            guid: detail.id, duration: detail.media.duration ?? 0,
-                            episodeTitle: detail.media.metadata?.title ?? "",
-                            showTitle: detail.media.metadata?.authorName ?? "",
-                            feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: detail.id) ?? "")
-                    }
+                    self.saveLocalStand(id)
                     // The widget runs on by itself from the snapshot of the
                     // last state change; the tick does not reload it.
                 }
@@ -1992,6 +1954,50 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A mark is a person's act: with estimated durations it reads the real
     /// ones first and takes them in, then writes. False when they could not
     /// be read.
+    /// The five-second write of the clock: its own function, so a skip
+    /// (estimated durations) returns from here and never ends the clock.
+    private func saveLocalStand(_ id: String) {
+        // The stock decides what a local state IS for this class:
+        // a live stream has no end to be at, so it gets no growing
+        // number that a later surface would read as progress.
+        // The tile counts and the sections read the play STATE,
+        // not the position: when this tick moves an episode from
+        // unplayed to in progress or across the played line, the
+        // podcast surfaces must recompute now, not at the next
+        // restart.
+        // The PHASE, not the state: an in-progress state carries
+        // the position and differs on every tick, which had the
+        // whole podcast tab recompute every five seconds.
+        // No stand from estimated durations (`StandWrite`).
+        guard StandWrite.allowed(itemId: id, provider: provider) else {
+            self.keepEstimatedPlace(id)
+            return
+        }
+        let tail = PlayedTail.seconds(forItemId: id)
+        let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
+        let stampMs = self.ownStampMs(id)
+        ListeningStore.record(id, position: self.currentTime,
+                              duration: self.duration, atMs: stampMs, epoch: self.standEpoch)
+        self.ownStandMs = stampMs
+        let phaseAfter = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
+        self.noteListeningHistory(id: id, phaseBefore: phaseBefore, phaseAfter: phaseAfter)
+        if ItemNamespace.isPodcastEpisode(id), phaseAfter != phaseBefore {
+            PodcastProgressStore.shared.reload()
+            // A change of phase is one of the pot's occasions.
+            self.sendStateToPot(deliberate: true)
+        }
+        // Listen log: a podcast crossing its played threshold in
+        // normal playback lands in the show-independent history
+        // (cheap + idempotent; threshold logic stays in the store).
+        if let detail = self.item, ItemNamespace.isPodcastEpisode(detail.id) {
+            PodcastListenLog.shared.noteIfPlayed(
+                guid: detail.id, duration: detail.media.duration ?? 0,
+                episodeTitle: detail.media.metadata?.title ?? "",
+                showTitle: detail.media.metadata?.authorName ?? "",
+                feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: detail.id) ?? "")
+        }
+    }
+
     /// Where the part and the place in it are kept while the durations
     /// are estimated; a witness hands in its own.
     let estimatedPlaces: EstimatedPlace
@@ -2028,8 +2034,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The real durations of a title that started with estimated ones: the
     /// tracks take them in place, playback goes on, stands are written again.
     func adoptResolvedDurations(itemId: String) async {
-        guard item?.id == itemId, let detail = try? await provider.fetchItemDetail(itemId: itemId),
-              item?.id == itemId else { return }
+        // A stopped player takes nothing over: its stand would travel from a
+        // time nobody hears, and the kept place is the next start's.
+        guard !isStopped, item?.id == itemId, let detail = try? await provider.fetchItemDetail(itemId: itemId),
+              !isStopped, item?.id == itemId else { return }
         let resolved = ChapterModel.ordered(detail.media.tracks ?? [])
         guard resolved.count == tracks.count else { return }
         // The time in the part is real; its start is not. Taken before the
@@ -2458,6 +2466,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                                              duration: duration, epoch: standEpoch)
             pauseRecordPending = true
         }
+        resolvedWatch?.cancel()
+        resolvedWatch = nil
         isStopped = true
         isPlaying = false
         // A title that was left asks no further track ahead.
