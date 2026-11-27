@@ -62,9 +62,14 @@ final class AuthViewModel: ObservableObject {
 
     /// The keychain read, a seam for the witness.
     private let readKeychain: (String) -> KeychainRead
+    /// Stores the server address in the keychain and says whether it held;
+    /// a seam for the witness.
+    private let saveAddress: (String) -> Bool
 
-    init(read: @escaping (String) -> KeychainRead = { KeychainStore.read(forKey: $0) }) {
+    init(read: @escaping (String) -> KeychainRead = { KeychainStore.read(forKey: $0) },
+         saveAddress: @escaping (String) -> Bool = { KeychainStore.save($0, forKey: KeychainKey.serverURL) }) {
         self.readKeychain = read
+        self.saveAddress = saveAddress
         let storedURL = read(KeychainKey.serverURL)
         let storedToken = read(KeychainKey.apiToken)
         let state = SignInState.of(url: storedURL, token: storedToken)
@@ -196,6 +201,19 @@ final class AuthViewModel: ObservableObject {
     /// address may name another server. Only a sign-in that worked hands
     /// address and token to the shared client; one that failed leaves it as
     /// it was, also for the same address.
+    /// Puts the address before back into the keychain when a token was not
+    /// taken; with none before, the new one goes. A failure is logged: then
+    /// the next start reads the new address beside the token before.
+    private func putBackAddress(_ address: String?) {
+        guard let address else {
+            KeychainStore.delete(forKey: KeychainKey.serverURL)
+            return
+        }
+        if !saveAddress(address) {
+            Logger.library.error("AUTH address before not put back; the next start may read the new one")
+        }
+    }
+
     func connect() async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {
@@ -334,11 +352,24 @@ final class AuthViewModel: ObservableObject {
             // account's token (never one account's data in another). OLD
             // below releases without a forget.
             if switched, !serverSwitched { queue.markSwitched(server: formerAddress) }
+            // The address goes into the keychain before the token: an address
+            // not stored would leave the address before beside the new token
+            // after the next start. Then nothing is stored and the sign-in
+            // before stands.
+            let heldAddress = readKeychain(KeychainKey.serverURL).value
+            guard saveAddress(url.absoluteString) else {
+                queue.release(server: formerAddress)
+                Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the address was not stored")
+                errorMessage = String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+                return
+            }
             // The token is stored and read back before it holds: a keychain
             // that kept the token before keeps the user before (the queue is
             // released, nothing forgotten); none stored goes on as a switch.
             let stored = TokenStore.store(token)
             if stored == .old || stored == .unreadable {
+                // The address before goes back beside the token before.
+                putBackAddress(heldAddress)
                 queue.release(server: formerAddress)
                 Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored, the one before stands or cannot be read")
                 errorMessage = stored == .old
@@ -359,7 +390,6 @@ final class AuthViewModel: ObservableObject {
             // The noted user changes with a known id or a switch; an ask
             // that failed keeps the note it found.
             if userId != nil || switched { AppStorageKeys.set(userId, for: AppStorageKeys.absSignedInUser) }
-            KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
             apiToken = ""
             password = ""
             isLoggedIn = true
