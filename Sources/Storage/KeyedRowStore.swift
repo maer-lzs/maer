@@ -41,6 +41,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case absKnownEpisodes = "abs_known_episodes"
         case heldUnfinishedBooks = "held_unfinished_books"
         case heldUnfinishedEpisodes = "held_unfinished_episodes"
+        case estimatedPlace = "estimated_place"
     }
 
     private let connection: SQLiteConnection

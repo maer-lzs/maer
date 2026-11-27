@@ -447,7 +447,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     init(provider: any AudioProvider,
          localTracks: @escaping (String) -> [Int: URL] = { DownloadManager.shared.localTrackMap(forItemId: $0) },
-         isOnline: @escaping () -> Bool = { NetworkMonitor.shared.isConnected }) {
+         isOnline: @escaping () -> Bool = { NetworkMonitor.shared.isConnected },
+         estimatedPlaces: EstimatedPlace = EstimatedPlace(database: MaerDatabase.shared)) {
+        self.estimatedPlaces = estimatedPlaces
         self.provider = provider
         self.localTracks = localTracks
         self.isOnline = isOnline
@@ -1974,6 +1976,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A mark is a person's act: with estimated durations it reads the real
     /// ones first and takes them in, then writes. False when they could not
     /// be read.
+    let estimatedPlaces: EstimatedPlace
+
+    func readRealDurationsAgain(by reason: String) async {}
+
     func realDurationsForAMark(_ itemId: String) async -> Bool {
         guard !StandWrite.allowed(itemId: itemId, provider: provider) else { return true }
         guard await provider.resolveDurations(itemId: itemId) else {

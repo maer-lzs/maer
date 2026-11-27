@@ -1010,6 +1010,8 @@ final class DownloadManager {
     /// title as. `nil` only where no surface is involved (the player healing
     /// its own tracks); such a download is left out of every deletion per
     /// kind and falls only with its own delete or with deleting everything.
+    static func detailToKeep(_ item: LibraryItemDetail, provider: any AudioProvider) async throws -> LibraryItemDetail { item }
+
     func download(item: LibraryItemDetail, provider: any AudioProvider, kind: DownloadKind?) async {
         guard !isDownloading(itemId: item.id) else { return }
         // The offer asks the same question; a way past it (a self-heal, an
