@@ -287,6 +287,23 @@ struct GutenbergFirstSoundTests {
         #expect(try code("Sources/Views/PlayerView.swift").contains("let whole = viewModel.durationsEstimated ? Text(verbatim: left) :"))
     }
 
+    @Test("at the player, with a source that says estimated: the halt writes no stand, a mark waits for the real durations and stands after they are taken")
+    func atThePlayer() async throws {
+        let number = 960_000 + Int.random(in: 1...9_999)
+        let id = FreeCatalog.gutenbergPrefix + String(number)
+        let (works, _, _) = Self.works(number, sizes: [967_056] + Array(repeating: 2_000_000, count: 11))
+        let detail = try await FreeCatalogProvider.shared.gutenbergDetail(itemId: id, works: works)
+        let player = PlayerViewModel(provider: FreeCatalogProvider.shared, localTracks: { _ in [:] }, isOnline: { true })
+        await player.load(item: detail)
+        #expect(player.durationsEstimated, "the precondition: the player holds estimated durations")
+        player.recordHaltStand()
+        #expect(ListeningStore.position(id) == nil, "the halt wrote a stand from estimated durations")
+        await player.toggleFinished()
+        #expect(!player.durationsEstimated, "the mark did not take the real durations")
+        #expect(ListeningStore.position(id) != nil, "the mark did not stand after the real durations were taken")
+        player.stop()
+    }
+
     @Test("a second start while the reads behind run answers the same estimate and reads nothing twice")
     func secondStartCoalesces() async throws {
         let sizes = [967_056] + Array(repeating: 2_000_000, count: 11)

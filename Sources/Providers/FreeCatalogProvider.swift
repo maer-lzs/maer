@@ -85,6 +85,9 @@ final class FreeCatalogProvider: AudioProvider {
     /// The works that answered an estimated start, so the real durations
     /// are asked of the same.
     private var gutenbergEstimatedBy: [String: GutenbergWorks] = [:]
+    /// The works a title was asked of (a witness hands in its own): every
+    /// later ask of that title goes there, the app's is always the one.
+    private var gutenbergWorksOf: [String: GutenbergWorks] = [:]
 
     func resolveDurations(itemId: String) async -> Bool {
         guard gutenbergEstimated[itemId] != nil else { return true }
@@ -859,7 +862,8 @@ final class FreeCatalogProvider: AudioProvider {
     /// alone. A work without a sound file is gone; one whose part cannot be
     /// read says so rather than resuming in the wrong file.
     func gutenbergDetail(itemId: String, works: GutenbergWorks? = nil) async throws -> LibraryItemDetail {
-        let works = works ?? gutenbergWorks
+        if let works { gutenbergWorksOf[itemId] = works }
+        let works = works ?? gutenbergWorksOf[itemId] ?? gutenbergWorks
         // A start at the beginning may answer before every duration is read;
         // a start inside the book waits for all (a stand counts seconds over
         // every part before it).
