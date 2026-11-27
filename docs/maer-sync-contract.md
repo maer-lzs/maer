@@ -40,6 +40,42 @@ additions-headers: If-None-Match
 additions-status: 304
 -->
 
+## Always backwards compatible
+
+A later build of either side never breaks an earlier one. Four rules hold for
+the wire, for what the service stores and for every document that travels,
+and they hold for the service and for every app alike:
+
+1. **A newer side reads what an older one wrote.** Every stored or travelling
+   form an earlier build wrote is read by every later build, with a witness
+   that holds a probe of the old form.
+2. **An older side passes over what it does not know.** An unknown field,
+   kind or `art` is left untouched and passed on where the way passes it on;
+   it is never an error for the whole answer or the whole document.
+3. **No field changes its meaning.** A new meaning takes a new field; an
+   existing field, header or status keeps its unit, its form and its sense. A
+   status may carry a further reason of the same kind, and then this file
+   names every reason.
+4. **Something goes away only after an announced version.** First a version
+   that no longer needs the old thing and still understands it; only a later
+   one removes it from the service, and between the two every device must
+   have been able to update.
+
+Every delivery that touches a stored or travelling form states which of the
+four it touches, with its witness.
+
+**Three exceptions, each named.** In each, passing over would lose something:
+
+- **`/v1/key` answers `404` in version 6** with no version in between (rule
+  4). It stands as it was built (below): an app of version 5 stops before it
+  sends a password.
+- **A client at an older `X-Maer-Format` does not overwrite a document
+  written at a newer one.** The write is refused with `409`: the older client
+  would drop the fields it does not know.
+- **A service rolled back to an older build does not open a store laid down
+  by a newer one.** It refuses to start and says why, instead of reading a
+  form it does not know.
+
 ## The paths
 
 | path | what it is |
@@ -200,8 +236,9 @@ as "this service carries no catalog" and builds its own.
 
 A row carries `id`, `art` (`hoerbuch`, `hoerspiel`, `musik`, `sender`),
 `titel`, `urheber`, `sprache`, `jahr`, `rechte` (`kennung`, `url`), `laden`
-(true or false), `reihen` (a list), `auch` (a list) and `tief` (an object or
-`null`). Rows come in byte order of `id`. `anzahl` lies between 1 and 5000 and
+(true or false), `reihen` (a list), `auch` (a list), `tief` (an object or
+`null`) and, when it has one, `beliebt_stufe` (below). Rows come in byte order
+of `id`. `anzahl` lies between 1 and 5000 and
 defaults to 5000; anything else is 400. `weiter` is the last `id` of the page,
 and `null` on the last page; it is never missing. A `nach` that names an `id`
 which does not exist (any more) is no error: the page continues after it in
@@ -215,6 +252,15 @@ version the service still answers a delta for is 410 with
 `{"reason": "<text>", "voll": "/v1/katalog/<source>"}`; a `v` above the version
 is 400.
 
+**`beliebt_stufe`** is the tenth of its source a row stands in by the number
+the source states for it (archive.org `downloads`, Radio Browser `votes`), from
+`1`, the most popular tenth, to `10`; the same number has the same step. It is
+missing, never `null` or `0`, when the source states no number (Musopen) or
+when the row came first through a delta: only a full pass sees every row of a
+source, so only a full pass sets it, and a delta keeps the step a row has. A
+row changes, and takes a new version, only when its step does. A trend has no
+step: it moves every day, and a device asks the source for it.
+
 **`ETag: "<katalog_format>-<source>-<version>"`** stands on every page, the
 delta's too; `If-None-Match` with that value is 304 without a body. The tag
 holds for the address it came with: a device sends it back only with the same
@@ -226,6 +272,9 @@ read right now is 503 with `Retry-After`.
 **What a device must do with it:**
 
 - A `katalog_format` it does not know: take nothing over, build its own.
+- A field or an `art` it does not know: pass over it and take the rest of the
+  row.
+- A row without `beliebt_stufe`: order it behind the rows that have one.
 - `version` 0 means "no run yet", not "the source is empty": keep the last
   state or build its own.
 - A `version` that changes between two pages of one walk: start the walk again,
@@ -302,7 +351,7 @@ the sixth kind without the service learning a word about feeds.
 | `If-Match: <etag>` | app to service | write only if the version still stands |
 | `If-None-Match: <etag>` | app to service | addition `katalog-1`: on a catalog path, answer 304 if the catalog still has exactly this version |
 | `X-Maer-Declared-Shrink: 1` | app to service | "I meant to make it smaller" |
-| `ETag: <version>` | service to app | the version this document now has |
+| `ETag: <version>` | service to app | the version this document now has; on a catalog path, the tag of the page (above) |
 | `X-Maer-Contract: <n>` | service to app | on `/v2/key`: the version of this file the service speaks |
 | `X-Maer-Refusal: password-changed` | service to app | on a `401`: this token was withdrawn because the password changed |
 | `Retry-After: <seconds>` | service to app | on a `429`: how long until the next attempt is taken; on a catalog `503`: when to ask again |
@@ -330,7 +379,7 @@ caller says the shrink is the point (a claim released, a credential removed).
 | 401 | no token, or not this owner's |
 | 404 | no such path, or no such document |
 | 405 | the path exists and not for this method |
-| 409 | the write shrank the document and did not say so |
+| 409 | the write shrank the document and did not say so, or it came at an older `X-Maer-Format` than the document was written at |
 | 410 | on `/v1/session` with a name: that session has ended; handshake again and retry once. On a catalog delta: `seit` is older than the service still answers; read the full state |
 | 412 | `If-Match` named a version that has moved |
 | 413 | the body is larger than the host accepts |
@@ -380,7 +429,9 @@ never sends a 403; the fence tore on the literal, and running the thing found
 the rest.
 
 **409 and 412 are not errors on the app side.** 412 means someone else wrote
-first and the app merges and repeats; 409 means the app must say what it meant.
+first and the app merges and repeats; 409 means the app must say what it meant,
+or, for an older `X-Maer-Format`, that the document was written by a newer
+build and the app writes that kind again only once it reads the newer form.
 A carrier that treats them as failures loses data by giving up.
 
 ## What the socket says

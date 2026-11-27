@@ -41,6 +41,10 @@ that fails keeps the row it showed last instead of emptying it, and the
 rows of the start page now load at the same time instead of one after
 another. Jamendo is not kept, as its terms ask. A Musopen recording is
 only offered when its file lies on Wikimedia Commons.
+With Mär Sync, the rows of LibriVox, the audiobooks of archive.org, Old
+Time Radio, the netlabels and the 78 rpm shelves come from the catalog
+of your own service when it carries them, in the same order and the same
+daily turn, and archive.org is only asked when it does not.
 
 **Project Gutenberg audiobooks start sooner.** Opening a Gutenberg
 audiobook for the first time no longer waits until the length of every

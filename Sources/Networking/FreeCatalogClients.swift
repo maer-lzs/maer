@@ -915,13 +915,23 @@ nonisolated enum ArchiveOrgClient {
     /// and simply drops the number. One request, one truth, no second query
     /// path that could drift.
     static func popular(query: String, rows: Int, page: Int = 1,
-                        sort: String = "downloads desc") async throws -> [ArchivePopularDoc] {
+                        sort: String = popularitySort) async throws -> [ArchivePopularDoc] {
         try await popularWithTotal(query: query, rows: rows, page: page, sort: sort).docs
     }
 
+    /// The order of the rows and shelves: the most downloaded first.
+    static let popularitySort = "downloads desc"
+
     static func popularWithTotal(query: String, rows: Int, page: Int = 1,
-                                 sort: String = "downloads desc") async throws
+                                 sort: String = popularitySort,
+                                 index: CatalogIndexShelfReader = .shared) async throws
         -> (docs: [ArchivePopularDoc], total: Int?) {
+        // The index of Mär Sync answers a row's question when it carries
+        // the source; only in the popularity order, which is its order.
+        if sort == ArchiveOrgClient.popularitySort,
+           let indexed = await index.answer(query: query, rows: rows, page: page) {
+            return (indexed.docs, indexed.total)
+        }
         var comp = URLComponents(string: "https://archive.org/advancedsearch.php")!
         comp.setQuery([
             URLQueryItem(name: "q", value: query),
