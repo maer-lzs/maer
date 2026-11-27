@@ -146,7 +146,9 @@ struct CatalogIndexTests {
             Issue.record("version 0 was taken as an empty source")
         }
         #expect(try await store.indexRows("archive-buch").keys.sorted() == ["lva:a"])
-        #expect(try await fresh.indexState("archive-buch") == nil)
+        // The read is noted (once a day), the version stays 0 and nothing is in the index.
+        #expect(try await fresh.indexState("archive-buch")?.version == 0)
+        #expect(try await fresh.indexRows("archive-buch").isEmpty)
     }
 
     @Test("a walk that breaks after the first page takes nothing")

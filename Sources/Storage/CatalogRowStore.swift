@@ -14,7 +14,9 @@ import OSLog
 /// Jamendo has no key: its terms forbid keeping its answers.
 actor CatalogRowStore {
     static let family = "catalog"
-    static let schemaVersion = 1
+    /// 2: the index of the service (`catalog_index`, `catalog_quelle`)
+    /// beside the rows of version 1, which stay as they are.
+    static let schemaVersion = 2
 
     enum Key: String, CaseIterable, Sendable {
         case booksDiscover = "books.discover", booksTab = "books.tab"
@@ -42,6 +44,24 @@ actor CatalogRowStore {
                 geholt REAL,
                 fehler TEXT,
                 fehler_am REAL
+            )
+            """)
+        try await connection.execute("""
+            CREATE TABLE IF NOT EXISTS catalog_index (
+                quelle TEXT NOT NULL,
+                id TEXT NOT NULL,
+                zeile BLOB NOT NULL,
+                PRIMARY KEY (quelle, id)
+            )
+            """)
+        try await connection.execute("""
+            CREATE TABLE IF NOT EXISTS catalog_quelle (
+                quelle TEXT PRIMARY KEY,
+                version INTEGER NOT NULL DEFAULT 0,
+                etag TEXT,
+                etag_adresse TEXT,
+                gelesen_am REAL NOT NULL DEFAULT 0,
+                nicht_vor REAL
             )
             """)
         if try await connection.schemaVersion(of: Self.family) < Self.schemaVersion {
@@ -133,11 +153,70 @@ actor CatalogRowStore {
         let notBeforeMs: Double?
     }
 
-    func indexState(_ source: String) async throws -> IndexState? { nil }
-    func indexRows(_ source: String) async throws -> [String: Data] { [:] }
-    func takeFull(_ source: String, rows: [MaerSyncCatalogRow], version: Int, etag: String?, etagAddress: String?, atMs: Double) async throws {}
-    func takeDelta(_ source: String, rows: [MaerSyncCatalogRow], version: Int, etag: String?, etagAddress: String?, atMs: Double) async throws {}
-    func noteIndexRead(_ source: String, atMs: Double, notBeforeMs: Double?) async throws {}
+    /// What this device holds of the index of one source, nil before the
+    /// first whole walk or read.
+    func indexState(_ source: String) async throws -> IndexState? {
+        guard let row = try await connection.query(
+            "SELECT version, etag, etag_adresse, gelesen_am, nicht_vor FROM catalog_quelle WHERE quelle = ?",
+            [.text(source)]).first else { return nil }
+        return IndexState(version: Int(row["version"]?.int64 ?? 0), etag: row["etag"]?.string,
+                          etagAddress: row["etag_adresse"]?.string, readAtMs: row["gelesen_am"]?.double ?? 0,
+                          notBeforeMs: row["nicht_vor"]?.double)
+    }
+
+    /// The rows of one source as the service wrote them, by id.
+    func indexRows(_ source: String) async throws -> [String: Data] {
+        var rows: [String: Data] = [:]
+        for row in try await connection.query("SELECT id, zeile FROM catalog_index WHERE quelle = ?", [.text(source)]) {
+            if let id = row["id"]?.string, let data = row["zeile"]?.data { rows[id] = data }
+        }
+        return rows
+    }
+
+    /// The full state replaces the source whole, in one transaction.
+    func takeFull(_ source: String, rows: [MaerSyncCatalogRow], version: Int, etag: String?, etagAddress: String?,
+                  atMs: Double) async throws {
+        var statements = [SQLiteConnection.Statement("DELETE FROM catalog_index WHERE quelle = ?", [.text(source)])]
+        for row in rows where !row.deleted {
+            statements.append(.init("INSERT OR REPLACE INTO catalog_index (quelle, id, zeile) VALUES (?, ?, ?)",
+                                    [.text(source), .text(row.id), .blob(row.json)]))
+        }
+        statements.append(Self.stateStatement(source, version: version, etag: etag, etagAddress: etagAddress, atMs: atMs))
+        try await connection.transaction(statements)
+    }
+
+    /// A delta changes and removes rows and moves the version, in one transaction.
+    func takeDelta(_ source: String, rows: [MaerSyncCatalogRow], version: Int, etag: String?, etagAddress: String?,
+                   atMs: Double) async throws {
+        var statements: [SQLiteConnection.Statement] = []
+        for row in rows {
+            statements.append(row.deleted
+                ? .init("DELETE FROM catalog_index WHERE quelle = ? AND id = ?", [.text(source), .text(row.id)])
+                : .init("INSERT OR REPLACE INTO catalog_index (quelle, id, zeile) VALUES (?, ?, ?)",
+                        [.text(source), .text(row.id), .blob(row.json)]))
+        }
+        statements.append(Self.stateStatement(source, version: version, etag: etag, etagAddress: etagAddress, atMs: atMs))
+        try await connection.transaction(statements)
+    }
+
+    private static func stateStatement(_ source: String, version: Int, etag: String?, etagAddress: String?,
+                                       atMs: Double) -> SQLiteConnection.Statement {
+        .init("""
+            INSERT INTO catalog_quelle (quelle, version, etag, etag_adresse, gelesen_am, nicht_vor) VALUES (?, ?, ?, ?, ?, NULL)
+            ON CONFLICT(quelle) DO UPDATE SET version = excluded.version, etag = excluded.etag,
+                etag_adresse = excluded.etag_adresse, gelesen_am = excluded.gelesen_am, nicht_vor = NULL
+            """, [.text(source), .integer(Int64(version)), etag.map { .text($0) } ?? .null,
+                  etagAddress.map { .text($0) } ?? .null, .real(atMs)])
+    }
+
+    /// When the source was last asked, whatever came, and when not before
+    /// the next time; the version and the tag stay.
+    func noteIndexRead(_ source: String, atMs: Double, notBeforeMs: Double?) async throws {
+        try await connection.run("""
+            INSERT INTO catalog_quelle (quelle, gelesen_am, nicht_vor) VALUES (?, ?, ?)
+            ON CONFLICT(quelle) DO UPDATE SET gelesen_am = excluded.gelesen_am, nicht_vor = excluded.nicht_vor
+            """, [.text(source), .real(atMs), notBeforeMs.map { .real($0) } ?? .null])
+    }
 
     func failures() async throws -> [Key: String] {
         var failures: [Key: String] = [:]

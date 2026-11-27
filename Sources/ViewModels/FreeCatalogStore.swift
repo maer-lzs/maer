@@ -225,6 +225,11 @@ final class FreeCatalogStore: ObservableObject {
         sourcesFailures = loaded.failures
         publish { $0.failures = loaded.failures }
         await keep(written: CatalogRowKeep.written(loaded), failed: CatalogRowKeep.failed(loaded))
+        // The index of the signed-in Mär Sync service, once a day per source
+        // (`CatalogIndexRun`); without Mär Sync nothing runs.
+        if let rowStore = await rowStore() {
+            Task { await CatalogIndexRun.runIfDue(store: rowStore) }
+        }
     }
 
     #if DEBUG

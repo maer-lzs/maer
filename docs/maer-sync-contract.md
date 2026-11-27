@@ -1,6 +1,6 @@
 # The contract between Mär and the Mär sync service
 
-**Version: 6**
+**Version: 6**, with the addition `katalog-1`
 
 The app and the service live in two repositories now. This file is what keeps
 them meaning the same thing, and it exists in BOTH of them, byte for byte.
@@ -20,12 +20,24 @@ touches only one side goes red at the first run on that side, instead of going
 quiet until a device stops syncing. Whoever changes the wire changes this file
 in both repositories and bumps the version in both.
 
+**An addition does not bump the version.** An addition only adds paths a
+device of this version never calls; it changes no existing answer, header or
+status. It stands in the lines `additions` (its name), `additions-paths`,
+`additions-headers` and `additions-status`, never in the lines of the version
+itself, and the service keeps speaking the version (`X-Maer-Contract` stays).
+A device learns about an addition from its path: 404 means this service does
+not carry it. A change to an existing answer is a new version, as before.
+
 <!-- maer-sync-contract
 version: 6
 paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes /v2/key /v1/session /v1/salt /v1/password
 headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag X-Maer-Session X-Maer-Contract X-Maer-Refusal Retry-After
 kinds: stands claim stats playlists choices feedauth
 status: 200 400 401 404 405 409 410 412 413 426 428 429 503
+additions: katalog-1
+additions-paths: /v1/katalog
+additions-headers: If-None-Match
+additions-status: 304
 -->
 
 ## The paths
@@ -41,6 +53,7 @@ status: 200 400 401 404 405 409 410 412 413 426 428 429 503
 | `/v1/session` | without `X-Maer-Session`: trades a Noise handshake for an encrypted session. With it: carries one sealed request in that session |
 | `/v1/salt?owner=<owner>` | the salt and the stretching an owner's password is derived with |
 | `/v1/password` | sets a new password: the current credential proves who asks, the new one arrives only as a proof |
+| `/v1/katalog/<source>` | addition `katalog-1`: the catalog index of one source, read only: the full state in pages, or with `seit` the rows since a version (below) |
 
 **`/v2/key` and `/v1/session` carry no token, and that is the pattern rather
 than an omission.** The caller proves who it is INSIDE the session, which is
@@ -164,6 +177,64 @@ of an account is updated before the operator switches.**
 **`/v2/key` carries `X-Maer-Contract: 6`.** A device that finds a version
 higher than its own says so before it asks for a password.
 
+## The catalog (addition katalog-1 to version 6)
+
+**A service may carry a catalog index of public sources**: the records of
+free catalogs (titles, rights, covers), built by a fetch program of its own
+and read by the service. It is not user data, and the service never writes it.
+The audio file always comes from the source, never from the service.
+
+**The paths.** `GET /v1/katalog/<source>` and `GET /v1/katalog/<source>?seit=<v>`,
+both with `nach=<id>` and `anzahl=<n>`. They sit behind the same gate and the
+same token as the document paths and answer the same when either is missing.
+`<source>` is exactly one of `librivox`, `archive-buch`, `netlabel`,
+`schellack`, `otr`, `gutenberg`, `musopen`, `radio`, `hoerspiel-feed`; anything
+else is 404. Only `GET`; any other method is 405. **A service without a catalog
+answers these paths with 404 and is otherwise unchanged**; a device reads that
+as "this service carries no catalog" and builds its own.
+
+**The answer** is JSON:
+
+    {"katalog_format": 1, "quelle": "<source>", "version": <n>,
+     "zeilen": [<row>, ...], "weiter": "<id>" | null}
+
+A row carries `id`, `art` (`hoerbuch`, `hoerspiel`, `musik`, `sender`),
+`titel`, `urheber`, `sprache`, `jahr`, `rechte` (`kennung`, `url`), `laden`
+(true or false), `reihen` (a list), `auch` (a list) and `tief` (an object or
+`null`). Rows come in byte order of `id`. `anzahl` lies between 1 and 5000 and
+defaults to 5000; anything else is 400. `weiter` is the last `id` of the page,
+and `null` on the last page; it is never missing. A `nach` that names an `id`
+which does not exist (any more) is no error: the page continues after it in
+the order.
+
+**The full state** carries live rows only. **The delta** `?seit=<v>` carries
+every row whose version is greater than `v`: a live row with all its fields and
+`"geloescht": false`, and a deletion mark as exactly
+`{"id": "<id>", "geloescht": true}`, nothing more. A `v` below the oldest
+version the service still answers a delta for is 410 with
+`{"reason": "<text>", "voll": "/v1/katalog/<source>"}`; a `v` above the version
+is 400.
+
+**`ETag: "<katalog_format>-<source>-<version>"`** stands on every page, the
+delta's too; `If-None-Match` with that value is 304 without a body. The tag
+holds for the address it came with: a device sends it back only with the same
+source, `seit`, `nach` and `anzahl`, never with another page or another delta. A source
+before its first run answers 200 with `version` 0, `zeilen` empty and `weiter`
+`null`, and a delta `?seit=0` against it the same. A catalog the service cannot
+read right now is 503 with `Retry-After`.
+
+**What a device must do with it:**
+
+- A `katalog_format` it does not know: take nothing over, build its own.
+- `version` 0 means "no run yet", not "the source is empty": keep the last
+  state or build its own.
+- A `version` that changes between two pages of one walk: start the walk again,
+  or fetch the delta from the first version.
+- A row with `laden` false is never loaded into the library; `rechte.kennung`
+  `unbekannt` is shown as "rights not stated".
+- 503, any other 5xx, a timeout: the last state stays. Unknown never becomes
+  empty.
+
 ## Inside a session (version 5)
 
 **Every one of the five older ways can be spoken INSIDE a session, and then
@@ -229,11 +300,12 @@ the sixth kind without the service learning a word about feeds.
 | `Authorization: Bearer <token>` | app to service | who is asking |
 | `X-Maer-Format: <n>` | both ways | the format of the BODY, per kind |
 | `If-Match: <etag>` | app to service | write only if the version still stands |
+| `If-None-Match: <etag>` | app to service | addition `katalog-1`: on a catalog path, answer 304 if the catalog still has exactly this version |
 | `X-Maer-Declared-Shrink: 1` | app to service | "I meant to make it smaller" |
 | `ETag: <version>` | service to app | the version this document now has |
 | `X-Maer-Contract: <n>` | service to app | on `/v2/key`: the version of this file the service speaks |
 | `X-Maer-Refusal: password-changed` | service to app | on a `401`: this token was withdrawn because the password changed |
-| `Retry-After: <seconds>` | service to app | on a `429`: how long until the next attempt is taken |
+| `Retry-After: <seconds>` | service to app | on a `429`: how long until the next attempt is taken; on a catalog `503`: when to ask again |
 
 **`ETag` is where `If-Match` gets its value, and version 1 of this file forgot
 to say so.** The service sets it on every read and on every accepted write; the
@@ -253,18 +325,19 @@ caller says the shrink is the point (a claim released, a credential removed).
 | status | when |
 | --- | --- |
 | 200 | read or write went through |
+| 304 | addition `katalog-1`: on a catalog path, `If-None-Match` names the version the catalog still has |
 | 400 | the request is not a request: bad scope, unreadable body |
 | 401 | no token, or not this owner's |
 | 404 | no such path, or no such document |
 | 405 | the path exists and not for this method |
 | 409 | the write shrank the document and did not say so |
-| 410 | on `/v1/session` with a name: that session has ended; handshake again and retry once |
+| 410 | on `/v1/session` with a name: that session has ended; handshake again and retry once. On a catalog delta: `seit` is older than the service still answers; read the full state |
 | 412 | `If-Match` named a version that has moved |
 | 413 | the body is larger than the host accepts |
 | 426 | the plain ways are off on this service; speak inside a session. On the three sign-in paths always |
 | 428 | on `/v1/token` with `secret`: the operator set this password; it only changes itself on `/v1/password` |
 | 429 | on `/v1/token` and `/v1/password`: too many failed attempts for this owner from this address; wait for `Retry-After` |
-| 503 | this service has no static key, so it cannot answer a handshake |
+| 503 | this service has no static key, so it cannot answer a handshake. On a catalog path: the catalog cannot be read right now; ask again after `Retry-After` |
 
 **428 and 429 are the two of version 6, and both reach a person**: 428 as the
 question for a new password, since nothing else happens with the password the

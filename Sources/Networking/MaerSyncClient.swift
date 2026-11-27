@@ -264,6 +264,19 @@ nonisolated enum MaerSyncPaths {
         base.appendingPathComponent("v1/docs/\(kind)")
     }
 
+    /// The catalogue of one source (addition katalog-1), with its page and
+    /// delta in the query.
+    static func catalog(_ base: URL, _ query: MaerSyncCatalogQuery) -> URL {
+        let path = base.appendingPathComponent("v1/katalog/\(query.source)")
+        guard var components = URLComponents(url: path, resolvingAgainstBaseURL: false) else { return path }
+        var items: [URLQueryItem] = []
+        if let since = query.since { items.append(URLQueryItem(name: "seit", value: String(since))) }
+        if let after = query.after { items.append(URLQueryItem(name: "nach", value: after)) }
+        items.append(URLQueryItem(name: "anzahl", value: String(query.count)))
+        components.setQuery(items)
+        return components.url ?? path
+    }
+
     static func token(_ base: URL) -> URL { base.appendingPathComponent("v1/token") }
 
     static func health(_ base: URL) -> URL { base.appendingPathComponent("v1/health") }
@@ -504,7 +517,22 @@ nonisolated struct MaerSyncNewPassword: Equatable, Sendable {
 /// the very positions it was sending and report success), and **404 is not
 /// an error but "not there yet"**, which is every device's first round.
 nonisolated enum MaerSyncAnswer {
-    static func catalog(_ reply: MaerSyncReply) throws -> MaerSyncCatalogAnswer { .absent }
+    /// The catalogue of the service (addition katalog-1): a page, 304
+    /// unchanged, 404 this service carries no catalogue, 410 the delta is
+    /// older than the service answers, 400 refused, 503 and every other 5xx
+    /// busy with its `Retry-After`. 401 and 426 go as with a document.
+    static func catalog(_ reply: MaerSyncReply) throws -> MaerSyncCatalogAnswer {
+        switch reply.status {
+        case 200: return .page(try MaerSyncCatalogPage.read(reply.body, etag: reply.etag))
+        case 304: return .unchanged
+        case 404: return .absent
+        case 410: return .gone
+        case 401: throw refusedToken(reply)
+        case 426: throw MaerSyncFailure.serviceIsOlder
+        case 500...599: return .busy(retryAfter: reply.retryAfter.flatMap { Int($0.trimmingCharacters(in: .whitespaces)) })
+        default: return .refused(reply.status)
+        }
+    }
 
     static func document(_ reply: MaerSyncReply) throws -> MaerSyncDocument? {
         switch reply.status {
@@ -658,7 +686,7 @@ nonisolated enum MaerSyncAnswer {
 /// the caller decides what to do with it. Nothing here reads a status, and
 /// nothing here puts a token on a request in the clear. The one way that
 /// stays outside is the health route, a question about reach.
-nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
+nonisolated final class MaerSyncHTTP: MaerSyncTransport, MaerSyncCatalogReading, Sendable {
     private let tunnels: MaerSyncTunnels
     private let wire: MaerSyncWire
 
@@ -694,6 +722,13 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
     func list(kind: String, access: MaerSyncAccess) async throws -> [MaerSyncListed] {
         try MaerSyncAnswer.listing(
             try await inside(access, "GET", MaerSyncPaths.listing(access.baseURL, kind: kind)))
+    }
+
+    /// One page of the catalogue; the tag goes back only with its own address.
+    func catalog(_ query: MaerSyncCatalogQuery, access: MaerSyncAccess) async throws -> MaerSyncCatalogAnswer {
+        try MaerSyncAnswer.catalog(
+            try await inside(access, "GET", MaerSyncPaths.catalog(access.baseURL, query),
+                             headers: query.ifNoneMatch.map { ["If-None-Match": $0] } ?? [:]))
     }
 
     /// The three sign-in ways go through the tunnel and carry no token:

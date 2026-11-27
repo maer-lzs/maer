@@ -31,13 +31,26 @@ struct CatalogDatabaseTests {
         return (try await CatalogRowStore(connection: connection), connection)
     }
 
-    @Test("the catalogue family is version one, and a second start creates nothing twice")
+    @Test("the catalogue family is version two, and a second start creates nothing twice")
     func family() async throws {
         let (_, connection) = try await Self.memoryStore()
         _ = try await CatalogRowStore(connection: connection)
-        #expect(try await connection.schemaVersion(of: CatalogRowStore.family) == 1)
+        #expect(try await connection.schemaVersion(of: CatalogRowStore.family) == 2)
         let tables = try await connection.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'catalog_%' ORDER BY name")
-        #expect(tables.compactMap { $0["name"]?.string } == ["catalog_reihe", "catalog_row"])
+        #expect(tables.compactMap { $0["name"]?.string } == ["catalog_index", "catalog_quelle", "catalog_reihe", "catalog_row"])
+    }
+
+    @Test("a file of version one opens as version two, and its rows stand")
+    func versionOneStillReads() async throws {
+        let connection = try SQLiteConnection(path: ":memory:")
+        try await connection.execute("CREATE TABLE catalog_row (reihe TEXT NOT NULL, ordnung INTEGER NOT NULL, id TEXT NOT NULL, inhalt BLOB NOT NULL, PRIMARY KEY (reihe, ordnung))")
+        try await connection.execute("CREATE TABLE catalog_reihe (reihe TEXT PRIMARY KEY, geholt REAL, fehler TEXT, fehler_am REAL)")
+        try await connection.setSchemaVersion(1, of: CatalogRowStore.family)
+        try await connection.run("INSERT INTO catalog_row (reihe, ordnung, id, inhalt) VALUES (?, ?, ?, ?)",
+                                 [.text("classical"), .integer(0), .text("lva:a"), .blob(try JSONEncoder().encode(Self.item("lva:a")))])
+        let store = try await CatalogRowStore(connection: connection)
+        #expect(try await connection.schemaVersion(of: CatalogRowStore.family) == 2)
+        #expect(try await store.rows()[.classical]?.map(\.id) == ["lva:a"])
     }
 
     @Test("a row is replaced whole, in its order")
