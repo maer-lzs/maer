@@ -42,7 +42,12 @@ nonisolated enum GPodderVisibleSubscriptions {
     /// stay hidden in every case, and the Basic-auth class travels through
     /// the iCloud channel instead (a URL without its credentials would be
     /// half a state).
-    static func mayCarryActions(feedURL: String, premiumOptIn: Bool) -> Bool { true }
+    /// The episode actions follow the same switch as the list: a token
+    /// feed's address leaves only when the person let premium feeds sync.
+    /// Only the token part; a mirrored show's actions stay as they were.
+    static func mayCarryActions(feedURL: String, premiumOptIn: Bool) -> Bool {
+        premiumOptIn || !PodcastFeedAddress.isTokenFeedURL(feedURL)
+    }
 
     static func split(_ shows: [(feedURL: String, origin: String?)],
                       premiumOptIn: Bool = false) -> Result {

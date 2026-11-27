@@ -612,6 +612,11 @@ final class GPodderSync {
     private func pushSingle(rssItemId: String, position: Double, duration: Double, attemptedAtMs: Double) async {
         guard let config,
               let found = PodcastSubscriptions.shared.episode(guid: rssItemId) else { return }
+        guard GPodderVisibleSubscriptions.mayCarryActions(feedURL: found.show.feedURL,
+                                                          premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled) else {
+            Logger.library.notice("GPODDER action not sent: a premium feed, the switch is off")
+            return
+        }
         let total = duration > 0 ? duration : found.episode.duration
         // The action carries the EVENT's timestamp (the stored
         // entry's), not the push moment. The batch push further down has
@@ -782,8 +787,14 @@ final class GPodderSync {
         // here), the candidates come back as values, and the payload
         // assembly with the actor-bound formatter stays on main; the few
         // survivors of the threshold cost microseconds to format.
+        // A token feed's actions only with the switch on (`mayCarryActions`).
+        let premiumOptIn = AppStorageKeys.gpodderSyncsPremiumFeedsEnabled
         let candidates: [(feed: String, audioURL: String, guid: String, duration: Double)] =
-            subs.allEpisodes().map { (show, ep) in (show.feedURL, ep.audioURL, ep.guid, ep.duration) }
+            subs.allEpisodes()
+                .filter { show, _ in
+                    GPodderVisibleSubscriptions.mayCarryActions(feedURL: show.feedURL, premiumOptIn: premiumOptIn)
+                }
+                .map { (show, ep) in (show.feedURL, ep.audioURL, ep.guid, ep.duration) }
         // detached because the match is CPU work off the MainActor
         let changed = await Task.detached(priority: .userInitiated) {
             () -> [(feed: String, audioURL: String, pos: Double, tsMs: Double, duration: Double)] in

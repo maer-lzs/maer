@@ -26,7 +26,7 @@ struct GPodderTokenActionsTests {
         let sync = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/GPodderSync.swift"), encoding: .utf8))
         let single = try #require(sync.range(of: "private func pushSingle("))
         #expect(sync[single.upperBound...].prefix(600).contains("GPodderVisibleSubscriptions.mayCarryActions(feedURL: found.show.feedURL"))
-        let batch = try #require(sync.range(of: "subs.allEpisodes().map"))
+        let batch = try #require(sync.range(of: "let candidates: [(feed: String, audioURL: String, guid: String, duration: Double)] ="))
         #expect(sync[batch.lowerBound...].prefix(400).contains("GPodderVisibleSubscriptions.mayCarryActions(feedURL: show.feedURL"))
     }
 }
