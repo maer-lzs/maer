@@ -271,7 +271,7 @@ struct SyncQueueSwitchTests {
     func signInStoresFirst() throws {
         let auth = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root
             .appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
-        let store = try #require(auth.range(of: "let stored = TokenStore.store(token)"))
+        let store = try #require(auth.range(of: "let stored = storeToken(token)"))
         let token = try #require(auth.range(of: "apiClient.updateToken(token)", range: store.upperBound..<auth.endIndex))
         let old = try #require(auth.range(of: "if stored == .old || stored == .unreadable {", range: store.upperBound..<token.lowerBound))
         // The access before is read with its unknown kept apart.
@@ -364,7 +364,7 @@ struct SyncQueueSwitchTests {
         #expect(!auth[hold.upperBound..<token.lowerBound].contains("await"), "a wait between the hold and the token")
         // The switch is marked before the token is stored: never stands of
         // one account in another; OLD releases without a forget.
-        let stored = try #require(auth.range(of: "let stored = TokenStore.store(token)"))
+        let stored = try #require(auth.range(of: "let stored = storeToken(token)"))
         let marked = try #require(auth.range(of: "queue.markSwitched(server: formerAddress)", range: hold.upperBound..<stored.lowerBound),
                                   "the switch is not marked between the hold and the stored token")
         #expect(!auth[hold.lowerBound..<stored.lowerBound].contains("await"))

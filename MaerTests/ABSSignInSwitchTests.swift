@@ -237,7 +237,7 @@ struct ABSSignInSwitchTests {
     func addressBeforeToken() throws {
         let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
         let address = try #require(text.range(of: "guard saveAddress(url.absoluteString) else {"))
-        let token = try #require(text.range(of: "let stored = TokenStore.store(token)"))
+        let token = try #require(text.range(of: "let stored = storeToken(token)"))
         #expect(address.upperBound < token.lowerBound)
         let refused = try #require(text.range(of: "if stored == .old || stored == .unreadable {", range: token.upperBound..<text.endIndex))
         #expect(text[refused.upperBound...].prefix(400).contains("putBackAddress(heldAddress)"))

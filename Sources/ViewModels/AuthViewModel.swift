@@ -65,11 +65,15 @@ final class AuthViewModel: ObservableObject {
     /// Stores the server address in the keychain and says whether it held;
     /// a seam for the witness.
     private let saveAddress: (String) -> Bool
+    /// Stores the token and reads it back; a seam for the witness.
+    private let storeToken: (String) -> TokenStore.Outcome
 
     init(read: @escaping (String) -> KeychainRead = { KeychainStore.read(forKey: $0) },
-         saveAddress: @escaping (String) -> Bool = { KeychainStore.save($0, forKey: KeychainKey.serverURL) }) {
+         saveAddress: @escaping (String) -> Bool = { KeychainStore.save($0, forKey: KeychainKey.serverURL) },
+         storeToken: @escaping (String) -> TokenStore.Outcome = { TokenStore.store($0) }) {
         self.readKeychain = read
         self.saveAddress = saveAddress
+        self.storeToken = storeToken
         let storedURL = read(KeychainKey.serverURL)
         let storedToken = read(KeychainKey.apiToken)
         let state = SignInState.of(url: storedURL, token: storedToken)
@@ -204,14 +208,12 @@ final class AuthViewModel: ObservableObject {
     /// Puts the address before back into the keychain when a token was not
     /// taken; with none before, the new one goes. A failure is logged: then
     /// the next start reads the new address beside the token before.
-    private func putBackAddress(_ address: String?) {
+    private func putBackAddress(_ address: String?) -> Bool {
         guard let address else {
             KeychainStore.delete(forKey: KeychainKey.serverURL)
-            return
+            return true
         }
-        if !saveAddress(address) {
-            Logger.library.error("AUTH address before not put back; the next start may read the new one")
-        }
+        return saveAddress(address)
     }
 
     func connect() async {
@@ -366,10 +368,19 @@ final class AuthViewModel: ObservableObject {
             // The token is stored and read back before it holds: a keychain
             // that kept the token before keeps the user before (the queue is
             // released, nothing forgotten); none stored goes on as a switch.
-            let stored = TokenStore.store(token)
+            let stored = storeToken(token)
             if stored == .old || stored == .unreadable {
-                // The address before goes back beside the token before.
-                putBackAddress(heldAddress)
+                // The address before goes back beside the token before. When
+                // it cannot, no pair is left mixed: address and token go, and
+                // the sign-in ends signed out.
+                guard putBackAddress(heldAddress) else {
+                    queue.release(server: formerAddress)
+                    Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored and the address before could not be put back; address and token go")
+                    KeychainStore.delete(forKey: KeychainKey.serverURL)
+                    logout()
+                    errorMessage = String(localized: "Signed out.")
+                    return
+                }
                 queue.release(server: formerAddress)
                 Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored, the one before stands or cannot be read")
                 errorMessage = stored == .old
