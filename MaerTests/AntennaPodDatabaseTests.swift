@@ -110,5 +110,36 @@ struct AntennaPodDatabaseTests {
         defer { try? FileManager.default.removeItem(at: junk) }
         #expect(PodcastImport.readAntennaPodDatabase(at: junk) == nil)
     }
+
+    /// A database whose second table cannot be read: the episodes lack a
+    /// column every AntennaPod export has.
+    static func brokenDatabase() async throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("antennapod-broken-\(UUID().uuidString).db")
+        let db = try SQLiteConnection(path: url.path)
+        try await db.execute("CREATE TABLE Feeds (id INTEGER, title TEXT, download_url TEXT, state INTEGER)")
+        try await db.execute("INSERT INTO Feeds VALUES (1, 'Show', 'https://example.org/feed.xml', 0)")
+        try await db.execute("CREATE TABLE FeedItems (id INTEGER, feed INTEGER, link TEXT, read INTEGER)")
+        try await db.execute("CREATE TABLE FeedMedia (feeditem INTEGER, duration INTEGER, position INTEGER, download_url TEXT)")
+        try await db.execute("PRAGMA journal_mode=DELETE")
+        return url
+    }
+
+    @Test("a table that cannot be read gives no silent part: the import reads nothing and says why")
+    func unreadableTableIsNoPart() async throws {
+        let url = try await Self.brokenDatabase()
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(PodcastImport.readAntennaPodDatabase(at: url) == nil, "the feeds came without their episodes")
+    }
+
+    @Test("Fence: every way out of the AntennaPod reader that reads nothing leaves a log line", .needsTheSources)
+    func everyFailureSays() throws {
+        let code = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastImport.swift"), encoding: .utf8))
+        let start = try #require(code.range(of: "nonisolated static func readAntennaPodDatabase("))
+        let end = try #require(code.range(of: "nonisolated static func readAppleLibrary(", range: start.upperBound..<code.endIndex))
+        let body = String(code[start.upperBound..<end.lowerBound])
+        let nils = body.components(separatedBy: "return nil").count - 1
+        let lines = body.components(separatedBy: "ANTENNAPOD").count - 1
+        #expect(nils >= 3 && lines >= nils, "\(nils) ways out, \(lines) log lines")
+    }
 }
 #endif
