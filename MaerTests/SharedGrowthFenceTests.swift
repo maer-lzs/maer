@@ -216,7 +216,9 @@ struct SharedGrowthFenceTests {
     /// 790: the player keeps the place in a part of a work with estimated
     /// durations in the person's database (`EstimatedPlace`), handed in
     /// like the held unfinished titles.
-    nonisolated static let sourcesStock = 790
+    /// 791: the music works of Gutenberg become tiles in the shelf entries,
+    /// beside the books (`CatalogShelfEntries.gutenbergMusic`).
+    nonisolated static let sourcesStock = 791
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

@@ -58,6 +58,9 @@ struct ArchiveMusicPage: View {
                         if area.isClassicalPage {
                             MusopenRow(playerCoordinator: playerCoordinator, showsRights: true)
                                 .padding(.bottom, 12)
+                            // Gutenberg's music works (`GutenbergMusic`).
+                            GutenbergMusicRow(playerCoordinator: playerCoordinator, stockService: stockService)
+                                .padding(.bottom, 12)
                             RowHeading.plain("Shellac")
                                 .accessibilityIdentifier("classical-shellac-section")
                         }

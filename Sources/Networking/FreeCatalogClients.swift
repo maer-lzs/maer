@@ -398,14 +398,17 @@ nonisolated enum CatalogShelfSource {
                 CatalogStockRules.belongs($0, toShelfTerms: terms)
             }
         }
+        // Gutenberg's music works stand in the classical area, never on a
+        // shelf of the audiobooks.
+        let shelved = matching.filter { $0.music != true }
         // A PARTIAL ranking would order the shelf by what happened to be
         // fetched, so the gathered popularity only counts once it is whole.
         let gathered = stock.popularityComplete == true
-        guard !matching.isEmpty,
-              matching.contains(where: { $0.downloads != nil }) || gathered else {
+        guard !shelved.isEmpty,
+              shelved.contains(where: { $0.downloads != nil }) || gathered else {
             return nil
         }
-        let ordered = matching.sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
+        let ordered = shelved.sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
         let page = CatalogRotation.page(total: ordered.count, rowSize: rows, on: date,
                                         salt: CatalogRotation.salt(forShelf: shelf))
         let start = min((page - 1) * rows, max(ordered.count - 1, 0))

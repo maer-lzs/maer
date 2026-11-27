@@ -87,6 +87,8 @@ final class CatalogStockService: ObservableObject {
             return nil
         }
         guard fileStands, let stock = store.load(surface: surface) else { return nil }
+        // The music works of Gutenberg, for the surfaces that ask gutendex.
+        GutenbergMusic.note(stock)
         let held = (stock, CatalogStockIndex(stock: stock))
         keptStocks[surface] = held
         return held
@@ -128,6 +130,8 @@ final class CatalogStockService: ObservableObject {
         let listed = names ?? ((try? FileManager.default.contentsOfDirectory(atPath: CatalogStockStore.directory.path)) ?? [])
         let surfaces = CatalogStockSurfaces.startOrder(known: CatalogStockSurfaces.known(inDirectoryNamed: listed))
         Logger.library.notice("STOCK start runs surfaces=\(surfaces.count)")
+        // The music works of Gutenberg are known before any surface asks.
+        _ = stock(CatalogSource.gutenberg.rawValue)
         for surface in surfaces {
             guard let fetch = CatalogStockSurfaces.fetch(for: surface) else {
                 Logger.library.notice("STOCK \(surface, privacy: .public) has a file but no known run; skipped")

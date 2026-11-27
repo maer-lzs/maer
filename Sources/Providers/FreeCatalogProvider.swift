@@ -210,9 +210,31 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// A Gutenberg audiobook as a library item. Non-audiobooks
     /// (music examples inside scholarly texts) are filtered by path.
-    func remember(gutenbergMusic entry: CatalogStockEntry) -> LibraryItem? { nil }
+    /// A music work of the kept stock as a tile of the classical area: the
+    /// composer as author, the performers as narrators (`GutenbergMusic`).
+    /// The title stays a Gutenberg title; it opens and plays as every other.
+    func remember(gutenbergMusic entry: CatalogStockEntry) -> LibraryItem? {
+        guard entry.music == true else { return nil }
+        let parts = GutenbergMusic.parts(authors: entry.creator)
+        let item = LibraryItem(
+            id: entry.id,
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(title: FreeCatalog.shownTitle(entry.title, itemId: entry.id),
+                                              authorName: parts.composer,
+                                              narratorName: parts.performer, seriesName: nil,
+                                              genres: nil, publishedYear: nil, description: nil),
+                duration: nil, chapters: nil, tracks: nil),
+            addedAt: nil)
+        itemsById[entry.id] = item
+        return item
+    }
 
+    /// `includingMusic`: search finds a music work too; every audiobook
+    /// surface leaves out what the kept stock knows as music.
     func remember(gutenberg book: GutenbergClient.Book, includingMusic: Bool = false) -> LibraryItem? {
+        guard includingMusic || !GutenbergMusic.known.contains(FreeCatalog.gutenbergPrefix + String(book.id)) else {
+            return nil
+        }
         guard let audio = book.formats?["audio/mpeg"],
               FreeCatalog.isGutenbergAudiobook(audio) else { return nil }
         let id = FreeCatalog.gutenbergPrefix + String(book.id)

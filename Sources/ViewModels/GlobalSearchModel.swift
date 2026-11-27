@@ -157,8 +157,12 @@ final class GlobalSearchModel: ObservableObject {
                 answers.append(.value(books.map { provider.remember(book: $0) }
                     .map { Self.bookResult($0, source: "LibriVox") }))
             case .gutenberg(let books):
-                answers.append(.value(books.compactMap { provider.remember(gutenberg: $0) }
-                    .map { Self.bookResult($0, source: "Project Gutenberg") }))
+                // A music work stays findable; its source says where it stands.
+                answers.append(.value(books.compactMap { provider.remember(gutenberg: $0, includingMusic: true) }
+                    .map { item in
+                        Self.bookResult(item, source: GutenbergMusic.known.contains(item.id)
+                            ? "Project Gutenberg · " + String(localized: "Classical") : "Project Gutenberg")
+                    }))
             case .archive(let docs):
                 answers.append(.value(docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
                     .compactMap { provider.remember(popular: $0) }

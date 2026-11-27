@@ -34,6 +34,12 @@ enum CatalogShelfEntries {
         CatalogCoverRule.browsable(curated(docs, source: source).compactMap { register.remember(popular: $0) }, register: register)
     }
 
+    /// Gutenberg's music works as tiles of the classical area.
+    static func gutenbergMusic(_ entries: [CatalogStockEntry],
+                               register: FreeCatalogProvider = .shared) -> [LibraryItem] {
+        entries.compactMap { register.remember(gutenbergMusic: $0) }
+    }
+
     /// Gutenberg books as entries; they need no curation.
     static func books(_ books: [GutenbergClient.Book],
                       register: FreeCatalogProvider = .shared) -> [LibraryItem] {

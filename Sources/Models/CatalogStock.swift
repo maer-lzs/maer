@@ -24,6 +24,8 @@ nonisolated struct CatalogStockEntry: Codable, Sendable, Equatable {
     /// not stated" and the download path stays closed. Never guessed.
     var licenseurl: String?
     var year: String?
+    /// Gutenberg only: the work is music (`GutenbergMusic`). nil in a stock
+    /// taken before the class was read; optional, so such a stock decodes.
     var music: Bool?
 }
 
@@ -85,6 +87,8 @@ nonisolated enum CatalogStockRules {
     /// stock nature.
     static func browseEligible(_ entry: CatalogStockEntry,
                                source: CatalogSource) -> Bool {
+        // Gutenberg's music stands in the classical area (`GutenbergMusic`).
+        if source == .gutenberg { return entry.music != true }
         guard source == .archiveBooks else { return true }
         return FreeCatalog.mayDownload(licenceURL: entry.licenseurl)
     }
@@ -186,7 +190,9 @@ nonisolated enum CatalogStockRules {
     /// `fullRefetchDays`, and between two full runs it asks nothing, not
     /// even for the file's size.
     static func needsRun(_ stock: CatalogStock, isDump: Bool, now: Date = Date()) -> Bool {
-        isDump ? needsFullRefetch(stock, now: now) : needsRefresh(stock, now: now)
+        // A Gutenberg stock taken before the class was read fetches again
+        // once instead of waiting up to 30 days.
+        isDump ? needsFullRefetch(stock, now: now) || GutenbergMusic.needsClass(stock) : needsRefresh(stock, now: now)
     }
 
     /// Has a day changed since the stock was taken? Bound to the same day

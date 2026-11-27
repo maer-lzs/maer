@@ -487,6 +487,8 @@ nonisolated enum CatalogStockFetch {
         let authorIndex = index("Authors")
         let subjectIndex = index("Subjects")
         let shelfIndex = index("Bookshelves")
+        // The class of the Library of Congress (`GutenbergMusic`).
+        let classIndex = index("LoCC")
         for row in rows where row.count > typeIndex && row[typeIndex] == "Sound" {
             guard row.count > idIndex, row.count > titleIndex else { continue }
             var subjects: [String] = []
@@ -507,7 +509,8 @@ nonisolated enum CatalogStockFetch {
                 // the reason the popularity order stays with the service.
                 downloads: nil,
                 licenseurl: nil,
-                year: nil))
+                year: nil,
+                music: GutenbergMusic.isMusic(loCC: classIndex.flatMap { row.count > $0 ? row[$0] : nil })))
         }
         return out
     }

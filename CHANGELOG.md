@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Music from Project Gutenberg is under Classical.** The recordings in
+the Gutenberg catalog that are music (scores and recordings, about one in
+eight) no longer stand among the audiobooks; the Classical page shows
+them in a row of their own, with the composer under each title. A title
+you already started keeps its place and its position. Search still finds
+them and names where they stand.
+
 **The catalogs are there after a cold start, even offline.** The rows
 of the free catalogs (LibriVox, Project Gutenberg, archive.org, Old Time
 Radio, classical music, netlabels, Musopen) are kept on the device and
