@@ -929,7 +929,8 @@ nonisolated enum ArchiveOrgClient {
         guard let url = comp.url else { return ([], nil) }
         // The host's rest after a refusal is kept by the courtesy gate that
         // every way to archive.org passes, this one included.
-        let (data, response) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
+        // At most four reads at archive.org at once (`HostReads`).
+        let (data, response) = try await HostReads.archive.run { try await RequestRetryPolicy.fetch(URLRequest(url: url)) }
         // Shared artifact filter for BOTH rows (books + classical).
         // Dropped docs are logged upstream via the count difference.
         do {

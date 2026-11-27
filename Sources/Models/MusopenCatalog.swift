@@ -231,12 +231,22 @@ nonisolated enum MusopenCatalog {
     static func playableURL(_ info: WireInfo) -> URL? {
         if let derived = info.derivatives?.first(where: { $0.transcodekey == "mp3" || ($0.type ?? "").hasPrefix("audio/mpeg") }),
            let src = derived.src, let url = URL(string: src) {
-            return url
+            return onCommons(url)
         }
         guard info.mime == "audio/mpeg", let original = info.url,
               var comp = URLComponents(string: original) else { return nil }
         comp.query = nil
-        return comp.url
+        return comp.url.flatMap(onCommons)
+    }
+
+    /// The host every audible form of Commons lies on.
+    static let audioHost = "upload.wikimedia.org"
+
+    /// Only a form on the host of Commons is played, the same rule as the
+    /// index of the service: an answer that names another host for its file
+    /// gives no row.
+    static func onCommons(_ url: URL) -> URL? {
+        url.scheme == "https" && url.host?.lowercased() == audioHost ? url : nil
     }
 
     /// The object name the file page states, else the file name without

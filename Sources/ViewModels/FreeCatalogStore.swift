@@ -13,7 +13,16 @@ import OSLog
 /// tab row observes the SAME store instead of loading a second time.
 @MainActor
 final class FreeCatalogStore: ObservableObject {
-    static let shared = FreeCatalogStore()
+    /// The app's store: its rows live in their own database
+    /// (`CatalogRowStore`), and the first reading fills them from there.
+    static let shared = FreeCatalogStore(rowStore: {
+        do {
+            return try await CatalogRowStore.open()
+        } catch {
+            Logger.library.error("CATALOG rows not opened, the rows start empty: \(FailureReason.of(error), privacy: .public)")
+            return nil
+        }
+    })
 
     typealias RowsLoad = @MainActor () async -> FreeCatalogLoader.Rows
     typealias SourcesLoad = @MainActor (CatalogSourceLoader.RowSink?) async -> CatalogSourceLoader.SourceRows
@@ -24,6 +33,7 @@ final class FreeCatalogStore: ObservableObject {
     private let loadSources: SourcesLoad
     private let enabledRows: @MainActor () -> Set<FreeCatalogLoader.Rows.Row>
 
+    /// A witness hands in its own database, network, loaders and switches.
     init(rowStore: @escaping @Sendable () async -> CatalogRowStore? = { nil },
          online: @escaping @MainActor () -> Bool = { NetworkMonitor.shared.isConnected },
          loadRows: @escaping RowsLoad = { await FreeCatalogLoader.load() },
@@ -36,7 +46,55 @@ final class FreeCatalogStore: ObservableObject {
         self.enabledRows = enabledRows
     }
 
-    func restore() async {}
+    private var restored = false
+    private var restoring: Task<Void, Never>?
+
+    /// The rows the database kept, before any fetch and without a network;
+    /// only into rows that are still empty and whose source is on. Once per
+    /// store; a missing or unreadable database leaves them empty.
+    func restore() async {
+        if let restoring { return await restoring.value }
+        guard !restored else { return }
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard let rowStore = await self.rowStore() else { return }
+            let stored: [CatalogRowStore.Key: [LibraryItem]]
+            do {
+                stored = try await rowStore.rows()
+            } catch {
+                Logger.library.error("CATALOG rows not read, the rows start empty: \(FailureReason.of(error), privacy: .public)")
+                return
+            }
+            var rows = self.storedRows
+            CatalogRowKeep.restore(stored, into: &rows, enabled: self.enabledRows())
+            var sources = self.storedSourceRows
+            CatalogRowKeep.restore(stored, into: &sources, allowed: \.isAllowed)
+            self.storedRows = rows
+            self.storedSourceRows = sources
+            Logger.library.notice("CATALOG rows from the database: \(stored.count) rows")
+        }
+        restoring = task
+        await task.value
+        restored = true
+        restoring = nil
+    }
+
+    /// Writes the rows that came whole and notes the ones that failed; a
+    /// row that failed keeps what the database holds.
+    private func keep(written: [CatalogRowStore.Key: [LibraryItem]], failed: [CatalogRowStore.Key: String]) async {
+        guard let rowStore = await rowStore() else { return }
+        let now = Date().timeIntervalSince1970 * 1000
+        for (key, items) in written {
+            do { try await rowStore.replace(key, items: items, atMs: now) } catch {
+                Logger.library.error("CATALOG row \(key.rawValue, privacy: .public) not written: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        for (key, reason) in failed where written[key] == nil {
+            do { try await rowStore.noteFailure(key, reason: reason, atMs: now) } catch {
+                Logger.library.error("CATALOG row \(key.rawValue, privacy: .public) failure not noted: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+    }
     /// Reading and loading cannot be separated: the getter starts the load if
     /// it has not run. A surface that reads the rows without also triggering
     /// the fetch is not expressible any more. That is why the catalogues used
@@ -48,6 +106,7 @@ final class FreeCatalogStore: ObservableObject {
     /// the next one from the next body evaluation: publish, re-render, read,
     /// start. The app kept drawing and stopped reacting to any touch.
     var rows: FreeCatalogLoader.Rows {
+        startRestoreIfNeeded()
         startLoadIfNeeded()
         return storedRows
     }
@@ -56,10 +115,17 @@ final class FreeCatalogStore: ObservableObject {
     private var gate = CatalogLoadGate()
     /// The network, read in ONE place of this store: four gates asked the
     /// monitor each on their own, now they ask this seat.
-    private var isOnline: Bool { NetworkMonitor.shared.isConnected }
+    private var isOnline: Bool { online() }
+
+    /// The first reading fills the rows from the database, once.
+    private func startRestoreIfNeeded() {
+        guard !restored, restoring == nil else { return }
+        Task { await restore() }
+    }
 
     /// Same for the source rows of the merged page.
     var sourceRows: CatalogSourceLoader.SourceRows {
+        startRestoreIfNeeded()
         startSourceLoadIfNeeded()
         return storedSourceRows
     }
@@ -142,11 +208,13 @@ final class FreeCatalogStore: ObservableObject {
     private func runSourcesLoad() async {
         sourcesLoading = true
         defer { sourcesLoading = false; sourcesGate.finish() }
-        let loaded = await CatalogSourceLoader.load(onRow: { [weak self] apply in
+        await restore()
+        let loaded = await loadSources({ [weak self] apply in
             self?.publish(apply)
         })
         sourcesFailures = loaded.failures
         publish { $0.failures = loaded.failures }
+        await keep(written: CatalogRowKeep.written(loaded), failed: CatalogRowKeep.failed(loaded))
     }
 
     #if DEBUG
@@ -173,14 +241,19 @@ final class FreeCatalogStore: ObservableObject {
 
     private func runLoad() async {
         defer { gate.finish() }
-        let loadedRows = await FreeCatalogLoader.load()
+        await restore()
+        let fetched = await loadRows()
+        // A row that failed or was cancelled keeps what was shown.
+        let loadedRows = CatalogRowKeep.merge(previous: storedRows, loaded: fetched, enabled: enabledRows())
         // A partial success may NOT book the whole pass as done.
         // Measured shape: one cancelled Jamendo step returned early (silently,
         // and rightly. A cancel is no failure), the other rows filled, and
         // `loaded` then closed the gate for the whole SESSION: no row, no
         // line, no second attempt. `loaded` now means "every ENABLED row has
         // an answer" (content, a stated problem, or the source is off).
-        loaded = FreeCatalogLoader.passIsComplete(loadedRows)
+        // Whether this fetch answered every row, not what stands: a kept
+        // row must not close the door on a cancelled one.
+        loaded = FreeCatalogLoader.passIsComplete(fetched)
         // `loaded == false` alone did NOT reopen the door. The gate
         // still counted the cancelled pass as "attempted", so every later
         // reading surface (Music tab, library) was refused and stayed empty
@@ -190,5 +263,6 @@ final class FreeCatalogStore: ObservableObject {
             Logger.library.notice("FREECAT pass incomplete — retry allowed (\(self.gate.incompleteRetries)/\(CatalogLoadGate.incompleteRetryLimit))")
         }
         ScrollCalm.run { [weak self] in self?.storedRows = loadedRows }
+        await keep(written: CatalogRowKeep.written(fetched), failed: CatalogRowKeep.failed(fetched))
     }
 }

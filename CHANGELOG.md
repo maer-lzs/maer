@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+**The catalogs are there after a cold start, even offline.** The rows
+of the free catalogs (LibriVox, Project Gutenberg, archive.org, Old Time
+Radio, classical music, netlabels, Musopen) are kept on the device and
+shown at once when the app starts, also without a connection. A source
+that fails keeps the row it showed last instead of emptying it, and the
+rows of the start page now load at the same time instead of one after
+another. Jamendo is not kept, as its terms ask. A Musopen recording is
+only offered when its file lies on Wikimedia Commons.
+
 **Project Gutenberg audiobooks start sooner.** Opening a Gutenberg
 audiobook for the first time no longer waits until the length of every
 part has been read: it starts after the first three, and the lengths of

@@ -14,7 +14,8 @@ import OSLog
 /// filtered counts and the reason when a row stays empty.
 @MainActor
 enum FreeCatalogLoader {
-    struct Rows {
+    /// Sendable: each row is fetched in a task of its own and handed back.
+    nonisolated struct Rows: Sendable {
         /// LibriVox books for the DISCOVER mix (moderate share).
         var discoverBooks: [LibraryItem] = []
         /// The audiobooks-tab tile row (same fetch, wider cut).
@@ -44,6 +45,17 @@ enum FreeCatalogLoader {
         var freeMusicProblem: String? {
             get { problems[.freeMusic] }
             set { problems[.freeMusic] = newValue }
+        }
+
+        /// Takes the rows one step answered.
+        mutating func absorb(_ part: Rows) {
+            if !part.discoverBooks.isEmpty { discoverBooks = part.discoverBooks }
+            if !part.tabBooks.isEmpty { tabBooks = part.tabBooks }
+            if !part.classical.isEmpty { classical = part.classical }
+            if !part.netlabels.isEmpty { netlabels = part.netlabels }
+            if !part.musopen.isEmpty { musopen = part.musopen }
+            if !part.freeMusic.isEmpty { freeMusic = part.freeMusic }
+            problems.merge(part.problems) { _, new in new }
         }
     }
 
@@ -123,81 +135,117 @@ enum FreeCatalogLoader {
         let provider = FreeCatalogProvider.shared
         let librivoxOn = gates.librivox
         let archiveOn = gates.archiveBooks
-        let jamendoOn = gates.jamendo
 
         let areaOn = gates.freeAudiobooksArea
-        if librivoxOn && areaOn {
-            do {
-                // The row used to fetch LibriVox's SINCE feed (new
-                // additions). Which is why it showed obscure newcomers and
-                // never the classics. It now rides the downloads sort, one
-                // query PER active language, interleaved.
-                let codes = gates.languages
-                let docs = try await clients.archive.popularLibriVoxByLanguage(12, codes, 12, 1)
-                Logger.library.notice("FREECAT discover-books sort=downloads codes=\(codes.isEmpty ? "-" : codes.joined(separator: ","), privacy: .public) loaded=\(docs.count)")
-                if docs.isEmpty {
-                    Logger.library.notice("FREECAT discover-books EMPTY: no docs for the active languages")
-                }
-                // 🟡 The shown picks go through the ONE probed entry
-                // point; the tab row is the same fetch, second cut
-                // and stays unprobed. It is the wider list, not a preview.
-                rows.discoverBooks = await Self.picks(docs, cap: Self.discoverBookCap,
-                                                      provider: provider)
-                rows.tabBooks = CatalogCoverRule.browsable(docs.compactMap { provider.remember(popular: $0) }, register: provider)
-            } catch {
-                guard !error.isCancellation else { return rows }
-                Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.books] = await CatalogPageFailure.sentence(for: error, at: "discover-books") ?? String(localized: "The catalogs could not be loaded.")
+        // The five rows at once, each answered on its own: a slow or failing
+        // source no longer holds back the ones after it. A cancelled row
+        // stays empty and silent, so the pass stays retryable.
+        async let books = librivoxOn && areaOn ? booksRow(clients: clients, gates: gates, provider: provider) : Rows()
+        async let classical = gates.freeClassical && archiveOn ? classicalRow(clients: clients, gates: gates, provider: provider) : Rows()
+        async let netlabels = gates.netlabels && archiveOn ? netlabelsRow(clients: clients, gates: gates, provider: provider) : Rows()
+        async let musopen = gates.musopen ? musopenRow(clients: clients, gates: gates, provider: provider) : Rows()
+        // Jamendo runs here, beside the four started above; its day store
+        // stays with this task.
+        let jamendo = await jamendoRow(clients: clients, gates: gates, provider: provider, dayStore: dayStore)
+        for part in await [books, classical, netlabels, musopen, jamendo] { rows.absorb(part) }
+        return rows
+    }
+
+    /// The LibriVox books of Discover and of the audiobooks tab.
+    private static func booksRow(clients: CatalogClients, gates: CatalogGates,
+                               provider: FreeCatalogProvider) async -> Rows {
+        var rows = Rows()
+        do {
+            // The row used to fetch LibriVox's SINCE feed (new
+            // additions). Which is why it showed obscure newcomers and
+            // never the classics. It now rides the downloads sort, one
+            // query PER active language, interleaved.
+            let codes = gates.languages
+            let docs = try await clients.archive.popularLibriVoxByLanguage(12, codes, 12, 1)
+            Logger.library.notice("FREECAT discover-books sort=downloads codes=\(codes.isEmpty ? "-" : codes.joined(separator: ","), privacy: .public) loaded=\(docs.count)")
+            if docs.isEmpty {
+                Logger.library.notice("FREECAT discover-books EMPTY: no docs for the active languages")
             }
+            // 🟡 The shown picks go through the ONE probed entry
+            // point; the tab row is the same fetch, second cut
+            // and stays unprobed. It is the wider list, not a preview.
+            rows.discoverBooks = await Self.picks(docs, cap: Self.discoverBookCap,
+                                                  provider: provider)
+            rows.tabBooks = CatalogCoverRule.browsable(docs.compactMap { provider.remember(popular: $0) }, register: provider)
+        } catch {
+            guard !error.isCancellation else { return rows }
+            Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
+            rows.problems[.books] = await CatalogPageFailure.sentence(for: error, at: "discover-books") ?? String(localized: "The catalogs could not be loaded.")
         }
-        let classicalOn = gates.freeClassical && archiveOn
-        if classicalOn {
-            do {
-                // Daily rotation: the row shows a DIFFERENT page of the
-                // popularity window today than yesterday, because the
-                // all-time ranking never changes on its own.
-                let page = CatalogRotation.page(
-                    total: ArchiveMusicCatalog.classical.measuredTotal, rowSize: 12, on: Date())
-                let docs = try await clients.archive.popularMusic(ArchiveMusicCatalog.classical, 12, page)
-                Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
-                rows.classical = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
-            } catch {
-                guard !error.isCancellation else { return rows }
-                Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.classical] = await CatalogPageFailure.sentence(for: error, at: "discover-classical") ?? String(localized: "The catalogs could not be loaded.")
+        return rows
+    }
+
+    /// The classical row of archive.org.
+    private static func classicalRow(clients: CatalogClients, gates: CatalogGates,
+                               provider: FreeCatalogProvider) async -> Rows {
+        var rows = Rows()
+        do {
+            // Daily rotation: the row shows a DIFFERENT page of the
+            // popularity window today than yesterday, because the
+            // all-time ranking never changes on its own.
+            let page = CatalogRotation.page(
+                total: ArchiveMusicCatalog.classical.measuredTotal, rowSize: 12, on: Date())
+            let docs = try await clients.archive.popularMusic(ArchiveMusicCatalog.classical, 12, page)
+            Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
+            rows.classical = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
+        } catch {
+            guard !error.isCancellation else { return rows }
+            Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
+            rows.problems[.classical] = await CatalogPageFailure.sentence(for: error, at: "discover-classical") ?? String(localized: "The catalogs could not be loaded.")
+        }
+        return rows
+    }
+
+    /// The netlabels of archive.org.
+    private static func netlabelsRow(clients: CatalogClients, gates: CatalogGates,
+                               provider: FreeCatalogProvider) async -> Rows {
+        var rows = Rows()
+        do {
+            let page = CatalogRotation.page(
+                total: ArchiveMusicCatalog.netlabels.measuredTotal, rowSize: 12, on: Date())
+            let docs = try await clients.archive.popularMusic(ArchiveMusicCatalog.netlabels, 12, page)
+            Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
+            rows.netlabels = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
+        } catch {
+            guard !error.isCancellation else { return rows }
+            Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
+            rows.problems[.netlabels] = await CatalogPageFailure.sentence(for: error, at: "discover-netlabels") ?? String(localized: "The catalogs could not be loaded.")
+        }
+        return rows
+    }
+
+    /// The Musopen recordings on Wikimedia Commons.
+    private static func musopenRow(clients: CatalogClients, gates: CatalogGates,
+                               provider: FreeCatalogProvider) async -> Rows {
+        var rows = Rows()
+        do {
+            // Twice the row, so the row stays full after the files
+            // the licence rule and the player leave out.
+            let page = try await clients.musopen.row(Date(), RowPreview.limit * 2)
+            let dropped = MusopenCatalog.Dropped.allCases.map { "\($0.rawValue)=\(page.dropped[$0] ?? 0)" }.joined(separator: " ")
+            Logger.library.notice("FREECAT musopen loaded=\(page.recordings.count) \(dropped, privacy: .public)")
+            rows.musopen = Array(page.recordings.prefix(RowPreview.limit)).compactMap { provider.remember(recording: $0) }
+            if rows.musopen.isEmpty {
+                rows.problems[.musopen] = String(localized: "Nothing new here right now.")
             }
+        } catch {
+            guard !error.isCancellation else { return rows }
+            Logger.library.error("FREECAT musopen FAILED: \(String(describing: error), privacy: .public)")
+            rows.problems[.musopen] = await CatalogPageFailure.sentence(for: error, at: "discover-musopen") ?? String(localized: "The catalogs could not be loaded.")
         }
-        let netlabelsOn = gates.netlabels && archiveOn
-        if netlabelsOn {
-            do {
-                let page = CatalogRotation.page(
-                    total: ArchiveMusicCatalog.netlabels.measuredTotal, rowSize: 12, on: Date())
-                let docs = try await clients.archive.popularMusic(ArchiveMusicCatalog.netlabels, 12, page)
-                Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
-                rows.netlabels = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
-            } catch {
-                guard !error.isCancellation else { return rows }
-                Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.netlabels] = await CatalogPageFailure.sentence(for: error, at: "discover-netlabels") ?? String(localized: "The catalogs could not be loaded.")
-            }
-        }
-        if gates.musopen {
-            do {
-                // Twice the row, so the row stays full after the files
-                // the licence rule and the player leave out.
-                let page = try await clients.musopen.row(Date(), RowPreview.limit * 2)
-                let dropped = MusopenCatalog.Dropped.allCases.map { "\($0.rawValue)=\(page.dropped[$0] ?? 0)" }.joined(separator: " ")
-                Logger.library.notice("FREECAT musopen loaded=\(page.recordings.count) \(dropped, privacy: .public)")
-                rows.musopen = Array(page.recordings.prefix(RowPreview.limit)).compactMap { provider.remember(recording: $0) }
-                if rows.musopen.isEmpty {
-                    rows.problems[.musopen] = String(localized: "Nothing new here right now.")
-                }
-            } catch {
-                guard !error.isCancellation else { return rows }
-                Logger.library.error("FREECAT musopen FAILED: \(String(describing: error), privacy: .public)")
-                rows.problems[.musopen] = await CatalogPageFailure.sentence(for: error, at: "discover-musopen") ?? String(localized: "The catalogs could not be loaded.")
-            }
-        }
+        return rows
+    }
+
+    /// The Jamendo row, from the day store when the day has an answer.
+    private static func jamendoRow(clients: CatalogClients, gates: CatalogGates, provider: FreeCatalogProvider,
+                               dayStore: UserDefaults) async -> Rows {
+        var rows = Rows()
+        let jamendoOn = gates.jamendo
         if jamendoOn {
             if clients.jamendo.clientId() == nil {
                 // The key ships with the build. No

@@ -60,8 +60,12 @@ actor CatalogRowStore {
         try await Opened.shared.store()
     }
 
+    /// Opens the file and marks it for the backup. A file that is not a
+    /// database throws; the rows are then empty until the next fetch.
     static func open(file: URL) async throws -> CatalogRowStore {
-        throw SQLiteError.open("not built")
+        let store = try await CatalogRowStore(connection: SQLiteConnection(path: file.path))
+        BackupExclusion.mark(file, label: "catalog rows file")
+        return store
     }
 
     /// The one open store of the app.
@@ -74,8 +78,7 @@ actor CatalogRowStore {
             guard let directory = CatalogRowStore.directory else { throw SQLiteError.open("no Application Support") }
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             BackupExclusion.mark(directory, label: "catalog rows")
-            let store = try await CatalogRowStore(
-                connection: SQLiteConnection(path: directory.appendingPathComponent("catalog.sqlite").path))
+            let store = try await CatalogRowStore.open(file: directory.appendingPathComponent("catalog.sqlite"))
             opened = store
             return store
         }
