@@ -141,6 +141,16 @@ struct CatalogIndexShelfTests {
         #expect(await reader.answer(query: "collection:librivoxaudio AND subject:\"poetry\"", rows: 12, page: 1) == nil)
     }
 
+    @Test("a page behind the end of the index, or a shelf it holds no row of, goes to archive.org instead of an empty row")
+    func behindTheEnd() async {
+        let reads = Reads((0..<20).map { Self.json(String(format: "lva:%02d", $0), step: 1) })
+        let reader = CatalogIndexShelfReader(read: reads.read)
+        #expect(await reader.answer(query: ArchiveMusicCatalog.netlabels.query, rows: 12, page: 2)?.docs.count == 8)
+        #expect(await reader.answer(query: ArchiveMusicCatalog.netlabels.query, rows: 12, page: 300) == nil)
+        let shelves = CatalogIndexShelfReader(read: { _ in (version: 1, rows: [Self.json("lva:jazz", step: 1, shelves: ["shellac-jazz"])]) })
+        #expect(await shelves.answer(query: ArchiveMusicCatalog.classical.query, rows: 12, page: 1) == nil)
+    }
+
     @Test("Fence: the archive.org question asks the index first, only for the popularity order", .needsTheSources)
     func fence() throws {
         let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/FreeCatalogClients.swift"), encoding: .utf8))
