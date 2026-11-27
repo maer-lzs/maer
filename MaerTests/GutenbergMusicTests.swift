@@ -209,5 +209,18 @@ struct GutenbergMusicTests {
         let lane = try #require(music.range(of: "static func lane("))
         #expect(music[lane.upperBound...].prefix(400).contains("let ordered = all(stock, classical: classical)"), "lane repeats the start of all")
     }
+
+    @Test("Fence: the music page in its sections carries the Gutenberg row of the rest, after Musopen", .needsTheSources)
+    func musicSections() throws {
+        let view = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
+        let start = try #require(view.range(of: "private var catalogSections: some View {"))
+        let body = view[start.upperBound...]
+        let musopen = try #require(body.range(of: "MusopenRow(playerCoordinator: playerCoordinator)"))
+        let row = try #require(body.range(of: "GutenbergMusicRow(playerCoordinator: playerCoordinator, stockService: stockService, classical: false)"),
+                               "the music page shows no Gutenberg row in its sections")
+        #expect(musopen.upperBound <= row.lowerBound)
+        let source = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/GutenbergMusicRow.swift"), encoding: .utf8))
+        #expect(source.contains("classical: classical)") && source.contains("MusicRoute.gutenbergMusic(classical: classical)"))
+    }
 }
 #endif
