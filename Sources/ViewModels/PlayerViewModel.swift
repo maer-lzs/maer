@@ -740,7 +740,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // estimated (`EstimatedPlace`): taken when no stand spoke, dropped
         // as soon as one did.
         if !restart, ListeningStore.backup(item.id) != nil || serverProgress > 0 || restoredFromFlushed {
-            estimatedPlaces.forget(item.id)
+            estimatedPlaces.drop(item.id)
         } else if !restart, let place = estimatedPlaces.place(item.id) {
             startTime = EstimatedPlace.position(of: place, tracks: sortedTracks)
             Logger.player.notice("PLAY starts at the kept place track=\(place.track) offset=\(Int(place.offset))s")
@@ -2043,7 +2043,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // The kept place becomes a stand that travels, and goes.
         if !durationsEstimated, estimatedPlaces.place(itemId) != nil {
             recordHaltStand()
-            estimatedPlaces.forget(itemId)
+            estimatedPlaces.drop(itemId)
         }
     }
 

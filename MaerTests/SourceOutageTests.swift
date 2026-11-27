@@ -125,12 +125,12 @@ struct SourceOutageTests {
         #expect(asked.urls.map { $0.host() ?? "" } == ["www.gutenberg.org", "gutendex.com"])
     }
 
-    @Test("the record: a server error keeps nothing and is the case of its own, said today with the old sentence")
+    @Test("the record: a server error keeps nothing and is the case of its own, said with the sentence of Gutenberg")
     func recordUnavailable() async throws {
         let works = GutenbergWorks(wire: GutenbergWorks.Wire(record: { _ in (Data(), 503) }, duration: { _ in .unreadable }),
                                    suiteName: "outage-\(UUID().uuidString)")
         await #expect(throws: GutenbergUnavailable.self) { _ = try await works.work(number: 9272) }
-        #expect(ErrorSentence.of(GutenbergUnavailable()) == String(localized: "Something went wrong. Please try again."))
+        #expect(ErrorSentence.of(GutenbergUnavailable()) == String(localized: "Gutenberg is not answering right now."))
     }
 
     // MARK: Gutenberg, the ways past the door

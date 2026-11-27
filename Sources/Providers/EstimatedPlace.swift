@@ -48,7 +48,7 @@ final class EstimatedPlace {
         return Place(track: Int(row[0]), offset: max(0, row[1]))
     }
 
-    func forget(_ itemId: String) {
+    func drop(_ itemId: String) {
         guard places.removeValue(forKey: itemId) != nil else { return }
         save()
     }

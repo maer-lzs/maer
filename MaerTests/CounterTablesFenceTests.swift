@@ -39,6 +39,7 @@ struct CounterTablesFenceTests {
         "abs_known_episodes": (.wholeValue, "the episode ids this device knew of one Audiobookshelf show"),
         "held_unfinished_books": (.wholeValue, "the books the last answer named as not finished"),
         "held_unfinished_episodes": (.wholeValue, "the Audiobookshelf episodes the last answer named as not finished"),
+        "estimated_place": (.wholeValue, "the part and the place in it of a Gutenberg work while its durations are estimated, on this device only"),
     ]
 
     @Test("every table is sorted, no sort without a table")
