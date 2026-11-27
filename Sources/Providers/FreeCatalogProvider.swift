@@ -276,7 +276,7 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: FreeCatalog.shownTitle(doc.title?.first, itemId: id),
+                    title: FreeCatalog.tileTitle(FreeCatalog.shownTitle(doc.title?.first, itemId: id)),
                     authorName: FreeCatalog.gutenbergAuthor(doc.creator?.first),
                     narratorName: nil, seriesName: nil,
                     genres: FreeCatalog.gutenbergGenres(doc.subject?.values),
