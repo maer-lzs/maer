@@ -183,5 +183,30 @@ struct GutenbergMusicTests {
         let music = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
         #expect(music.contains("case .gutenbergMusic:"))
     }
+
+    @Test("a Gutenberg shelf of the books counts what it shows, without the music works")
+    func shelfTotal() throws {
+        let stock = CatalogStock(surface: CatalogSource.gutenberg.rawValue, takenAt: Date().timeIntervalSince1970, watermark: nil,
+                                 entries: [Self.entry(1, music: true, downloads: 9), Self.entry(2, music: false, downloads: 8),
+                                           Self.entry(3, music: false, downloads: 7)])
+        guard case .archive(let docs, let total) = try #require(CatalogShelfSource.localShelf(terms: ["Music"], shelf: "x", rows: 10, stock: stock)) else {
+            Issue.record("no shelf"); return
+        }
+        #expect(docs.count == 2)
+        #expect(total == 2, "the shelf counts the music works it leaves out: \(String(describing: total))")
+    }
+
+    @Test("Fence: one Gutenberg music tile with its menu serves the row and the page", .needsTheSources)
+    func oneTileWithMenu() throws {
+        let row = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/GutenbergMusicRow.swift"), encoding: .utf8))
+        #expect(row.components(separatedBy: "GutenbergMusicTile(item: item, playerCoordinator: playerCoordinator)").count - 1 == 2)
+        #expect(!row.contains("FreeCatalogBookTile(item: item, placeholderSystemImage: \"music.note\") {"), "a tile built by hand beside the one")
+        let tile = try #require(row.range(of: "struct GutenbergMusicTile: View {"))
+        let body = row[tile.upperBound...].prefix(900)
+        #expect(body.contains(".contextMenu {") && body.contains("CatalogDetailsButton(itemId: item.id)") && body.contains("CatalogQueueButtons(itemId: item.id)"))
+        let music = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/GutenbergMusic.swift"), encoding: .utf8))
+        let lane = try #require(music.range(of: "static func lane("))
+        #expect(music[lane.upperBound...].prefix(400).contains("let ordered = all(stock, classical: classical)"), "lane repeats the start of all")
+    }
 }
 #endif
