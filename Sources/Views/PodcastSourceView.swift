@@ -869,7 +869,8 @@ struct PremiumFeedEditor: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .textSelection(.disabled)
             }
-            if PodcastFeedAddress.isTokenFeedURL(show.feedURL) {
+            if PodcastFeedAddress.isTokenFeedURL(show.feedURL),
+               GPodderVisibleSubscriptions.saysNeverSynced(premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled) {
                 Section {
                     Label("Access is embedded in the feed URL (token). This feed stays on this device and is never synced to a gpodder server.", systemImage: "key.horizontal")
                         .font(.caption)

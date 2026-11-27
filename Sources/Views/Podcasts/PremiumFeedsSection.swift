@@ -129,7 +129,10 @@ struct PremiumFeedsSection: View {
         } header: {
             Label("Premium Feeds", systemImage: "lock.fill")
         } footer: {
-            Text("Token feeds carry their access in the URL. They are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default.")
+            // True only with the switch for premium feeds off.
+            if GPodderVisibleSubscriptions.saysNeverSynced(premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled) {
+                Text("Token feeds carry their access in the URL. They are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default.")
+            }
         }
         .sheet(item: $editTarget) { show in
             PremiumFeedEditor(show: show)

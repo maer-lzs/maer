@@ -49,7 +49,9 @@ nonisolated enum GPodderVisibleSubscriptions {
         premiumOptIn || !PodcastFeedAddress.isTokenFeedURL(feedURL)
     }
 
-    static func saysNeverSynced(premiumOptIn: Bool) -> Bool { true }
+    /// The sentence "never synced to a gpodder server" is true only while
+    /// the switch for premium feeds is off; with it on the sentence goes.
+    static func saysNeverSynced(premiumOptIn: Bool) -> Bool { !premiumOptIn }
 
     static func split(_ shows: [(feedURL: String, origin: String?)],
                       premiumOptIn: Bool = false) -> Result {
