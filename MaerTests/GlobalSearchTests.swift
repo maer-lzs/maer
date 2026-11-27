@@ -241,6 +241,25 @@ struct GlobalSearchModelTests {
         #expect(!model.allSourcesFailed)
     }
 
+    @Test("while a text waits for its run, no line says nothing was found, and the hits of another text are not its answer")
+    func waitingIsSearching() async {
+        let model = makeModel(providers: [MockProvider(results: [SearchResult(id: "b", kind: .book, title: "B")])])
+        model.debounceOverride = .seconds(5)
+        model.query = "xx"
+        model.queryChanged(activeTab: .home)
+        #expect(model.isSearching, "the wait reads as an answer")
+        #expect(SearchEmptyLine.of(libraryEmpty: model.sections.isEmpty, shownEmpty: true, narrowed: false,
+                                   searching: model.isSearching, allSourcesFailed: model.allSourcesFailed) == nil)
+        model.debounceOverride = .zero
+        model.queryChanged(activeTab: .home)
+        await waitUntil { !model.isSearching && !model.sections.isEmpty }
+        model.debounceOverride = .seconds(5)
+        model.query = "xyz"
+        model.queryChanged(activeTab: .home)
+        #expect(model.sections.isEmpty, "the hits of \"xx\" stand as the answer to \"xyz\"")
+        #expect(model.isSearching)
+    }
+
     @Test("below the server minimum nothing runs; results clear")
     func minChars() async {
         let model = makeModel(providers: [MockProvider(results: [SearchResult(id: "b", kind: .book, title: "B")])])
