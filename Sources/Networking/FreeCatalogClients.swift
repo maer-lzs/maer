@@ -139,6 +139,9 @@ nonisolated enum GutenbergClient {
         let (data, _) = try await RequestRetryPolicy.fetch(request)
         return try decodeWithCount(data)
     }
+
+    static func answered(status: Int?) throws {}
+    static func unavailable(_ error: Error) -> Error { error }
 }
 
 /// ONE shape for "what does this source hold on this shelf". Four sources
