@@ -36,6 +36,7 @@ struct MusicView: View {
     @AppStorage(AppStorageKeys.jamendoRowVisible) private var jamendoRowIsVisible = true
     /// Same store rows as Home. No second fetch.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
+    @ObservedObject private var stockService = CatalogStockService.shared
     /// The old-records lane of the Browse row (`ShellacSection.rowTitles`).
     @State private var shellacTitles: [LibraryItem] = []
 
@@ -259,6 +260,9 @@ struct MusicView: View {
         // The recordings of Musopen on Wikimedia Commons, after the
         // catalogs of the archive and Jamendo.
         MusopenRow(playerCoordinator: playerCoordinator)
+        // The music works of Gutenberg that are not art music, after the
+        // free catalogs.
+        GutenbergMusicRow(playerCoordinator: playerCoordinator, stockService: stockService, classical: false)
     }
 
     /// The library entries as the SAME deck of tiles the search page shows

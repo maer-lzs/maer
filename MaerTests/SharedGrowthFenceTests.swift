@@ -99,7 +99,9 @@ struct SharedGrowthFenceTests {
     /// `SmartFolderSettingsSection`).
     /// 387: the page of all Gutenberg music works is opened by the music
     /// tab's routes with the service of the kept stocks, as the Musopen page.
-    nonisolated static let stock = 387
+    /// 388: the music page holds the service of the kept stocks for its
+    /// Gutenberg row, like the classical page.
+    nonisolated static let stock = 388
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -228,7 +230,8 @@ struct SharedGrowthFenceTests {
     /// 795: the question of a row to archive.org reaches the one reader of
     /// the service's index (`CatalogIndexShelfReader.shared`), which keeps
     /// each source parsed once per version for every surface.
-    nonisolated static let sourcesStock = 795
+    /// 796: the same grip of the music page, counted over the sources.
+    nonisolated static let sourcesStock = 796
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

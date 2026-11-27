@@ -5,22 +5,25 @@
 
 import SwiftUI
 
-/// The music works of Project Gutenberg on the classical page: one row from
-/// the kept stock (`GutenbergMusic.lane`), the composer under each title.
-/// Without a kept stock, or with the source off, the row is not there.
+/// The music works of Project Gutenberg as one row from the kept stock
+/// (`GutenbergMusic.lane`), the composer under each title: the art music on
+/// the classical page, the rest on the music page. Without a kept stock, or
+/// with the source off, the row is not there.
 struct GutenbergMusicRow: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// The page's own service of the kept stocks.
     @ObservedObject var stockService: CatalogStockService
+    /// Art music (the classical page) or the rest (the music page).
+    var classical = true
 
     var body: some View {
         if AppStorageKeys.gutenbergSourceActive,
            let stock = stockService.stock(CatalogSource.gutenberg.rawValue) {
-            let items = CatalogShelfEntries.gutenbergMusic(GutenbergMusic.lane(stock, rows: RowPreview.limit, on: Date(), classical: true))
+            let items = CatalogShelfEntries.gutenbergMusic(GutenbergMusic.lane(stock, rows: RowPreview.limit, on: Date(), classical: classical))
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    RowHeading.entry(verbatim: "Project Gutenberg", destination: MusicRoute.gutenbergMusic(classical: true))
-                        .accessibilityIdentifier("classical-gutenberg-section")
+                    RowHeading.entry(verbatim: "Project Gutenberg", destination: MusicRoute.gutenbergMusic(classical: classical))
+                        .accessibilityIdentifier(classical ? "classical-gutenberg-section" : "music-gutenberg-section")
                     Text(GutenbergMusic.rightsNotice)
                         .font(.caption)
                         .foregroundStyle(.secondary)

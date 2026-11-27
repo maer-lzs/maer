@@ -130,7 +130,7 @@ struct GutenbergMusicTests {
             SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
         }
         let row = try code("Sources/Views/Music/GutenbergMusicRow.swift")
-        #expect(row.contains("RowHeading.entry(verbatim: \"Project Gutenberg\", destination: MusicRoute.gutenbergMusic(classical: true))"))
+        #expect(row.contains("RowHeading.entry(verbatim: \"Project Gutenberg\", destination: MusicRoute.gutenbergMusic(classical: classical))"))
         #expect(row.contains("Text(GutenbergMusic.rightsNotice)"))
         let navigation = try code("Sources/Views/Music/MusicNavigation.swift")
         #expect(navigation.contains("case .gutenbergMusic(let classical):\n                GutenbergMusicPage("))
