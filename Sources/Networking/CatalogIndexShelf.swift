@@ -38,6 +38,7 @@ nonisolated enum CatalogIndexShelf {
     }
 
     static func entry(_ json: Data) -> Entry? {
+        // bearable, because a row that is not JSON is passed over like a field the app does not know
         guard let object = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
               let id = object["id"] as? String, !id.isEmpty else { return nil }
         let rights = object["rechte"] as? [String: Any]
@@ -131,8 +132,7 @@ nonisolated enum CatalogIndexShelf {
     /// A row as the entry archive.org would give: the id without its prefix,
     /// the licence the source states, the collection of the source.
     static func doc(_ entry: Entry, source: String) -> ArchivePopularDoc {
-        let identifier = entry.id.hasPrefix(FreeCatalog.archivePrefix)
-            ? String(entry.id.dropFirst(FreeCatalog.archivePrefix.count)) : entry.id
+        let identifier = FreeCatalog.archiveIdentifier(of: entry.id) ?? entry.id
         return ArchivePopularDoc(identifier: identifier,
                                  title: entry.title.map { ArchiveStringList([$0]) },
                                  creator: entry.creator.map { ArchiveStringList([$0]) },
@@ -162,14 +162,22 @@ actor CatalogIndexShelfReader {
 
     static let shared = CatalogIndexShelfReader(
         read: { source in
-            guard let store = try? await CatalogRowStore.open(),
-                  let state = try? await store.indexState(source),
-                  let rows = try? await store.indexRows(source) else { return nil }
-            return (state.version, Array(rows.values))
+            do {
+                let store = try await CatalogRowStore.open()
+                guard let state = try await store.indexState(source) else { return nil }
+                return (state.version, Array(try await store.indexRows(source).values))
+            } catch {
+                Logger.library.error("CATALOG index \(source, privacy: .public) unreadable: \(String(describing: error), privacy: .public)")
+                return nil
+            }
         },
         version: { source in
-            guard let store = try? await CatalogRowStore.open() else { return nil }
-            return (try? await store.indexState(source))?.version
+            do {
+                return try await CatalogRowStore.open().indexState(source)?.version
+            } catch {
+                Logger.library.error("CATALOG index \(source, privacy: .public) state unreadable: \(String(describing: error), privacy: .public)")
+                return nil
+            }
         })
 
     /// The page from the index, nil when the question is no row's, the

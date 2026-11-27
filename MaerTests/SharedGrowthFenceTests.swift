@@ -225,7 +225,10 @@ struct SharedGrowthFenceTests {
     /// (`EstimatedPlace.shared`), where each player opened its own.
     /// 794: the rows of Gutenberg music read the kept stock through the
     /// service of the stocks (`CatalogShelfEntries.gutenbergMusicLane`).
-    nonisolated static let sourcesStock = 794
+    /// 795: the question of a row to archive.org reaches the one reader of
+    /// the service's index (`CatalogIndexShelfReader.shared`), which keeps
+    /// each source parsed once per version for every surface.
+    nonisolated static let sourcesStock = 795
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,
