@@ -173,6 +173,44 @@ struct ABSSignInSwitchTests {
         #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == "token-of-b")
     }
 
+    @Test("an address the keychain does not take keeps the sign-in before: no token stored, the client and the address stay")
+    func anAddressNotStoredKeepsTheSignInBefore() async throws {
+        let stand = Stand()
+        defer { stand.restore() }
+        KeychainStore.save("https://abs.a.example", forKey: KeychainKey.serverURL)
+        KeychainStore.save("token-of-a", forKey: KeychainKey.apiToken)
+        let server = try await ABSLoopback.start(login: .accept("token-of-b"), libraries: .accept)
+        defer { server.stop() }
+        let auth = AuthViewModel(read: { key in
+            switch key {
+            case KeychainKey.serverURL: return .value("https://abs.a.example")
+            case KeychainKey.apiToken: return .value("token-of-a")
+            default: return .missing
+            }
+        }, saveAddress: { _ in false })
+        auth.serverURLString = server.address
+        auth.loginMode = .password
+        auth.username = "hoerer"
+        auth.password = "passwort-fuer-b"
+        await auth.connect()
+        #expect(auth.errorMessage != nil, "a sign-in whose address was not stored went through")
+        #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == "token-of-a", "the token of B stands beside the address of A")
+        #expect(KeychainStore.load(forKey: KeychainKey.serverURL) == "https://abs.a.example")
+        #expect(auth.apiClient.baseURL.absoluteString == "https://abs.a.example")
+        #expect(auth.apiClient.token == "token-of-a")
+    }
+
+    @Test("Fence: the address is stored before the token, and put back when the token is not taken", .needsTheSources)
+    func addressBeforeToken() throws {
+        let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
+        let address = try #require(text.range(of: "guard saveAddress(url.absoluteString) else {"))
+        let token = try #require(text.range(of: "let stored = TokenStore.store(token)"))
+        #expect(address.upperBound < token.lowerBound)
+        let refused = try #require(text.range(of: "if stored == .old || stored == .unreadable {", range: token.upperBound..<text.endIndex))
+        #expect(text[refused.upperBound...].prefix(400).contains("putBackAddress(heldAddress)"))
+        #expect(!text.contains("KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)"), "the address is saved a second time, unchecked")
+    }
+
     /// A sign-in to another server forgets the former server's titles in
     /// the widget, its rows and its snapshot, and from iOS 27 its books in
     /// the device's search, as a sign out does; a sign-in again to the same
