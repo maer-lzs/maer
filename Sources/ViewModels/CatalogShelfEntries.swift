@@ -40,7 +40,12 @@ enum CatalogShelfEntries {
         entries.compactMap { register.remember(gutenbergMusic: $0) }
     }
 
-    static func gutenbergMusicLane(classical: Bool) -> [LibraryItem] { [] }
+    /// The day's row of Gutenberg music from the kept stock: art music for
+    /// the classical page, the rest for the music page.
+    static func gutenbergMusicLane(classical: Bool, stocks: CatalogStockService = .shared) -> [LibraryItem] {
+        guard AppStorageKeys.gutenbergSourceActive, let stock = stocks.stock(CatalogSource.gutenberg.rawValue) else { return [] }
+        return gutenbergMusic(GutenbergMusic.lane(stock, rows: RowPreview.limit, on: Date(), classical: classical))
+    }
 
     /// Gutenberg books as entries; they need no curation.
     static func books(_ books: [GutenbergClient.Book],

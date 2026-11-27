@@ -13,12 +13,14 @@ tiles. An AntennaPod import that cannot read part of the database now
 says so instead of importing a part. Subscribing during a gpodder sync
 is sent with a second sync right after it.
 
-**Music from Project Gutenberg is under Classical.** The recordings in
-the Gutenberg catalog that are music (scores and recordings, about one in
-eight) no longer stand among the audiobooks; the Classical page shows
-them in a row of their own, with the composer under each title. A title
-you already started keeps its place and its position. Search still finds
-them and names where they stand.
+**Music from Project Gutenberg has its own rows.** The recordings in the
+Gutenberg catalog that are music (about one in eight) no longer stand
+among the audiobooks. Opera, chamber, piano and orchestral music is on
+the Classical page, the songs, dances and marches in a row of the free
+catalogs on the music page; both rows show the composer under each title
+and lead to a page of all of them. A title you already started keeps its
+place and its position. Search still finds them and names where they
+stand.
 
 **The catalogs are there after a cold start, even offline.** The rows
 of the free catalogs (LibriVox, Project Gutenberg, archive.org, Old Time

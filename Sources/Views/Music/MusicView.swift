@@ -191,6 +191,7 @@ struct MusicView: View {
                 jamendoArea && jamendoRowIsVisible
                     ? CatalogMix.ordered(rows.freeMusic, for: .musicTab).map(BrowseTile.music) : []
             case .musopen: AppStorageKeys.musopenActive ? rows.musopen.map(BrowseTile.music) : []
+            case .gutenbergMusic: CatalogShelfEntries.gutenbergMusicLane(classical: false).map(BrowseTile.music)
             default: []
             }
         }

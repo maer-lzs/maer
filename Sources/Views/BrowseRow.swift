@@ -266,7 +266,7 @@ struct BrowsePage: View {
         case .musopen:
             return AppStorageKeys.musopenActive ? freeCatalogStore.rows.musopen.map(BrowseTile.music) : []
         case .gutenbergMusic:
-            return []
+            return CatalogShelfEntries.gutenbergMusicLane(classical: false).map(BrowseTile.music)
         }
     }
 
@@ -357,7 +357,7 @@ struct BrowsePage: View {
         case .musopen:
             RowHeading.entry(verbatim: "Musopen", destination: MusicRoute.musopen)
         case .gutenbergMusic:
-            RowHeading.plain(verbatim: "Project Gutenberg")
+            RowHeading.entry(verbatim: "Project Gutenberg", destination: MusicRoute.gutenbergMusic(classical: false))
         }
     }
 }

@@ -17,10 +17,10 @@ struct GutenbergMusicRow: View {
     var body: some View {
         if AppStorageKeys.gutenbergSourceActive,
            let stock = stockService.stock(CatalogSource.gutenberg.rawValue) {
-            let items = CatalogShelfEntries.gutenbergMusic(GutenbergMusic.lane(stock, rows: RowPreview.limit, on: Date()))
+            let items = CatalogShelfEntries.gutenbergMusic(GutenbergMusic.lane(stock, rows: RowPreview.limit, on: Date(), classical: true))
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    RowHeading.entry(verbatim: "Project Gutenberg", destination: MusicRoute.gutenbergMusic)
+                    RowHeading.entry(verbatim: "Project Gutenberg", destination: MusicRoute.gutenbergMusic(classical: true))
                         .accessibilityIdentifier("classical-gutenberg-section")
                     Text(GutenbergMusic.rightsNotice)
                         .font(.caption)
@@ -53,11 +53,13 @@ struct GutenbergMusicPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject var stockService: CatalogStockService
+    /// Art music (the classical page) or the rest (the music page).
+    let classical: Bool
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     var body: some View {
         let items = stockService.stock(CatalogSource.gutenberg.rawValue)
-            .map { CatalogShelfEntries.gutenbergMusic(GutenbergMusic.all($0)) } ?? []
+            .map { CatalogShelfEntries.gutenbergMusic(GutenbergMusic.all($0, classical: classical)) } ?? []
         Group {
             if items.isEmpty {
                 EmptyStateView(title: Text(verbatim: "Project Gutenberg"), systemImage: "music.note")
