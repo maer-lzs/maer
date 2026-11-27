@@ -56,7 +56,8 @@ final class GPodderSync {
     /// The persisted last sync outcome (loaded once at launch).
     private(set) var storedReport: StoredReport? = StoredReport.load()
 
-    private var isRunning = false
+    /// One round at a time; an occasion during a round runs once after it.
+    private var roundGate = GPodderRoundGate()
     private static var didAutoReconcile = false
 
     /// Pure sticky-warning decision (testable): a new warning replaces the old;
@@ -389,13 +390,21 @@ final class GPodderSync {
     @discardableResult
     func reconcile() async -> Report {
         var report = Report()
-        guard !isRunning else { return report }
         guard AppStorageKeys.gpodderEnabledValue, let config else { return report }
         guard Self.followsTheSubscriptions(on: MaerDatabase.restingShelf) else { return report }
+        guard roundGate.begin() else {
+            Logger.gpodder.notice("gpodder occasion during a round: one more round after it")
+            return report
+        }
         let signpost = PerfSignpost.syncRound(.gpodder, .server)
         defer { signpost.end() }
-        isRunning = true
-        defer { isRunning = false }
+        defer {
+            // Read in the same step as the gate opens (the main actor runs
+            // this without a pause), so no occasion falls between the two.
+            if roundGate.end() {
+                Task { _ = await self.reconcile() }
+            }
+        }
         let syncStarted = Date()
 
         let client = GPodderClient(config: config)

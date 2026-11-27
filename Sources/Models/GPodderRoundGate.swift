@@ -5,7 +5,26 @@
 
 import Foundation
 
+/// One gpodder round at a time, and an occasion that comes while one runs
+/// is not dropped: it is noted, and the end of the round reads the note in
+/// the same step as it opens the gate, so nothing falls between the two
+/// (the lost wake the core found in its first form, A-598-W).
 nonisolated struct GPodderRoundGate: Equatable, Sendable {
-    mutating func begin() -> Bool { true }
-    mutating func end() -> Bool { false }
+    private var running = false
+    private var askedAgain = false
+
+    /// true: this occasion starts a round. false: one runs; it is noted.
+    mutating func begin() -> Bool {
+        guard !running else { askedAgain = true; return false }
+        running = true
+        return true
+    }
+
+    /// Ends the round; true when an occasion came during it and one more
+    /// round is due.
+    mutating func end() -> Bool {
+        running = false
+        defer { askedAgain = false }
+        return askedAgain
+    }
 }
