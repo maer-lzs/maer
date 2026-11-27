@@ -18,11 +18,11 @@ struct GutenbergPlaceTests {
     /// part five starts at 2060.44 s.
     static let sizes = [967_056] + Array(repeating: 2_000_000, count: 11)
 
-    static func playerWithEstimates(failFrom: Int? = nil)
+    static func playerWithEstimates(failFrom: Int? = nil, kbps: [Int: Double] = [:])
         async throws -> (PlayerViewModel, String, GutenbergFirstSoundTests.Reads, EstimatedPlace) {
         let number = 950_000 + Int.random(in: 1...9_999)
         let id = FreeCatalog.gutenbergPrefix + String(number)
-        let (works, reads, _) = GutenbergFirstSoundTests.works(number, sizes: sizes, failFrom: failFrom)
+        let (works, reads, _) = GutenbergFirstSoundTests.works(number, sizes: sizes, kbps: kbps, failFrom: failFrom)
         let detail = try await FreeCatalogProvider.shared.gutenbergDetail(itemId: id, works: works)
         let places = EstimatedPlace(database: nil)
         let player = PlayerViewModel(provider: FreeCatalogProvider.shared, localTracks: { _ in [:] }, isOnline: { true },
@@ -77,6 +77,22 @@ struct GutenbergPlaceTests {
         let stand = try #require(ListeningStore.position(id), "no stand after the real durations")
         #expect(abs(stand - 2_090.44) < 1)
         #expect(places.place(id) == nil, "the place stayed")
+        player.stop()
+    }
+
+    @Test("taking real durations that differ from the estimate: the stand is the place over the real parts, not the estimated time")
+    func adoptionWithOtherDurations() async throws {
+        // Parts three and four at 40 kbit/s: 400 s each instead of the
+        // estimated 500. Part five starts at 1860.44 s, not at 2060.44 s.
+        let (player, id, _, places) = try await Self.playerWithEstimates(kbps: [3: 40_000, 4: 40_000])
+        #expect(player.durationsEstimated)
+        await player.seek(to: 2_090.44)
+        player.recordHaltStand()
+        #expect(places.place(id) == EstimatedPlace.Place(track: 5, offset: places.place(id)?.offset ?? -1))
+        #expect(await player.realDurationsForAMark(id))
+        let stand = try #require(ListeningStore.position(id))
+        #expect(abs(stand - 1_890.44) < 1, "the stand travelled in estimated coordinates: \(stand)")
+        #expect(abs(player.currentTime - 1_890.44) < 1, "the player shows the estimated time: \(player.currentTime)")
         player.stop()
     }
 
