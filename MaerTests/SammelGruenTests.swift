@@ -42,6 +42,10 @@ struct SammelGruenTests {
         let book = GutenbergClient.Book(id: 17, title: "The Raven\nA Poem in Five Parts", authors: nil, languages: ["en"],
                                         formats: ["audio/mpeg": "https://www.gutenberg.org/files/17/17-m/17-m-001.mp3"], subjects: nil)
         #expect(FreeCatalogProvider.shared.remember(gutenberg: book)?.title == "The Raven")
+        // The kept stock, the way of the main rows, too.
+        let doc = ArchivePopularDoc(identifier: "gut:17", title: ArchiveStringList(["The Raven\nA Poem in Five Parts"]),
+                                    creator: nil, downloads: 1, runtime: nil, licenseurl: nil, year: nil, subject: nil, collection: nil)
+        #expect(FreeCatalogProvider.shared.remember(popular: doc)?.title == "The Raven", "a tile of the kept stock shows the subtitle")
     }
 
     @Test("the shorthand fence catches the forms the core found")
