@@ -18,9 +18,14 @@ enum SimilarShowsLoader {
     private static var kept: [String: (at: Date, answer: Answer)] = [:]
 
     /// A feed with access data: a token in the address, a login, a mirror.
+    /// A login that cannot be read now counts as one: unknown never lets
+    /// the topics go out.
     static func guarded(_ show: PodcastShow) -> Bool {
-        show.origin != nil || PodcastFeedAddress.isTokenFeedURL(show.feedURL)
-            || PodcastFeedAuth.hasCredentials(feedKey: PodcastIdentity.feedKey(show.feedURL))
+        guard show.origin == nil, !PodcastFeedAddress.isTokenFeedURL(show.feedURL) else { return true }
+        switch PodcastFeedAuth.access(feedKey: PodcastIdentity.feedKey(show.feedURL)) {
+        case .absent: return false
+        case .present, .unknown: return true
+        }
     }
 
     static func answer(for show: PodcastShow, subscribed: Set<String>, now: Date = Date()) async -> Answer? {

@@ -34,7 +34,8 @@ struct PublicReadmeFenceTests {
     /// An exception holds wherever its word stands, so a word of our own
     /// making is renamed instead of listed here.
     /// Every entry must still stand in the scope, or it is a ghost.
-    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung"]
+    /// Two given names of musicians in the Gutenberg music vectors.
+    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung", "Pietro", "Pierpont"]
 
     /// Every inflection that really occurs in the tree, not every one that is
     /// imaginable: the plain form, the German genitive `s`, the apostrophe a
