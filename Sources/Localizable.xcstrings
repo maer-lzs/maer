@@ -18531,6 +18531,34 @@
         }
       }
     },
+    "More from %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr aus %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Más de %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus dans %@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Altro da %@"
+          }
+        }
+      }
+    },
     "Most Listened Shows" : {
       "localizations" : {
         "de" : {
@@ -19066,6 +19094,34 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nome dalla A alla Z"
+          }
+        }
+      }
+    },
+    "Named by this show" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von dieser Sendung genannt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Citado por este programa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Citée par cette émission"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Citato da questo programma"
           }
         }
       }
@@ -31289,6 +31345,34 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Artisti simili"
+          }
+        }
+      }
+    },
+    "Similar Shows" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ähnliche Sendungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Programas similares"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Émissions similaires"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Programmi simili"
           }
         }
       }

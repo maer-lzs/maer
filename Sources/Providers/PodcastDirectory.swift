@@ -189,6 +189,18 @@ struct ITunesDirectory: PodcastDirectory {
         return mergedIds.compactMap { seen.insert($0).inserted ? byFeed[$0] : nil }
     }
 
+    /// The chart of one genre in the storefronts of one language (the show's
+    /// own language, for its similar shows).
+    func topPodcasts(language: String, genreId: Int, limit: Int) async throws -> [PodcastSearchResult] {
+        var lanes: [[PodcastSearchResult]] = []
+        for storefront in SuggestionLanguages.storefronts(for: language) {
+            lanes.append(try await topPodcasts(storefront: storefront, genreId: genreId, limit: limit))
+        }
+        let merged = HomeSections.interleave(lanes.map { $0.map(\.feedURL) }, limit: limit)
+        let byFeed = Dictionary(lanes.flatMap { $0 }.map { ($0.feedURL, $0) }, uniquingKeysWith: { a, _ in a })
+        return merged.compactMap { byFeed[$0] }
+    }
+
     private func topPodcasts(storefront: String, genreId: Int?, limit: Int) async throws -> [PodcastSearchResult] {
         // Same gate as search: chart AND the lookup behind it (the ID-to-feed
         // resolution) run through this one entry.

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Similar shows.** Under the episodes of a show, a row shows up to six
+related shows: first the ones the feed itself names, otherwise the top
+shows of its genre in its language, headed "More from" and the genre. A
+tap opens the show; nothing is subscribed. A feed with a login or a
+private address never asks a directory.
+
 **Smaller fixes.** With "Sync premium feeds" on, the premium feeds
 settings no longer say that such a feed is never synced to a gpodder
 server; with it off, playing an episode of a premium feed no longer sends

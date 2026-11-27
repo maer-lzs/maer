@@ -223,7 +223,9 @@ struct SharedGrowthFenceTests {
     /// 792: the same grip, counted over the sources.
     /// 793: the app holds one store of the kept places of estimated works
     /// (`EstimatedPlace.shared`), where each player opened its own.
-    nonisolated static let sourcesStock = 793
+    /// 794: the rows of Gutenberg music read the kept stock through the
+    /// service of the stocks (`CatalogShelfEntries.gutenbergMusicLane`).
+    nonisolated static let sourcesStock = 794
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

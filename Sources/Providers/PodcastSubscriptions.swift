@@ -2865,6 +2865,9 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var showFunding: [PodcastFunding] = []
     private var showOwner: String?
     private var showType: String?
+    /// The podroll of the channel (`podcast:podroll` with its remote items).
+    private var showPodroll: [PodcastRemoteItem] = []
+    private var inPodroll = false
     private var pendingFundingURL: String?
 
     private var episodes: [PodcastEpisode] = []
@@ -2920,7 +2923,8 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             explicit: showExplicit,
             funding: showFunding.isEmpty ? nil : showFunding,
             owner: showOwner,
-            showType: showType
+            showType: showType,
+            podroll: showPodroll.isEmpty ? nil : showPodroll
         )
     }
 
@@ -2947,6 +2951,11 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         if el == "podcast:person" { pendingPersonAttrs = attrs }
         // Funding (label follows as text). Remember the URL.
         if el == "podcast:funding" { pendingFundingURL = attrs["url"] }
+        // Podroll: the shows the channel names as related.
+        if el == "podcast:podroll", !inItem { inPodroll = true }
+        if el == "podcast:remoteItem", inPodroll, !inItem {
+            showPodroll.append(PodcastRemoteItem(feedGuid: attrs["feedGuid"], feedUrl: attrs["feedUrl"], title: attrs["title"]))
+        }
         // Categories (also nested: parent + child both fire).
         if el == "itunes:category", !inItem, let cat = attrs["text"], !showCategories.contains(cat) {
             showCategories.append(cat)
@@ -2999,6 +3008,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             if inItem { iPersons.append(person) }
             pendingPersonAttrs = nil
         }
+        if el == "podcast:podroll" { inPodroll = false }
         if el == "podcast:funding", !inItem, let url = pendingFundingURL {
             showFunding.append(PodcastFunding(url: url, label: value.isEmpty ? nil : value))
             pendingFundingURL = nil

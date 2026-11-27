@@ -126,7 +126,7 @@ nonisolated enum GutenbergMusic {
         "Yodels"
     ]
 
-    /// Art music (decision B, 27.11.2026): a subject of the art music
+    /// Art music: a subject of the art music
     /// list, or a composer who died before 1900, and no subject of the
     /// light list. Measured on the dump of 27.11.: 28 of the 132 works;
     /// the unclear (marches, waltzes, songs with piano) are not art music.

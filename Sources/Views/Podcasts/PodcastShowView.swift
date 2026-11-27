@@ -282,6 +282,13 @@ struct PodcastShowView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
             }
+            // Similar shows under the episodes (`SimilarShows`).
+            if let shown = liveShow, !isServerShow {
+                SimilarShowsSection(show: shown,
+                                    subscribed: Set(subs.shows.map(\.feedURL)))
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+            }
         }
         .untitledDetailPage()
         // The show's settings stand in the page's one menu; a pushed page
