@@ -23,6 +23,8 @@ nonisolated enum CatalogIndexShelf {
         let licence: String?
         let language: String?
         let shelves: [String]
+        /// `laden`: false bars the item from the library; nil when missing.
+        var load: Bool? = nil
         /// The tenth of its source the row stands in, 1 the most popular;
         /// nil when the source states no number or the row came through a
         /// delta first.
@@ -46,7 +48,7 @@ nonisolated enum CatalogIndexShelf {
         return Entry(id: id, title: object["titel"] as? String, creator: object["urheber"] as? String,
                      year: object["jahr"] as? Int, licence: rights?["url"] as? String,
                      language: object["sprache"] as? String, shelves: object["reihen"] as? [String] ?? [],
-                     step: step)
+                     load: object["laden"] as? Bool, step: step)
     }
 
     /// The lower step first, a row without a step behind every row with one;
@@ -139,7 +141,8 @@ nonisolated enum CatalogIndexShelf {
                                  downloads: nil, runtime: nil, licenseurl: entry.licence,
                                  year: entry.year.map { ArchiveStringList([String($0)]) },
                                  subject: nil,
-                                 collection: collection(of: source).map { ArchiveStringList([$0]) })
+                                 collection: collection(of: source).map { ArchiveStringList([$0]) },
+                                 mayLoad: entry.load)
     }
 }
 

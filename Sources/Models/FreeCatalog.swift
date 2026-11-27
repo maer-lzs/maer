@@ -109,6 +109,9 @@ nonisolated struct ArchivePopularDoc: Codable, Sendable {
     /// in parts or an album of tracks, see `ArchiveItemForm`). Present on every
     /// measured item and always containing the queried collection.
     var collection: ArchiveStringList? = nil
+    /// False when the catalog of a Mär Sync service bars the item from the
+    /// library (`laden`); nil from archive.org, where the licence decides.
+    var mayLoad: Bool? = nil
 }
 
 nonisolated struct ArchiveFile: Decodable, Sendable {

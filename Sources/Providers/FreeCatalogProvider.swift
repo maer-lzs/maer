@@ -324,7 +324,13 @@ final class FreeCatalogProvider: AudioProvider {
         }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
-        if FreeCatalog.mayDownload(licenceURL: doc.licenseurl) { statedLicence.insert(id) }
+        // A row the service's catalog bars from the library is never kept,
+        // whatever licence it states.
+        if doc.mayLoad == false {
+            statedLicence.remove(id)
+        } else if FreeCatalog.mayDownload(licenceURL: doc.licenseurl) {
+            statedLicence.insert(id)
+        }
         // A recording whose US term has run out is public domain by LAW,
         // not by uploader claim; the year is the recording year the index
         // states. Computed from the current year, so the boundary moves by
