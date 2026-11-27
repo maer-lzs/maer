@@ -66,10 +66,17 @@ nonisolated enum IdentityCarry {
             out.removals = live.removals
             if !other.removals.isEmpty { dropped.append("removals") }
         }
-        out.playlistsPending = live.playlistsPending ?? other.playlistsPending
-        if live.playlistsPending != nil, other.playlistsPending != nil { dropped.append("playlists") }
-        out.choicesPending = live.choicesPending ?? other.choicesPending
-        if live.choicesPending != nil, other.choicesPending != nil { dropped.append("choices") }
+        // Two pending documents are joined by the rule the caller hands in
+        // (the merges of the service); only one that cannot be joined
+        // gives way, and it is named.
+        func pending(_ kind: String, _ live: Data?, _ other: Data?) -> Data? {
+            guard let live, let other else { return live ?? other }
+            if let joined = mergePending?(kind, live, other) { return joined }
+            dropped.append(kind)
+            return live
+        }
+        out.playlistsPending = pending("playlists", live.playlistsPending, other.playlistsPending)
+        out.choicesPending = pending("choices", live.choicesPending, other.choicesPending)
         return (out, dropped)
     }
 }
