@@ -200,6 +200,39 @@ struct ABSSignInSwitchTests {
         #expect(auth.apiClient.token == "token-of-a")
     }
 
+    @Test("a token not taken and an address before that cannot be put back: both go, signed out, the next start reads no mixed pair")
+    func noPairLeftMixed() async throws {
+        let stand = Stand()
+        defer { stand.restore() }
+        KeychainStore.save("https://abs.a.example", forKey: KeychainKey.serverURL)
+        KeychainStore.save("token-of-a", forKey: KeychainKey.apiToken)
+        let server = try await ABSLoopback.start(login: .accept("token-of-b"), libraries: .accept)
+        defer { server.stop() }
+        var saves = 0
+        let auth = AuthViewModel(read: { key in
+            switch key {
+            case KeychainKey.serverURL: return .value("https://abs.a.example")
+            case KeychainKey.apiToken: return .value("token-of-a")
+            default: return .missing
+            }
+        }, saveAddress: { address in
+            saves += 1
+            // The new address holds, the address before does not go back.
+            if saves == 1 { KeychainStore.save(address, forKey: KeychainKey.serverURL); return true }
+            return false
+        }, storeToken: { _ in .old })
+        auth.serverURLString = server.address
+        auth.loginMode = .password
+        auth.username = "hoerer"
+        auth.password = "passwort-fuer-b"
+        await auth.connect()
+        #expect(saves == 2, "the address before was not put back: \(saves)")
+        #expect(KeychainStore.load(forKey: KeychainKey.serverURL) == nil, "an address stays beside a token it does not belong to")
+        #expect(KeychainStore.load(forKey: KeychainKey.apiToken) == nil)
+        #expect(!auth.isLoggedIn)
+        #expect(auth.errorMessage == String(localized: "Signed out."))
+    }
+
     @Test("Fence: the address is stored before the token, and put back when the token is not taken", .needsTheSources)
     func addressBeforeToken() throws {
         let text = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift"), encoding: .utf8))
