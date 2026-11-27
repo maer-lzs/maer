@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**A guide for one address at home and away.** The server guides now
+explain how one name can reach a server both at home and on the road
+(split DNS, a VPN such as Tailscale or WireGuard, or a reverse proxy),
+so Mär never has to switch between two addresses.
+
 **Similar shows.** Under the episodes of a show, a row shows up to six
 related shows: first the ones the feed itself names, otherwise the top
 shows of its genre in its language, headed "More from" and the genre. A

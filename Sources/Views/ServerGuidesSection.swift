@@ -30,6 +30,18 @@ struct ServerGuidesSection: View {
                     }
                     .accessibilityIdentifier("server-guide-\(guide.id)")
                 }
+                // One address at home and away (`HomeAndAwayGuidePage`).
+                NavigationLink {
+                    HomeAndAwayGuidePage()
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("A name for home and away")
+                        Text("One address that works at home and on the road.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("server-guide-home-and-away")
             } header: {
                 Text("Set up a server")
             } footer: {
