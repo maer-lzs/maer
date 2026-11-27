@@ -30,6 +30,9 @@ enum ResumeRequest {
     /// the id of its list.
     static var pendingRoutineId: String?
 
+    static func take() -> Bool { true }
+    static func release() {}
+
     /// Ends a routine request that waits for its list. A later request
     /// ends it (the routine's intent clears the others when it sets its
     /// own, so one beside it came later), and so does leaving the

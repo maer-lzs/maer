@@ -21,6 +21,8 @@ final class EstimatedPlace {
     }
 
     private let keeper: RowKeeper<[Double]>?
+    /// How many rows were written, for a witness.
+    private(set) var writes = 0
     private var places: [String: [Double]] = [:]
 
     /// `database` nil keeps the places in memory only.
