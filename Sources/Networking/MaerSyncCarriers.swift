@@ -457,6 +457,25 @@ final class MaerSyncSession {
     /// Every kind the session reads and writes.
     static let allKinds: Set<String> = [standsKind, playlistsKind, choicesKind, claimKind, statsKind, feedAuthKind]
 
+    /// Two pending documents of one kind as one, by the merges of the
+    /// service: the playlists through `MaerPlaylistMerge.merge`, the choices
+    /// per key with the newer stamp (the living side on a tie). nil when a
+    /// body does not read; the living side's then stays.
+    nonisolated static func mergedPending(kind: String, live: Data, other: Data) -> Data? {
+        switch kind {
+        case playlistsKind:
+            guard let mine = MaerSyncPlaylistWire.decode(live), let theirs = MaerSyncPlaylistWire.decode(other) else { return nil }
+            do { return try MaerSyncPlaylistWire.encode(MaerPlaylistMerge.merge(local: mine, cloud: theirs).snapshot) } catch { return nil }
+        case choicesKind:
+            guard var mine = MaerSyncChoiceWire.decode(live), let theirs = MaerSyncChoiceWire.decode(other) else { return nil }
+            func stamp(_ raw: Any?) -> Double { ((raw as? [String: Any])?["t"] as? Double) ?? -.infinity }
+            for (key, entry) in theirs where stamp(entry) > stamp(mine[key]) { mine[key] = entry }
+            do { return try MaerSyncChoiceWire.encode(mine) } catch { return nil }
+        default:
+            return nil
+        }
+    }
+
     /// The rows of one identity carried onto another that may hold state
     /// (`IdentityCarry.merged`); nothing stays under the source. Static, so
     /// a cold start can carry before the session loads its state.
@@ -482,7 +501,7 @@ final class MaerSyncSession {
         let targetHeld = holdsState(next, defaults: defaults, rows: rows, documents: documents)
         let resolved = living ?? IdentityCarry.living(source: source, target: target)
         let carried = IdentityCarry.merged(source: source, target: target, living: resolved,
-                                           mergePending: { MaerSyncSession.mergedPending(kind: $0, live: $1, other: $2) })
+                                           mergePending: { Self.mergedPending(kind: $0, live: $1, other: $2) })
         for kind in carried.dropped {
             Logger.library.notice("MAERSYNC carry: the \(kind, privacy: .public) of the side that does not live fell")
         }
@@ -1665,26 +1684,6 @@ final class MaerSyncPlaylistCarrier: PlaylistCarrier {
 /// needless write is a byte-for-byte match the runner already skips. A
 /// field added later reads through the tolerant helpers, never throws.
 /// Format 1.
-extension MaerSyncSession {
-    /// Two pending documents of one kind as one, by the merges of the
-    /// service: the playlists through `MaerPlaylistMerge.merge`, the choices
-    /// per key with the newer stamp (the living side on a tie). nil when a
-    /// body does not read; the living side's then stays.
-    nonisolated static func mergedPending(kind: String, live: Data, other: Data) -> Data? {
-        switch kind {
-        case playlistsKind:
-            guard let mine = MaerSyncPlaylistWire.decode(live), let theirs = MaerSyncPlaylistWire.decode(other) else { return nil }
-            do { return try MaerSyncPlaylistWire.encode(MaerPlaylistMerge.merge(local: mine, cloud: theirs).snapshot) } catch { return nil }
-        case choicesKind:
-            guard var mine = MaerSyncChoiceWire.decode(live), let theirs = MaerSyncChoiceWire.decode(other) else { return nil }
-            func stamp(_ raw: Any?) -> Double { ((raw as? [String: Any])?["t"] as? Double) ?? -.infinity }
-            for (key, entry) in theirs where stamp(entry) > stamp(mine[key]) { mine[key] = entry }
-            do { return try MaerSyncChoiceWire.encode(mine) } catch { return nil }
-        default:
-            return nil
-        }
-    }
-}
 
 nonisolated enum MaerSyncPlaylistWire {
     static let format = 1

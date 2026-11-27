@@ -515,7 +515,9 @@ struct FreeCatalogTests {
         let provider = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/FreeCatalogProvider.swift"), encoding: .utf8))
         // Eight since the music works of Gutenberg (`remember(gutenbergMusic:)`).
-        #expect(provider.components(separatedBy: "title: FreeCatalog.shownTitle(").count - 1 == 8,
+        // A Gutenberg tile wraps the same intake in `tileTitle`; both forms count.
+        #expect(provider.components(separatedBy: "title: FreeCatalog.shownTitle(").count - 1
+                + provider.components(separatedBy: "title: FreeCatalog.tileTitle(FreeCatalog.shownTitle(").count - 1 == 8,
                 "an intake shows the source's title unchecked")
         #expect(!provider.contains("String(localized: \"Unknown Title\")"))
         let page = SyncContractFenceTests.stripped(try String(

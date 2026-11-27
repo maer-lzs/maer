@@ -2036,8 +2036,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func adoptResolvedDurations(itemId: String) async {
         // A stopped player takes nothing over: its stand would travel from a
         // time nobody hears, and the kept place is the next start's.
-        guard !isStopped, item?.id == itemId, let detail = try? await provider.fetchItemDetail(itemId: itemId),
-              !isStopped, item?.id == itemId else { return }
+        guard !isStopped, item?.id == itemId else { return }
+        guard let detail = try? await provider.fetchItemDetail(itemId: itemId) else { return }
+        // Asked again after the wait: a stop or another title may have come.
+        guard !isStopped, item?.id == itemId else { return }
         let resolved = ChapterModel.ordered(detail.media.tracks ?? [])
         guard resolved.count == tracks.count else { return }
         // The time in the part is real; its start is not. Taken before the
