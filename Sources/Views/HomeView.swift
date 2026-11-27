@@ -379,6 +379,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             case .album(let album): id = album
             case .station(let station): id = station
             case .catalogTrack(let track): id = track
+            case .ownList(let list): id = list
             }
             return (id, again.times[id] ?? 0)
         }
@@ -424,6 +425,8 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                                  width: Self.recentlyPlayedTileWidth,
                                                  playerCoordinator: playerCoordinator)
                                     .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                            case .ownList:
+                                EmptyView()
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
                                     // The ROW's metric, not the class's.

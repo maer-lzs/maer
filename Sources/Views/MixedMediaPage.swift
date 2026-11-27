@@ -184,6 +184,8 @@ struct MixedMediaPage: View {
                             CatalogTrackCell(itemId: id, width: cardWidth,
                                              playerCoordinator: playerCoordinator)
                                 .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
+                        case .ownList:
+                            EmptyView()
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
                                 // Kachel navigiert (siehe HomeView).

@@ -585,6 +585,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             case .catalogTrack(let id):
                 guard let title = await catalogTitle(id) else { continue }
                 tiles.append(contentsOf: await self.tiles([title]))
+            case .ownList:
+                continue
             case .station(let id):
                 guard let station = stations.first(where: { $0.id == id }) else { continue }
                 tiles.append(Tile(image: await stationImage(station),
@@ -681,7 +683,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             switch entry {
             case .album(let id): if let album = recent.first(where: { $0.id == id }) { played.append(album) }
             case .catalogTrack(let id): if let title = await catalogTitle(id) { played.append(title) }
-            case .station: break
+            case .station, .ownList: break
             }
         }
         var sections: [CPListSection] = []

@@ -27,6 +27,8 @@ nonisolated enum RecentlyPlayedRow {
         /// shellac side, Jamendo track). Its own case rather than `.album`,
         /// because the two resolve through different providers.
         case catalogTrack(id: String)
+        /// An own list whose home is music, by the moment it was last heard.
+        case ownList(id: String)
     }
 
     /// Merge by time. Entries WITHOUT a known time keep their source order
@@ -46,6 +48,7 @@ nonisolated enum RecentlyPlayedRow {
                        continued: Set<String>,
                        stations: [String], stationTimes: [String: Double],
                        catalog: [String] = [], catalogTimes: [String: Double] = [:],
+                       ownLists: [String: Double] = [:],
                        limit: Int) -> [Entry] {
         struct Ranked {
             let entry: Entry
@@ -117,6 +120,23 @@ nonisolated enum RecentlyPlayedRow {
     static func albumMoments(_ ids: [String], server: [String: BookProgress],
                              positions: [String: [Double]]) -> [String: Double] {
         deviceTimes(ids, positions: positions).merging(albumTimes(server)) { _, served in served }
+    }
+
+    /// The music ids of the progress that may stand in the row beside the
+    /// server's shelf.
+    static func musicCandidates(progress: [String: BookProgress], kind: (String) -> MusicItemKind?,
+                                plays: [String: Double], hidden: [String: Double]) -> [String] {
+        progress.filter { key, value in
+            let kind = kind(key)
+            return (kind == .playlist || kind == .album) && value.isStarted
+        }.map(\.key).sorted()
+    }
+
+    /// The `ownLists` argument: own lists whose home is music, by the
+    /// moment this device last heard them, in seconds.
+    static func ownListTimes(_ lists: [(id: String, home: PlaylistHome)], plays: [String: Double],
+                             hidden: [String: Double]) -> [String: Double] {
+        [:]
     }
 
     /// The `catalogTimes` argument. The first entry per id decides, exactly

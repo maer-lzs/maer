@@ -984,6 +984,8 @@ nonisolated enum AppStorageKeys {
     /// Per-item markers for "don't show under Continue any more"
     /// (the listening position stays untouched).
     static let continueHiddenMarkers = "continueHiddenMarkers"
+    /// When each playlist was last heard on this device (`PlaylistPlays`).
+    static let playlistPlays = "playlistPlays"
     /// Feed keys of co-listened shows the user took out of "Latest Episodes".
     static let coListenedHidden = "coListenedHidden"
     /// "Next steps" was dismissed once; until then the card returns at every start.

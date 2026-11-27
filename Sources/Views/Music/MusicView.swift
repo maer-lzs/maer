@@ -368,7 +368,7 @@ struct MusicView: View {
                             case .catalogTrack(let id):
                                 CatalogTrackCell(itemId: id, width: 150,
                                                  playerCoordinator: playerCoordinator)
-                            case .station:
+                            case .station, .ownList:
                                 EmptyView()
                             }
                         }
