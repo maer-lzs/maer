@@ -125,6 +125,20 @@ actor CatalogRowStore {
         return rows
     }
 
+    struct IndexState: Equatable, Sendable {
+        let version: Int
+        let etag: String?
+        let etagAddress: String?
+        let readAtMs: Double
+        let notBeforeMs: Double?
+    }
+
+    func indexState(_ source: String) async throws -> IndexState? { nil }
+    func indexRows(_ source: String) async throws -> [String: Data] { [:] }
+    func takeFull(_ source: String, rows: [MaerSyncCatalogRow], version: Int, etag: String?, etagAddress: String?, atMs: Double) async throws {}
+    func takeDelta(_ source: String, rows: [MaerSyncCatalogRow], version: Int, etag: String?, etagAddress: String?, atMs: Double) async throws {}
+    func noteIndexRead(_ source: String, atMs: Double, notBeforeMs: Double?) async throws {}
+
     func failures() async throws -> [Key: String] {
         var failures: [Key: String] = [:]
         for row in try await connection.query("SELECT reihe, fehler FROM catalog_reihe WHERE fehler IS NOT NULL") {

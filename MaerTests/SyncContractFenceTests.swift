@@ -121,8 +121,15 @@ struct SyncContractFenceTests {
     /// changes its meaning, and above all a path that ends up only in the
     /// PROSE TABLE instead of the machine block, the only one that
     /// any case reads. The imprint covers every byte.
-    nonisolated static let contractDigest =
-        "283761495f6fd0abc669ca30ab97fc02370addf3a7353e0fc770acfe32143b55"
+    ///
+    /// The agreed imprint lies beside the contract, in
+    /// `docs/maer-sync-contract.sha256` (one line, the hex of SHA-256, the
+    /// form `shasum -a 256` writes): a changed contract needs that file
+    /// changed too, by hand, in the same commit.
+    nonisolated static func contractDigest(in root: URL) throws -> String {
+        let line = try String(contentsOf: root.appendingPathComponent("docs/maer-sync-contract.sha256"), encoding: .utf8)
+        return String(line.prefix { !$0.isWhitespace })
+    }
 
     /// The same for the published vectors, which also lie twice.
     /// They are foreign numbers, copied word for word, so a
@@ -140,7 +147,7 @@ struct SyncContractFenceTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         #expect(try Self.digest(ofFileAt: root.appendingPathComponent("docs/maer-sync-contract.md"))
-                == Self.contractDigest,
+                == (try Self.contractDigest(in: root)),
                 "der Vertrag hat sich geaendert. Das ist erlaubt und nie einseitig: denselben neuen Abdruck in den Zaun des Dienst-Repos schreiben und dieselbe Datei hinuebertragen, sonst beschreiben die zwei Enden still nicht mehr denselben Dienst")
     }
 
@@ -226,8 +233,9 @@ struct SyncContractFenceTests {
                                             encoding: .utf8))
         #expect(text.components(separatedBy: "MaerSyncHeaders.authorization(").count - 1 == 2,
                 "das Zeichen wird an zwei Stellen in einen Kopf gelegt: im Helfer der drei Wege und im ersten Rahmen der Steckdose")
-        #expect(text.components(separatedBy: "try await inside(access, ").count - 1 == 3,
-                "drei Wege tragen das Zeichen: lesen, schreiben, auflisten")
+        // Four since the catalogue (addition katalog-1): reading it carries the token too.
+        #expect(text.components(separatedBy: "try await inside(access, ").count - 1 == 4,
+                "vier Wege tragen das Zeichen: lesen, schreiben, auflisten, den Katalog lesen")
         // Both files that build requests: the door and the tunnel. A
         // token on the OUTER request of the tunnel would be the same
         // gap one file further.
@@ -258,7 +266,8 @@ struct SyncContractFenceTests {
     @Test("this app also calls every path that the contract promises", .needsTheSources)
     func everyPromisedPathIsCalled() throws {
         let text = try Self.sources()
-        for path in Self.declared(in: try Self.contractText())["paths"] ?? [] {
+        let lines = Self.declared(in: try Self.contractText())
+        for path in (lines["paths"] ?? []) + (lines["additions-paths"] ?? []) {
             // The contract writes the path with a leading slash, the app
             // appends it to a base address. The body is what is compared.
             let stem = path.hasPrefix("/") ? String(path.dropFirst()) : path
@@ -288,7 +297,10 @@ struct SyncContractFenceTests {
             called.insert("/" + text[range])
             cursor = range.upperBound
         }
-        let declared = Set(Self.declared(in: try Self.contractText())["paths"] ?? [])
+        // The paths of the version and of its additions (an addition stands
+        // in its own line and never in the version's own).
+        let lines = Self.declared(in: try Self.contractText())
+        let declared = Set((lines["paths"] ?? []) + (lines["additions-paths"] ?? []))
         #expect(!called.isEmpty, "ohne gefundene Pfade misst dieser Fall nichts")
         #expect(called.subtracting(declared).isEmpty,
                 "diese App ruft Pfade, die der Vertrag nicht nennt: \(called.subtracting(declared).sorted())")

@@ -504,6 +504,8 @@ nonisolated struct MaerSyncNewPassword: Equatable, Sendable {
 /// the very positions it was sending and report success), and **404 is not
 /// an error but "not there yet"**, which is every device's first round.
 nonisolated enum MaerSyncAnswer {
+    static func catalog(_ reply: MaerSyncReply) throws -> MaerSyncCatalogAnswer { .absent }
+
     static func document(_ reply: MaerSyncReply) throws -> MaerSyncDocument? {
         switch reply.status {
         case 200:
