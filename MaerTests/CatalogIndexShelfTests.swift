@@ -103,6 +103,17 @@ struct CatalogIndexShelfTests {
         #expect(CatalogIndexShelf.doc(entry, source: "schellack").collection?.first == "georgeblood")
     }
 
+    @Test("a row with laden false is never kept on the device, even with a stated licence; with laden true the licence decides as before")
+    @MainActor func ladenFalseIsNeverKept() throws {
+        let barred = try #require(CatalogIndexShelf.entry(Self.json("lva:index-laden-false", step: 1, licence: "http://creativecommons.org/licenses/by/3.0/",
+                                                                    extra: ["laden": false])))
+        let barredItem = try #require(FreeCatalogProvider.shared.remember(popular: CatalogIndexShelf.doc(barred, source: "schellack")))
+        #expect(!FreeCatalogProvider.shared.mayKeep(itemId: barredItem.id), "a row the service bars from the library may be downloaded")
+        let free = try #require(CatalogIndexShelf.entry(Self.json("lva:index-laden-true", step: 1, licence: "http://creativecommons.org/licenses/by/3.0/")))
+        let freeItem = try #require(FreeCatalogProvider.shared.remember(popular: CatalogIndexShelf.doc(free, source: "netlabel")))
+        #expect(FreeCatalogProvider.shared.mayKeep(itemId: freeItem.id))
+    }
+
     nonisolated final class Reads: Sendable {
         let count = Mutex(0)
         let version = Mutex(1)
