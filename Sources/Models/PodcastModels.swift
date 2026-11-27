@@ -39,6 +39,16 @@ nonisolated struct PodcastShow: Codable, Identifiable, Equatable {
     /// a fact on the feed, not a second ordering tree.
     var origin: String? = nil
     var showType: String? = nil    // episodic | serial
+    /// The shows this feed names as related (`podcast:podroll`). Optional:
+    /// shows kept before it was read decode as they were.
+    var podroll: [PodcastRemoteItem]? = nil
+}
+
+/// One `podcast:remoteItem` of a podroll.
+nonisolated struct PodcastRemoteItem: Codable, Hashable, Sendable {
+    var feedGuid: String?
+    var feedUrl: String?
+    var title: String?
 }
 
 nonisolated struct PodcastEpisode: Codable, Identifiable, Equatable {
