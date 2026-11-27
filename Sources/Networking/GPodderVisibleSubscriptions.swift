@@ -42,6 +42,8 @@ nonisolated enum GPodderVisibleSubscriptions {
     /// stay hidden in every case, and the Basic-auth class travels through
     /// the iCloud channel instead (a URL without its credentials would be
     /// half a state).
+    static func mayCarryActions(feedURL: String, premiumOptIn: Bool) -> Bool { true }
+
     static func split(_ shows: [(feedURL: String, origin: String?)],
                       premiumOptIn: Bool = false) -> Result {
         var byNorm: [String: String] = [:]
