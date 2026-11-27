@@ -118,23 +118,9 @@ struct MixedMediaPage: View {
         // Holdings display follows the holdings, never the source switch.
         RadioStore.recents()
     }
-    private var listenAgainCatalog: [ContinueSources.Extra] {
-        ContinueSources.positionless(positions: ListeningStore.positions(),
-                                     serverKnows: [],
-                                     hiddenMarkers: ContinueHiddenStore.markers())
-    }
-
     private var listenAgainEntries: [RecentlyPlayedRow.Entry] {
-        RecentlyPlayedRow.merged(
-            albums: listenAgainAlbums.map(\.id),
-            albumTimes: RecentlyPlayedRow.albumMoments(listenAgainAlbums.map(\.id), server: LateMusicValues.shared.progress,
-                                                       positions: ListeningStore.positions()),
-            continued: Set(continueIds),
-            stations: listenAgainStations.map(\.id),
-            stationTimes: RadioStore.recentTimes(),
-            catalog: listenAgainCatalog.map(\.id),
-            catalogTimes: RecentlyPlayedRow.catalogTimes(listenAgainCatalog),
-            limit: Self.listenAgainLimit)
+        SharedRows.listenAgain(albums: listenAgainAlbums, continued: Set(continueIds),
+                               limit: Self.listenAgainLimit).entries
     }
 
     var body: some View {
@@ -179,13 +165,19 @@ struct MixedMediaPage: View {
                                           playerCoordinator: playerCoordinator)
                                     .stackedKind(MediaFamily.kind(for: id))
                                     .frame(width: cardWidth, alignment: .top)
+                                    .modifier(ListenAgainRemove(tile: SharedRows.listenAgainTile(id)))
                             }
                         case .catalogTrack(let id):
                             CatalogTrackCell(itemId: id, width: cardWidth,
                                              playerCoordinator: playerCoordinator)
                                 .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
-                        case .ownList:
-                            EmptyView()
+                        case .ownList(let id):
+                            if let list = SharedRows.listenAgainList(id) {
+                                OwnListTile(list: list, width: cardWidth, playerCoordinator: playerCoordinator)
+                                    .stackedKind(.music)
+                                    .frame(width: cardWidth, alignment: .top)
+                                    .modifier(ListenAgainRemove(tile: SharedRows.listenAgainTile(id)))
+                            }
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
                                 // Kachel navigiert (siehe HomeView).

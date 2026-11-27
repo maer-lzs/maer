@@ -283,7 +283,7 @@ struct RoutinePlaybackTests {
         #expect(card.contains("await ShufflePlayButton.start(pool: source.shuffleDraw, isOnline: isOnline, coordinator: playerCoordinator, contextSource: source.title)"),
                 "the corner starts through the button's door, so an empty draw says why")
         #expect(!card.contains("playerCoordinator.shufflePlay("), "the corner passes the door again")
-        #expect(card.contains("let start = RoutinePlayback.held(list, in: store).start return .of(start.items, resuming: start.fromRule)"))
+        #expect(card.contains("let start = RoutinePlayback.held(list, in: store).start let pool = ShufflePool.of(start.items, resuming: start.fromRule)"))
         let page = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicLibraryPages.swift")
         #expect(page.contains("{ .of(playable, resuming: start.fromRule) }"))
         let button = try FetchAnswerTests.squeezedSource("Sources/Views/Music/ShufflePlayButton.swift")

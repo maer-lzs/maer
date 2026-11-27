@@ -89,6 +89,9 @@ nonisolated enum UserChoiceCatalog {
         "syncQueueOwedForgets": .device,
         // The hint to suggest folders, put away on this device only.
         "smartFoldersHintDismissed": .device,
+        // When this device last heard each playlist, for its Listen Again;
+        // whether it travels is a question still open.
+        "playlistPlays": .device,
         // Which server this device wrote its own rows of a Subsonic title
         // under; another device reaches the server by another address.
         "musicServerStamps": .device,

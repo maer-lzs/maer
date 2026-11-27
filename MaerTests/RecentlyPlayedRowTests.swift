@@ -189,7 +189,8 @@ struct RecentlyPlayedRowTests {
     @Test("no surface answers the question a second time", .needsTheSources)
     func noSurfaceAnswersTheQuestionASecondTime() throws {
         // The music tab's row is asked by the tab and the car in one place.
-        let surfaces = ["HomeView.swift", "MixedMediaPage.swift", "SharedRows.swift"]
+        // Start, the page behind the row and the car read the one row there.
+        let surfaces = ["SharedRows.swift"]
         var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let text = try SourceTree.text(file)

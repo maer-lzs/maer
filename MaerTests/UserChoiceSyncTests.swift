@@ -1118,6 +1118,8 @@ struct UserChoiceGateTests {
             "syncQueueHeldServers", "syncQueueOwedForgets",
             // The hint to suggest folders, put away on this device.
             "smartFoldersHintDismissed",
+            // When this device last heard each playlist (Listen Again).
+            "playlistPlays",
             // The server stamps of this device's own rows.
             "musicServerStamps",
             // Downloading audiobooks while you listen, on the device that

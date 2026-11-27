@@ -666,6 +666,7 @@ struct CollectionMenuItems: View {
         if let musicDownload {
             MusicDownloadMenuItems(itemId: musicDownload)
         }
+        ListenAgainRemoveButton()
     }
 }
 

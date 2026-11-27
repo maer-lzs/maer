@@ -140,7 +140,7 @@ struct CarPlayLayoutTests {
             let found = try #require(car.range(of: step, range: from..<car.endIndex), "Start misses or misplaces \(step)")
             from = found.upperBound
         }
-        #expect(car.contains("SharedRows.listenAgain(serverRecent: recent, continued: continued"))
+        #expect(car.contains("SharedRows.listenAgain(albums: recent, continued: continued"))
         // Podcasts begin with Continue, music with its playlists.
         let podcasts = try #require(car.range(of: "private func podcastSections()"))
         let continued = try #require(car.range(of: "SharedRows.continueEpisodeIds(", range: podcasts.upperBound..<car.endIndex))

@@ -69,6 +69,10 @@ nonisolated enum RecentlyPlayedRow {
         for (index, id) in catalog.enumerated() where !continued.contains(id) {
             ranked.append(Ranked(entry: .catalogTrack(id: id), time: catalogTimes[id], order: index))
         }
+        // An own list stands only by its moment, so it is always dated.
+        for (index, list) in ownLists.sorted(by: { $0.key < $1.key }).enumerated() {
+            ranked.append(Ranked(entry: .ownList(id: list.key), time: list.value, order: index))
+        }
         let dated = ranked.filter { $0.time != nil }
             .sorted { ($0.time ?? 0) > ($1.time ?? 0) }
         let undated = ranked.filter { $0.time == nil }
@@ -122,21 +126,43 @@ nonisolated enum RecentlyPlayedRow {
         deviceTimes(ids, positions: positions).merging(albumTimes(server)) { _, served in served }
     }
 
-    /// The music ids of the progress that may stand in the row beside the
-    /// server's shelf.
-    static func musicCandidates(progress: [String: BookProgress], kind: (String) -> MusicItemKind?,
+    /// The music ids that may stand in the row beside the server's shelf:
+    /// a started album (a finished one is the shelf's to show), and every
+    /// server playlist with a moment, started, finished or shuffled from
+    /// its card (`plays`, ms). "Remove from Listen Again" holds until a
+    /// newer moment, the marker of the Continue cards.
+    /// The two kinds of a music key the row asks for; the caller asks the
+    /// key's server and answers with one of them or none.
+    enum MusicKind { case album, playlist }
+
+    static func musicCandidates(progress: [String: BookProgress], kind: (String) -> MusicKind?,
                                 plays: [String: Double], hidden: [String: Double]) -> [String] {
-        progress.filter { key, value in
-            let kind = kind(key)
-            return (kind == .playlist || kind == .album) && value.isStarted
-        }.map(\.key).sorted()
+        var moments: [String: Double] = [:]
+        for (id, value) in progress {
+            switch kind(id) {
+            case .album where value.isStarted: moments[id] = value.lastUpdate
+            case .playlist where value.lastUpdate > 0 || value.fraction > 0: moments[id] = value.lastUpdate
+            default: continue
+            }
+        }
+        for (id, ms) in plays where kind(id) == .playlist {
+            moments[id] = max(moments[id] ?? 0, ms)
+        }
+        return moments.filter { !ContinueHidden.isHidden(id: $0.key, lastUpdate: $0.value, markers: hidden) }
+            .map(\.key).sorted()
     }
 
     /// The `ownLists` argument: own lists whose home is music, by the
     /// moment this device last heard them, in seconds.
     static func ownListTimes(_ lists: [(id: String, home: PlaylistHome)], plays: [String: Double],
                              hidden: [String: Double]) -> [String: Double] {
-        [:]
+        var times: [String: Double] = [:]
+        for list in lists where list.home == .music {
+            guard let ms = plays[list.id], let time = knownTime(ms / 1000),
+                  !ContinueHidden.isHidden(id: list.id, lastUpdate: ms, markers: hidden) else { continue }
+            times[list.id] = time
+        }
+        return times
     }
 
     /// The `catalogTimes` argument. The first entry per id decides, exactly

@@ -342,29 +342,13 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         // Holdings display follows the HOLDINGS: a switched-off source
         // stops future traffic, never the view of what was already heard
         // (the radio effect line promises exactly that).
-        let stations = RadioStore.recents().count
-        return recentMusicItems.filter { !continueIds.contains($0.id) }.count
-            + stations + catalogTracks.count
+        listenAgain(limit: Int.max).entries.count
     }
 
     /// "Listen Again" with the moment of each entry, where known: the one
     /// reading for the row and for the widget's rows.
     private func listenAgain(limit: Int) -> (entries: [RecentlyPlayedRow.Entry], times: [String: Double]) {
-        let albumTimes = RecentlyPlayedRow.albumMoments(recentMusicItems.map(\.id), server: musicContinueProgress,
-                                                        positions: ListeningStore.positions())
-        let stationTimes = RadioStore.recentTimes()
-        let catalogTimes = RecentlyPlayedRow.catalogTimes(catalogTracks)
-        let entries = RecentlyPlayedRow.merged(
-            albums: recentMusicItems.map(\.id),
-            albumTimes: albumTimes,
-            continued: Set(continueIds),
-            stations: radioRecents.map(\.id),
-            stationTimes: stationTimes,
-            catalog: catalogTracks.map(\.id),
-            catalogTimes: catalogTimes,
-            limit: limit)
-        let times = albumTimes.merging(stationTimes) { first, _ in first }.merging(catalogTimes) { first, _ in first }
-        return (entries, times)
+        SharedRows.listenAgain(albums: recentMusicItems, continued: Set(continueIds), limit: limit)
     }
 
     /// The widget's rows from this pass: "Continue" and "Listen Again" with
@@ -419,14 +403,21 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                         .stackedKind(MediaFamily.kind(for: id))
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
+                                        .modifier(ListenAgainRemove(tile: SharedRows.listenAgainTile(id)))
                                 }
                             case .catalogTrack(let id):
                                 CatalogTrackCell(itemId: id,
                                                  width: Self.recentlyPlayedTileWidth,
                                                  playerCoordinator: playerCoordinator)
                                     .stackedKind(MediaFamily.kind(for: id, markedForm: ListeningStore.startedForm(id)))
-                            case .ownList:
-                                EmptyView()
+                            case .ownList(let id):
+                                if let list = SharedRows.listenAgainList(id) {
+                                    OwnListTile(list: list, width: Self.recentlyPlayedTileWidth,
+                                                playerCoordinator: playerCoordinator)
+                                        .stackedKind(.music)
+                                        .frame(width: Self.recentlyPlayedTileWidth, alignment: .top)
+                                        .modifier(ListenAgainRemove(tile: SharedRows.listenAgainTile(id)))
+                                }
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
                                     // The ROW's metric, not the class's.
@@ -718,17 +709,19 @@ RowHeading(title: "Rediscover",
         // absence must cost the start page nothing but the music rows.
         let musicProgressAnswer = await musicProgressTask
         let musicProgress = musicProgressAnswer ?? lateMusic.progress
-        // Music never stands in Continue: a started album or playlist goes
-        // to "Listen Again" (with its position, the resume is unchanged; the
-        // one form question, asked once here).
-        let startedMusic = musicProgress
-            .filter { key, value in
+        // Music never stands in Continue: a started album and every heard
+        // server playlist go to "Listen Again" (with its position, the
+        // resume is unchanged; the one form question, asked once here).
+        let startedMusic = RecentlyPlayedRow.musicCandidates(
+            progress: musicProgress,
+            kind: { key in
                 let kind = AppSession.shared.musicProvider(for: key).kind(of: key)
-                return (kind == .playlist || kind == .album) && value.isStarted
-            }
-            .map { (id: $0.key, ts: HomeSections.lastPlayedMs(
-                local: 0, server: $0.value.lastUpdate,
-                playingNowMs: PlayingNow.momentMs(forId: $0.key))) }
+                return kind == .playlist ? .playlist : kind == .album ? .album : nil
+            },
+            plays: PlaylistPlaysStore.moments(), hidden: hidden)
+            .map { (id: $0, ts: HomeSections.lastPlayedMs(
+                local: 0, server: musicProgress[$0]?.lastUpdate ?? 0,
+                playingNowMs: PlayingNow.momentMs(forId: $0))) }
         let startedAlbumIds = Set(startedMusic.filter { !HomeSections.continueAccepts($0.id) }.map(\.id))
         // Row limit 10 (landscape/iPad show 4–5 cards).
         let episodesShown = streams.episodesShown

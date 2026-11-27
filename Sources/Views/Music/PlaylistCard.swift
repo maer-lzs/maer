@@ -306,7 +306,13 @@ extension PlaylistCardSource {
             detailRoute: .album(playlistLibraryItem(playlist)),
             open: { coordinator in await coordinator.open(item: playlistLibraryItem(playlist)) },
             shufflePool: { await music.songItems(forItemId: itemId) },
-            shuffleDraw: { await CollectionSongs.serverPool(itemId) },
+            // A drawn shuffle is the playlist heard: its moment for "Listen
+            // Again" (an opened playlist has its stand).
+            shuffleDraw: {
+                let pool = await CollectionSongs.serverPool(itemId)
+                if !pool.items.isEmpty { PlaylistPlaysStore.note(itemId) }
+                return pool
+            },
             mosaic: {
                 let ids = await music.playlistMosaicCoverIDs(forItemId: itemId)
                 let artists = PlaylistPresentation.topArtists(
@@ -354,7 +360,9 @@ extension PlaylistCardSource {
             shufflePool: { items(of: list, in: store) },
             shuffleDraw: {
                 let start = RoutinePlayback.held(list, in: store).start
-                return .of(start.items, resuming: start.fromRule)
+                let pool = ShufflePool.of(start.items, resuming: start.fromRule)
+                if !start.items.isEmpty { PlaylistPlaysStore.note(list.id) }
+                return pool
             },
             mosaic: {
                 // A list from before the snapshots existed has none to draw

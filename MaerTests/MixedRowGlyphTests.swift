@@ -30,8 +30,8 @@ struct MixedRowGlyphTests {
     /// whose callers ARE the mixed rows. A new caller of a mixer is a new
     /// mixed row and stands here with its marks.
     static let marks: [String: (count: Int, reason: String)] = [
-        "Sources/Views/MixedMediaPage.swift": (9, "Continue card 2, Recently Added tile 2, Listen Again page 3, the continue page's tile 2"),
-        "Sources/Views/HomeView.swift": (6, "Listen Again row 3, Rediscover tile 3"),
+        "Sources/Views/MixedMediaPage.swift": (10, "Continue card 2, Recently Added tile 2, Listen Again page 4 (album, catalogue title, own list, station), the continue page's tile 2"),
+        "Sources/Views/HomeView.swift": (7, "Listen Again row 4 (album, catalogue title, own list, station), Rediscover tile 3"),
         "Sources/Views/CatalogMixRow.swift": (2, "feed and catalog tile, marked in the Browse row only"),
         "Sources/Views/BrowseRow.swift": (2, "recommended show and free-music title, where the row mixes kinds; the catalog share marks through its tile"),
     ]
@@ -39,9 +39,8 @@ struct MixedRowGlyphTests {
     static let mixers: [String: (callers: [String: Int], reason: String)] = [
         "HomeSections.byRecency(": (["Sources/Views/HomeView.swift": 2, "Sources/ViewModels/SharedRows.swift": 2],
                                     "Keep Listening, row and page ids; the car's cover row, which the system draws and which has no place for a mark, and the car's Continue of the podcast tab, episodes only"),
-        "RecentlyPlayedRow.merged(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/MixedMediaPage.swift": 1,
-                                       "Sources/ViewModels/SharedRows.swift": 2],
-                                      "Listen Again, row and page; the music tab's Recently Played (asked by the tab and the car) holds music only and carries no marks; the car's Listen Again is a cover row the system draws, with no place for a mark"),
+        "RecentlyPlayedRow.merged(": (["Sources/ViewModels/SharedRows.swift": 2],
+                                      "Listen Again, the one row Start, its page and the car read (`SharedRows.listenAgain`), the marks on the tiles of Start and the page; the music tab's Recently Played (asked by the tab and the car) holds music only and carries no marks; the car's Listen Again is a cover row the system draws, with no place for a mark"),
         "BrowseMix.interleave(": (["Sources/Views/HomeView.swift": 1, "Sources/Views/BrowseRow.swift": 1],
                                   "the Browse row's three shares on Start; a tab's lanes of its area, drawn by the same row"),
         "computeRediscover(": (["Sources/Views/HomeView.swift": 1], "Rediscover, row and pool"),

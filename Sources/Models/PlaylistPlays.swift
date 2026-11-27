@@ -14,13 +14,29 @@ nonisolated enum PlaylistPlays {
 
     /// The moments with `id` heard at `atMs`, the newest `keep` of them.
     static func noting(_ id: String, atMs: Double, in moments: [String: Double]) -> [String: Double] {
-        moments
+        var next = moments
+        next[id] = atMs
+        guard next.count > keep else { return next }
+        let kept = next.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.prefix(keep)
+        return Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
     }
 
     /// The stored value as moments. A form this build does not know, or a
     /// broken one, reads as none.
     static func decoded(_ raw: Any?) -> [String: Double] {
-        [:]
+        guard let table = raw as? [String: Any] else { return [:] }
+        // A table or a list inside is another form (a later build's), not
+        // a broken entry: none of it is read.
+        if table.values.contains(where: { $0 is [String: Any] || $0 is [Any] }) { return [:] }
+        var moments: [String: Double] = [:]
+        for (id, value) in table {
+            // A number is a moment; anything else is a form this build
+            // does not know and is passed over.
+            guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+                  number.doubleValue.isFinite, number.doubleValue > 0 else { continue }
+            moments[id] = number.doubleValue
+        }
+        return moments
     }
 }
 
@@ -33,5 +49,6 @@ enum PlaylistPlaysStore {
 
     static func note(_ id: String, atMs: Double = Date().timeIntervalSince1970 * 1000,
                      defaults: UserDefaults = .standard) {
+        defaults.set(PlaylistPlays.noting(id, atMs: atMs, in: moments(defaults: defaults)), forKey: AppStorageKeys.playlistPlays)
     }
 }

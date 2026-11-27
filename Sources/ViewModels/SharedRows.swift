@@ -101,23 +101,52 @@ enum SharedRows {
             limit: Int.max)
     }
 
-    /// Start's "Listen Again" for a surface that holds none of Start's own
-    /// state: the server's recently played albums, the stations and the
-    /// catalogue titles heard before, merged by time, without what
-    /// Continue already shows.
-    static func listenAgain(serverRecent: [LibraryItem], continued: Set<String>,
-                            limit: Int) -> [RecentlyPlayedRow.Entry] {
-        let albums = AppStorageKeys.musicServerActive ? serverRecent.map(\.id) : []
+    /// The own list a tile of "Listen Again" stands for.
+    static func listenAgainList(_ id: String) -> MaerPlaylists.Playlist? {
+        MaerPlaylists.shared.playlist(id: id)
+    }
+
+    /// What "Remove from Listen Again" marks for a tile of the row: an own
+    /// list at the moment it was heard, a server playlist at its stand or
+    /// its shuffle from the card, whichever is newer; nil for an album
+    /// (the row shows the server's shelf, the remove would not hold).
+    static func listenAgainTile(_ id: String) -> ListenAgainTile? {
+        let plays = PlaylistPlaysStore.moments()
+        if listenAgainList(id) != nil {
+            return ListenAgainTile(id: id, momentMs: plays[id] ?? 0)
+        }
+        guard AppSession.shared.musicProvider(for: id).kind(of: id) == .playlist else { return nil }
+        return ListenAgainTile(id: id, momentMs: max(LateMusicValues.shared.progress[id]?.lastUpdate ?? 0, plays[id] ?? 0))
+    }
+
+    /// "Listen Again", the one row Start, the page behind it and the car
+    /// read: the albums and server playlists a surface holds (`albums`),
+    /// the stations, the catalogue titles heard before and the own lists
+    /// whose home is music, merged by time, without what Continue already
+    /// shows. A server playlist shuffled from its card is dated by that
+    /// moment. Returns the moments too, for the widget's rows.
+    static func listenAgain(albums: [LibraryItem], continued: Set<String>,
+                            limit: Int) -> (entries: [RecentlyPlayedRow.Entry], times: [String: Double]) {
+        let ids = AppStorageKeys.musicServerActive ? albums.map(\.id) : []
         let positions = ListeningStore.positions()
-        let tracks = ContinueSources.positionless(positions: positions, serverKnows: [],
-                                                  hiddenMarkers: ContinueHiddenStore.markers())
-        return RecentlyPlayedRow.merged(
-            albums: albums,
-            albumTimes: RecentlyPlayedRow.albumMoments(albums, server: LateMusicValues.shared.progress, positions: positions),
-            continued: continued,
-            stations: RadioStore.recents().map(\.id), stationTimes: RadioStore.recentTimes(),
-            catalog: tracks.map(\.id), catalogTimes: RecentlyPlayedRow.catalogTimes(tracks),
-            limit: limit)
+        let hidden = ContinueHiddenStore.markers()
+        let plays = PlaylistPlaysStore.moments()
+        let tracks = ContinueSources.positionless(positions: positions, serverKnows: [], hiddenMarkers: hidden)
+        let shuffled = plays.filter { ids.contains($0.key) }.compactMapValues { RecentlyPlayedRow.knownTime($0 / 1000) }
+        let albumTimes = RecentlyPlayedRow.albumMoments(ids, server: LateMusicValues.shared.progress, positions: positions)
+            .merging(shuffled) { max($0, $1) }
+        let lists = MaerPlaylists.shared.playlists.map { (id: $0.id, home: $0.home) }
+        let ownLists = RecentlyPlayedRow.ownListTimes(lists, plays: plays, hidden: hidden)
+        let stationTimes = RadioStore.recentTimes()
+        let catalogTimes = RecentlyPlayedRow.catalogTimes(tracks)
+        let entries = RecentlyPlayedRow.merged(
+            albums: ids, albumTimes: albumTimes, continued: continued,
+            stations: RadioStore.recents().map(\.id), stationTimes: stationTimes,
+            catalog: tracks.map(\.id), catalogTimes: catalogTimes,
+            ownLists: ownLists, limit: limit)
+        let times = albumTimes.merging(stationTimes) { first, _ in first }
+            .merging(catalogTimes) { first, _ in first }.merging(ownLists) { first, _ in first }
+        return (entries, times)
     }
 
     /// The device lists that stand at `home`, the most recently changed

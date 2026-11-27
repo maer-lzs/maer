@@ -19,8 +19,8 @@ struct ListenAgainPlaylistsTests {
         BookProgress(fraction: fraction, isFinished: finished, lastUpdate: ms)
     }
 
-    private static func kinds(_ id: String) -> MusicItemKind? {
-        id.hasPrefix("pl:") ? .playlist : id.hasPrefix("al:") ? .album : .song
+    private static func kinds(_ id: String) -> RecentlyPlayedRow.MusicKind? {
+        id.hasPrefix("pl:") ? .playlist : id.hasPrefix("al:") ? .album : nil
     }
 
     @Test("an own list stands by its moment between an album and a station")
@@ -115,7 +115,10 @@ struct ListenAgainPlaylistsTests {
     @Test("Fence: shuffling a server playlist from its card notes the playlist's moment", .needsTheSources)
     func shufflingFromTheCardNotes() throws {
         let card = try FetchAnswerTests.squeezedSource("Sources/Views/Music/PlaylistCard.swift")
-        #expect(card.contains("PlaylistPlaysStore.note(playlist.id)"), "the card's shuffle leaves no moment")
+        #expect(card.contains("let pool = await CollectionSongs.serverPool(itemId) if !pool.items.isEmpty { PlaylistPlaysStore.note(itemId) }"),
+                "the server playlist's shuffle leaves no moment")
+        #expect(card.contains("let pool = ShufflePool.of(start.items, resuming: start.fromRule) if !start.items.isEmpty { PlaylistPlaysStore.note(list.id) }"),
+                "an own list's shuffle leaves no moment")
     }
 
     @Test("Fence: Start, the page behind the row and the car read the one row", .needsTheSources)
@@ -126,8 +129,9 @@ struct ListenAgainPlaylistsTests {
         let shared = try FetchAnswerTests.squeezedSource("Sources/ViewModels/SharedRows.swift")
         #expect(home.contains("SharedRows.listenAgain(albums: recentMusicItems"))
         #expect(page.contains("SharedRows.listenAgain(albums: listenAgainAlbums"))
-        #expect(car.contains("SharedRows.listenAgain(albums: LateMusicValues.merged(shelf: recent, started: LateMusicValues.shared.recentAlbums)"),
+        #expect(car.contains("LateMusicValues.merged(shelf: await recentAlbums().value ?? [], started: LateMusicValues.shared.recentAlbums)"),
                 "the car does not see the playlists Start resolved")
+        #expect(car.contains("SharedRows.listenAgain(albums: recent, continued: continued"))
         for text in [home, page] { #expect(!text.contains("RecentlyPlayedRow.merged("), "a surface builds the row a second time") }
         #expect(shared.contains("RecentlyPlayedRow.ownListTimes(") && shared.contains("PlaylistPlaysStore.moments()"))
     }
@@ -138,6 +142,10 @@ struct ListenAgainPlaylistsTests {
         #expect(home.contains("case .ownList(let id):"), "an own list has no tile in the row")
         #expect(home.components(separatedBy: "ListenAgainRemove(").count - 1 >= 2,
                 "the own list and the server playlist do not both carry the remove")
+        let menu = try FetchAnswerTests.squeezedSource("Sources/Views/Music/MusicView.swift")
+        #expect(menu.contains("ListenAgainRemoveButton()"), "the tiles' menu does not offer the remove")
+        let remove = try FetchAnswerTests.squeezedSource("Sources/Views/ListenAgainRemove.swift")
+        #expect(remove.contains("ContinueHiddenStore.hide(id: tile.id, lastUpdate: tile.momentMs)"), "not the one marker")
     }
 }
 #endif

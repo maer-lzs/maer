@@ -263,6 +263,7 @@ enum RoutinePlayback {
             Logger.library.notice("ROUTINE folder all unheard: shows=\(perShow.count) episodes=\(items.count)")
             shuffled ? await coordinator.shufflePlay(items: items, contextSource: list.name, resuming: [])
                 : await coordinator.playInOrder(items: items, contextSource: list.name, resuming: [])
+            if !items.isEmpty { PlaylistPlaysStore.note(list.id) }
             return !items.isEmpty
         }
         let start = expand(itemIds, entry: { store.resolution(of: $0, in: list).item }) { rule in
@@ -272,6 +273,8 @@ enum RoutinePlayback {
         }
         shuffled ? await coordinator.shufflePlay(items: start.items, contextSource: list.name, resuming: start.fromRule)
             : await coordinator.playInOrder(items: start.items, contextSource: list.name, resuming: start.fromRule)
+        // The moment "Listen Again" ranks the list by (`PlaylistPlays`).
+        if !start.items.isEmpty { PlaylistPlaysStore.note(list.id) }
         return !start.items.isEmpty
     }
 

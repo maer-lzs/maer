@@ -101,7 +101,9 @@ struct SharedGrowthFenceTests {
     /// tab's routes with the service of the kept stocks, as the Musopen page.
     /// 388: the music page holds the service of the kept stocks for its
     /// Gutenberg row, like the classical page.
-    nonisolated static let stock = 388
+    /// 387: Start and the page behind "Listen Again" no longer build the
+    /// row; they read the one row of `SharedRows`, which the car reads too.
+    nonisolated static let stock = 387
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -231,7 +233,11 @@ struct SharedGrowthFenceTests {
     /// the service's index (`CatalogIndexShelfReader.shared`), which keeps
     /// each source parsed once per version for every surface.
     /// 796: the same grip of the music page, counted over the sources.
-    nonisolated static let sourcesStock = 796
+    /// 800: "Listen Again" is one row for Start, its page and the car: it
+    /// reads the device's own lists for their tiles and moments, and the
+    /// car reads the albums and playlists Start resolved; the views fell by
+    /// one.
+    nonisolated static let sourcesStock = 800
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

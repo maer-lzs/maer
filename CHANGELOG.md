@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Playlists in Listen Again.** Every music playlist you have heard now
+stands in Listen Again on Start, on its page and in the car, ordered by
+when you heard it: a playlist of your music server once it was started,
+finished or shuffled from its card, and your own playlists whose home is
+Music. Remove from Listen Again works on them as on the other tiles; a
+newer listen brings them back. When you last heard one of your own
+playlists is kept on this device.
+
 ## v3.10 (Build 69), November 28, 2026
 
 **A guide for one address at home and away.** The server guides now

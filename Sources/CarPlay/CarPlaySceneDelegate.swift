@@ -570,11 +570,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// catalogue title plays, a station plays.
     private func listenAgainTiles(continued: Set<String>) async -> [Tile] {
         let session = self.session
-        let recent = await recentAlbums().value ?? []
+        // The car's own shelf, then what Start resolved beside it (the
+        // heard playlists and started albums), so the car shows Start's row.
+        let recent = LateMusicValues.merged(shelf: await recentAlbums().value ?? [],
+                                            started: LateMusicValues.shared.recentAlbums)
         let stations = RadioStore.recents()
         var tiles: [Tile] = []
-        for entry in SharedRows.listenAgain(serverRecent: recent, continued: continued,
-                                            limit: Int(CPMaximumNumberOfGridImages)) {
+        for entry in SharedRows.listenAgain(albums: recent, continued: continued,
+                                            limit: Int(CPMaximumNumberOfGridImages)).entries {
             switch entry {
             case .album(let id):
                 guard let album = recent.first(where: { $0.id == id }) else { continue }
@@ -585,8 +588,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             case .catalogTrack(let id):
                 guard let title = await catalogTitle(id) else { continue }
                 tiles.append(contentsOf: await self.tiles([title]))
-            case .ownList:
-                continue
+            case .ownList(let id):
+                guard let list = playlistStore.playlist(id: id) else { continue }
+                tiles.append(await listTile(list))
             case .station(let id):
                 guard let station = stations.first(where: { $0.id == id }) else { continue }
                 tiles.append(Tile(image: await stationImage(station),
