@@ -1,0 +1,854 @@
+{
+ "_quelle": "Written from the text of CONTRACT.md (the addition katalog-1) and the field beliebt_stufe, not from the code of the service; tests/katalog_wege.rs plays every case against the service. A case lays down its runs in order (voll: a full pass, delta: a delta), then asks once.",
+ "faelle": [
+  {
+   "name": "full state: a row with a step names it, a row without one has no field",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox"
+   },
+   "erwartet": {
+    "status": 200,
+    "kopf": {
+     "ETag": "\"1-librivox-1\""
+    },
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 1,
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "pages: weiter is the last id of the page",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      },
+      {
+       "id": "lva:item-c",
+       "art": "hoerbuch",
+       "titel": "Sanditon",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 10
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "anzahl=2"
+   },
+   "erwartet": {
+    "status": 200,
+    "kopf": {
+     "ETag": "\"1-librivox-1\""
+    },
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 1,
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ],
+     "weiter": "lva:item-b"
+    }
+   }
+  },
+  {
+   "name": "pages: the last page has weiter null",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      },
+      {
+       "id": "lva:item-c",
+       "art": "hoerbuch",
+       "titel": "Sanditon",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 10
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "nach=lva:item-b&anzahl=2"
+   },
+   "erwartet": {
+    "status": 200,
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 1,
+     "zeilen": [
+      {
+       "id": "lva:item-c",
+       "art": "hoerbuch",
+       "titel": "Sanditon",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 10
+      }
+     ],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "delta from 0: live rows with geloescht false and their step",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "seit=0"
+   },
+   "erwartet": {
+    "status": 200,
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 1,
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1,
+       "geloescht": false
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "geloescht": false
+      }
+     ],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "delta: a deletion mark is exactly id and geloescht",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ]
+    },
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "seit=1"
+   },
+   "erwartet": {
+    "status": 200,
+    "kopf": {
+     "ETag": "\"1-librivox-2\""
+    },
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 2,
+     "zeilen": [
+      {
+       "id": "lva:item-b",
+       "geloescht": true
+      }
+     ],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "a row that first came through a delta has no step, not 0",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      }
+     ]
+    },
+    {
+     "quelle": "librivox",
+     "art": "delta",
+     "zeilen": [
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox"
+   },
+   "erwartet": {
+    "status": 200,
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 2,
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-b",
+       "art": "hoerbuch",
+       "titel": "Persuasion",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null
+      }
+     ],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "only a new step gives the row a new version",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-c",
+       "art": "hoerbuch",
+       "titel": "Sanditon",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 10
+      }
+     ]
+    },
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      },
+      {
+       "id": "lva:item-c",
+       "art": "hoerbuch",
+       "titel": "Sanditon",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 9
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "seit=1"
+   },
+   "erwartet": {
+    "status": 200,
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "librivox",
+     "version": 2,
+     "zeilen": [
+      {
+       "id": "lva:item-c",
+       "art": "hoerbuch",
+       "titel": "Sanditon",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 9,
+       "geloescht": false
+      }
+     ],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "If-None-Match with the tag of the address: 304 without a body",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "kopf": {
+     "If-None-Match": "\"1-librivox-1\""
+    }
+   },
+   "erwartet": {
+    "status": 304,
+    "kopf": {
+     "ETag": "\"1-librivox-1\""
+    },
+    "koerper": null
+   }
+  },
+  {
+   "name": "a source before its first run: version 0, no rows, weiter null",
+   "laeufe": [],
+   "anfrage": {
+    "pfad": "/v1/katalog/otr"
+   },
+   "erwartet": {
+    "status": 200,
+    "kopf": {
+     "ETag": "\"1-otr-0\""
+    },
+    "koerper": {
+     "katalog_format": 1,
+     "quelle": "otr",
+     "version": 0,
+     "zeilen": [],
+     "weiter": null
+    }
+   }
+  },
+  {
+   "name": "anzahl 0 is 400",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "anzahl=0"
+   },
+   "erwartet": {
+    "status": 400
+   }
+  },
+  {
+   "name": "anzahl above 5000 is 400",
+   "laeufe": [],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "anzahl=5001"
+   },
+   "erwartet": {
+    "status": 400
+   }
+  },
+  {
+   "name": "seit above the version is 400",
+   "laeufe": [
+    {
+     "quelle": "librivox",
+     "art": "voll",
+     "zeilen": [
+      {
+       "id": "lva:item-a",
+       "art": "hoerbuch",
+       "titel": "Emma",
+       "urheber": "Jane Austen",
+       "sprache": "eng",
+       "jahr": 1811,
+       "rechte": {
+        "kennung": "pd",
+        "url": null
+       },
+       "laden": true,
+       "reihen": [],
+       "auch": [],
+       "tief": null,
+       "beliebt_stufe": 1
+      }
+     ]
+    }
+   ],
+   "anfrage": {
+    "pfad": "/v1/katalog/librivox",
+    "frage": "seit=5"
+   },
+   "erwartet": {
+    "status": 400
+   }
+  },
+  {
+   "name": "a source outside the list is 404",
+   "laeufe": [],
+   "anfrage": {
+    "pfad": "/v1/katalog/podcast"
+   },
+   "erwartet": {
+    "status": 404
+   }
+  }
+ ]
+}
