@@ -67,6 +67,9 @@ nonisolated enum GutenbergMusic {
 
     static let laneKey = "gutenberg-music"
 
+    static func all(_ stock: CatalogStock) -> [CatalogStockEntry] { [] }
+    static var rightsNotice: String { "" }
+
     /// The works the kept stock knows as music, for the surfaces that ask
     /// gutendex, which does not carry the class.
     @MainActor private(set) static var known: Set<String> = []

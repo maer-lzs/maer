@@ -111,5 +111,29 @@ struct GutenbergMusicTests {
         #expect(page[classical.upperBound...].prefix(400).contains("GutenbergMusicRow("))
         #expect(try code("Sources/ViewModels/GlobalSearchModel.swift").contains("remember(gutenberg: $0, includingMusic: true)"))
     }
+
+    @Test("all the music works, for the page behind the row, in popularity order")
+    func all() {
+        let stock = Self.stock([Self.entry(1, music: true, downloads: 5), Self.entry(2, music: false, downloads: 99),
+                                Self.entry(3, music: true, downloads: 50), Self.entry(4, music: true, downloads: 7)])
+        #expect(GutenbergMusic.all(stock).map(\.id) == ["gut:3", "gut:4", "gut:1"])
+    }
+
+    @Test("the row says what the rights are, like Musopen")
+    func rights() {
+        #expect(!GutenbergMusic.rightsNotice.isEmpty)
+    }
+
+    @Test("Fence: the row leads to its page and shows its sentence, the page is a route of the music tab", .needsTheSources)
+    func rowLeadsToPage() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let row = try code("Sources/Views/Music/GutenbergMusicRow.swift")
+        #expect(row.contains("RowHeading.entry(verbatim: \"Project Gutenberg\", destination: MusicRoute.gutenbergMusic)"))
+        #expect(row.contains("Text(GutenbergMusic.rightsNotice)"))
+        let navigation = try code("Sources/Views/Music/MusicNavigation.swift")
+        #expect(navigation.contains("case .gutenbergMusic:\n                GutenbergMusicPage("))
+    }
 }
 #endif
