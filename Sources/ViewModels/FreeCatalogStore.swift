@@ -52,6 +52,8 @@ final class FreeCatalogStore: ObservableObject {
     /// The rows the database kept, before any fetch and without a network;
     /// only into rows that are still empty and whose source is on. Once per
     /// store; a missing or unreadable database leaves them empty.
+    var hasKeptRows: Bool { false }
+
     func restore() async {
         if let restoring { return await restoring.value }
         guard !restored else { return }

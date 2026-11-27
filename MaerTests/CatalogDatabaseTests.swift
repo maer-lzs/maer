@@ -256,5 +256,26 @@ struct CatalogDatabaseTests {
             }
         }
     }
+
+    @Test("rows from the database count as content: the store says so after the restore")
+    func keptRowsAreContent() async throws {
+        let (rowStore, _) = try await Self.memoryStore()
+        try await rowStore.replace(.classical, items: [Self.item("lva:a")], atMs: 1)
+        let store = FreeCatalogStore(rowStore: { rowStore }, online: { false },
+                                     loadRows: { FreeCatalogLoader.Rows() }, loadSources: { _ in CatalogSourceLoader.SourceRows() },
+                                     enabledRows: { [.classical] })
+        #expect(!store.hasKeptRows)
+        await store.restore()
+        #expect(store.hasKeptRows, "the start page waits for a fetch although rows are there")
+    }
+
+    @Test("Fence: the start page shows the kept rows before any fetch answers", .needsTheSources)
+    func startPageDoesNotWait() throws {
+        let home = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
+        let restore = try #require(home.range(of: "await freeCatalogStore.restore()"), "the start page does not read the kept rows")
+        let waits = try #require(home.range(of: "await freeSourcesTask"))
+        #expect(restore.lowerBound < waits.lowerBound, "the start page reads the kept rows only after the fetch")
+        #expect(home[restore.upperBound...].prefix(300).contains("freeCatalogStore.hasKeptRows"))
+    }
 }
 #endif
