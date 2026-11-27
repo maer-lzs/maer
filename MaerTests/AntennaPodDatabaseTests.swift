@@ -137,9 +137,17 @@ struct AntennaPodDatabaseTests {
         let start = try #require(code.range(of: "nonisolated static func readAntennaPodDatabase("))
         let end = try #require(code.range(of: "nonisolated static func readAppleLibrary(", range: start.upperBound..<code.endIndex))
         let body = String(code[start.upperBound..<end.lowerBound])
-        let nils = body.components(separatedBy: "return nil").count - 1
-        let lines = body.components(separatedBy: "ANTENNAPOD").count - 1
-        #expect(nils >= 3 && lines >= nils, "\(nils) ways out, \(lines) log lines")
+        // Each way out says why itself, or comes from `readAll`, which does.
+        var from = body.startIndex
+        var ways = 0
+        while let out = body.range(of: "return nil", range: from..<body.endIndex) {
+            ways += 1
+            let before = body[(body.index(out.lowerBound, offsetBy: -260, limitedBy: body.startIndex) ?? body.startIndex)..<out.lowerBound]
+            #expect(before.contains("ANTENNAPOD") || before.contains("readAll("), "a way out without a line")
+            from = out.upperBound
+        }
+        #expect(ways >= 5, "the ways out counted: \(ways)")
+        #expect(code.contains("ANTENNAPOD import: table \\(table, privacy: .public) does not read"))
     }
 }
 #endif

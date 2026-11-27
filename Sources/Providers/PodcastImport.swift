@@ -103,26 +103,37 @@ enum PodcastImport {
         var db: OpaquePointer?
         let uri = url.absoluteString + "?immutable=1"
         guard sqlite3_open_v2(uri, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK, let db else {
+            let code = db.map { sqlite3_errcode($0) } ?? -1
             if let db { sqlite3_close(db) }
+            Logger.rss.error("ANTENNAPOD import: the file does not open as a database, code \(code)")
             return nil
         }
         defer { sqlite3_close(db) }
         let feedCols = columns(db, table: "Feeds")
-        guard feedCols.contains("download_url") else { return nil }
+        guard feedCols.contains("download_url") else {
+            Logger.rss.error("ANTENNAPOD import: no table Feeds with download_url, not an AntennaPod export")
+            return nil
+        }
         let itemCols = columns(db, table: "FeedItems")
         let mediaCols = columns(db, table: "FeedMedia")
 
         func int(_ s: String?) -> Int64 { s.flatMap(Int64.init) ?? s.flatMap(Double.init).map(Int64.init) ?? 0 }
         var feeds: [AntennaPodDatabase.Feed] = []
         let stateSelect = feedCols.contains("state") ? "state" : "NULL"
-        for row in query(db, "SELECT id, title, download_url, \(stateSelect) FROM Feeds") {
+        guard let feedRows = readAll(db, "SELECT id, title, download_url, \(stateSelect) FROM Feeds", table: "Feeds") else {
+            return nil
+        }
+        for row in feedRows {
             feeds.append(.init(id: int(row[0]), title: row[1], downloadURL: row[2],
                                state: row[3].flatMap(Int64.init)))
         }
         var items: [AntennaPodDatabase.Item] = []
         if itemCols.contains("feed") {
             let identifier = itemCols.contains("item_identifier") ? "item_identifier" : "NULL"
-            for row in query(db, "SELECT id, feed, title, \(identifier), link, read FROM FeedItems") {
+            guard let itemRows = readAll(db, "SELECT id, feed, title, \(identifier), link, read FROM FeedItems", table: "FeedItems") else {
+                return nil
+            }
+            for row in itemRows {
                 items.append(.init(id: int(row[0]), feedID: int(row[1]), title: row[2],
                                    identifier: row[3], link: row[4], read: int(row[5])))
             }
@@ -131,7 +142,10 @@ enum PodcastImport {
         if mediaCols.contains("feeditem") {
             let lastPlayed = mediaCols.contains("last_played_time") ? "last_played_time" : "0"
             let completion = mediaCols.contains("playback_completion_date") ? "playback_completion_date" : "0"
-            for row in query(db, "SELECT feeditem, duration, position, \(lastPlayed), \(completion), download_url FROM FeedMedia") {
+            guard let mediaRows = readAll(db, "SELECT feeditem, duration, position, \(lastPlayed), \(completion), download_url FROM FeedMedia", table: "FeedMedia") else {
+                return nil
+            }
+            for row in mediaRows {
                 media.append(.init(itemID: int(row[0]), durationMs: int(row[1]), positionMs: int(row[2]),
                                    lastPlayedMs: int(row[3]), completionMs: int(row[4]), downloadURL: row[5]))
             }
@@ -288,6 +302,31 @@ enum PodcastImport {
 
     private nonisolated static func firstPresent(_ candidates: [String], in cols: Set<String>) -> String? {
         candidates.first { cols.contains($0) }
+    }
+
+    /// Every row of a SELECT, or nil with a log line when the table cannot be
+    /// read whole (it does not prepare, or a step fails before the end): the
+    /// AntennaPod import takes a whole database or none, never a silent part.
+    private nonisolated static func readAll(_ db: OpaquePointer, _ sql: String, table: String) -> [[String?]]? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else {
+            Logger.rss.error("ANTENNAPOD import: table \(table, privacy: .public) does not read, code \(sqlite3_errcode(db))")
+            return nil
+        }
+        defer { sqlite3_finalize(stmt) }
+        var rows: [[String?]] = []
+        var step = sqlite3_step(stmt)
+        while step == SQLITE_ROW {
+            rows.append((0..<sqlite3_column_count(stmt)).map { i in
+                sqlite3_column_text(stmt, i).map { String(cString: $0) }
+            })
+            step = sqlite3_step(stmt)
+        }
+        guard step == SQLITE_DONE else {
+            Logger.rss.error("ANTENNAPOD import: table \(table, privacy: .public) broke off after \(rows.count) rows, code \(step)")
+            return nil
+        }
+        return rows
     }
 
     /// Runs a SELECT and returns each row as a string array (nil = NULL).
