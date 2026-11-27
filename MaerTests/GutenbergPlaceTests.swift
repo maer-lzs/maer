@@ -185,5 +185,34 @@ struct GutenbergPlaceTests {
         let save = try #require(manager.range(of: "await saveDetail(item)"))
         #expect(manager[..<save.lowerBound].suffix(400).contains("try await Self.detailToKeep("))
     }
+
+    @Test("Fence: the five-second write is a function of its own, so skipping it never ends the rest of the clock", .needsTheSources)
+    func clockRunsOn() throws {
+        let player = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
+        let save = try #require(player.range(of: "if self.isPlaying, now - self.lastLocalSaveAt >= 5, let id = self.item?.id {"))
+        let block = player[save.upperBound...].prefix(260)
+        #expect(block.contains("self.saveLocalStand(id)"), "the write block stands in the clock")
+        #expect(!block.contains("return"), "a return in the write block ends the whole clock")
+        let function = try #require(player.range(of: "func saveLocalStand(_ id: String) {"))
+        #expect(player[function.upperBound...].prefix(400).contains("guard StandWrite.allowed(itemId: id, provider: provider) else {"))
+    }
+
+    @Test("a stopped player takes no real durations and writes no stand; the kept place stays for the next start")
+    func stoppedPlayerWritesNothing() async throws {
+        let (player, id, _, places) = try await Self.playerWithEstimates()
+        places.note(id, track: 5, offset: 30, atMs: 1)
+        player.stop()
+        #expect(await FreeCatalogProvider.shared.resolveDurations(itemId: id))
+        await player.adoptResolvedDurations(itemId: id)
+        #expect(ListeningStore.position(id) == nil, "a stopped player wrote a stand")
+        #expect(places.place(id) != nil, "a stopped player dropped the place")
+    }
+
+    @Test("Fence: stopping the player ends its watch for the real durations", .needsTheSources)
+    func stopEndsTheWatch() throws {
+        let player = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
+        let stop = try #require(player.range(of: "    func stop(caller: String = #function) {"))
+        #expect(player[stop.upperBound...].prefix(1_500).contains("resolvedWatch?.cancel()"))
+    }
 }
 #endif
