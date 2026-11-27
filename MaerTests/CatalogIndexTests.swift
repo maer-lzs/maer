@@ -202,6 +202,44 @@ struct CatalogIndexTests {
         #expect(Set(CatalogIndexRun.sources(gates)) == [.librivox, .gutenberg, .musopen])
     }
 
+    @Test("400 on the delta (a service that was reset) reads the full state, like 410")
+    func refusedDeltaReadsFull() async throws {
+        let store = try await Self.store()
+        try await store.takeFull("archive-buch", rows: [Self.row("lva:old")], version: 9, etag: nil, etagAddress: nil, atMs: 1)
+        let service = Service { query in query.since != nil ? .refused(400) : Self.page(version: 2, [Self.row("lva:new")], next: nil) }
+        #expect(await CatalogIndexRun.run(.archiveBuch, store: store, ask: service.ask, nowMs: 2) == .taken(version: 2))
+        #expect(try await store.indexRows("archive-buch").keys.sorted() == ["lva:new"])
+        #expect(try await store.indexState("archive-buch")?.version == 2)
+    }
+
+    @Test("a delta whose version is not above the one held is not taken; the same version with no rows is unchanged")
+    func olderDeltaNotTaken() async throws {
+        let store = try await Self.store()
+        try await store.takeFull("archive-buch", rows: [Self.row("lva:a")], version: 5, etag: nil, etagAddress: nil, atMs: 1)
+        let older = Service { _ in Self.page(version: 4, [Self.row("lva:x")], next: nil) }
+        if case .nothingTaken = await CatalogIndexRun.run(.archiveBuch, store: store, ask: older.ask, nowMs: 2) {} else {
+            Issue.record("an older version was taken")
+        }
+        #expect(try await store.indexRows("archive-buch").keys.sorted() == ["lva:a"])
+        #expect(try await store.indexState("archive-buch")?.version == 5)
+        let same = Service { _ in Self.page(version: 5, [], next: nil) }
+        #expect(await CatalogIndexRun.run(.archiveBuch, store: store, ask: same.ask, nowMs: 3) == .unchanged)
+    }
+
+    @Test("two starts at once: one run, every source asked once")
+    @MainActor func oneRunAtOnce() async throws {
+        let store = try await Self.store()
+        let service = Service { _ in Self.page(version: 1, [], next: nil) }
+        let slow: CatalogIndexRun.Ask = { query in
+            try await Task.sleep(for: .milliseconds(100))
+            return try await service.ask(query)
+        }
+        async let first: Void = CatalogIndexRun.runIfDue(store: store, ask: slow, sources: [.archiveBuch, .otr])
+        async let second: Void = CatalogIndexRun.runIfDue(store: store, ask: slow, sources: [.archiveBuch, .otr])
+        _ = await (first, second)
+        #expect(service.asked.map(\.source).sorted() == ["archive-buch", "otr"], "asked: \(service.asked.map(\.source))")
+    }
+
     @Test("Fence: the door reads the catalogue through the one helper that carries the token", .needsTheSources)
     func door() throws {
         let client = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"), encoding: .utf8))

@@ -216,7 +216,11 @@ nonisolated enum CatalogIndexRun {
     @MainActor static func runIfDue(store: CatalogRowStore, reader: any MaerSyncCatalogReading = MaerSyncHTTP()) async {
         guard let access = MaerSyncAccess.stored() else { return }
         let ask: Ask = { try await reader.catalog($0, access: access) }
-        for source in sources(.live) {
+        await runIfDue(store: store, ask: ask, sources: sources(.live))
+    }
+
+    @MainActor static func runIfDue(store: CatalogRowStore, ask: @escaping Ask, sources: [CatalogIndexSource]) async {
+        for source in sources {
             let now = Date().timeIntervalSince1970 * 1000
             let state: CatalogRowStore.IndexState?
             do {
