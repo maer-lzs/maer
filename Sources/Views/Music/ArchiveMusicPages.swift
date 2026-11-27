@@ -53,12 +53,12 @@ struct ArchiveMusicPage: View {
                     LazyVStack(alignment: .leading, spacing: 10) {
                         // The Classical page holds two sections, each under
                         // its heading: the Musopen recordings (the row's
-                        // own heading, its own rights sentence), then the
-                        // 78s with the archive's sentences that belong to them.
+                        // own heading, its own rights sentence), Gutenberg's
+                        // music works (`GutenbergMusic`), then the 78s with
+                        // the archive's sentences that belong to them.
                         if area.isClassicalPage {
                             MusopenRow(playerCoordinator: playerCoordinator, showsRights: true)
                                 .padding(.bottom, 12)
-                            // Gutenberg's music works (`GutenbergMusic`).
                             GutenbergMusicRow(playerCoordinator: playerCoordinator, stockService: stockService)
                                 .padding(.bottom, 12)
                             RowHeading.plain("Shellac")

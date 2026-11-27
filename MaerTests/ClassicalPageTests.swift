@@ -21,7 +21,7 @@ struct ClassicalPageTests {
         }
     }
 
-    @Test("the page names itself by the rule and shows Musopen, then the Shellac heading", .needsTheSources)
+    @Test("the page names itself by the rule and shows Musopen, the Gutenberg music, then the Shellac heading", .needsTheSources)
     func twoSections() throws {
         let page = SyncContractFenceTests.stripped(try SourceTree.text(
             SourceTree.root.appendingPathComponent("Sources/Views/Music/ArchiveMusicPages.swift")))
@@ -30,8 +30,10 @@ struct ClassicalPageTests {
                         if area.isClassicalPage {
                             MusopenRow(playerCoordinator: playerCoordinator, showsRights: true)
                                 .padding(.bottom, 12)
+                            GutenbergMusicRow(playerCoordinator: playerCoordinator, stockService: stockService)
+                                .padding(.bottom, 12)
                             RowHeading.plain("Shellac")
-"""), "the classical page has no Musopen section followed by the Shellac heading")
+"""), "the classical page has no Musopen section, then the Gutenberg music, then the Shellac heading")
         let catalog = try SourceTree.text(SourceTree.root.appendingPathComponent("Sources/Localizable.xcstrings"))
         #expect(catalog.contains("\"Shellac\" : {"), "the heading is not in the catalog")
     }
