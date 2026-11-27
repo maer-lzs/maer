@@ -24,6 +24,7 @@ struct SimilarShowsSection: View {
                                 RecommendationTile(result: PodcastSearchResult(title: pick.title, author: nil,
                                                                                artworkURL: pick.artworkURL, feedURL: pick.feedURL),
                                                    subtitle: pick.fromPodroll ? String(localized: "Named by this show") : nil)
+                                .cardRowSlot()
                             }
                         }
                         .padding(.horizontal)
