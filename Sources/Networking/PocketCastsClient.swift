@@ -32,7 +32,16 @@ nonisolated enum PocketCastsClient {
     static let refreshHost = "refresh.pocketcasts.com"
     static let cacheHost = "cache.pocketcasts.com"
 
-    static func followsTo(_ target: URL) -> Bool { true }
+    /// Where a read may follow a redirect: only to a host of Pocket Casts
+    /// over https, so the token in its header stays with them. The sign-in
+    /// follows none at all: its body carries the password.
+    static func followsTo(_ target: URL) -> Bool {
+        target.scheme?.lowercased() == "https"
+            && [apiHost, refreshHost, cacheHost].contains(target.host?.lowercased() ?? "")
+    }
+
+    /// The reads' rule as a guard of the session.
+    private static var readRedirects: RedirectGuard { RedirectGuard(allows: { followsTo($0) }) }
 
     static func readLibrary(email: String, password: String,
                             progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }) async throws -> ForeignLibrary {
@@ -175,9 +184,14 @@ nonisolated enum PocketCastsClient {
         do {
             (data, status) = try await send(request("https://\(apiHost)/user/login",
                                                     json: ["email": email, "password": password, "scope": "webplayer"],
-                                                    token: nil))
+                                                    token: nil),
+                                            redirects: .followingNone())
         } catch {
             throw PocketCastsError.unreachable
+        }
+        if (300...399).contains(status) {
+            Logger.rss.error("POCKETCASTS login redirect \(status), not followed")
+            throw PocketCastsError.changed("login redirect")
         }
         if status == 401 || status == 403 { throw PocketCastsError.loginRejected }
         guard (200...299).contains(status) else { throw PocketCastsError.changed("login \(status)") }
@@ -213,7 +227,7 @@ nonisolated enum PocketCastsClient {
 
     private static func sendOrUnreachable(_ request: URLRequest) async throws -> (Data, Int) {
         do {
-            return try await send(request)
+            return try await send(request, redirects: readRedirects)
         } catch {
             Logger.rss.error("POCKETCASTS unreachable: \(request.url?.host ?? "?", privacy: .public)")
             throw PocketCastsError.unreachable
@@ -221,8 +235,8 @@ nonisolated enum PocketCastsClient {
     }
 
     /// The last response with its status; a URL-level failure throws.
-    private static func send(_ request: URLRequest) async throws -> (Data, Int) {
-        let (data, response) = try await RequestRetryPolicy.fetch(request)
+    private static func send(_ request: URLRequest, redirects: RedirectGuard) async throws -> (Data, Int) {
+        let (data, response) = try await RequestRetryPolicy.fetch(request, redirects: redirects)
         return (data, response?.statusCode ?? 0)
     }
 }
