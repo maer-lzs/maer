@@ -51,6 +51,8 @@ enum MusicRoute: Hashable {
     case jamendoShelf(String)
     /// Every Musopen recording on Wikimedia Commons (paged grid).
     case musopen
+    /// Every music work of Project Gutenberg (`GutenbergMusic`).
+    case gutenbergMusic
     /// A genre shelf of an archive music area. The same shape as the Jamendo
     /// shelf, only with the archive query behind it.
     case archiveMusicShelf(area: String, shelf: String)
@@ -69,7 +71,8 @@ enum MusicRoute: Hashable {
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
              (.genres, .genres), (.shellacArea, .shellacArea),
-             (.freeJamendo, .freeJamendo), (.history, .history), (.musopen, .musopen):
+             (.freeJamendo, .freeJamendo), (.history, .history), (.musopen, .musopen),
+             (.gutenbergMusic, .gutenbergMusic):
             return true
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.archiveMusicShelf(a1, s1), .archiveMusicShelf(a2, s2)):
@@ -109,6 +112,7 @@ enum MusicRoute: Hashable {
         case .archiveMusicPopular(let a): hasher.combine(18); hasher.combine(a)
         case .history:          hasher.combine(19)
         case .musopen:          hasher.combine(21)
+        case .gutenbergMusic:   hasher.combine(22)
         }
     }
 
@@ -137,6 +141,7 @@ enum MusicRoute: Hashable {
         case .archiveMusicPopular: return "music-route-archive-music-popular"
         case .history: return "music-route-history"
         case .musopen: return "music-route-musopen"
+        case .gutenbergMusic: return "music-route-gutenberg-music"
         }
     }
 }
@@ -209,6 +214,8 @@ extension View {
                 JamendoShelfPage(shelfKey: key, playerCoordinator: playerCoordinator)
             case .musopen:
                 MusopenPage(playerCoordinator: playerCoordinator)
+            case .gutenbergMusic:
+                GutenbergMusicPage(playerCoordinator: playerCoordinator, stockService: CatalogStockService.shared)
             case .archiveMusicShelf(let areaKey, let shelfKey):
                 ArchiveMusicShelfPage(areaKey: areaKey, shelfKey: shelfKey,
                                       playerCoordinator: playerCoordinator)

@@ -97,7 +97,9 @@ struct SharedGrowthFenceTests {
     /// 386: the place of the suggested folders in the settings observes the
     /// subscriptions and the lists, as the folders row does (two,
     /// `SmartFolderSettingsSection`).
-    nonisolated static let stock = 386
+    /// 387: the page of all Gutenberg music works is opened by the music
+    /// tab's routes with the service of the kept stocks, as the Musopen page.
+    nonisolated static let stock = 387
 
     /// The same count over all of `Sources`, measured 747 (the car's Up Next
     /// lists the rest of what was started behind the orders, one grip on the
@@ -218,7 +220,8 @@ struct SharedGrowthFenceTests {
     /// like the held unfinished titles.
     /// 791: the music works of Gutenberg become tiles in the shelf entries,
     /// beside the books (`CatalogShelfEntries.gutenbergMusic`).
-    nonisolated static let sourcesStock = 791
+    /// 792: the same grip, counted over the sources.
+    nonisolated static let sourcesStock = 792
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

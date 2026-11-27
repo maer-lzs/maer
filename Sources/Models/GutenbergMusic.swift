@@ -67,8 +67,17 @@ nonisolated enum GutenbergMusic {
 
     static let laneKey = "gutenberg-music"
 
-    static func all(_ stock: CatalogStock) -> [CatalogStockEntry] { [] }
-    static var rightsNotice: String { "" }
+    /// Every music work of the stock, for the page behind the row, in
+    /// popularity order.
+    static func all(_ stock: CatalogStock) -> [CatalogStockEntry] {
+        stock.entries.filter { $0.music == true }
+            .sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
+    }
+
+    /// The sentence under the row and on its page, like Musopen's.
+    static var rightsNotice: String {
+        String(localized: "Recordings from Project Gutenberg. Each work names the rights its record states on its page.")
+    }
 
     /// The works the kept stock knows as music, for the surfaces that ask
     /// gutendex, which does not carry the class.

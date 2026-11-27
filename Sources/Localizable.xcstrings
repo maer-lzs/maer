@@ -27533,6 +27533,34 @@
         }
       }
     },
+    "Recordings from Project Gutenberg. Each work names the rights its record states on its page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufnahmen von Project Gutenberg. Jedes Werk nennt auf seiner Seite die Rechte, die sein Datensatz angibt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Grabaciones de Project Gutenberg. Cada obra indica en su página los derechos que declara su registro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrements de Project Gutenberg. Chaque œuvre indique sur sa page les droits déclarés par sa notice."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Registrazioni di Project Gutenberg. Ogni opera indica nella sua pagina i diritti dichiarati dalla sua scheda."
+          }
+        }
+      }
+    },
     "Recordings of the Musopen collection on Wikimedia Commons. Public domain and CC0 recordings only; each recording names its licence on its page." : {
       "localizations" : {
         "de" : {

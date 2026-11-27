@@ -20,8 +20,12 @@ struct GutenbergMusicRow: View {
             let items = CatalogShelfEntries.gutenbergMusic(GutenbergMusic.lane(stock, rows: RowPreview.limit, on: Date()))
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    RowHeading.plain(verbatim: "Project Gutenberg")
+                    RowHeading.entry(verbatim: "Project Gutenberg", destination: MusicRoute.gutenbergMusic)
                         .accessibilityIdentifier("classical-gutenberg-section")
+                    Text(GutenbergMusic.rightsNotice)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
                     ScrollView(.horizontal) {
                         LazyHStack(alignment: .top, spacing: 14) {
                             ForEach(items) { item in
@@ -40,5 +44,48 @@ struct GutenbergMusicRow: View {
                 }
             }
         }
+    }
+}
+
+/// Every music work of Project Gutenberg, behind the row of the classical
+/// page: the sentence of the row, then all works in popularity order.
+struct GutenbergMusicPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject var stockService: CatalogStockService
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    var body: some View {
+        let items = stockService.stock(CatalogSource.gutenberg.rawValue)
+            .map { CatalogShelfEntries.gutenbergMusic(GutenbergMusic.all($0)) } ?? []
+        Group {
+            if items.isEmpty {
+                EmptyStateView(title: Text(verbatim: "Project Gutenberg"), systemImage: "music.note")
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        Text(GutenbergMusic.rightsNotice)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal)
+                            .foldLeadingHalf()
+                        CoverGrid(columns: columns) {
+                            ForEach(items) { item in
+                                FreeCatalogBookTile(item: item, placeholderSystemImage: "music.note") {
+                                    Task {
+                                        await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                              pushMusicRoute: { pushRoute($0) })
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.top, TabContentLayout.topInset)
+                    .bottomBarClearance()
+                }
+            }
+        }
+        .navigationTitle(Text(verbatim: "Project Gutenberg"))
     }
 }
