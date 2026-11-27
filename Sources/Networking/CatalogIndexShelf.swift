@@ -39,10 +39,24 @@ nonisolated enum CatalogIndexShelf {
         let languages: [String]
     }
 
-    static func entry(_ json: Data) -> Entry? {
-        // bearable, because a row that is not JSON is passed over like a field the app does not know
-        guard let object = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
-              let id = object["id"] as? String, !id.isEmpty else { return nil }
+    /// One row of the index, or nil when it is none; a row passed over
+    /// writes its source and its reason to the log.
+    static func entry(_ json: Data, source: String = "-") -> Entry? {
+        let parsed: Any
+        do {
+            parsed = try JSONSerialization.jsonObject(with: json)
+        } catch {
+            Logger.library.error("CATALOG index \(source, privacy: .public) row passed over reason=\(String(describing: error), privacy: .public)")
+            return nil
+        }
+        guard let object = parsed as? [String: Any] else {
+            Logger.library.error("CATALOG index \(source, privacy: .public) row passed over reason=not an object")
+            return nil
+        }
+        guard let id = object["id"] as? String, !id.isEmpty else {
+            Logger.library.error("CATALOG index \(source, privacy: .public) row passed over reason=no id")
+            return nil
+        }
         let rights = object["rechte"] as? [String: Any]
         let step = (object["beliebt_stufe"] as? Int).flatMap { (1...10).contains($0) ? $0 : nil }
         return Entry(id: id, title: object["titel"] as? String, creator: object["urheber"] as? String,
@@ -209,7 +223,7 @@ actor CatalogIndexShelfReader {
         if let held = kept[source], held.version == fresh.version {
             return held.ordered.isEmpty ? nil : held.ordered
         }
-        let ordered = CatalogIndexShelf.ordered(fresh.rows.compactMap { CatalogIndexShelf.entry($0) })
+        let ordered = CatalogIndexShelf.ordered(fresh.rows.compactMap { CatalogIndexShelf.entry($0, source: source) })
         parsed += 1
         kept[source] = (fresh.version, ordered)
         return ordered.isEmpty ? nil : ordered

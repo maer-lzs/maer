@@ -196,6 +196,17 @@ final class AuthViewModel: ObservableObject {
         signInMethods = (typed, methods)
     }
 
+    /// Puts the address before back into the keychain when a token was not
+    /// taken; with none before, the new one goes. Says whether it held; the
+    /// caller signs out when it did not, so no pair is left mixed.
+    private func putBackAddress(_ address: String?) -> Bool {
+        guard let address else {
+            KeychainStore.delete(forKey: KeychainKey.serverURL)
+            return true
+        }
+        return saveAddress(address)
+    }
+
     /// Connects via username/password (POST /login → token) OR with a directly
     /// entered API token; the connection is then verified via a library fetch
     /// and the token stored in the keychain.
@@ -205,17 +216,6 @@ final class AuthViewModel: ObservableObject {
     /// address may name another server. Only a sign-in that worked hands
     /// address and token to the shared client; one that failed leaves it as
     /// it was, also for the same address.
-    /// Puts the address before back into the keychain when a token was not
-    /// taken; with none before, the new one goes. A failure is logged: then
-    /// the next start reads the new address beside the token before.
-    private func putBackAddress(_ address: String?) -> Bool {
-        guard let address else {
-            KeychainStore.delete(forKey: KeychainKey.serverURL)
-            return true
-        }
-        return saveAddress(address)
-    }
-
     func connect() async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {
@@ -358,7 +358,19 @@ final class AuthViewModel: ObservableObject {
             // not stored would leave the address before beside the new token
             // after the next start. Then nothing is stored and the sign-in
             // before stands.
-            let heldAddress = readKeychain(KeychainKey.serverURL).value
+            // An address before that is there but cannot be read now is an
+            // address (unknown is never empty): nothing is stored, so it is
+            // never deleted on the way back.
+            let heldAddress: String?
+            switch readKeychain(KeychainKey.serverURL) {
+            case .value(let value): heldAddress = value
+            case .missing: heldAddress = nil
+            case .unreadable, .undecodable:
+                queue.release(server: formerAddress)
+                Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the address before cannot be read")
+                errorMessage = String(localized: "The server access can be read once this device is unlocked.")
+                return
+            }
             guard saveAddress(url.absoluteString) else {
                 queue.release(server: formerAddress)
                 Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the address was not stored")

@@ -58,11 +58,14 @@ nonisolated enum OPMLExport {
     /// only with its show, so an excluded premium feed takes its states
     /// out of the file with it. An episode's own address (its enclosure, its
     /// page) that carries access does not travel either; the state goes
-    /// without it and is found by its guid.
+    /// without it and is found by its guid. A state whose guid itself
+    /// carries access (an episode without a guid is known by its audio
+    /// address) has nothing it could travel by and stays out of the file.
     static func states(_ states: [ForeignListeningState],
                        for shows: [(title: String, feedURL: String)]) -> [ForeignListeningState] {
         let feeds = Set(shows.map(\.feedURL))
-        return states.filter { $0.feedURL.map(feeds.contains) == true }.map { state in
+        return states.filter { $0.feedURL.map(feeds.contains) == true }.compactMap { state in
+            if state.episodeGUID.map(PodcastFeedAddress.carriesAccess) == true { return nil }
             var kept = state
             if kept.enclosureURL.map(PodcastFeedAddress.carriesAccess) == true { kept.enclosureURL = nil }
             if kept.episodeLink.map(PodcastFeedAddress.carriesAccess) == true { kept.episodeLink = nil }
