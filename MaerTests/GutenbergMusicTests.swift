@@ -200,7 +200,8 @@ struct GutenbergMusicTests {
     func oneTileWithMenu() throws {
         let row = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/GutenbergMusicRow.swift"), encoding: .utf8))
         #expect(row.components(separatedBy: "GutenbergMusicTile(item: item, playerCoordinator: playerCoordinator)").count - 1 == 2)
-        #expect(!row.contains("FreeCatalogBookTile(item: item, placeholderSystemImage: \"music.note\") {"), "a tile built by hand beside the one")
+        #expect(row.components(separatedBy: "FreeCatalogBookTile(item: item, placeholderSystemImage: \"music.note\") {").count - 1 == 1,
+                "a tile built by hand beside the one")
         let tile = try #require(row.range(of: "struct GutenbergMusicTile: View {"))
         let body = row[tile.upperBound...].prefix(900)
         #expect(body.contains(".contextMenu {") && body.contains("CatalogDetailsButton(itemId: item.id)") && body.contains("CatalogQueueButtons(itemId: item.id)"))

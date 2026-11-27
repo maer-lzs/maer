@@ -56,8 +56,7 @@ nonisolated enum GutenbergMusic {
     /// The music works of the stock as a row: popularity order, the daily
     /// rotation of every row, its own salt.
     static func lane(_ stock: CatalogStock, rows: Int, on date: Date, classical: Bool? = nil) -> [CatalogStockEntry] {
-        let ordered = stock.entries.filter { belongs($0, classical: classical) }
-            .sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
+        let ordered = all(stock, classical: classical)
         guard !ordered.isEmpty else { return [] }
         let page = CatalogRotation.page(total: ordered.count, rowSize: rows, on: date,
                                         salt: CatalogRotation.salt(forShelf: laneKey))

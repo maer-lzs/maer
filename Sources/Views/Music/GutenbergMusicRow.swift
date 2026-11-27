@@ -9,7 +9,6 @@ import SwiftUI
 /// the kept stock (`GutenbergMusic.lane`), the composer under each title.
 /// Without a kept stock, or with the source off, the row is not there.
 struct GutenbergMusicRow: View {
-    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// The page's own service of the kept stocks.
     @ObservedObject var stockService: CatalogStockService
@@ -29,13 +28,8 @@ struct GutenbergMusicRow: View {
                     ScrollView(.horizontal) {
                         LazyHStack(alignment: .top, spacing: 14) {
                             ForEach(items) { item in
-                                FreeCatalogBookTile(item: item, placeholderSystemImage: "music.note") {
-                                    Task {
-                                        await CatalogTap.open(item: item, coordinator: playerCoordinator,
-                                                              pushMusicRoute: { pushRoute($0) })
-                                    }
-                                }
-                                .cardRowSlot(spacing: 14)
+                                GutenbergMusicTile(item: item, playerCoordinator: playerCoordinator)
+                                    .cardRowSlot(spacing: 14)
                             }
                         }
                         .padding(.horizontal)
@@ -50,7 +44,6 @@ struct GutenbergMusicRow: View {
 /// Every music work of Project Gutenberg, behind the row of the classical
 /// page: the sentence of the row, then all works in popularity order.
 struct GutenbergMusicPage: View {
-    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject var stockService: CatalogStockService
     /// Art music (the classical page) or the rest (the music page).
@@ -73,12 +66,7 @@ struct GutenbergMusicPage: View {
                             .foldLeadingHalf()
                         CoverGrid(columns: columns) {
                             ForEach(items) { item in
-                                FreeCatalogBookTile(item: item, placeholderSystemImage: "music.note") {
-                                    Task {
-                                        await CatalogTap.open(item: item, coordinator: playerCoordinator,
-                                                              pushMusicRoute: { pushRoute($0) })
-                                    }
-                                }
+                                GutenbergMusicTile(item: item, playerCoordinator: playerCoordinator)
                             }
                         }
                         .padding(.horizontal)
@@ -89,5 +77,27 @@ struct GutenbergMusicPage: View {
             }
         }
         .navigationTitle(Text(verbatim: "Project Gutenberg"))
+    }
+}
+
+/// One Gutenberg music work as a tile: a tap opens it, its menu is the one
+/// of the catalogue's music tiles (details, Up Next). No download entry of
+/// music: a Gutenberg title stays a book by its kind.
+struct GutenbergMusicTile: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
+    let item: LibraryItem
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        FreeCatalogBookTile(item: item, placeholderSystemImage: "music.note") {
+            Task {
+                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                      pushMusicRoute: { pushRoute($0) })
+            }
+        }
+        .contextMenu {
+            CatalogDetailsButton(itemId: item.id)
+            CatalogQueueButtons(itemId: item.id)
+        }
     }
 }

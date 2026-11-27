@@ -444,7 +444,8 @@ nonisolated enum CatalogShelfSource {
                               year: $0.year.map { ArchiveStringList([$0]) },
                               subject: ArchiveStringList($0.subjects))
         }
-        return .archive(docs: docs, total: matching.count)
+        // The count of what the shelf can show: without the music works.
+        return .archive(docs: docs, total: shelved.count)
     }
 
     /// The browse-everything answer: the WHOLE kept stock, popularity
