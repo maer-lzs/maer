@@ -136,12 +136,30 @@ nonisolated enum GutenbergClient {
         // met by a retry that happened to hit the warm cache. This ceiling
         // fits the source; with the per-row publish it holds nothing else up.
         request.timeoutInterval = 45
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        let data: Data
+        let response: HTTPURLResponse?
+        do {
+            (data, response) = try await RequestRetryPolicy.fetch(request)
+        } catch {
+            throw unavailable(error)
+        }
+        // A maintenance page is no answer to decode: the surfaces say that
+        // Gutenberg is not answering, not that an answer could not be read.
+        try answered(status: response?.statusCode)
         return try decodeWithCount(data)
     }
 
-    static func answered(status: Int?) throws {}
-    static func unavailable(_ error: Error) -> Error { error }
+    /// A 5xx of gutendex is Gutenberg not answering (`GutenbergUnavailable`).
+    static func answered(status: Int?) throws {
+        if let status, (500...599).contains(status) { throw GutenbergUnavailable() }
+    }
+
+    /// A timeout or a refused connection is Gutenberg not answering; no
+    /// network and every other failure stay as they are.
+    static func unavailable(_ error: Error) -> Error {
+        guard let url = error as? URLError, [.timedOut, .cannotConnectToHost].contains(url.code) else { return error }
+        return GutenbergUnavailable()
+    }
 }
 
 /// ONE shape for "what does this source hold on this shelf". Four sources
