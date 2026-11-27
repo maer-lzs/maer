@@ -77,7 +77,7 @@ struct GutenbergMusicTests {
     func lane() {
         let stock = Self.stock([Self.entry(1, music: true, downloads: 5), Self.entry(2, music: false, downloads: 99),
                                 Self.entry(3, music: true, downloads: 50)])
-        #expect(GutenbergMusic.lane(stock, rows: 10, on: Date()).map(\.id) == ["gut:3", "gut:1"])
+        #expect(GutenbergMusic.lane(stock, rows: 10, on: Date(), classical: nil).map(\.id) == ["gut:3", "gut:1"])
     }
 
     @Test("the tile: the composer is the author, the performers are the narrators")
@@ -116,7 +116,7 @@ struct GutenbergMusicTests {
     func all() {
         let stock = Self.stock([Self.entry(1, music: true, downloads: 5), Self.entry(2, music: false, downloads: 99),
                                 Self.entry(3, music: true, downloads: 50), Self.entry(4, music: true, downloads: 7)])
-        #expect(GutenbergMusic.all(stock).map(\.id) == ["gut:3", "gut:4", "gut:1"])
+        #expect(GutenbergMusic.all(stock, classical: nil).map(\.id) == ["gut:3", "gut:4", "gut:1"])
     }
 
     @Test("the row says what the rights are, like Musopen")
@@ -134,6 +134,54 @@ struct GutenbergMusicTests {
         #expect(row.contains("Text(GutenbergMusic.rightsNotice)"))
         let navigation = try code("Sources/Views/Music/MusicNavigation.swift")
         #expect(navigation.contains("case .gutenbergMusic:\n                GutenbergMusicPage("))
+    }
+
+    @Test("the rule of art music: the 132 music works of the dump, 28 art music, each as measured", .needsTheSources)
+    func artMusicVectors() throws {
+        let url = SourceTree.root.appendingPathComponent("MaerTests/Fixtures/GutenbergMusic/art-music.json")
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let cases = try #require(object["faelle"] as? [[String: Any]])
+        #expect(cases.count == 132)
+        var art = 0
+        for item in cases {
+            let subjects = item["subjects"] as? [String] ?? []
+            let authors = item["authors"] as? String
+            let expected = item["kunstmusik"] as? Bool ?? false
+            let rule = GutenbergMusic.isArtMusic(subjects: subjects, authors: authors)
+            if rule { art += 1 }
+            #expect(rule == expected, "\(item["id"] as? String ?? "?")")
+        }
+        #expect(art == 28)
+    }
+
+    @Test("the edges: a song of both lists is not art music; a composer before 1900 alone is; one after 1900 is not")
+    func artMusicEdges() {
+        #expect(!GutenbergMusic.isArtMusic(subjects: ["Operas", "Popular music"], authors: nil))
+        #expect(GutenbergMusic.isArtMusic(subjects: ["Band music"], authors: "Band [Performer]; Liszt, Franz, 1811-1886 [Composer]"))
+        #expect(!GutenbergMusic.isArtMusic(subjects: ["Band music"], authors: "Sousa, John Philip, 1854-1932 [Composer]"))
+        #expect(GutenbergMusic.isArtMusic(subjects: ["Operas -- Excerpts"], authors: nil))
+    }
+
+    @Test("the classical row holds only art music, the row of the music page the rest")
+    func twoRows() {
+        let stock = Self.stock([
+            CatalogStockEntry(id: "gut:1", title: "Aria", creator: nil, subjects: ["Operas"], downloads: 3, licenseurl: nil, year: nil, music: true),
+            CatalogStockEntry(id: "gut:2", title: "Song", creator: nil, subjects: ["Popular music"], downloads: 9, licenseurl: nil, year: nil, music: true),
+            CatalogStockEntry(id: "gut:3", title: "Book", creator: nil, subjects: ["Fiction"], downloads: 99, licenseurl: nil, year: nil, music: false)])
+        #expect(GutenbergMusic.lane(stock, rows: 10, on: Date(), classical: true).map(\.id) == ["gut:1"])
+        #expect(GutenbergMusic.lane(stock, rows: 10, on: Date(), classical: false).map(\.id) == ["gut:2"])
+        #expect(GutenbergMusic.all(stock, classical: true).map(\.id) == ["gut:1"])
+        #expect(GutenbergMusic.all(stock, classical: false).map(\.id) == ["gut:2"])
+    }
+
+    @Test("Fence: the music page has its own Gutenberg row among the free catalogues, in the music group", .needsTheSources)
+    func musicPageRow() throws {
+        #expect(BrowseSection.gutenbergMusic.group == .music)
+        #expect(BrowseSection.gutenbergMusic.sourceKeys == ["gutenberg"])
+        let browse = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/BrowseRow.swift"), encoding: .utf8))
+        #expect(browse.contains("CatalogShelfEntries.gutenbergMusicLane(classical: false)"))
+        let music = SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8))
+        #expect(music.contains("case .gutenbergMusic:"))
     }
 }
 #endif

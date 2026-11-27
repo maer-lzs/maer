@@ -1,0 +1,1166 @@
+{
+ "quelle": "pg_catalog.csv von gutenberg.pglaf.org, 27.11.2026",
+ "faelle": [
+  {
+   "id": "gut:3002",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Popular music -- 1961-1970"
+   ],
+   "authors": "Ian, Janis, 1951- [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10156",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera",
+    "IT Musica"
+   ],
+   "authors": "Bonci, Alessandro, 1870-1940 [Performer]; Flotow, Friedrich von, 1812-1883 [Composer]; Friedrich, W., 1820?-1879 [Librettist]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10157",
+   "subjects": [
+    "Popular music -- 1911-1920"
+   ],
+   "authors": "Murray, Billy, 1877-1954 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10167",
+   "subjects": [
+    "Band music"
+   ],
+   "authors": "Edison Concert Band",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10168",
+   "subjects": [
+    "Marches (Band)",
+    "Band music"
+   ],
+   "authors": "British Military Band [Performer]; Friedemann, Carl [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10169",
+   "subjects": [
+    "Marches (Band)",
+    "Band music"
+   ],
+   "authors": "United States Marine Band [Performer]; Sousa, John Philip, 1854-1932 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10170",
+   "subjects": [
+    "Marches (Band)",
+    "Band music"
+   ],
+   "authors": "Sousa Band [Performer]; Sousa, John Philip, 1854-1932 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10171",
+   "subjects": [
+    "Songs, Neapolitan -- Instrumental settings"
+   ],
+   "authors": "His Majesty's Irish Guards Band [Performer]; Lotter, Adolph [Arranger]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10172",
+   "subjects": [
+    "Violin and piano music, Arranged"
+   ],
+   "authors": "Parlow, Kathleen, 1890-1963 [Performer]; Beethoven, Ludwig van, 1770-1827 [Composer]; Drigo, Riccardo, 1846-1930 [Composer]; Falkenstein, George [Performer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10173",
+   "subjects": [
+    "Band music, Arranged"
+   ],
+   "authors": "Edison Concert Band; Liszt, Franz, 1811-1886 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10174",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera"
+   ],
+   "authors": "Sodero's Band [Performer]; Rossini, Gioacchino, 1792-1868 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10175",
+   "subjects": [
+    "Piano music"
+   ],
+   "authors": "Rachmaninoff, Sergei, 1873-1943 [Performer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10176",
+   "subjects": [
+    "Trumpet with orchestra"
+   ],
+   "authors": "White, Edna, 1892-1992 [Performer]; Clarke, Herbert L. (Herbert Lincoln), 1867-1945 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10177",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera"
+   ],
+   "authors": "Wagner, Richard, 1813-1883 [Composer]; American Symphony Orchestra (West Orange, N.J.) [Performer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10178",
+   "subjects": [
+    "Wind ensembles, Arranged"
+   ],
+   "authors": "Bellini Ensemble Unique [Performer]; Beethoven, Ludwig van, 1770-1827 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10179",
+   "subjects": [
+    "Suites (Orchestra) -- Excerpts"
+   ],
+   "authors": "American Concert Orchestra; Rimsky-Korsakov, Nikolay, 1844-1908 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10180",
+   "subjects": [
+    "Violin and piano music, Arranged"
+   ],
+   "authors": "Flesch, Carl, 1873-1944 [Performer]; Kreisler, Fritz, 1875-1962 [Arranger]; Dvorák, Antonín, 1841-1904 [Composer]; Ruhrseitz, Kurt [Performer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10181",
+   "subjects": [
+    "Orchestral music, Arranged"
+   ],
+   "authors": "Hotel Commodore Ensemble [Performer]; Debussy, Claude, 1862-1918 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10182",
+   "subjects": [
+    "Piano trios"
+   ],
+   "authors": "New York Trio; Schubert, Franz, 1797-1828 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10183",
+   "subjects": [
+    "Piano music"
+   ],
+   "authors": "Rosenthal, Moriz, 1862-1946 [Performer]; Chopin, Frédéric, 1810-1849 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10184",
+   "subjects": [
+    "String quartets"
+   ],
+   "authors": "Roth Quartet [Performer]; Mozart, Wolfgang Amadeus, 1756-1791 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10185",
+   "subjects": [
+    "Minstrel shows -- Songs and music"
+   ],
+   "authors": "Edison Minstrels",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10192",
+   "subjects": [
+    "Humorous songs"
+   ],
+   "authors": "Woottwell, Tom",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10194",
+   "subjects": [
+    "Old-time music",
+    "Reels (Music)"
+   ],
+   "authors": "Bisbee, Jep, 1843-1935 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10195",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Old-time music"
+   ],
+   "authors": "Blue Ridge Duo",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10196",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Songs with instrumental ensemble",
+    "Old-time music"
+   ],
+   "authors": "Fiddlin' Powers & Family",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10197",
+   "subjects": [
+    "Gospel music",
+    "Old-time music"
+   ],
+   "authors": "Dixie Mountaineers [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10198",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Old-time music"
+   ],
+   "authors": "Luther, Frank, 1905-1980 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10199",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Old-time music"
+   ],
+   "authors": "North Carolina Ramblers [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10204",
+   "subjects": [
+    "Bugle calls"
+   ],
+   "authors": "Landfrey, Kenneth",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10237",
+   "subjects": [
+    "Sound -- Recording and reproducing"
+   ],
+   "authors": null,
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10239",
+   "subjects": [
+    "Sound -- Recording and reproducing"
+   ],
+   "authors": "Losey's Orchestra",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10240",
+   "subjects": [
+    "Sound -- Recording and reproducing"
+   ],
+   "authors": "Losey's Orchestra",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10241",
+   "subjects": [
+    "Sound -- Recording and reproducing"
+   ],
+   "authors": "Losey's Orchestra",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10242",
+   "subjects": [
+    "Sound -- Recording and reproducing"
+   ],
+   "authors": "Losey's Orchestra",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10243",
+   "subjects": [
+    "Songs with piano",
+    "Organ music",
+    "Radio programs"
+   ],
+   "authors": "Scott, John A. [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10244",
+   "subjects": [
+    "Foxtrots",
+    "Jazz -- To 1921"
+   ],
+   "authors": "Frisco Jass Band [Performer]; Johnson, Arnold, 1893-1975 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10245",
+   "subjects": [
+    "Foxtrots",
+    "Dance orchestra music",
+    "Jazz -- To 1921"
+   ],
+   "authors": "Earl Fuller's Famous Jazz Band [Performer]; Fuller, Earl [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10246",
+   "subjects": [
+    "Jazz -- To 1921"
+   ],
+   "authors": "All-Star Trio [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10247",
+   "subjects": [
+    "Dixieland music"
+   ],
+   "authors": "Lopez and Hamilton's Kings of Harmony",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10248",
+   "subjects": [
+    "Blues (Music)"
+   ],
+   "authors": "Harry Raderman's Jazz Orchestra",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10249",
+   "subjects": [
+    "Blues (Music)"
+   ],
+   "authors": "Ferera and Paaluhi [Performer]; Handy, W. C. (William Christopher), 1873-1958 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10255",
+   "subjects": [
+    "Songs -- Instrumental settings"
+   ],
+   "authors": "Banda de Zapadores de Mexico [Performer]; Yradier, Sebastián, 1809-1865 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10256",
+   "subjects": [
+    "Christmas music",
+    "Carols, German",
+    "Christmas"
+   ],
+   "authors": "Nebe-Quartett",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10257",
+   "subjects": [
+    "Jews -- Music",
+    "Klezmer music",
+    "Judaism"
+   ],
+   "authors": "I. J. Hochman's Yiddisher Orchester",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10258",
+   "subjects": [
+    "Kolos",
+    "Tambura (Fretted lute) music"
+   ],
+   "authors": "Jugoslavensko Tamburasko Drustvo",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10259",
+   "subjects": [
+    "Violin and piano music"
+   ],
+   "authors": "Lusk, Milan",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10260",
+   "subjects": [
+    "Accordion music",
+    "Polkas"
+   ],
+   "authors": "Iwanowski, Aleksander [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10261",
+   "subjects": [
+    "Violin and piano music",
+    "Habaneras"
+   ],
+   "authors": "Trio Cubano [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10262",
+   "subjects": [
+    "Folk songs, Spanish -- Cuba"
+   ],
+   "authors": "Cruz, Juan de la [Performer]; León, Bienvenido, musician [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10263",
+   "subjects": [
+    "Folk music -- Canada",
+    "Folk songs, French -- Canada",
+    "FR Chansons"
+   ],
+   "authors": "Marchand, Charles, 1890-1930 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10264",
+   "subjects": [
+    "Folk songs, Lithuanian"
+   ],
+   "authors": "Šidlauskas, Juozas [Performer]; Petrauskas, Mikas, 1873-1937 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10265",
+   "subjects": [
+    "Folk songs, Finnish"
+   ],
+   "authors": "Pyykkönen, Otto, 1898-1970 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10269",
+   "subjects": [
+    "African Americans -- Music",
+    "Spirituals (Songs)"
+   ],
+   "authors": "\"Colored Quartet\" (name unknown)",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10270",
+   "subjects": [
+    "African Americans -- Music",
+    "Spirituals (Songs)"
+   ],
+   "authors": "Hann's Emperors of Song",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10271",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera"
+   ],
+   "authors": "Knote, Heinrich, 1870-1953 [Performer]; Wagner, Richard, 1813-1883 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10272",
+   "subjects": [
+    "Operas -- Excerpts",
+    "IT Musica"
+   ],
+   "authors": "Constantino, Florencio, 1869-1919 [Performer]; Puccini, Giacomo, 1858-1924 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10273",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera",
+    "IT Musica"
+   ],
+   "authors": "Bori, Lucrezia, 1887-1960 [Performer]; Verdi, Giuseppe, 1813-1901 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10275",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera",
+    "IT Musica"
+   ],
+   "authors": "Koralek, Paola [Performer]; Ponchielli, Amilcare, 1834-1886 [Composer]; Boito, Arrigo, 1842-1918 [Librettist]; Benedetti, Preste [Performer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10276",
+   "subjects": [
+    "Choruses, Sacred (Mixed voices, 4 parts)",
+    "Masses -- Excerpts"
+   ],
+   "authors": "Gregorian Choir [Performer]; Mozart, Wolfgang Amadeus, 1756-1791 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10277",
+   "subjects": [
+    "Oratorios -- Excerpts"
+   ],
+   "authors": "Oratorio Chorus [Performer]; Handel, George Frideric, 1685-1759 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10278",
+   "subjects": [
+    "Operas -- Excerpts",
+    "Opera",
+    "IT Musica"
+   ],
+   "authors": "Muzio, Claudia, 1889-1936 [Performer]; Tchaikovsky, Peter Ilich, 1840-1893 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10282",
+   "subjects": [
+    "Violin and piano music",
+    "Folk dance music -- Poland"
+   ],
+   "authors": "D'Almaine, Charles, 1871-1943 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10283",
+   "subjects": [
+    "Polkas",
+    "Xylophone and piano music"
+   ],
+   "authors": "Lowe, Charles P. [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10284",
+   "subjects": [
+    "Trios (Piano, flute, violin)"
+   ],
+   "authors": "Jaudas, Eugene [Performer]; Ehrlich, Sam, 1872-1927 [Composer]; Atz, Louis [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10285",
+   "subjects": [
+    "Popular music -- 1901-1910",
+    "Ragtime music"
+   ],
+   "authors": "Peerless Orchestra (Edison studio ensemble); Stone, Fred S. [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10286",
+   "subjects": [
+    "Polkas",
+    "Cornet and piano music"
+   ],
+   "authors": "Kryl, Bohumir, 1875-1961 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10287",
+   "subjects": [
+    "Accordion music"
+   ],
+   "authors": "Frosini, Pietro, 1885-1951 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10288",
+   "subjects": [
+    "Ragtime music"
+   ],
+   "authors": "Siegel, Samuel, 1876?-1948 [Performer]; Caveny, Marie [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10295",
+   "subjects": [
+    "Spirituals (Songs)",
+    "Folk songs -- United States",
+    "Sacred vocal quartets"
+   ],
+   "authors": "Jubilee Singers",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10296",
+   "subjects": [
+    "African Americans -- Songs and music",
+    "Spirituals (Songs)"
+   ],
+   "authors": "Jubilee Singers",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10297",
+   "subjects": [
+    "Popular instrumental music -- 1911-1920",
+    "Saxophone with orchestra"
+   ],
+   "authors": "Wiedoeft, Rudy, 1893-1940 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10298",
+   "subjects": [
+    "Guitar music, Arranged",
+    "Songs -- Instrumental settings"
+   ],
+   "authors": "Trucksess, Robert [Performer]; Gilbert, James L. [Composer]; Spilman, Jonathan E., 1812-1896 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10299",
+   "subjects": [
+    "Operas -- Excerpts, Arranged",
+    "Banjo music, Arranged"
+   ],
+   "authors": "Peabody, Eddie, 1901?-1970 [Performer]; Suppé, Franz von, 1819-1895 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10300",
+   "subjects": [
+    "Songs with piano",
+    "Yodels"
+   ],
+   "authors": "Watson, George P. [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10301",
+   "subjects": [
+    "Songs with piano",
+    "Popular music -- 1901-1910"
+   ],
+   "authors": "Favor, Edward M., 1856-1936 [Performer]; Giefer, George L. [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10302",
+   "subjects": [
+    "Popular music -- 1901-1910",
+    "Minstrel shows -- Songs and music"
+   ],
+   "authors": "Dobbs, John [Performer]; Cannon, Hughie L., 1877-1912 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10303",
+   "subjects": [
+    "Whistling music",
+    "Yodels",
+    "Popular music -- 1901-1910"
+   ],
+   "authors": "Sanford, Jere [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10304",
+   "subjects": [
+    "Songs with instrumental ensemble",
+    "Popular music -- 1911-1920"
+   ],
+   "authors": "Tucker, Sophie, 1884-1966; Brooks, Shelton, 1886-1975 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10305",
+   "subjects": [
+    "Songs with instrumental ensemble",
+    "Popular music -- 1911-1920"
+   ],
+   "authors": "Murray, Billy, 1877-1954 [Performer]; Berlin, Irving, 1888-1989 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10306",
+   "subjects": [
+    "Popular music -- 1911-1920",
+    "Barbershop quartets"
+   ],
+   "authors": "American Quartet [Performer]; Wenrich, Percy, 1887-1952 [Composer]; Madden, Edward, 1878-1952 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10307",
+   "subjects": [
+    "Songs with instrumental ensemble",
+    "Popular music -- 1911-1920"
+   ],
+   "authors": "Burkhart, Maurice [Performer]; Santly, Joseph H., 1886-1962 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10308",
+   "subjects": [
+    "Oratorios -- Excerpts"
+   ],
+   "authors": "Manns, August Friedrich, Sir, 1825-1907 [Conductor]; Handel, George Frideric, 1685-1759 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10309",
+   "subjects": [
+    "Songs -- Instrumental settings"
+   ],
+   "authors": "Sullivan, Arthur, 1842-1900 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10312",
+   "subjects": [
+    "Waltzes"
+   ],
+   "authors": "Stewart, Effie [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10313",
+   "subjects": [
+    "Marches"
+   ],
+   "authors": "Issler's Orchestra [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10344",
+   "subjects": [
+    "Piano music"
+   ],
+   "authors": "Erickson, Joel Amos, 1982-",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10348",
+   "subjects": [
+    "Sea songs",
+    "Folk songs, English"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10405",
+   "subjects": [
+    "Jazz -- To 1921"
+   ],
+   "authors": "Louisiana Five [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10406",
+   "subjects": [
+    "Operas -- Excerpts, Arranged",
+    "Clarinet music, Arranged",
+    "Opera"
+   ],
+   "authors": "Tuson, William [Performer]; Balfe, M. W. (Michael William), 1808-1870 [Composer]",
+   "kunstmusik": true
+  },
+  {
+   "id": "gut:10407",
+   "subjects": [
+    "Popular instrumental music -- 1911-1920",
+    "Waltzes"
+   ],
+   "authors": "Jaudas' Society Orchestra [Performer]; Jacobs-Bond, Carrie, 1862-1946 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10408",
+   "subjects": [
+    "Foxtrots",
+    "Dance orchestra music"
+   ],
+   "authors": "Broadway Dance Orchestra; Friml, Rudolf, 1879-1972 [Composer]; Stamper, Dave, 1883-1963 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10411",
+   "subjects": [
+    "Sea songs",
+    "Love songs",
+    "Ocean -- Songs and music",
+    "Popular music -- 1921-1930"
+   ],
+   "authors": "Tilley, Herbert C., Jr. [Performer]; Snyder, Ted, 1881-1965 [Composer]; Smith, Harry B. (Harry Bache), 1860-1936 [Contributor]; Wheeler, Francis [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10412",
+   "subjects": [
+    "Popular instrumental music -- 1911-1920",
+    "Tangos"
+   ],
+   "authors": "National Promenade Band [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10413",
+   "subjects": [
+    "Popular instrumental music -- 1911-1920"
+   ],
+   "authors": "Wadsworth, Frank W. [Performer]; Baines, William, 1899-1922 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10414",
+   "subjects": [
+    "Popular music -- 1911-1920",
+    "State songs -- California",
+    "California -- Songs and music"
+   ],
+   "authors": "Spencer, Elizabeth, -1935 [Performer]; Frankenstein, A. F., 1873-1934 [Composer]; Silverwood, F. B., 1863-1924 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10415",
+   "subjects": [
+    "Popular instrumental music -- 1911-1920",
+    "Waltzes"
+   ],
+   "authors": "National Promenade Band; Ancliffe, Charles, 1880-1952 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10416",
+   "subjects": [
+    "Popular music -- 1911-1920"
+   ],
+   "authors": "Rice, Gladys, soprano [Performer]; Fisher, Fred, 1875-1942 [Composer]; Clarke, Grant, 1891-1931 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10423",
+   "subjects": [
+    "Xylophone with orchestra",
+    "Foxtrots"
+   ],
+   "authors": "Green, George Hamilton, 1893-1970 [Performer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10424",
+   "subjects": [
+    "Xylophone with orchestra",
+    "Popular instrumental music -- 1911-1920"
+   ],
+   "authors": "Green, George Hamilton, 1893-1970 [Performer]; Kreisler, Fritz, 1875-1962 [Composer]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10470",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States",
+    "Railroads -- United States -- Songs and music"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10486",
+   "subjects": [
+    "Gospel music"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10487",
+   "subjects": [
+    "African Americans -- Music",
+    "Folk songs, English -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10488",
+   "subjects": [
+    "Christmas music",
+    "Carols"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10497",
+   "subjects": [
+    "National songs -- United States",
+    "United States -- History -- Civil War, 1861-1865 -- Songs and music",
+    "Patriotic music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-; Steffe, William, 1830?-1890 [Composer]; Howe, Julia Ward, 1819-1910 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10498",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10499",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10500",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Sea songs -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10501",
+   "subjects": [
+    "Folk songs, English -- England",
+    "Folk music -- England"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10503",
+   "subjects": [
+    "African Americans -- Music",
+    "Folk songs, English -- United States",
+    "John Henry (Legendary character) -- Songs and music"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10504",
+   "subjects": [
+    "Sea songs",
+    "Folk songs, English"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10505",
+   "subjects": [
+    "National songs -- Australia",
+    "Folk songs, English -- Australia"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10524",
+   "subjects": [
+    "Christmas music",
+    "Christmas"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10525",
+   "subjects": [
+    "Spirituals (Songs)"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10526",
+   "subjects": [
+    "Folk songs, English -- Ireland",
+    "Folk music -- Ireland"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10527",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States",
+    "Ballads, English -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10528",
+   "subjects": [
+    "Christmas music",
+    "Christmas"
+   ],
+   "authors": "McGuinn, Roger, 1942-; Calkin, John Baptiste, 1827-1905 [Composer]; Longfellow, Henry Wadsworth, 1807-1882 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10529",
+   "subjects": [
+    "Gospel music",
+    "Spirituals (Songs)"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10530",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10535",
+   "subjects": [
+    "Christmas music"
+   ],
+   "authors": "Pierpont, James, 1822-1893",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10536",
+   "subjects": [
+    "Fanfares"
+   ],
+   "authors": "Erickson, Joel Amos, 1982-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10645",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10646",
+   "subjects": [
+    "Folk songs, English -- Ireland",
+    "Folk music -- Ireland"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10650",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States",
+    "Gospel music"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10651",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10652",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-; Clark, Badger, 1883-1957 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10653",
+   "subjects": [
+    "Folk songs, English -- Canada",
+    "Folk music -- Canada"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10654",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Blues (Music)",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10757",
+   "subjects": [
+    "Folk songs, English -- United States",
+    "Folk music -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10758",
+   "subjects": [
+    "National songs -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-; Smith, John Stafford, 1750-1836 [Composer]; Key, Francis Scott, 1779-1843 [Contributor]",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:10759",
+   "subjects": [
+    "Folk songs, English -- United States"
+   ],
+   "authors": "McGuinn, Roger, 1942-",
+   "kunstmusik": false
+  },
+  {
+   "id": "gut:20603",
+   "subjects": [
+    "Christmas music",
+    "Christmas"
+   ],
+   "authors": "Various",
+   "kunstmusik": false
+  }
+ ]
+}

@@ -73,7 +73,7 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
     // then the shows, then the music, as on Start.
     case librivox, gutenberg, archiveBooks, oldTimeRadio
     case recommendations, charts, publicFeeds, independentFeeds
-    case classical, netlabels, oldRecords, jamendo, musopen
+    case classical, netlabels, oldRecords, jamendo, musopen, gutenbergMusic
 
     enum Group: String, CaseIterable, Identifiable, Sendable {
         case books, podcasts, music
@@ -89,6 +89,7 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .recommendations, .charts, .publicFeeds, .independentFeeds: .podcasts
         case .classical, .netlabels, .oldRecords, .jamendo, .musopen: .music
+        case .gutenbergMusic: .books
         case .librivox, .gutenberg, .archiveBooks, .oldTimeRadio: .books
         }
     }
@@ -104,6 +105,7 @@ nonisolated enum BrowseSection: String, CaseIterable, Identifiable, Sendable {
         case .musopen: ["musopen"]
         case .librivox: ["librivox"]
         case .gutenberg: ["gutenberg"]
+        case .gutenbergMusic: []
         case .publicFeeds, .independentFeeds: []
         }
     }

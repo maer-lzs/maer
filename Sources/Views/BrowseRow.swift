@@ -265,6 +265,8 @@ struct BrowsePage: View {
             return OERRLiveStore.feeds(for: .independents, languages: languages).map { .catalog(.feed($0)) }
         case .musopen:
             return AppStorageKeys.musopenActive ? freeCatalogStore.rows.musopen.map(BrowseTile.music) : []
+        case .gutenbergMusic:
+            return []
         }
     }
 
@@ -354,6 +356,8 @@ struct BrowsePage: View {
             RowHeading.entry(verbatim: CatalogSource.independents.title, destination: FreeAudiobooksRoute.source(.independents))
         case .musopen:
             RowHeading.entry(verbatim: "Musopen", destination: MusicRoute.musopen)
+        case .gutenbergMusic:
+            RowHeading.plain(verbatim: "Project Gutenberg")
         }
     }
 }

@@ -40,6 +40,8 @@ enum CatalogShelfEntries {
         entries.compactMap { register.remember(gutenbergMusic: $0) }
     }
 
+    static func gutenbergMusicLane(classical: Bool) -> [LibraryItem] { [] }
+
     /// Gutenberg books as entries; they need no curation.
     static func books(_ books: [GutenbergClient.Book],
                       register: FreeCatalogProvider = .shared) -> [LibraryItem] {

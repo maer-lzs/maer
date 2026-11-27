@@ -55,7 +55,7 @@ nonisolated enum GutenbergMusic {
 
     /// The music works of the stock as a row: popularity order, the daily
     /// rotation of every row, its own salt.
-    static func lane(_ stock: CatalogStock, rows: Int, on date: Date) -> [CatalogStockEntry] {
+    static func lane(_ stock: CatalogStock, rows: Int, on date: Date, classical: Bool? = nil) -> [CatalogStockEntry] {
         let ordered = stock.entries.filter { $0.music == true }
             .sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
         guard !ordered.isEmpty else { return [] }
@@ -67,9 +67,11 @@ nonisolated enum GutenbergMusic {
 
     static let laneKey = "gutenberg-music"
 
+    static func isArtMusic(subjects: [String], authors: String?) -> Bool { false }
+
     /// Every music work of the stock, for the page behind the row, in
     /// popularity order.
-    static func all(_ stock: CatalogStock) -> [CatalogStockEntry] {
+    static func all(_ stock: CatalogStock, classical: Bool? = nil) -> [CatalogStockEntry] {
         stock.entries.filter { $0.music == true }
             .sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
     }
