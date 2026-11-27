@@ -1,0 +1,78 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 4607240,
+    "ns": 6,
+    "title": "File:Beethoven - Piano Sonata No. 28 in A Major, Op. 101 - II. Lebhaft. Marschmäßig.ogg",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 6022277,
+      "width": 0,
+      "height": 0,
+      "duration": 364.85224489795917,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Beethoven_-_Piano_Sonata_No._28_in_A_Major%2C_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Beethoven_-_Piano_Sonata_No._28_in_A_Major,_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/4607240",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "pd",
+        "source": "commons-templates",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Ludwig_van_Beethoven\" class=\"extiw\" title=\"w:en:Ludwig van Beethoven\"><span title=\"German composer (1770-1827)\">Ludwig van Beethoven</span></a></bdi>",
+        "source": "commons-desc-page"
+       },
+       "ObjectName": {
+        "value": "Beethoven - Piano Sonata No. 28 in A Major, Op. 101 - II. Lebhaft. Marschmäßig",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "Klaviersonate Nr. 28, 2. Satz",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "1816",
+        "source": "commons-desc-page"
+       },
+       "Categories": {
+        "value": "PD-author|Author died more than 100 years ago public domain images|Musopen|Featured sounds on Wikipedia, English|Attribution only license|Items with VRTS permission confirmed|CC-PD-Mark|Audio files of Piano Sonata No. 28 (Beethoven)|Files with Assessments template missing SDC Commons no value quality assessment|Audio files of classical music by Daniel Veesey",
+        "source": "commons-categories",
+        "hidden": ""
+       },
+       "Copyrighted": {
+        "value": "False",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Public domain",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/b/bb/Beethoven_-_Piano_Sonata_No._28_in_A_Major%2C_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg/Beethoven_-_Piano_Sonata_No._28_in_A_Major%2C_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 185048
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php generator=categorymembers, gekuerzt auf eine Datei, extmetadata auf die gelesenen Felder; derivatives aus pageids mit viprop url|size|mime|derivatives|extmetadata, gelesene Felder unveraendert"
+}

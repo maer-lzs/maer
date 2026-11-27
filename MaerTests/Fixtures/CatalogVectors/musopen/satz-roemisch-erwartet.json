@@ -1,0 +1,35 @@
+{
+ "zeilen": [
+  {
+   "quelle": "musopen",
+   "id": "mso:22251116",
+   "art": "musik",
+   "titel": "Oboe Concerto in D minor, Op. 9, no.2 - I. Allegro ma non presto",
+   "urheber": null,
+   "sprache": null,
+   "jahr": null,
+   "rechte": {
+    "kennung": "cc0",
+    "url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+   },
+   "laden": true,
+   "reihen": [],
+   "auch": [],
+   "tief": {
+    "komponist": null,
+    "werk": "Oboe Concerto in D minor, Op. 9, no.2 - I. Allegro ma non presto",
+    "interpret": null,
+    "satz": 1,
+    "spuren": [
+     {
+      "nummer": 1,
+      "titel": "Oboe Concerto in D minor, Op. 9, no.2 - I. Allegro ma non presto",
+      "dauer": 229.61632653061224,
+      "adresse": "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/0c/Albinoni%2C_Concerto_for_Oboe_and_Strings_No._2_in_D_minor%2C_Op._9%2C_I._Allegro_e_con_presto.ogg/Albinoni%2C_Concerto_for_Oboe_and_Strings_No._2_in_D_minor%2C_Op._9%2C_I._Allegro_e_con_presto.ogg.mp3"
+     }
+    ],
+    "seite": "https://commons.wikimedia.org/wiki/File:Albinoni,_Concerto_for_Oboe_and_Strings_No._2_in_D_minor,_Op._9,_I._Allegro_e_con_presto.ogg"
+   }
+  }
+ ]
+}

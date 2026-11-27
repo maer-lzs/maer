@@ -1,0 +1,78 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 64387784,
+    "ns": 6,
+    "title": "File:Beethoven Op. 73 - 1 Allegro.ogg",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 18536405,
+      "width": 0,
+      "height": 0,
+      "duration": 1143.399886621315,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/57/Beethoven_Op._73_-_1_Allegro.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Beethoven_Op._73_-_1_Allegro.ogg",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/64387784",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "cc-by-sa-3.0",
+        "source": "commons-templates",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/3.0",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Ludwig_van_Beethoven\" class=\"extiw\" title=\"w:en:Ludwig van Beethoven\"><span title=\"German composer (1770-1827)\">Ludwig van Beethoven</span></a></bdi>",
+        "source": "commons-desc-page"
+       },
+       "ObjectName": {
+        "value": "Beethoven Op. 73 - 1 Allegro",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "<p><a href=\"https://en.wikipedia.org/wiki/Piano_Concerto_No._5_(Beethoven)\" class=\"extiw\" title=\"en:Piano Concerto No. 5 (Beethoven)\">Piano Concerto No. 5</a> by <a href=\"//commons.wikimedia.org/wiki/Ludwig_van_Beethoven\" title=\"Ludwig van Beethoven\">Ludwig van Beethoven</a> – 1. Allegro\n</p>\nIt's not great, but better than the MIDI-based files uploaded in February 2011.",
+        "source": "commons-desc-page"
+       },
+       "Categories": {
+        "value": "Piano Concerto No. 5 (Beethoven)|Allegro (music)|Musopen|Attribution only license|Audio files of concertos for piano by Ludwig van Beethoven|Audio files with closed captioning in English",
+        "source": "commons-categories",
+        "hidden": ""
+       },
+       "Copyrighted": {
+        "value": "True",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 3.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/5/57/Beethoven_Op._73_-_1_Allegro.ogg/Beethoven_Op._73_-_1_Allegro.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 162184
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php generator=categorymembers, gekuerzt auf eine Datei, extmetadata auf die gelesenen Felder; derivatives aus pageids mit viprop url|size|mime|derivatives|extmetadata, gelesene Felder unveraendert"
+}

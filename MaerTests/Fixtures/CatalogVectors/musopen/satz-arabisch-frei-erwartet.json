@@ -1,0 +1,35 @@
+{
+ "zeilen": [
+  {
+   "quelle": "musopen",
+   "id": "mso:155111279",
+   "art": "musik",
+   "titel": "Bach, J S - Goldberg Variations, BWV988 - 11. Variation 10. Fughetta (Shelley Katz)",
+   "urheber": "Johann Sebastian Bach",
+   "sprache": null,
+   "jahr": null,
+   "rechte": {
+    "kennung": "pd",
+    "url": null
+   },
+   "laden": true,
+   "reihen": [],
+   "auch": [],
+   "tief": {
+    "komponist": "Johann Sebastian Bach",
+    "werk": "Goldberg Variations, BWV988 - 11. Variation 10. Fughetta (Shelley Katz)",
+    "interpret": null,
+    "satz": 11,
+    "spuren": [
+     {
+      "nummer": 1,
+      "titel": "Bach, J S - Goldberg Variations, BWV988 - 11. Variation 10. Fughetta (Shelley Katz)",
+      "dauer": 86.64,
+      "adresse": "https://upload.wikimedia.org/wikipedia/commons/transcoded/0/03/Bach%2C_J_S_-_Goldberg_Variations%2C_BWV988_-_11._Variation_10._Fughetta_%28Shelley_Katz%29.flac/Bach%2C_J_S_-_Goldberg_Variations%2C_BWV988_-_11._Variation_10._Fughetta_%28Shelley_Katz%29.flac.mp3"
+     }
+    ],
+    "seite": "https://commons.wikimedia.org/wiki/File:Bach,_J_S_-_Goldberg_Variations,_BWV988_-_11._Variation_10._Fughetta_(Shelley_Katz).flac"
+   }
+  }
+ ]
+}

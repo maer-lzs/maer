@@ -1,0 +1,98 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 27437274,
+    "ns": 6,
+    "title": "File:A Walk down Main Street, Delta PA.webm",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 17156207,
+      "width": 720,
+      "height": 540,
+      "duration": 170.911,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_Walk_down_Main_Street,_Delta_PA.webm",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/27437274",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "cc-by-sa-3.0",
+        "source": "commons-templates",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "https://creativecommons.org/licenses/by-sa/3.0",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Smallbones\" title=\"User:Smallbones\">Smallbones</a>",
+        "source": "commons-desc-page"
+       },
+       "ObjectName": {
+        "value": "A Walk down Main Street, Delta PA",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "Video of the Delta Historic District along Main Street in Delta, Pennsylvania.\n<table cellspacing=\"0\" style=\"text-align: left; color: inherit; background: var(--background-color-neutral-subtle,#f9f9f9); border:4px solid #b28000; solid #bbb; margin: 1px;\" class=\"layouttemplate\" lang=\"en\" dir=\"auto\">\n<tbody><tr>\n<td style=\"width:22px; height:22px;\"><span typeof=\"mw:File\"><span><img src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Logo_of_the_United_States_National_Park_Service.svg/20px-Logo_of_the_United_States_National_Park_Service.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"20\" height=\"26\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Logo_of_the_United_States_National_Park_Service.svg/40px-Logo_of_the_United_States_National_Park_Service.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"553\" data-file-height=\"720\"></span></span>\n</td>\n<td style=\"font-size: 8pt; padding: 1pt 5pt 1pt 1pt; line-height: 1.4;\">\n<p>This is an image of a place or building that is listed on the <a href=\"https://en.wikipedia.org/wiki/National_Register_of_Historic_Places\" class=\"extiw\" title=\"en:National Register of Historic Places\">National Register of Historic Places</a> in the <a href=\"https://en.wikipedia.org/wiki/USA\" class=\"extiw\" title=\"en:USA\">United States of America</a>. Its reference number is <span class=\"plainlinks\"><a rel=\"nofollow\" class=\"external text\" href=\"https://npgallery.nps.gov/AssetDetail/NRIS/83002288\">83002288</a></span> (<a class=\"external text\" href=\"https://tools.wmflabs.org/hub/P649:83002288?site=wikidata\">Wikidata</a>).<br>\n</p>\n</td></tr></tbody></table>",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "2013-07-26 00:05:40",
+        "source": "commons-desc-page"
+       },
+       "Categories": {
+        "value": "Piano sonatas by Wolfgang Amadeus Mozart|Musopen|Self-published work|Media of the day|Videos from Pennsylvania|National Register of Historic Places with known IDs|Delta Historic District",
+        "source": "commons-categories",
+        "hidden": ""
+       },
+       "Copyrighted": {
+        "value": "True",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Attribution-Share Alike 3.0",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "video/webm",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm/A_Walk_down_Main_Street%2C_Delta_PA.webm.240p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "240p.vp9.webm",
+        "width": 320,
+        "height": 240,
+        "bandwidth": 303288
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm/A_Walk_down_Main_Street%2C_Delta_PA.webm.360p.mpeg4.mov",
+        "type": "video/quicktime; codecs=\"mp4v\"",
+        "transcodekey": "360p.mpeg4.mov",
+        "width": 480,
+        "height": 360,
+        "bandwidth": 1129272
+       },
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/a0/A_Walk_down_Main_Street%2C_Delta_PA.webm/A_Walk_down_Main_Street%2C_Delta_PA.webm.480p.vp9.webm",
+        "type": "video/webm; codecs=\"vp9, opus\"",
+        "transcodekey": "480p.vp9.webm",
+        "width": 640,
+        "height": 480,
+        "bandwidth": 923240
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php generator=categorymembers, gekuerzt auf eine Datei, extmetadata auf die gelesenen Felder; derivatives aus pageids mit viprop url|size|mime|derivatives|extmetadata, gelesene Felder unveraendert"
+}

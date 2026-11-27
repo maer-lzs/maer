@@ -201,5 +201,60 @@ struct CatalogDatabaseTests {
         #expect(BackupExclusion.isMarked(directory))
         #expect(directory != MaerDatabase.url?.deletingLastPathComponent(), "the catalogue shares the folder of the person's data")
     }
+
+    @Test("a missing or broken file gives empty rows and a log line, never a crash")
+    func brokenFile() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("catalog-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let broken = folder.appendingPathComponent("catalog.sqlite")
+        try Data("not a database at all, just bytes".utf8).write(to: broken)
+        await #expect(throws: (any Error).self) { _ = try await CatalogRowStore.open(file: broken) }
+        let store = FreeCatalogStore(rowStore: { try? await CatalogRowStore.open(file: broken) }, online: { false },
+                                     loadRows: { FreeCatalogLoader.Rows() }, loadSources: { _ in CatalogSourceLoader.SourceRows() },
+                                     enabledRows: { [] })
+        await store.restore()
+        #expect(store.storedRows.classical.isEmpty && store.storedSourceRows.gutenberg.isEmpty)
+        let missing = FreeCatalogStore(rowStore: { nil }, online: { false },
+                                       loadRows: { FreeCatalogLoader.Rows() }, loadSources: { _ in CatalogSourceLoader.SourceRows() },
+                                       enabledRows: { [] })
+        await missing.restore()
+        #expect(missing.storedRows.classical.isEmpty)
+    }
+
+    @Test("the file itself carries the mark that keeps it out of the backup")
+    func fileMarked() async throws {
+        _ = try await CatalogRowStore.open()
+        let directory = try #require(CatalogRowStore.directory)
+        #expect(BackupExclusion.isMarked(directory.appendingPathComponent("catalog.sqlite")))
+    }
+
+    @Test("the Musopen vectors of the index: the app forms the same rows with the same composer, work, performer, movement and address", .needsTheSources)
+    func musopenVectors() throws {
+        let root = SourceTree.root.appendingPathComponent("MaerTests/Fixtures/CatalogVectors/musopen")
+        // One case is two files beside each other: the answer of Commons
+        // and the row the index expects.
+        let cases = try FileManager.default.contentsOfDirectory(atPath: root.path)
+            .filter { $0.hasSuffix("-antwort.json") }.map { String($0.dropLast("-antwort.json".count)) }.sorted()
+        #expect(cases.count == 13)
+        for name in cases {
+            let page = try MusopenCatalog.page(from: Data(contentsOf: root.appendingPathComponent("\(name)-antwort.json")))
+            let expected = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("\(name)-erwartet.json"))) as? [String: Any])
+            let rows = expected["zeilen"] as? [[String: Any]] ?? []
+            let formed = page.recordings.compactMap { recording in
+                FreeCatalogProvider.shared.remember(recording: recording).map { (recording, $0) }
+            }
+            #expect(formed.map(\.1.id) == rows.compactMap { $0["id"] as? String }, "\(name): other rows")
+            for ((recording, item), row) in zip(formed, rows) {
+                let deep = row["tief"] as? [String: Any] ?? [:]
+                let metadata = item.media?.metadata
+                #expect(metadata?.authorName == deep["komponist"] as? String, "\(name): another composer")
+                #expect(metadata?.title == deep["werk"] as? String, "\(name): another work")
+                #expect(metadata?.narratorName == deep["interpret"] as? String, "\(name): another performer")
+                #expect(MusopenOrder.movementNumber(metadata?.title ?? "") == deep["satz"] as? Int, "\(name): another movement")
+                let address = ((deep["spuren"] as? [[String: Any]])?.first)?["adresse"] as? String
+                #expect(recording.audioURL.absoluteString == address, "\(name): another address")
+            }
+        }
+    }
 }
 #endif

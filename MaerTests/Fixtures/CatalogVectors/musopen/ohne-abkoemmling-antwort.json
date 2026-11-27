@@ -1,0 +1,56 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 155173321,
+    "ns": 6,
+    "title": "File:Chopin - Ballade No. 3 in A-flat major, Op. 47 (Frank Levy).flac",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 121940930,
+      "width": 0,
+      "height": 0,
+      "duration": 507.0451145833333,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Chopin_-_Ballade_No._3_in_A-flat_major%2C_Op._47_%28Frank_Levy%29.flac?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Chopin_-_Ballade_No._3_in_A-flat_major,_Op._47_(Frank_Levy).flac",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/155173321",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Chopin - Ballade No. 3 in A-flat major, Op. 47 (Frank Levy)",
+        "source": "mediawiki-metadata"
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Fr%C3%A9d%C3%A9ric_Chopin\" class=\"extiw\" title=\"w:en:Frédéric Chopin\"><span title=\"Polish composer and pianist (1810–1849)\">Frédéric Chopin</span></a></bdi> / <bdi><a href=\"https://en.wikipedia.org/wiki/en:Frank_L%C3%A9vy\" class=\"extiw\" title=\"w:en:Frank Lévy\"><span title=\"Swiss-American musician\">Frank Lévy</span></a></bdi>",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "pd",
+        "source": "commons-templates",
+        "hidden": ""
+       }
+      },
+      "mime": "audio/flac",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/b/bf/Chopin_-_Ballade_No._3_in_A-flat_major%2C_Op._47_%28Frank_Levy%29.flac/Chopin_-_Ballade_No._3_in_A-flat_major%2C_Op._47_%28Frank_Levy%29.flac.ogg",
+        "type": "audio/ogg; codecs=\"vorbis\"",
+        "transcodekey": "ogg",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 94568
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php pageids mit viprop url|size|mime|derivatives|extmetadata, extmetadata auf die gelesenen Felder"
+}

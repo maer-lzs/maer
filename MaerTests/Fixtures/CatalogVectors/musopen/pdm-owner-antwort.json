@@ -1,0 +1,73 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 176969078,
+    "ns": 6,
+    "title": "File:Antonio Vivaldi, Mandolin Concerto in C major, RV 425.ogg",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 11055271,
+      "width": 0,
+      "height": 0,
+      "duration": 499.93142857142857,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/60/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Antonio_Vivaldi,_Mandolin_Concerto_in_C_major,_RV_425.ogg",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/176969078",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "PDM-owner",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "The Milan Baroque Soloists",
+        "source": "commons-desc-page"
+       },
+       "ObjectName": {
+        "value": "Antonio Vivaldi, Mandolin Concerto in C major, RV 425",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "Antonio Vivaldi, Mandolin Concerto in C major, RV 425",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "Unknown date",
+        "source": "commons-desc-page"
+       },
+       "Categories": {
+        "value": "Musopen|Unknown date|PDMark-owner|Audio files of music by Antonio Vivaldi",
+        "source": "commons-categories",
+        "hidden": ""
+       },
+       "Copyrighted": {
+        "value": "True",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Public Domain Mark Owner",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/60/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg/Antonio_Vivaldi%2C_Mandolin_Concerto_in_C_major%2C_RV_425.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 228808
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php generator=categorymembers, gekuerzt auf eine Datei, extmetadata auf die gelesenen Felder; derivatives aus pageids mit viprop url|size|mime|derivatives|extmetadata, gelesene Felder unveraendert"
+}

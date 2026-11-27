@@ -1,0 +1,35 @@
+{
+ "zeilen": [
+  {
+   "quelle": "musopen",
+   "id": "mso:51364035",
+   "art": "musik",
+   "titel": "Chopin Waltz in A flat major Op 42",
+   "urheber": "Frédéric Chopin",
+   "sprache": null,
+   "jahr": null,
+   "rechte": {
+    "kennung": "pd",
+    "url": "https://web.archive.org/web/20230926203737/https://creativecommons.org/licenses/publicdomain/"
+   },
+   "laden": true,
+   "reihen": [],
+   "auch": [],
+   "tief": {
+    "komponist": "Frédéric Chopin",
+    "werk": "Chopin Waltz in A flat major Op 42",
+    "interpret": null,
+    "satz": null,
+    "spuren": [
+     {
+      "nummer": 1,
+      "titel": "Chopin Waltz in A flat major Op 42",
+      "dauer": 240.048,
+      "adresse": "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/15/Chopin_Waltz_in_A_flat_major_Op_42.ogg/Chopin_Waltz_in_A_flat_major_Op_42.ogg.mp3"
+     }
+    ],
+    "seite": "https://commons.wikimedia.org/wiki/File:Chopin_Waltz_in_A_flat_major_Op_42.ogg"
+   }
+  }
+ ]
+}

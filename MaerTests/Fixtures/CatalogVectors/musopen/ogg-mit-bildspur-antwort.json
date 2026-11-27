@@ -1,0 +1,59 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 30892410,
+    "ns": 6,
+    "title": "File:Iridescence in soapy water.ogv",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 30730815,
+      "width": 1920,
+      "height": 1080,
+      "duration": 81.50115646258503,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/0/08/Iridescence_in_soapy_water.ogv?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Iridescence_in_soapy_water.ogv",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/30892410",
+      "extmetadata": {
+       "ObjectName": {
+        "value": "Iridescence in soapy water",
+        "source": "mediawiki-metadata"
+       },
+       "Artist": {
+        "value": "<a href=\"//commons.wikimedia.org/wiki/User:Pixelmaniac_pictures\" title=\"User:Pixelmaniac pictures\">Pixelmaniac pictures</a> (<a href=\"//commons.wikimedia.org/wiki/User_talk:Pixelmaniac_pictures\" title=\"User talk:Pixelmaniac pictures\"><span class=\"signature-talk\">Leave a reply</span></a>)",
+        "source": "commons-desc-page"
+       },
+       "LicenseShortName": {
+        "value": "CC0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+        "source": "commons-desc-page"
+       },
+       "License": {
+        "value": "cc0",
+        "source": "commons-templates",
+        "hidden": ""
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/0/08/Iridescence_in_soapy_water.ogv?utm_source=commons.wikimedia.org&utm_campaign=api&utm_content=original",
+        "type": "video/ogg; codecs=\"theora, vorbis\"",
+        "width": 1920,
+        "height": 1080,
+        "bandwidth": 3016478
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php pageids mit viprop url|size|mime|derivatives|extmetadata, extmetadata auf die gelesenen Felder"
+}

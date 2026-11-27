@@ -1,0 +1,78 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 22093033,
+    "ns": 6,
+    "title": "File:Bach, BWV 147, 10. Jesus bleibet meine Freude.ogg",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 3726571,
+      "width": 0,
+      "height": 0,
+      "duration": 202.2661224489796,
+      "url": "https://example.org/elsewhere.ogg",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Bach,_BWV_147,_10._Jesus_bleibet_meine_Freude.ogg",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/22093033",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "cc0",
+        "source": "commons-templates",
+        "hidden": ""
+       },
+       "LicenseUrl": {
+        "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+        "source": "commons-desc-page"
+       },
+       "Artist": {
+        "value": "Orchestra Gli Armonici",
+        "source": "commons-desc-page"
+       },
+       "ObjectName": {
+        "value": "Bach, BWV 147, 10. Jesus bleibet meine Freude",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "10. Chorale: <i>Jesus bleibet meine Freude</i> from BWV 147",
+        "source": "commons-desc-page"
+       },
+       "Categories": {
+        "value": "BWV 147:6/10|CC-Zero|Musopen|Audio files of cantatas by Johann Sebastian Bach",
+        "source": "commons-categories",
+        "hidden": ""
+       },
+       "Copyrighted": {
+        "value": "True",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Creative Commons Zero, Public Domain Dedication",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://example.org/elsewhere.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 219712
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "wie normal-cc0 mit seinen Abkoemmlingen, die Adresse der Datei und des mp3-Abkoemmlings auf einen fremden Wirt gesetzt (gebaut)"
+}

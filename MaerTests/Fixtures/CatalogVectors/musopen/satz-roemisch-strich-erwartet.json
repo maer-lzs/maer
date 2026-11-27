@@ -1,0 +1,35 @@
+{
+ "zeilen": [
+  {
+   "quelle": "musopen",
+   "id": "mso:4607240",
+   "art": "musik",
+   "titel": "Beethoven - Piano Sonata No. 28 in A Major, Op. 101 - II. Lebhaft. Marschmäßig",
+   "urheber": "Ludwig van Beethoven",
+   "sprache": null,
+   "jahr": null,
+   "rechte": {
+    "kennung": "pd",
+    "url": null
+   },
+   "laden": true,
+   "reihen": [],
+   "auch": [],
+   "tief": {
+    "komponist": "Ludwig van Beethoven",
+    "werk": "Piano Sonata No. 28 in A Major, Op. 101 - II. Lebhaft. Marschmäßig",
+    "interpret": null,
+    "satz": 2,
+    "spuren": [
+     {
+      "nummer": 1,
+      "titel": "Beethoven - Piano Sonata No. 28 in A Major, Op. 101 - II. Lebhaft. Marschmäßig",
+      "dauer": 364.85224489795917,
+      "adresse": "https://upload.wikimedia.org/wikipedia/commons/transcoded/b/bb/Beethoven_-_Piano_Sonata_No._28_in_A_Major%2C_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg/Beethoven_-_Piano_Sonata_No._28_in_A_Major%2C_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg.mp3"
+     }
+    ],
+    "seite": "https://commons.wikimedia.org/wiki/File:Beethoven_-_Piano_Sonata_No._28_in_A_Major,_Op._101_-_II._Lebhaft._Marschm%C3%A4%C3%9Fig.ogg"
+   }
+  }
+ ]
+}

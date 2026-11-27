@@ -1,0 +1,78 @@
+{
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 3432368,
+    "ns": 6,
+    "title": "File:Antonin Dvorak - symphony no. 9 in e minor 'from the new world', op. 95 - ii. largo.ogg",
+    "imagerepository": "local",
+    "videoinfo": [
+     {
+      "size": 14538509,
+      "width": 0,
+      "height": 0,
+      "duration": 694.464,
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "descriptionurl": "https://commons.wikimedia.org/wiki/File:Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27,_op._95_-_ii._largo.ogg",
+      "descriptionshorturl": "https://commons.wikimedia.org/wiki/Special:Redirect/page/3432368",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "License": {
+        "value": "pd",
+        "source": "commons-templates",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Anton%C3%ADn_Dvo%C5%99%C3%A1k\" class=\"extiw\" title=\"w:en:Antonín Dvořák\"><span title=\"Czech composer (1841–1904)\">Antonín Dvořák</span></a></bdi>",
+        "source": "commons-desc-page"
+       },
+       "ObjectName": {
+        "value": "Antonin Dvorak - symphony no. 9 in e minor 'from the new world', op. 95 - ii. largo",
+        "source": "mediawiki-metadata"
+       },
+       "ImageDescription": {
+        "value": "Symphony no. 9 in E minor <i>From the New World</i> Opus 95, 2nd movement (<i>Largo</i>)(1893).",
+        "source": "commons-desc-page"
+       },
+       "DateTimeOriginal": {
+        "value": "Unknown date",
+        "source": "commons-desc-page"
+       },
+       "Categories": {
+        "value": "Symphony No. 9 (Dvořák)|PD-author|Largo (music)|Author died more than 100 years ago public domain images|Musopen|Items with VRTS permission confirmed|Unknown date|CC-PD-Mark|Pages using the Phonos extension|Audio files of music by Antonín Dvořák",
+        "source": "commons-categories",
+        "hidden": ""
+       },
+       "Copyrighted": {
+        "value": "False",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "UsageTerms": {
+        "value": "Public domain",
+        "source": "commons-desc-page"
+       }
+      },
+      "mime": "application/ogg",
+      "derivatives": [
+       {
+        "src": "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c3/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg/Antonin_Dvorak_-_symphony_no._9_in_e_minor_%27from_the_new_world%27%2C_op._95_-_ii._largo.ogg.mp3",
+        "type": "audio/mpeg",
+        "transcodekey": "mp3",
+        "width": 0,
+        "height": 0,
+        "bandwidth": 210864
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "_quelle": "commons.wikimedia.org/w/api.php generator=categorymembers, gekuerzt auf eine Datei, extmetadata auf die gelesenen Felder; derivatives aus pageids mit viprop url|size|mime|derivatives|extmetadata, gelesene Felder unveraendert"
+}
