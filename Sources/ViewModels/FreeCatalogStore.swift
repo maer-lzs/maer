@@ -14,7 +14,29 @@ import OSLog
 @MainActor
 final class FreeCatalogStore: ObservableObject {
     static let shared = FreeCatalogStore()
-    private init() {}
+
+    typealias RowsLoad = @MainActor () async -> FreeCatalogLoader.Rows
+    typealias SourcesLoad = @MainActor (CatalogSourceLoader.RowSink?) async -> CatalogSourceLoader.SourceRows
+
+    private let rowStore: @Sendable () async -> CatalogRowStore?
+    private let online: @MainActor () -> Bool
+    private let loadRows: RowsLoad
+    private let loadSources: SourcesLoad
+    private let enabledRows: @MainActor () -> Set<FreeCatalogLoader.Rows.Row>
+
+    init(rowStore: @escaping @Sendable () async -> CatalogRowStore? = { nil },
+         online: @escaping @MainActor () -> Bool = { NetworkMonitor.shared.isConnected },
+         loadRows: @escaping RowsLoad = { await FreeCatalogLoader.load() },
+         loadSources: @escaping SourcesLoad = { await CatalogSourceLoader.load(onRow: $0) },
+         enabledRows: @escaping @MainActor () -> Set<FreeCatalogLoader.Rows.Row> = { CatalogRowKeep.enabled(.live) }) {
+        self.rowStore = rowStore
+        self.online = online
+        self.loadRows = loadRows
+        self.loadSources = loadSources
+        self.enabledRows = enabledRows
+    }
+
+    func restore() async {}
     /// Reading and loading cannot be separated: the getter starts the load if
     /// it has not run. A surface that reads the rows without also triggering
     /// the fetch is not expressible any more. That is why the catalogues used
