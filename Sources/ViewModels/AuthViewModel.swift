@@ -67,13 +67,18 @@ final class AuthViewModel: ObservableObject {
     private let saveAddress: (String) -> Bool
     /// Stores the token and reads it back; a seam for the witness.
     private let storeToken: (String) -> TokenStore.Outcome
+    /// Deletes a keychain entry; a seam for the witness of a delete that
+    /// does not hold.
+    private let deleteKey: (String) -> Void
 
     init(read: @escaping (String) -> KeychainRead = { KeychainStore.read(forKey: $0) },
          saveAddress: @escaping (String) -> Bool = { KeychainStore.save($0, forKey: KeychainKey.serverURL) },
-         storeToken: @escaping (String) -> TokenStore.Outcome = { TokenStore.store($0) }) {
+         storeToken: @escaping (String) -> TokenStore.Outcome = { TokenStore.store($0) },
+         deleteKey: @escaping (String) -> Void = { KeychainStore.delete(forKey: $0) }) {
         self.readKeychain = read
         self.saveAddress = saveAddress
         self.storeToken = storeToken
+        self.deleteKey = deleteKey
         let storedURL = read(KeychainKey.serverURL)
         let storedToken = read(KeychainKey.apiToken)
         let state = SignInState.of(url: storedURL, token: storedToken)

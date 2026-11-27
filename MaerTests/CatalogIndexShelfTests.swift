@@ -115,6 +115,20 @@ struct CatalogIndexShelfTests {
         #expect(FreeCatalogProvider.shared.mayKeep(itemId: freeItem.id))
     }
 
+    @Test("the bar of the index sticks: the same id from archive.org afterwards, with a licence, stays barred until the index lifts it")
+    @MainActor func theBarSticks() throws {
+        let licence = "http://creativecommons.org/licenses/by/3.0/"
+        let barred = try #require(CatalogIndexShelf.entry(Self.json("lva:index-sticky", step: 1, licence: licence, extra: ["laden": false])))
+        let item = try #require(FreeCatalogProvider.shared.remember(popular: CatalogIndexShelf.doc(barred, source: "schellack")))
+        let fromArchive = ArchivePopularDoc(identifier: "index-sticky", title: nil, creator: nil, downloads: nil,
+                                            runtime: nil, licenseurl: licence, year: nil, subject: nil)
+        _ = FreeCatalogProvider.shared.remember(popular: fromArchive)
+        #expect(!FreeCatalogProvider.shared.mayKeep(itemId: item.id), "a later answer of archive.org lifted the bar of the index")
+        let lifted = try #require(CatalogIndexShelf.entry(Self.json("lva:index-sticky", step: 1, licence: licence, extra: ["laden": true])))
+        _ = FreeCatalogProvider.shared.remember(popular: CatalogIndexShelf.doc(lifted, source: "schellack"))
+        #expect(FreeCatalogProvider.shared.mayKeep(itemId: item.id), "the index lifting the bar does not count")
+    }
+
     nonisolated final class Reads: Sendable {
         let count = Mutex(0)
         let version = Mutex(1)
