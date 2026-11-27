@@ -403,8 +403,8 @@ struct ABSSignInSwitchTests {
         let lines = try logStore.getEntries(at: logStore.position(date: since)).compactMap { $0 as? OSLogEntryLog }
             .filter { $0.subsystem == AppLogSubsystem.value && $0.category == "library" }
             .map(\.composedMessage).filter { $0.hasPrefix("AUTH sign-out read back") }
-        #expect(lines.count == 1 && lines.first?.contains("address=stands") == true && lines.first?.contains("token=gone") == true,
-                "the line: \(lines)")
+        // Other sign-outs of the suite write their lines in the same window.
+        #expect(lines.contains { $0.contains("address=stands") && $0.contains("token=gone") }, "the line: \(lines)")
     }
 
     @Test("Fence: the address is stored before the token, and put back when the token is not taken", .needsTheSources)

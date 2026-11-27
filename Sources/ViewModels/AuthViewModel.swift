@@ -201,6 +201,17 @@ final class AuthViewModel: ObservableObject {
         signInMethods = (typed, methods)
     }
 
+    /// Signs out with address and token deleted, and reads both back: a
+    /// delete that did not hold is named in the log, never taken as done.
+    private func signOutLeavingNoPair() {
+        deleteKey(KeychainKey.serverURL)
+        deleteKey(KeychainKey.apiToken)
+        logout()
+        let address = KeychainStore.read(forKey: KeychainKey.serverURL) == .missing ? "gone" : "stands"
+        let token = KeychainStore.read(forKey: KeychainKey.apiToken) == .missing ? "gone" : "stands"
+        Logger.library.notice("AUTH sign-out read back address=\(address, privacy: .public) token=\(token, privacy: .public)")
+    }
+
     /// Puts the address before back into the keychain when a token was not
     /// taken; with none before, the new one goes. Says whether it held; the
     /// caller signs out when it did not, so no pair is left mixed.
@@ -365,12 +376,19 @@ final class AuthViewModel: ObservableObject {
             // before stands.
             // An address before that is there but cannot be read now is an
             // address (unknown is never empty): nothing is stored, so it is
-            // never deleted on the way back.
+            // never deleted on the way back. A damaged one never heals: the
+            // sign-in goes on as without one, and the way back has nothing
+            // to put back.
             let heldAddress: String?
+            var damagedAddress = false
             switch readKeychain(KeychainKey.serverURL) {
             case .value(let value): heldAddress = value
             case .missing: heldAddress = nil
-            case .unreadable, .undecodable:
+            case .undecodable:
+                heldAddress = nil
+                damagedAddress = true
+                Logger.library.error("AUTH address before damaged host=\(url.host ?? "-", privacy: .public): the sign-in goes on without it")
+            case .unreadable:
                 queue.release(server: formerAddress)
                 Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the address before cannot be read")
                 errorMessage = String(localized: "The server access can be read once this device is unlocked.")
@@ -390,11 +408,10 @@ final class AuthViewModel: ObservableObject {
                 // The address before goes back beside the token before. When
                 // it cannot, no pair is left mixed: address and token go, and
                 // the sign-in ends signed out.
-                guard putBackAddress(heldAddress) else {
+                guard !damagedAddress, putBackAddress(heldAddress) else {
                     queue.release(server: formerAddress)
                     Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored and the address before could not be put back; address and token go")
-                    KeychainStore.delete(forKey: KeychainKey.serverURL)
-                    logout()
+                    signOutLeavingNoPair()
                     errorMessage = String(localized: "Signed out.")
                     return
                 }

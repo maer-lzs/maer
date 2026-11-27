@@ -72,6 +72,9 @@ final class FreeCatalogProvider: AudioProvider {
     }
     /// The archive.org items whose record states a licence, as seen this run.
     private var statedLicence: Set<String> = []
+    /// The items the index of the service bars from the library, as read
+    /// this run (`laden` false), until it lifts the bar.
+    private var indexBarred: Set<String> = []
     /// The Gutenberg readings whose record says public domain, as read this run.
     private var gutenbergPublicDomain: Set<String> = []
     /// The tracks of a Gutenberg work whose durations are estimated until
@@ -326,7 +329,12 @@ final class FreeCatalogProvider: AudioProvider {
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         // A row the service's catalog bars from the library is never kept,
         // whatever licence it states.
-        if doc.mayLoad == false {
+        // The bar holds until the index lifts it: a later answer of
+        // archive.org (which says nothing about it) does not.
+        if let load = doc.mayLoad {
+            if load { indexBarred.remove(id) } else { indexBarred.insert(id) }
+        }
+        if indexBarred.contains(id) {
             statedLicence.remove(id)
         } else if FreeCatalog.mayDownload(licenceURL: doc.licenseurl) {
             statedLicence.insert(id)
