@@ -72,4 +72,7 @@ nonisolated enum GutenbergMirrorStep {
 }
 
 /// Gutenberg did not answer, its main server nor its mirror.
-nonisolated struct GutenbergUnavailable: Error, Equatable {}
+nonisolated struct GutenbergUnavailable: LocalizedError, Equatable {
+    /// The one sentence for Gutenberg not answering, wherever it shows.
+    var errorDescription: String? { String(localized: "Gutenberg is not answering right now.") }
+}

@@ -283,7 +283,8 @@ struct GutenbergFirstSoundTests {
         #expect(player[adopt.upperBound...].prefix(1_200).contains("ChapterModel.resolved(detail:"), "the chapters stay on the estimated bounds")
         let downloads = try code("Sources/Networking/DownloadManager.swift")
         let save = try #require(downloads.range(of: "await saveDetail(item)"))
-        #expect(downloads[..<save.lowerBound].suffix(900).contains("resolveDurations(itemId:"), "a download keeps estimated durations")
+        // The question lives in `detailToKeep`, its behaviour in `GutenbergPlaceTests`.
+        #expect(downloads[..<save.lowerBound].suffix(400).contains("Self.detailToKeep("), "a download keeps estimated durations")
         #expect(try code("Sources/Views/PlayerView.swift").contains("let whole = viewModel.durationsEstimated ? Text(verbatim: left) :"))
     }
 

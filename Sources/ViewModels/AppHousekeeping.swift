@@ -164,6 +164,8 @@ enum AppHousekeeping {
             // must never require a force-quit to recover.
             let session = AppSession.shared
             session.musicProvider.reconnectIfNeeded()
+            // Estimated durations whose read failed are read again.
+            Task { await session.playerCoordinator.viewModel?.readRealDurationsAgain(by: "scene active") }
             rereadUnknownAccess(auth: session.authViewModel) { await session.libraryViewModel.loadLibrary() }
             // The cover cap on returning is NOT here: it hangs on the calm
             // gate, and „when is the scrolling calm" is the view's question.

@@ -17,8 +17,13 @@ part has been read: it starts after the first three, and the lengths of
 the others are estimated from their file sizes and read in the
 background. Until they are, the player shows the time left in the part
 but not when the book ends, and no listening position is saved from the
-estimate. Resuming inside a book still waits for the real lengths, which
-are now read several at a time.
+estimate; the part and the place in it are kept on this device instead,
+so a later start continues there, and they become the listening position
+once the real lengths are read. If reading them fails, Mär tries again
+when the network returns, when you come back to the app and at the next
+part. A download keeps a book only with its real lengths; when Gutenberg
+is not answering, the download says so. Resuming inside a book still
+waits for the real lengths, which are now read several at a time.
 
 **Clearer folder settings and a home for suggested folders.** The edit
 sheet of a folder carries the folder's name as its title, and its

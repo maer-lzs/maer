@@ -448,7 +448,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     init(provider: any AudioProvider,
          localTracks: @escaping (String) -> [Int: URL] = { DownloadManager.shared.localTrackMap(forItemId: $0) },
          isOnline: @escaping () -> Bool = { NetworkMonitor.shared.isConnected },
-         estimatedPlaces: EstimatedPlace = EstimatedPlace(database: MaerDatabase.shared)) {
+         estimatedPlaces: EstimatedPlace = EstimatedPlace(database: .shared)) {
         self.estimatedPlaces = estimatedPlaces
         self.provider = provider
         self.localTracks = localTracks
@@ -736,6 +736,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // the crash backup, or the flushed witness. Only the silent case.
         // Downloaded book, frozen detail, no witness, server not (yet) heard.
         // Stays unresolved, and that is exactly the dangerous one.
+        // The part and the place in it of a work whose durations were
+        // estimated (`EstimatedPlace`): taken when no stand spoke, dropped
+        // as soon as one did.
+        if !restart, ListeningStore.backup(item.id) != nil || serverProgress > 0 || restoredFromFlushed {
+            estimatedPlaces.forget(item.id)
+        } else if !restart, let place = estimatedPlaces.place(item.id) {
+            startTime = EstimatedPlace.position(of: place, tracks: sortedTracks)
+            Logger.player.notice("PLAY starts at the kept place track=\(place.track) offset=\(Int(place.offset))s")
+        }
         startSourceResolved = restoredFromLocal || restoredFromFlushed
             || item.userMediaProgress != nil
         let startIndex = trackIndex(for: startTime)
@@ -1388,8 +1397,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func play(caller: String = #function) {
         // A title still on estimated durations (the reads behind failed or
         // were not taken): every start reads the real ones again.
-        if durationsEstimated, let id = item?.id {
-            Task { [weak self] in _ = await self?.realDurationsForAMark(id) }
+        if durationsEstimated {
+            Task { [weak self] in await self?.readRealDurationsAgain(by: "start") }
         }
         guard !isStopped else {
             Logger.player.notice("PLAYER play on a stopped model, nothing starts from=\(caller, privacy: .public)")
@@ -1561,7 +1570,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             ListeningStore.record(id, position: currentTime, duration: duration,
                                   atMs: stampMs, epoch: standEpoch)
         } else if let id = item?.id {
-            Logger.player.notice("STAND not written: durations of item=\(id, privacy: .private(mask: .hash)) are estimated")
+            Logger.player.notice("STAND not written: durations of item=\(id, privacy: .private(mask: .hash)) are estimated, the place in the part is kept")
+            keepEstimatedPlace(id)
         }
         ownStandMs = stampMs
     }
@@ -1850,6 +1860,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // Playback reached the next track: the one after the
                     // window is asked now.
                     self.planWindow(from: idx)
+                    if self.durationsEstimated {
+                        Task { [weak self] in await self?.readRealDurationsAgain(by: "next part") }
+                    }
                 }
                 // Local listening stats: 1 s per tick while playing. The item
                 // rides along so the same second can be seen per station/show
@@ -1907,7 +1920,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // the position and differs on every tick, which had the
                     // whole podcast tab recompute every five seconds.
                     // No stand from estimated durations (`StandWrite`).
-                    guard StandWrite.allowed(itemId: id, provider: self.provider) else { return }
+                    guard StandWrite.allowed(itemId: id, provider: self.provider) else {
+                        self.keepEstimatedPlace(id)
+                        return
+                    }
                     let tail = PlayedTail.seconds(forItemId: id)
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     let stampMs = self.ownStampMs(id)
@@ -1976,9 +1992,28 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// A mark is a person's act: with estimated durations it reads the real
     /// ones first and takes them in, then writes. False when they could not
     /// be read.
+    /// Where the part and the place in it are kept while the durations
+    /// are estimated; a witness hands in its own.
     let estimatedPlaces: EstimatedPlace
+    private var readingAgain = false
 
-    func readRealDurationsAgain(by reason: String) async {}
+    /// The part and the time in it, on this device only.
+    private func keepEstimatedPlace(_ id: String) {
+        guard tracks.indices.contains(currentTrackIndex) else { return }
+        let offset = currentTime - (tracks[currentTrackIndex].startOffset ?? 0)
+        estimatedPlaces.note(id, track: currentTrackIndex, offset: offset, atMs: Date().timeIntervalSince1970 * 1000)
+    }
+
+    /// Reads the real durations again while they are estimated: at a start,
+    /// when the network comes back, on the return to the front, at the next
+    /// part. One read at a time; the works join a read that runs.
+    func readRealDurationsAgain(by reason: String) async {
+        guard durationsEstimated, let id = item?.id, !readingAgain else { return }
+        readingAgain = true
+        defer { readingAgain = false }
+        Logger.player.notice("PLAY reads the real durations again by=\(reason, privacy: .public)")
+        _ = await realDurationsForAMark(id)
+    }
 
     func realDurationsForAMark(_ itemId: String) async -> Bool {
         guard !StandWrite.allowed(itemId: itemId, provider: provider) else { return true }
@@ -2005,6 +2040,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         chaptersAreFallback = resolvedChapters.isFallback
         durationsEstimated = provider.estimatesDurations(itemId: itemId, beforeTrack: resolved.count)
         Logger.player.notice("PLAY durations read behind, taken in place track=\(self.currentTrackIndex)")
+        // The kept place becomes a stand that travels, and goes.
+        if !durationsEstimated, estimatedPlaces.place(itemId) != nil {
+            recordHaltStand()
+            estimatedPlaces.forget(itemId)
+        }
     }
 
     // MARK: - Failed-Track-Recovery

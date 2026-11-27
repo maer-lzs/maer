@@ -213,7 +213,10 @@ struct SharedGrowthFenceTests {
     /// 788: the two of the settings place above.
     /// 789: the catalogue rows open their own file once (`CatalogRowStore`,
     /// the one open store of the app).
-    nonisolated static let sourcesStock = 789
+    /// 790: the player keeps the place in a part of a work with estimated
+    /// durations in the person's database (`EstimatedPlace`), handed in
+    /// like the held unfinished titles.
+    nonisolated static let sourcesStock = 790
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

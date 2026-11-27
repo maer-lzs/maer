@@ -13790,6 +13790,34 @@
         }
       }
     },
+    "Gutenberg is not answering right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gutenberg antwortet gerade nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gutenberg no responde en este momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gutenberg ne répond pas pour le moment."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gutenberg non risponde in questo momento."
+          }
+        }
+      }
+    },
     "Happy" : {
       "comment" : "Music mood filter: tracks that sound happy.",
       "localizations" : {

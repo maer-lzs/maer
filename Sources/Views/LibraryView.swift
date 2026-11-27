@@ -865,6 +865,8 @@ struct LibraryView: View {
                     await AppHousekeeping.flushQueues(provider: provider)
                     await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
                 }
+                // Estimated durations whose read failed are read again.
+                Task { await playerCoordinator.viewModel?.readRealDurationsAgain(by: "network back") }
             } else {
                 // Connection lost while possibly playing: set the sync status
                 // visibly to "offline" immediately, without queueing anything.
