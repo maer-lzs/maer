@@ -125,11 +125,23 @@ nonisolated enum CatalogIndexRun {
         if let known, known.version > 0 {
             switch try await pages(name, since: known.version, tag: known, ask: ask, pageSize: pageSize) {
             case .whole(let version, let rows, let etag, let address):
-                guard version > 0 else { return .nothingTaken("version 0") }
+                // The same version without rows is the service saying
+                // nothing changed; an older one is never taken.
+                if version == known.version, rows.isEmpty {
+                    // Only the tag of this address is kept, for the next 304.
+                    try await store.takeDelta(name, rows: [], version: version, etag: etag, etagAddress: address, atMs: nowMs)
+                    return .unchanged
+                }
+                guard version > known.version else {
+                    Logger.library.notice("CATALOG index \(name, privacy: .public) delta of version \(version) not above \(known.version), not taken")
+                    return .nothingTaken("version \(version) not above \(known.version)")
+                }
                 try await store.takeDelta(name, rows: rows, version: version, etag: etag, etagAddress: address, atMs: nowMs)
                 return .taken(version: version)
-            case .answer(.gone):
-                break
+            case .answer(.gone), .answer(.refused(400)):
+                // 410: older than the service answers; 400: above its
+                // version, a service that was reset. Both read the full state.
+                Logger.library.notice("CATALOG index \(name, privacy: .public) delta refused, the full state is read")
             case .answer(let other):
                 return outcome(of: other)
             case .moved:
@@ -219,7 +231,13 @@ nonisolated enum CatalogIndexRun {
         await runIfDue(store: store, ask: ask, sources: sources(.live))
     }
 
+    /// One run at a time; a start while one runs comes back at once.
+    @MainActor private static var running = false
+
     @MainActor static func runIfDue(store: CatalogRowStore, ask: @escaping Ask, sources: [CatalogIndexSource]) async {
+        guard !running else { return }
+        running = true
+        defer { running = false }
         for source in sources {
             let now = Date().timeIntervalSince1970 * 1000
             let state: CatalogRowStore.IndexState?
