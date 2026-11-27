@@ -59,8 +59,9 @@ struct BackupExclusionTests {
         #expect(setters.isEmpty, "a directory is marked past the seam: \(setters)")
         let callers = files.filter { SyncContractFenceTests.stripped($0.text).contains("BackupExclusion.mark(") }
             .map(\.name).sorted()
-        #expect(callers == ["CatalogStockStore.swift", "DownloadManager.swift", "ImageCache.swift"],
-                "the three directories of fetchable data: \(callers)")
+        // The fourth: the catalogue rows, kept again by the next fetch.
+        #expect(callers == ["CatalogRowStore.swift", "CatalogStockStore.swift", "DownloadManager.swift", "ImageCache.swift"],
+                "the four directories of fetchable data: \(callers)")
     }
 }
 #endif
