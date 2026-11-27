@@ -30,8 +30,8 @@ struct CatalogIndexTests {
     }
 
     /// A service in the test: answers by the query, records every query.
+    /// Unchecked because the lock guards the asked queries and the answer.
     nonisolated final class Service: @unchecked Sendable {
-        // Unchecked because the lock guards the asked queries and the answer.
         let lock = NSLock()
         var asked: [MaerSyncCatalogQuery] = []
         var answer: (MaerSyncCatalogQuery) throws -> MaerSyncCatalogAnswer
