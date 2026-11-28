@@ -38,6 +38,11 @@ nonisolated enum PlaylistPlays {
         }
         return moments
     }
+
+    /// The moments from the statements of the document.
+    static func merged(elements: [(id: String, entry: UserChoiceEntry)]) -> [String: Double] {
+        [:]
+    }
 }
 
 /// The device's moments (`AppStorageKeys.playlistPlays`).

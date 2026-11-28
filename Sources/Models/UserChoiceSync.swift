@@ -425,6 +425,9 @@ nonisolated enum UserChoiceCatalog {
     /// `radioRecent.<station id>` ⇒ the station, stamped with the moment it
     /// was played; a tombstone is the removal from "Listen Again".
     static let recentStationPrefix = "radioRecent."
+    /// `playlistPlay.<list id>` ⇒ the moment a list was last heard, in ms,
+    /// stamped with that moment, like the last-heard stations.
+    static let playlistPlayPrefix = "playlistPlay."
     /// `radioManual.<station id>` ⇒ the station a person entered by hand,
     /// stamped with the moment they added it; a tombstone is the removal.
     /// The list is a choice like the favourites, so it travels the same

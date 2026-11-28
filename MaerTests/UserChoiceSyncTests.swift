@@ -1045,6 +1045,9 @@ struct UserChoiceGateTests {
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
             // The last-heard stations and their play moments.
             "radioRecents", "radioRecentTimes",
+            // When each own list was last heard (Listen Again), one
+            // statement per list like the last-heard stations.
+            "playlistPlays",
             "premiumMarkedFeeds", "blockedFeedKeys",
             // Server addresses that once worked (decided); credentials never.
             "knownServers",
@@ -1118,8 +1121,6 @@ struct UserChoiceGateTests {
             "syncQueueHeldServers", "syncQueueOwedForgets",
             // The hint to suggest folders, put away on this device.
             "smartFoldersHintDismissed",
-            // When this device last heard each playlist (Listen Again).
-            "playlistPlays",
             // The server stamps of this device's own rows.
             "musicServerStamps",
             // Downloading audiobooks while you listen, on the device that

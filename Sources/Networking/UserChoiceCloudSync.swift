@@ -275,6 +275,10 @@ final class UserChoiceCloudSync {
              value: streamURL.map(UserChoiceValue.string))
     }
 
+    /// A list heard: the statement carries its moment, its time is that
+    /// moment.
+    func notePlaylistPlay(id: String) {}
+
     /// A station played: the statement carries the station, its time is the
     /// play moment. Removal from "Listen Again" is the tombstone.
     func noteRecentStation(_ station: RadioStation, removed: Bool) {
