@@ -8,7 +8,8 @@ import Foundation
 /// When a playlist was last heard on this device, by its id: the moment
 /// "Listen Again" ranks an own list by, and the one a server playlist
 /// shuffled from its card leaves (an opened one has its stand). Only the
-/// newest `keep` are held. It stays on the device.
+/// newest `keep` are held. They travel one statement per list
+/// (`playlistPlay.<id>`), and both devices keep the newest `keep` of both.
 nonisolated enum PlaylistPlays {
     static let keep = 50
 
@@ -39,9 +40,18 @@ nonisolated enum PlaylistPlays {
         return moments
     }
 
-    /// The moments from the statements of the document.
+    /// The moments from the statements of the document: both devices', the
+    /// newest `keep`. A tombstone is no moment; a statement of another kind
+    /// is a form this build does not know and is passed over.
     static func merged(elements: [(id: String, entry: UserChoiceEntry)]) -> [String: Double] {
-        [:]
+        var moments: [String: Double] = [:]
+        for element in elements {
+            guard case .double(let moment)? = element.entry.value, moment.isFinite, moment > 0 else { continue }
+            moments[element.id] = max(moment, moments[element.id] ?? 0)
+        }
+        guard moments.count > keep else { return moments }
+        let kept = moments.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.prefix(keep)
+        return Dictionary(uniqueKeysWithValues: kept.map { ($0.key, $0.value) })
     }
 }
 
@@ -55,5 +65,9 @@ enum PlaylistPlaysStore {
     static func note(_ id: String, atMs: Double = Date().timeIntervalSince1970 * 1000,
                      defaults: UserDefaults = .standard) {
         defaults.set(PlaylistPlays.noting(id, atMs: atMs, in: moments(defaults: defaults)), forKey: AppStorageKeys.playlistPlays)
+        // The moment travels like a heard station, and the rows read it
+        // at once; sent with the store, so a witness can tell it.
+        UserChoiceCloudSync.shared.notePlaylistPlay(id: id)
+        NotificationCenter.default.post(name: .continueHiddenChanged, object: defaults)
     }
 }

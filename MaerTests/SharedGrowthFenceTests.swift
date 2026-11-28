@@ -237,7 +237,9 @@ struct SharedGrowthFenceTests {
     /// reads the device's own lists for their tiles and moments, and the
     /// car reads the albums and playlists Start resolved; the views fell by
     /// one.
-    nonisolated static let sourcesStock = 800
+    /// 801: the moment a list was heard travels; the store hands it to the
+    /// choices' sync as a heard station does.
+    nonisolated static let sourcesStock = 801
 
     /// A line that names `.shared` as the browser session of the system's
     /// sign-in window (`preferredBrowserSession: .shared`) chooses a policy,

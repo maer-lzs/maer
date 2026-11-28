@@ -111,8 +111,12 @@ struct PlaylistPlaysTravelTests {
         #expect(Set(PlaylistPlaysStore.moments(defaults: a.defaults).keys) == newest)
     }
 
-    @Test("a list past the fifty is no longer stated, and its old moment does not beat a newer one")
-    func aMomentPastTheCapIsNoLongerStated() {
+    /// Falling out of the fifty is no tombstone, as for the stations: its
+    /// stamp would equal the statement's, and every device keeps only the
+    /// newest fifty of both anyway. The old statement stays in the document
+    /// and never brings the list back; a later listen wins on both.
+    @Test("a list past the fifty does not come back, and a later listen on the other device wins on both")
+    func aMomentPastTheCapDoesNotComeBack() {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
         let b = device(cloud, now: 40_000)
@@ -125,13 +129,20 @@ struct PlaylistPlaysTravelTests {
         #expect(moments["L"] == nil, "the list did not fall out of the fifty")
         setMoments(moments, in: a.defaults)
         a.sync.reconcile()
-        #expect(statement(cloud, "L")?.value == nil, "the list that fell out is still stated")
-        #expect(statement(cloud, "L") != nil, "the list that fell out left no tombstone")
+        #expect(PlaylistPlaysStore.moments(defaults: a.defaults)["L"] == nil, "the list that fell out came back")
+        // An adoption builds the moments again from the document.
+        put(cloud, UserChoiceCatalog.playlistPlayPrefix + "o", UserChoiceEntry(value: .double(3000), t: 3000))
+        a.sync.reconcile()
+        #expect(PlaylistPlaysStore.moments(defaults: a.defaults)["o"] == 3000)
+        #expect(PlaylistPlaysStore.moments(defaults: a.defaults)["L"] == nil, "the old statement brought the list back")
+        #expect(PlaylistPlaysStore.moments(defaults: a.defaults).count == PlaylistPlays.keep)
 
         setMoments(["L": 30_000], in: b.defaults)
         b.sync.reconcile()
-        #expect(PlaylistPlaysStore.moments(defaults: b.defaults)["L"] == 30_000, "the old tombstone took a newer moment")
+        #expect(PlaylistPlaysStore.moments(defaults: b.defaults)["L"] == 30_000, "the old statement took a newer moment")
         #expect(statement(cloud, "L")?.value == .double(30_000))
+        a.sync.reconcile()
+        #expect(PlaylistPlaysStore.moments(defaults: a.defaults)["L"] == 30_000, "the later listen did not reach this device")
     }
 
     @Test("a statement that is no moment is passed over, the others stand")

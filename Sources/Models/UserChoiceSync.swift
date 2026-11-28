@@ -89,9 +89,10 @@ nonisolated enum UserChoiceCatalog {
         "syncQueueOwedForgets": .device,
         // The hint to suggest folders, put away on this device only.
         "smartFoldersHintDismissed": .device,
-        // When this device last heard each playlist, for its Listen Again;
-        // whether it travels is a question still open.
-        "playlistPlays": .device,
+        // When each playlist was last heard, for Listen Again: travels
+        // element-wise like the last-heard stations, one statement per list
+        // with its moment as its time (`playlistPlay.<id>`).
+        "playlistPlays": .travels,
         // Which server this device wrote its own rows of a Subsonic title
         // under; another device reaches the server by another address.
         "musicServerStamps": .device,
@@ -479,7 +480,8 @@ nonisolated enum UserChoiceCatalog {
     /// person's own. A fence holds every prefix of this type in the list.
     static let familyPrefixes = [subscriptionPrefix, favoritePrefix, recentStationPrefix,
                                  manualStationPrefix, variantPrefix, searchPrefix, hiddenPrefix,
-                                 premiumMarkPrefix, feedBlockPrefix, knownServerPrefix]
+                                 premiumMarkPrefix, feedBlockPrefix, knownServerPrefix,
+                                 playlistPlayPrefix]
 
     /// The same question for a cloud key: the id stands behind the
     /// family's prefix, so the prefix is stripped before asking. Asking

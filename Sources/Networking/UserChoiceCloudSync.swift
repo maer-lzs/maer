@@ -277,7 +277,10 @@ final class UserChoiceCloudSync {
 
     /// A list heard: the statement carries its moment, its time is that
     /// moment.
-    func notePlaylistPlay(id: String) {}
+    func notePlaylistPlay(id: String) {
+        guard let moment = PlaylistPlaysStore.moments(defaults: defaults)[id] else { return }
+        note(cloudKey: UserChoiceCatalog.playlistPlayPrefix + id, value: .double(moment))
+    }
 
     /// A station played: the statement carries the station, its time is the
     /// play moment. Removal from "Listen Again" is the tombstone.
@@ -577,6 +580,7 @@ final class UserChoiceCloudSync {
         var recentsTouched = false
         var hiddenTouched = false
         var premiumTouched = false
+        var playsTouched = false
         pendingSubscriptionsAdded = []
         pendingSubscriptionsRemoved = []
 
@@ -597,6 +601,13 @@ final class UserChoiceCloudSync {
                 if let cloudEntry { stamps[key] = cloudEntry.t }
             case .adopt:
                 guard let cloudEntry else { continue }
+                // A list's moment: the moments are built again from the
+                // document below, as the stations are.
+                if key.hasPrefix(UserChoiceCatalog.playlistPlayPrefix) {
+                    playsTouched = true
+                    stamps[key] = cloudEntry.t
+                    continue
+                }
                 if apply(cloudEntry, forCloudKey: key,
                          adoptedScalarKeys: &adoptedScalarKeys,
                          adoptedFavorites: &adoptedFavorites,
@@ -629,6 +640,14 @@ final class UserChoiceCloudSync {
         }
         if recentsTouched {
             rebuildRecentStations(blob: blob)
+        }
+        if playsTouched {
+            let elements = blob.compactMap { key, raw -> (id: String, entry: UserChoiceEntry)? in
+                guard key.hasPrefix(UserChoiceCatalog.playlistPlayPrefix),
+                      let entry = UserChoiceEntry.from(plist: raw) else { return nil }
+                return (String(key.dropFirst(UserChoiceCatalog.playlistPlayPrefix.count)), entry)
+            }
+            defaults.set(PlaylistPlays.merged(elements: elements), forKey: AppStorageKeys.playlistPlays)
         }
         // Subscriptions offered in this pass: handed over once, the store
         // follows the feeds in the background and writes the sync history
@@ -670,12 +689,13 @@ final class UserChoiceCloudSync {
 
         let adoptedAnything = !adoptedScalarKeys.isEmpty || !adoptedFavorites.isEmpty
             || !removedFavoriteIds.isEmpty || searchesTouched || recentsTouched || hiddenTouched
-            || premiumTouched
+            || premiumTouched || playsTouched
         if adoptedAnything {
             var keys = adoptedScalarKeys
             if !adoptedFavorites.isEmpty || !removedFavoriteIds.isEmpty { keys.append("radioFavorites") }
             if searchesTouched { keys.append("recentSearches") }
             if recentsTouched { keys.append("radioRecents") }
+            if playsTouched { keys.append("playlistPlays") }
             if hiddenTouched {
                 keys.append("continueHiddenMarkers")
             }
@@ -686,9 +706,10 @@ final class UserChoiceCloudSync {
             Logger.library.notice("CHOICE sync adopted: \(keys.joined(separator: " "), privacy: .public)")
             isAdopting = true
             // The listening rows recompute on this notification; an adopted
-            // station or removal in "Listen Again" is the same class of change.
-            if hiddenTouched || recentsTouched {
-                NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
+            // station, list moment or removal in "Listen Again" is the same
+            // class of change. Sent by this sync, so a witness can tell it.
+            if hiddenTouched || recentsTouched || playsTouched {
+                NotificationCenter.default.post(name: .continueHiddenChanged, object: self)
             }
             NotificationCenter.default.post(name: .userChoicesAdopted, object: nil,
                                             userInfo: ["keys": keys])
@@ -935,6 +956,14 @@ final class UserChoiceCloudSync {
                 out[key] = entry
             }
         }
+        // When each list was last heard, stamped like the stations: the
+        // note's stamp, else the moment itself.
+        for (id, moment) in PlaylistPlaysStore.moments(defaults: defaults) {
+            let key = UserChoiceCatalog.playlistPlayPrefix + id
+            if let entry = UserChoiceMerge.localEntry(value: .double(moment), stamp: stamps[key] ?? moment) {
+                out[key] = entry
+            }
+        }
         for term in RecentSearches.list(defaults: defaults) {
             add(UserChoiceCatalog.searchPrefix + term, .bool(true))
         }
@@ -987,6 +1016,7 @@ final class UserChoiceCloudSync {
         if UserChoiceCatalog.travelingScalars.contains(key) { return true }
         if UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) }) { return true }
         return [UserChoiceCatalog.favoritePrefix, UserChoiceCatalog.recentStationPrefix,
+                UserChoiceCatalog.playlistPlayPrefix,
                 UserChoiceCatalog.manualStationPrefix, UserChoiceCatalog.searchPrefix,
                 UserChoiceCatalog.hiddenPrefix, UserChoiceCatalog.premiumMarkPrefix,
                 UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix,

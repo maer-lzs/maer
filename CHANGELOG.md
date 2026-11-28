@@ -8,7 +8,8 @@ when you heard it: a playlist of your music server once it was started,
 finished or shuffled from its card, and your own playlists whose home is
 Music. Remove from Listen Again works on them as on the other tiles; a
 newer listen brings them back. When you last heard one of your own
-playlists is kept on this device.
+playlists travels with your choices, so another device ranks it the
+same, and a playlist you just heard shows up on Start right away.
 
 ## v3.10 (Build 69), November 28, 2026
 
