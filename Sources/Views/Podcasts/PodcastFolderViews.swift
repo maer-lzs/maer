@@ -11,7 +11,8 @@ import SwiftUI
 /// (`PodcastFolder`).
 struct PodcastFolderRow: View {
     /// The side of a tile on a wide screen, where the rule would grow it.
-    static let widestSide: CGFloat = 240
+    /// Nonisolated: the rule below reads it outside the main actor.
+    nonisolated static let widestSide: CGFloat = 240
 
     /// The side of a folder's tile from the width of the row: two tiles in
     /// full and four tenths of the third at the edge, so the row says it

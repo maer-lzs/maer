@@ -320,6 +320,14 @@ release_symbols() {
     if grep 'error:' "$log" | grep -qv 'HEAD is not on origin/dev'; then
         grep 'error:' "$log" | head -5; rm -f "$log"; stop "der Release-Bau ist rot: kein Vermerk" 1
     fi
+    # The archive's compile carries no warning of a nonisolated place that
+    # reads the main actor; the count of an archive is 0.
+    local isolated
+    isolated="$(grep -c 'actor-isolated' "$log")"
+    if [ "$isolated" -gt 0 ]; then
+        grep 'actor-isolated' "$log" | grep 'warning:' | head -3; rm -f "$log"
+        stop "actor-isolated im Release-Bau: $isolated Zeilen, kein Vermerk" 1
+    fi
     rm -f "$log"
     program="$dd/Build/Products/Release-iphoneos/Maer.app/Maer"
     # Xcode links the program again only when a source changed; the stamp
