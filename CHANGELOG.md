@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**A catalog title the index bars stays barred after a restart.** When
+the index of the free catalog says a title must not be kept on the
+device, that now holds after the app was closed, also if archive.org
+answers first. If the stored list cannot be read, no archive.org title
+can be kept until the index has been read again.
+
 **Error messages name their code.** A message about a failure with a
 technical cause now ends with the number the server or the system
 reported, in brackets after the sentence, such as "The server refused

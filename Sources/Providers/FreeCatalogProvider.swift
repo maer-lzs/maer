@@ -35,6 +35,14 @@ final class FreeCatalogProvider: AudioProvider {
         keptUnread = ablage.liesUnreadInPlace(Self.keptDocument)
         kept = Self.readKept(ablage)
         for item in kept where itemsById[item.id] == nil { itemsById[item.id] = item }
+        // The bars of the index outlast a restart. A bar document that does
+        // not read, or reads in another form, is no empty one: until the
+        // index is read in this run no licence of archive.org counts.
+        switch ablage.loadNow([String].self, name: Self.barsDocument) {
+        case .loaded(let bars): indexBarred = Set(bars)
+        case .fresh: break
+        case .corrupt: barsHeld = true
+        }
     }
 
     /// The kept titles as the document holds them; a Gutenberg title kept
@@ -58,6 +66,7 @@ final class FreeCatalogProvider: AudioProvider {
     /// For witnesses: the last save handed over has landed or failed.
     func awaitPendingSave() async {
         await pendingSave?.value
+        await pendingBarSave?.value
     }
 
     var providerId: String { "freecatalog" }
@@ -72,16 +81,38 @@ final class FreeCatalogProvider: AudioProvider {
     }
     /// The archive.org items whose record states a licence, as seen this run.
     private var statedLicence: Set<String> = []
-    /// The items the index of the service bars from the library, as read
-    /// this run (`laden` false), until it lifts the bar.
+    /// The items the index of the service bars from the library (`laden`
+    /// false), until it lifts the bar; kept on the device across restarts.
     private var indexBarred: Set<String> = []
     /// The bars on the device (`indexBarred`), so they outlast a restart.
     nonisolated static let barsDocument = "catalog-index-bars.json"
+    /// The bar document did not read or had another form: no licence of
+    /// archive.org counts until the index is read in this run.
+    private var barsHeld = false
     /// For witnesses: how often the bars were handed to the document.
     private(set) var barSaves = 0
+    private var pendingBarSave: Task<Void, Never>?
 
-    /// The bars into their document.
-    private func saveBars() {}
+    /// The bars into their document, sorted. The set follows wholly from
+    /// the index read in this run, so an empty one is knowledge, not a
+    /// failed read, and may replace a document that did not read. Such a
+    /// document is removed first: a write over it keeps its rights, and it
+    /// would not read either.
+    private func saveBars() {
+        barSaves += 1
+        let toSave = Array(indexBarred).sorted()
+        let unread = ablage.liesUnreadInPlace(Self.barsDocument)
+        let previous = pendingBarSave
+        pendingBarSave = Task { [ablage] in
+            await previous?.value
+            do {
+                if unread { try await ablage.remove(name: Self.barsDocument) }
+                try await ablage.save(toSave, name: Self.barsDocument)
+            } catch {
+                Logger.library.error("CATALOG index bars not saved: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+    }
     /// The Gutenberg readings whose record says public domain, as read this run.
     private var gutenbergPublicDomain: Set<String> = []
     /// The tracks of a Gutenberg work whose durations are estimated until
@@ -338,10 +369,16 @@ final class FreeCatalogProvider: AudioProvider {
         // whatever licence it states.
         // The bar holds until the index lifts it: a later answer of
         // archive.org (which says nothing about it) does not.
+        // Each change is written once; the first row of the index in this
+        // run ends a held document and writes it anew.
         if let load = doc.mayLoad {
-            if load { indexBarred.remove(id) } else { indexBarred.insert(id) }
+            let changed = load ? indexBarred.remove(id) != nil : indexBarred.insert(id).inserted
+            if changed || barsHeld {
+                barsHeld = false
+                saveBars()
+            }
         }
-        if indexBarred.contains(id) {
+        if indexBarred.contains(id) || barsHeld {
             statedLicence.remove(id)
         } else if FreeCatalog.mayDownload(licenceURL: doc.licenseurl) {
             statedLicence.insert(id)
