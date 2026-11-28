@@ -162,6 +162,11 @@ final class UserChoiceCloudSync {
 
     func start() {
         if sharedMustStaySilent { return }
+        // The moment a list was heard reaches the one sync of the app; a
+        // witness's own sync never takes the store's hook.
+        if self === Self.shared {
+            PlaylistPlaysStore.onNoted = { [weak self] id in self?.notePlaylistPlay(id: id) }
+        }
         forgetRetired()
         guard syncEnabled() else { return }
         guard !didStart else { reconcile(); return }

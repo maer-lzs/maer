@@ -58,6 +58,10 @@ nonisolated enum PlaylistPlays {
 /// The device's moments (`AppStorageKeys.playlistPlays`).
 @MainActor
 enum PlaylistPlaysStore {
+    /// Who hears a moment noted here so it travels: the choices' sync sets
+    /// it where it starts, because a model names no layer above it.
+    static var onNoted: ((String) -> Void)?
+
     static func moments(defaults: UserDefaults = .standard) -> [String: Double] {
         PlaylistPlays.decoded(defaults.object(forKey: AppStorageKeys.playlistPlays))
     }
@@ -67,7 +71,7 @@ enum PlaylistPlaysStore {
         defaults.set(PlaylistPlays.noting(id, atMs: atMs, in: moments(defaults: defaults)), forKey: AppStorageKeys.playlistPlays)
         // The moment travels like a heard station, and the rows read it
         // at once; sent with the store, so a witness can tell it.
-        UserChoiceCloudSync.shared.notePlaylistPlay(id: id)
+        onNoted?(id)
         NotificationCenter.default.post(name: .continueHiddenChanged, object: defaults)
     }
 }

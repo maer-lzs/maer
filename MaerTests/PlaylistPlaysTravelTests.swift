@@ -172,6 +172,25 @@ struct PlaylistPlaysTravelTests {
         #expect(told == 1)
     }
 
+    @Test("a noted moment reaches the store's hook, and the app's sync takes the hook where it starts", .needsTheSources)
+    func aNotedMomentReachesTheSync() throws {
+        let suite = "plays-hook-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let before = PlaylistPlaysStore.onNoted
+        var heard: [String] = []
+        PlaylistPlaysStore.onNoted = { heard.append($0) }
+        defer { PlaylistPlaysStore.onNoted = before; cleanup(suite) }
+        let id = "hook-\(UUID().uuidString)"
+        PlaylistPlaysStore.note(id, atMs: 5000, defaults: defaults)
+        #expect(heard.contains(id), "the noted moment did not reach the hook")
+        let sync = try SourceTree.text(SourceTree.root.appendingPathComponent("Sources/Networking/UserChoiceCloudSync.swift"))
+        let start = sync.components(separatedBy: "    func start() {").dropFirst().first?
+            .components(separatedBy: "\n    }\n").first ?? ""
+        #expect(start.contains("if self === Self.shared {"), "a witness's sync could take the hook")
+        #expect(start.contains("PlaylistPlaysStore.onNoted = { [weak self] id in self?.notePlaylistPlay(id: id) }"),
+                "the app's sync does not take the hook where it starts")
+    }
+
     @Test("an adopted moment tells the rows")
     func anAdoptedMomentTellsTheRows() {
         let cloud = UserChoiceFakeCloud()
