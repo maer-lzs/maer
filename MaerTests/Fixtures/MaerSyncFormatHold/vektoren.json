@@ -1,0 +1,11 @@
+{
+  "regel": "Nach einem 409 einmal abrufen. Traegt das Dokument eine Form, die neuer ist als die eigene, ruht die Art bis zu einem Bau, der sie liest. Eine Form, die nicht neuer ist, oder kein Dokument: keine Ruhe.",
+  "faelle": [
+    {"eigene": 1, "gespeicherte": 2, "ruht": true},
+    {"eigene": 1, "gespeicherte": 3, "ruht": true},
+    {"eigene": 1, "gespeicherte": 1, "ruht": false},
+    {"eigene": 2, "gespeicherte": 1, "ruht": false},
+    {"eigene": 2, "gespeicherte": 2, "ruht": false},
+    {"eigene": 1, "gespeicherte": null, "ruht": false}
+  ]
+}

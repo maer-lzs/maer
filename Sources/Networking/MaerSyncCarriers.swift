@@ -31,6 +31,12 @@ final class MaerSyncSession {
     nonisolated static let claimKind = "claim"
     nonisolated static let statsKind = "stats"
     nonisolated static let feedAuthKind = "feedauth"
+    /// The form each kind travels in, from its wire.
+    nonisolated static let wireFormats: [String: Int] = [
+        standsKind: MaerSyncStandsWire.format, playlistsKind: MaerSyncPlaylistWire.format,
+        choicesKind: MaerSyncChoiceWire.format, claimKind: MaerSyncClaimWire.format,
+        statsKind: MaerSyncStatsWire.format, feedAuthKind: FeedAuthCrypto.format,
+    ]
     /// The owners of the stands and their queue in `CarrierStandRows`,
     /// per identity like the keys below.
     nonisolated static let mirrorKey = "maerSyncStands"
@@ -254,6 +260,11 @@ final class MaerSyncSession {
         didSet { if oldValue != lastRefusal { onRefusalChange?() } }
     }
     var onRefusalChange: (@MainActor () -> Void)?
+    /// The form each kind is written and read in by this build, by kind.
+    let ownFormats: [String: Int]
+    /// The kinds that rest because the service holds their document in a
+    /// form newer than this build reads, with that form.
+    private(set) var formatHolds: [String: Int] = [:]
     /// The service offered a different key than the one held. Nothing runs
     /// until a person has looked at both fingerprints and accepted or not;
     /// the settings page shows the event from here.
@@ -284,11 +295,13 @@ final class MaerSyncSession {
          documents: CarrierDocumentRows? = nil,
          path: (any MaerSyncPathSource)? = nil,
          announcedKinds: Set<String>? = nil,
+         ownFormats: [String: Int]? = nil,
          clock: @escaping () -> Double = { Date().timeIntervalSince1970 }) {
         self.transport = transport
         self.announcer = announcer
         self.path = path
         self.clock = clock
+        self.ownFormats = ownFormats ?? Self.wireFormats
         self.announcedKinds = announcedKinds ?? [Self.standsKind, Self.playlistsKind, Self.choicesKind,
                                                  Self.claimKind, Self.statsKind, Self.feedAuthKind]
         self.loadAccess = access

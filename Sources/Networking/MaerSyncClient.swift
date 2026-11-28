@@ -189,6 +189,16 @@ nonisolated struct MaerSyncRefusal: Equatable, Sendable {
     var at: Date
 }
 
+/// Whether a kind rests: the service holds its document in a form newer
+/// than this build reads (`X-Maer-Format`). It writes that kind again only
+/// once it reads the newer form (the contract on 409); a form not newer,
+/// or no document, is no reason to rest.
+nonisolated enum MaerSyncFormatHold {
+    static func rests(own: Int, stored: Int?) -> Bool {
+        false
+    }
+}
+
 /// The questions the carriers ask the service. Small on purpose: a
 /// witness answers them from a dictionary.
 protocol MaerSyncTransport: AnyObject, Sendable {
