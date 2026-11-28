@@ -535,8 +535,9 @@ struct PodcastSourceView: View {
             KnownServers.remember(pinchflatURL, service: .pinchflat)
             pinchflatStatus = String(localized: "Connected: \(count) channels in the group.")
         } catch PinchflatClient.FetchError.unauthorized {
-            pinchflatStatus = await AccessGuard.sentence(after: String(localized: "The server rejected the token or login (401)."),
-                                                         address: pinchflatURL)
+            pinchflatStatus = await AccessGuard.sentence(
+                after: ErrorSentence.with(String(localized: "The server rejected the token or login."), code: 401),
+                address: pinchflatURL)
         } catch PinchflatClient.FetchError.badAnswer {
             pinchflatStatus = await AccessGuard.sentence(after: String(localized: "The server answered, but not with a channel list."),
                                                          address: pinchflatURL)

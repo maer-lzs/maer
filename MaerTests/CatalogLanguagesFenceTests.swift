@@ -87,8 +87,10 @@ struct CatalogLanguagesFenceTests {
     /// gpodder counts positions in and out became positions received and
     /// sent, which carry their forms. 63: six sentences carried a code as
     /// their number (server error, HTTP); the code now stands behind the
-    /// sentence (`ErrorSentence.with`), so they are no counts.
-    nonisolated static let countsWithOneForm = 63
+    /// sentence (`ErrorSentence.with`), so they are no counts. 62: the
+    /// phrase of a feed the server refused carried its status as a number
+    /// in the middle; it now stands behind the phrase.
+    nonisolated static let countsWithOneForm = 62
 
     /// The keys with a counted number whose value in `language` has no
     /// plural forms.

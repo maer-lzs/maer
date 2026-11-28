@@ -13,7 +13,8 @@ technical cause now ends with the number the server or the system
 reported, in brackets after the sentence, such as "The server refused
 the request. (404)"; that number helps when looking into a problem.
 Messages without such a number stay as they are, and none names a
-server's text, a type or a path.
+type or a path. A feed the server refused shows its status the same
+way, and none without one.
 
 **Mär Sync waits for an update instead of retrying.** When the service
 holds a kind of data in a newer form than this version of the app can

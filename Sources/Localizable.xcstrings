@@ -29684,30 +29684,30 @@
         }
       }
     },
-    "server answered %lld" : {
+    "server answered with an error" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Server antwortete %lld"
+            "value" : "Server antwortete mit einem Fehler"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "el servidor respondió %lld"
+            "value" : "el servidor respondió con un error"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "le serveur a répondu %lld"
+            "value" : "le serveur a répondu par une erreur"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "il server ha risposto %lld"
+            "value" : "il server ha risposto con un errore"
           }
         }
       }
@@ -35994,30 +35994,30 @@
         }
       }
     },
-    "The server rejected the token or login (401)." : {
+    "The server rejected the token or login." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Server hat Token oder Login abgelehnt (401)."
+            "value" : "Der Server hat Token oder Login abgelehnt."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "El servidor ha rechazado el token o el inicio de sesión (401)."
+            "value" : "El servidor ha rechazado el token o el inicio de sesión."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le serveur a refusé le jeton ou les identifiants (401)."
+            "value" : "Le serveur a refusé le jeton ou les identifiants."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Il server ha rifiutato il token o il login (401)."
+            "value" : "Il server ha rifiutato il token o il login."
           }
         }
       }

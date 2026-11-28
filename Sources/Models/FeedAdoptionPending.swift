@@ -87,7 +87,9 @@ nonisolated enum FeedAdoptionPending {
         case .timeout: return String(localized: "timed out")
         case .unreachable: return String(localized: "not reachable")
         case .unreadable: return String(localized: "feed unreadable")
-        case .server: return String(localized: "server answered \(status ?? 0)")
+        // The status stands behind the phrase through the one place; without
+        // one there is no bracket, never a 0.
+        case .server: return ErrorSentence.with(String(localized: "server answered with an error"), code: status)
         // Dismissed placeholders are filtered out before any surface shows
         // them; the case exists for exhaustiveness only.
         case .dismissed: return "dismissed"
