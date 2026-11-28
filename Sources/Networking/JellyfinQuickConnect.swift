@@ -83,8 +83,8 @@ nonisolated enum JellyfinQuickConnect {
             case .gone:
                 return .gone
             case .failed(let status):
-                return .failed(JellyfinClient.failure(forStatus: status).errorDescription
-                               ?? String(localized: "Unexpected answer from the Jellyfin server."))
+                // Through the one place, so the status stands behind the sentence.
+                return .failed(ErrorSentence.of(JellyfinClient.failure(forStatus: status)))
             }
         }
         return .cancelled

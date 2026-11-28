@@ -10,7 +10,7 @@ import OSLog
 /// Nextcloud GPodder and gpodder.net. Auth: HTTP Basic (login also sets a
 /// session cookie, sent along by the shared cookie store). Pure transport. The
 /// reconcile logic lives in `GPodderSync`.
-enum GPodderError: Error, LocalizedError {
+enum GPodderError: Error, LocalizedError, ReportedCode {
     case badURL, network, status(Int), badPayload
     /// A 401 or 403 that survived the login retry: the credentials, or a
     /// block on this network. The number rides along.
@@ -23,12 +23,20 @@ enum GPodderError: Error, LocalizedError {
         case .colonInUserName: return String(localized: "A gpodder user name cannot contain a colon.")
         case .badURL: return String(localized: "Invalid server URL.")
         case .network: return String(localized: "Cannot reach the gpodder server.")
-        case .status(let c): return String(localized: "The server responded with HTTP \(c).")
-        case .signIn(let c): return String(localized: "The gpodder server rejected the login (HTTP \(c)).")
+        // The status stands behind the sentence (`ErrorSentence.with`).
+        case .status: return String(localized: "The server responded with an error.")
+        case .signIn: return String(localized: "The gpodder server rejected the login.")
         // Fix 01.08: a 2xx with an unreadable body (captive portal, proxy
         // login page) must surface as an ERROR. It silently became "0
         // subscriptions" before and armed the mass-delete guard.
         case .badPayload: return String(localized: "The server response could not be read.")
+        }
+    }
+
+    var reportedCode: Int? {
+        switch self {
+        case .status(let code), .signIn(let code): return code
+        default: return nil
         }
     }
 }

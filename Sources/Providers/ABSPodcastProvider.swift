@@ -603,14 +603,15 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     /// The sentence a failed subscribe or episode download hands back. A
-    /// refusal by the server is worded by its meaning and never carries the
-    /// status, which the log line has (`logReason`); any other failure keeps
+    /// refusal by the server is worded by its meaning, with its status
+    /// behind the sentence (`ErrorSentence.with`); any other failure keeps
     /// its own sentence.
     nonisolated static func serverSentence(_ error: Error) -> String {
         guard let status = refusalStatus(error) else { return ErrorSentence.of(error) }
-        return StatusMeaning.from(status: status) == .signIn
+        let sentence = StatusMeaning.from(status: status) == .signIn
             ? String(localized: "Your server rejected the saved sign-in.")
             : String(localized: "The server refused the request.")
+        return ErrorSentence.with(sentence, code: status)
     }
 
     /// The measured reason of a failed server step for the log line: the

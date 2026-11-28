@@ -25,7 +25,12 @@ final class JellyfinClient {
     private var accessToken: String?
     private var userId: String?
 
-    enum JellyfinError: LocalizedError, Equatable {
+    enum JellyfinError: LocalizedError, Equatable, ReportedCode {
+        var reportedCode: Int? {
+            if case .http(let code) = self { return code }
+            return nil
+        }
+
         case badURL
         case network
         case auth
@@ -49,7 +54,8 @@ final class JellyfinClient {
             case .network: return String(localized: "The Jellyfin server could not be reached.")
             case .auth: return String(localized: "Jellyfin sign-in failed. Check username and password.")
             case .blockedHere: return String(localized: "The Jellyfin server is not reachable from this network.")
-            case .http(let code): return String(localized: "The Jellyfin server answered with HTTP \(code).")
+            // The status stands behind the sentence (`ErrorSentence.with`).
+            case .http: return String(localized: "The Jellyfin server answered with an error.")
             case .decoding: return String(localized: "Unexpected answer from the Jellyfin server.")
             }
         }

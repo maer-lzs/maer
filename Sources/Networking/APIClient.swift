@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum APIError: LocalizedError {
+enum APIError: LocalizedError, ReportedCode {
     case invalidURL
     case invalidResponse
     case http(Int, String)
@@ -21,18 +21,24 @@ enum APIError: LocalizedError {
             return String(localized: "Invalid server address.")
         case .invalidResponse:
             return String(localized: "Invalid response from the server.")
+        // The status stands behind the sentence (`ErrorSentence.with`).
         case .http(let code, let body):
             if code == 401 {
-                return String(localized: "The server rejected the token (401). Please check the token.")
+                return String(localized: "The server rejected the token. Please check the token.")
             }
             let detail = APIError.sanitize(body)
             if detail.isEmpty {
-                return String(localized: "Server error \(code).")
+                return String(localized: "Server error.")
             }
-            return String(localized: "Server error \(code): \(detail)")
+            return String(localized: "Server error: \(detail)")
         case .decoding(let detail):
             return String(localized: "Unexpected response format from the server: \(detail)")
         }
+    }
+
+    var reportedCode: Int? {
+        if case .http(let code, _) = self { return code }
+        return nil
     }
 
     /// Condense a raw error body (often a whole HTML or JSON page) into a short,

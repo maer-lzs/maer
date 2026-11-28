@@ -9,7 +9,8 @@ import Foundation
 @testable import Maer
 
 /// The sentence a person reads about a failure comes from one place, and it
-/// never carries a type name or a code the system made up.
+/// never carries a type name. Since the form of 28.11.2026 a number the
+/// system reported stands behind it (`ErrorCodeSentenceTests`).
 struct ErrorSentenceTests {
     struct Bare: Error {}
     struct Worded: LocalizedError { var errorDescription: String? { "A sentence of its own." } }
@@ -22,7 +23,7 @@ struct ErrorSentenceTests {
         #expect(ErrorSentence.of(CancellationError()) == String(localized: "The action was cancelled."))
         #expect(ErrorSentence.of(URLError(.cancelled)) == String(localized: "The action was cancelled."))
         #expect(ErrorSentence.of(URLError(.notConnectedToInternet))
-                == String(localized: "No internet connection. Please check your network and try again."))
+                == String(localized: "No internet connection. Please check your network and try again.") + " (-1009)")
         let decoding = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "x"))
         #expect(ErrorSentence.of(decoding) == String(localized: "The server response could not be read."))
         // A source throws this code itself when a title has no playable file.
@@ -32,14 +33,18 @@ struct ErrorSentenceTests {
                 == String(localized: "archive.org refused the search."))
         let platform = NSError(domain: "AVFoundationErrorDomain", code: -11800,
                                userInfo: [NSLocalizedDescriptionKey: "The operation could not be completed"])
-        #expect(ErrorSentence.of(platform) == "The operation could not be completed", "the platform's own sentence")
-        for bare in [Bare() as Error, Silent(), NSError(domain: "Anything", code: 404)] {
+        #expect(ErrorSentence.of(platform) == "The operation could not be completed (-11800)", "the platform's own sentence and its number")
+        for bare in [Bare() as Error, Silent()] {
             let sentence = ErrorSentence.of(bare)
             #expect(sentence == String(localized: "Something went wrong. Please try again."), "\(bare)")
-            for word in ["Bare", "Silent", "Anything", "404", "error 1"] {
+            for word in ["Bare", "Silent", "error 1", "("] {
                 #expect(!sentence.contains(word), "\(bare) says \(word)")
             }
         }
+        // An error of the system without a sentence: the number, never its domain.
+        let system = ErrorSentence.of(NSError(domain: "Anything", code: 404))
+        #expect(system == String(localized: "Something went wrong. Please try again.") + " (404)")
+        #expect(!system.contains("Anything"))
     }
 
     @Test("offline means the same in every place")

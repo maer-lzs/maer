@@ -82,10 +82,12 @@ struct RefusalIsNotSilenceTests {
         // numbers. 40 is "wrong sign-in" THERE and has nothing to do with
         // an HTTP 40x; folding the two together would make one number
         // space out of two that mean different things.
-        let body = try #require(SubsonicClient.SubsonicError.api(code: 40, message: nil).errorDescription)
-        let transport = try #require(SubsonicClient.SubsonicError.http(40).errorDescription)
+        // Since the form of the error codes the number comes from the one
+        // place (`ErrorSentence.of`), behind the sentence.
+        let body = ErrorSentence.of(SubsonicClient.SubsonicError.api(code: 40, message: nil))
+        let transport = ErrorSentence.of(SubsonicClient.SubsonicError.http(40))
         #expect(body != transport, "Koerper-Code und HTTP-Status sagen dasselbe: \(body)")
-        #expect(transport.contains("40"), "der Transport-Satz nennt seine Zahl: \(transport)")
+        #expect(transport.hasSuffix(" (40)"), "der Transport-Satz nennt seine Zahl: \(transport)")
     }
 
     // The name says what is measured: the same input, the same answer

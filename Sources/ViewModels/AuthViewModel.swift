@@ -175,7 +175,8 @@ final class AuthViewModel: ObservableObject {
     /// The sentence when the sign-in could not be stored, with the status
     /// the keychain reported.
     nonisolated static func notStoredSentence(status: OSStatus?) -> String {
-        String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+        ErrorSentence.with(String(localized: "The sign-in could not be stored on this device. You stay signed in as before."),
+                           code: status.map(Int.init))
     }
 
     /// The one way a client of the server comes into being: the shared one
@@ -403,7 +404,7 @@ final class AuthViewModel: ObservableObject {
             guard saveAddress(url.absoluteString) else {
                 queue.release(server: formerAddress)
                 Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the address was not stored")
-                errorMessage = String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+                errorMessage = Self.notStoredSentence(status: KeychainStore.failedStatus(forKey: KeychainKey.serverURL))
                 return
             }
             // The token is stored and read back before it holds: a keychain
@@ -424,7 +425,7 @@ final class AuthViewModel: ObservableObject {
                 queue.release(server: formerAddress)
                 Logger.library.error("AUTH sign-in not taken host=\(url.host ?? "-", privacy: .public) reason=the token was not stored, the one before stands or cannot be read")
                 errorMessage = stored == .old
-                    ? String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+                    ? Self.notStoredSentence(status: KeychainStore.failedStatus(forKey: KeychainKey.apiToken))
                     : String(localized: "The server access can be read once this device is unlocked.")
                 return
             }

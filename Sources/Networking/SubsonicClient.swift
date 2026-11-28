@@ -160,7 +160,7 @@ struct SubsonicClient {
         self.keyTransportIsSafe = keyTransportIsSafe
     }
 
-    enum SubsonicError: LocalizedError, Equatable {
+    enum SubsonicError: LocalizedError, Equatable, ReportedCode {
         case badURL
         case network
         /// The server answered, but not to this device from here: a proxy
@@ -182,7 +182,9 @@ struct SubsonicClient {
             case .badURL: return String(localized: "Invalid server URL.")
             case .network: return String(localized: "Cannot reach the server.")
             case .blockedHere: return String(localized: "The server is not reachable from this network.")
-            case .http(let code): return String(localized: "The server responded with HTTP \(code).")
+            // The status and the number of the answer stand behind the
+            // sentence (`ErrorSentence.with`).
+            case .http: return String(localized: "The server responded with an error.")
             case .api(let code, let message):
                 switch SubsonicSignIn.refusal(forCode: code) {
                 case .wrongCredentials:
@@ -200,11 +202,18 @@ struct SubsonicClient {
                 case .noSignIn:
                     return String(localized: "The server is missing a required part of the request, such as the sign-in.")
                 case nil:
-                    return message ?? String(localized: "Server error (\(code)).")
+                    return message ?? String(localized: "Server error.")
                 }
             case .keySignInNeedsEncryption:
                 return String(localized: "This server signs in with a key, which is only safe over an encrypted connection. Enter its https address.")
             case .decoding: return String(localized: "Unexpected server response.")
+            }
+        }
+
+        var reportedCode: Int? {
+            switch self {
+            case .http(let code), .api(let code, _): return code
+            default: return nil
             }
         }
     }

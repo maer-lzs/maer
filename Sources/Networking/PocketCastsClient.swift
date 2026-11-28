@@ -10,14 +10,21 @@ enum PocketCastsError: Error, LocalizedError {
     case loginRejected
     case unreachable
     /// The interface answered, but not in the measured form. Named by the
-    /// door, so a report says where it changed.
+    /// door in the log line, so a report says where it changed; a name
+    /// never stands in the sentence.
     case changed(String)
+
+    /// The change, said in the log where it is found.
+    static func changedAt(_ door: String) -> PocketCastsError {
+        Logger.library.error("POCKETCASTS interface changed at \(door, privacy: .public)")
+        return .changed(door)
+    }
 
     var errorDescription: String? {
         switch self {
         case .loginRejected: String(localized: "Pocket Casts rejected the sign-in. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” first.")
         case .unreachable: String(localized: "Pocket Casts is not reachable.")
-        case .changed(let door): String(localized: "Pocket Casts has changed its interface (\(door)).")
+        case .changed: String(localized: "Pocket Casts has changed its interface.")
         }
     }
 }
@@ -55,10 +62,10 @@ nonisolated enum PocketCastsClient {
     static func readLibrary(token: String,
                             progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }) async throws -> ForeignLibrary {
         let listData = try await post("https://\(apiHost)/user/podcast/list", json: ["v": 1], token: token, door: "list")
-        guard let podcasts = PocketCastsAPI.podcasts(from: listData) else { throw PocketCastsError.changed("list") }
+        guard let podcasts = PocketCastsAPI.podcasts(from: listData) else { throw PocketCastsError.changedAt("list") }
         let feedsData = try await post("https://\(refreshHost)/import/export_feed_urls",
                                        json: ["uuids": podcasts.map(\.uuid)], token: nil, door: "feeds")
-        guard let feeds = PocketCastsAPI.feedURLs(from: feedsData) else { throw PocketCastsError.changed("feeds") }
+        guard let feeds = PocketCastsAPI.feedURLs(from: feedsData) else { throw PocketCastsError.changedAt("feeds") }
 
         var states: [String: [PocketCastsAPI.EpisodeState]] = [:]
         var episodes: [String: [PocketCastsAPI.CachedEpisode]] = [:]
@@ -71,7 +78,7 @@ nonisolated enum PocketCastsClient {
             guard feeds[podcast.uuid] != nil else { continue }
             let stateData = try await post("https://\(apiHost)/user/podcast/episodes",
                                            json: ["uuid": podcast.uuid], token: token, door: "episodes")
-            guard let rows = PocketCastsAPI.episodeStates(from: stateData) else { throw PocketCastsError.changed("episodes") }
+            guard let rows = PocketCastsAPI.episodeStates(from: stateData) else { throw PocketCastsError.changedAt("episodes") }
             let listened = rows.filter { $0.finished || $0.inProgress }
             guard !listened.isEmpty else { continue }
             states[podcast.uuid] = listened
@@ -191,31 +198,31 @@ nonisolated enum PocketCastsClient {
         }
         if (300...399).contains(status) {
             Logger.rss.error("POCKETCASTS login redirect \(status), not followed")
-            throw PocketCastsError.changed("login redirect")
+            throw PocketCastsError.changedAt("login redirect")
         }
         if status == 401 || status == 403 { throw PocketCastsError.loginRejected }
-        guard (200...299).contains(status) else { throw PocketCastsError.changed("login \(status)") }
-        guard let token = PocketCastsAPI.token(from: data) else { throw PocketCastsError.changed("login") }
+        guard (200...299).contains(status) else { throw PocketCastsError.changedAt("login \(status)") }
+        guard let token = PocketCastsAPI.token(from: data) else { throw PocketCastsError.changedAt("login") }
         return token
     }
 
     private static func post(_ url: String, json: [String: Any], token: String?, door: String) async throws -> Data {
         let (data, status) = try await sendOrUnreachable(request(url, json: json, token: token))
-        guard (200...299).contains(status) else { throw PocketCastsError.changed("\(door) \(status)") }
+        guard (200...299).contains(status) else { throw PocketCastsError.changedAt("\(door) \(status)") }
         return data
     }
 
     private static func get(_ url: String, door: String) async throws -> Data {
-        guard let target = URL(string: url) else { throw PocketCastsError.changed(door) }
+        guard let target = URL(string: url) else { throw PocketCastsError.changedAt(door) }
         var request = URLRequest(url: target)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let (data, status) = try await sendOrUnreachable(request)
-        guard (200...299).contains(status) else { throw PocketCastsError.changed("\(door) \(status)") }
+        guard (200...299).contains(status) else { throw PocketCastsError.changedAt("\(door) \(status)") }
         return data
     }
 
     private static func request(_ url: String, json: [String: Any], token: String?) throws -> URLRequest {
-        guard let target = URL(string: url) else { throw PocketCastsError.changed("url") }
+        guard let target = URL(string: url) else { throw PocketCastsError.changedAt("url") }
         var request = URLRequest(url: target)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

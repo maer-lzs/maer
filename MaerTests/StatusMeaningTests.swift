@@ -66,10 +66,11 @@ struct StatusMeaningTests {
     /// and keeps the number for everything else.
     @Test("gpodder: a refusal has its own sentence, every other answer keeps its number")
     func theGpodderSentence() {
-        let refused = GPodderError.signIn(401).errorDescription ?? ""
-        #expect(refused.contains("401"))
-        #expect(refused != GPodderError.status(401).errorDescription)
-        #expect(GPodderError.status(503).errorDescription?.contains("503") == true)
+        // The number from the one place, behind the sentence.
+        let refused = ErrorSentence.of(GPodderError.signIn(401))
+        #expect(refused.hasSuffix(" (401)"))
+        #expect(refused != ErrorSentence.of(GPodderError.status(401)))
+        #expect(ErrorSentence.of(GPodderError.status(503)).hasSuffix(" (503)"))
     }
 }
 

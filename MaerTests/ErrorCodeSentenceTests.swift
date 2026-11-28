@@ -59,27 +59,31 @@ struct ErrorCodeSentenceTests {
     @Test("the refused token is two sentences and the status behind them")
     func theRefusedTokenStandsBehind() {
         #expect(ErrorSentence.of(APIError.http(401, ""))
-                == "The server rejected the token. Please check the token. (401)")
+                == String(localized: "The server rejected the token. Please check the token.") + " (401)")
     }
 
     @Test("the number of a Subsonic answer without a sentence of its own stands behind the sentence")
     func theSubsonicCodeStandsBehindTheSentence() {
         let line = ErrorSentence.of(SubsonicClient.SubsonicError.api(code: 70, message: nil))
-        #expect(line == "Server error. (70)", "\(line)")
+        #expect(line == String(localized: "Server error.") + " (70)", "\(line)")
     }
 
     @Test("a refusal of the podcast server names its status")
     func thePodcastRefusalNamesItsStatus() {
-        #expect(ABSPodcastProvider.serverSentence(APIError.http(403, "")) == "The server refused the request. (403)")
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(404, ""))
+                == String(localized: "The server refused the request.") + " (404)")
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(403, "")).hasSuffix(". (403)"))
     }
 
     @Test("a network code stands behind its sentence; a cancel has none")
     func aNetworkCodeStandsBehindTheSentence() {
         let offline = NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)
         #expect(ErrorSentence.of(offline)
-                == "No internet connection. Please check your network and try again. (-1009)")
+                == String(localized: "No internet connection. Please check your network and try again.") + " (-1009)")
+        #expect(ErrorSentence.of(URLError(.notConnectedToInternet)).hasSuffix(". (-1009)"),
+                "the Swift face of the network error lost its number")
         let cancelled = NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
-        #expect(ErrorSentence.of(cancelled) == "The action was cancelled.")
+        #expect(ErrorSentence.of(cancelled) == String(localized: "The action was cancelled."))
     }
 
     @Test("a platform error keeps its framework's sentence and gets its number")

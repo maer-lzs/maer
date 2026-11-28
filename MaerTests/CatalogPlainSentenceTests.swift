@@ -86,16 +86,18 @@ struct CatalogPlainSentenceTests {
     /// The server side of a subscribe: a refusal is worded by its meaning,
     /// the status goes to the log line; a missing podcast library has its
     /// own sentence.
-    @Test("Subscription on the server: no status in the sentence, the status in the log line, a sentence of its own without a podcast library", .needsTheSources)
-    func theServerRefusalCarriesNoStatus() throws {
+    /// Since the form of the error codes (28.11.2026) the status stands
+    /// behind the sentence, never in it; the server's text never.
+    @Test("Subscription on the server: the status behind the sentence, the status in the log line, a sentence of its own without a podcast library", .needsTheSources)
+    func theServerRefusalCarriesItsStatusBehind() throws {
         for status in [400, 403, 404, 409, 429, 500, 503] {
             let sentence = ABSPodcastProvider.serverSentence(APIError.http(status, "detail"))
-            #expect(!sentence.contains(String(status)) && !sentence.contains("detail"), "the sentence carries the refusal: \(sentence)")
+            #expect(sentence.hasSuffix(". (\(status))") && !sentence.contains("detail"), "the sentence carries the refusal: \(sentence)")
             #expect(ABSPodcastProvider.logReason(APIError.http(status, "detail")) == "HTTP \(status)")
         }
-        #expect(ABSPodcastProvider.serverSentence(APIError.http(401, "")) == String(localized: "Your server rejected the saved sign-in."))
-        #expect(ABSPodcastProvider.serverSentence(APIError.http(500, "")) == String(localized: "The server refused the request."))
-        #expect(ABSPodcastProvider.serverSentence(APIError.http(409, "")) == String(localized: "The server refused the request."))
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(401, "")) == String(localized: "Your server rejected the saved sign-in.") + " (401)")
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(500, "")) == String(localized: "The server refused the request.") + " (500)")
+        #expect(ABSPodcastProvider.serverSentence(APIError.http(409, "")) == String(localized: "The server refused the request.") + " (409)")
         let offline = URLError(.notConnectedToInternet)
         #expect(ABSPodcastProvider.serverSentence(offline) == ErrorSentence.of(offline), "a failure without an answer keeps its sentence")
         #expect(ABSPodcastProvider.logReason(offline) == FailureReason.of(offline))

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+**Error messages name their code.** A message about a failure with a
+technical cause now ends with the number the server or the system
+reported, in brackets after the sentence, such as "The server refused
+the request. (404)"; that number helps when looking into a problem.
+Messages without such a number stay as they are, and none names a
+server's text, a type or a path.
+
 **Mär Sync waits for an update instead of retrying.** When the service
 holds a kind of data in a newer form than this version of the app can
 read, Mär stops sending that kind on every change and waits for an

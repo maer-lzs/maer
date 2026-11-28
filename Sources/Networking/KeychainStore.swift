@@ -31,19 +31,27 @@ nonisolated enum KeychainStore {
     /// for a write must book it only when this says so.
     /// `adding` is the add itself, handed in so a witness can let it fail;
     /// the app passes nothing.
-    /// The same write, with the status the keychain reported.
-    static func write(_ value: String, forKey key: String,
-                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
-                      synchronizable: Bool = false,
-                      adding: (CFDictionary) -> OSStatus = { SecItemAdd($0, nil) }) -> OSStatus {
-        errSecSuccess
-    }
-
     @discardableResult
     static func save(_ value: String, forKey key: String,
                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
                      synchronizable: Bool = false,
                      adding: (CFDictionary) -> OSStatus = { SecItemAdd($0, nil) }) -> Bool {
+        write(value, forKey: key, accessible: accessible, synchronizable: synchronizable, adding: adding) == errSecSuccess
+    }
+
+    /// The status of the last write of `key` that failed, until one holds:
+    /// the number a sentence about it carries (`ErrorSentence.with`).
+    static func failedStatus(forKey key: String) -> OSStatus? {
+        failures.withLock { $0[key] }
+    }
+
+    private static let failures = Mutex<[String: OSStatus]>([:])
+
+    /// The same write as `save`, with the status the keychain reported.
+    static func write(_ value: String, forKey key: String,
+                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
+                      synchronizable: Bool = false,
+                      adding: (CFDictionary) -> OSStatus = { SecItemAdd($0, nil) }) -> OSStatus {
         let data = Data(value.utf8)
         // The place is part of the item's identity: Apple keeps a local and
         // a synchronized item under the same account as TWO items, and
@@ -74,13 +82,15 @@ nonisolated enum KeychainStore {
         // this is the call that carries the person's change.
         guard status == errSecSuccess else {
             Logger.library.error("keychain write for \(key, privacy: .public) failed: \(status)")
-            return false
+            failures.withLock { $0[key] = status }
+            return status
         }
+        failures.withLock { $0[key] = nil }
         // Only now the twin in the OTHER world goes, so the switch and the
         // service really move an item instead of doubling it.
         place[kSecAttrSynchronizable as String] = synchronizable ? kCFBooleanFalse : kCFBooleanTrue
         SecItemDelete(place as CFDictionary)
-        return true
+        return status
     }
 
     /// Every item whose account starts with `prefix`, as account to value.
