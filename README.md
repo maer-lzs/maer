@@ -60,15 +60,15 @@ One app, one player and one design for four kinds of audio. Every feature in det
 
 - Subscribe by RSS, Audiobookshelf podcast libraries or a gpodder server, all reconciled into one list
 - Import from Apple Podcasts, Overcast, AntennaPod, Pocket Casts and OPML, with your listening states; export them again
-- Up Next, routines, folders of shows, per-show settings, new-episode notifications, chapters, transcripts and premium feeds
-- Usage-driven recommendations from your own library and listening time
+- Up Next, routines, folders of shows (also suggested by topic), per-show settings, new-episode notifications, chapters, transcripts and premium feeds
+- Usage-driven recommendations from your own library and listening time, and similar shows under each show
 
 ### Music
 
 - Subsonic and OpenSubsonic servers (Navidrome, gonic, Airsonic) and Jellyfin, side by side
 - Playlists you can create and edit, artist pages, album downloads, favorites, repeat and scrobbling
 - Lyrics in the player, from the server or from LRCLIB
-- Free music from Jamendo and the netlabels of the Internet Archive, and classical recordings of the Musopen collection on Wikimedia Commons (public domain and CC0 only)
+- Free music from Jamendo and the netlabels of the Internet Archive, classical recordings of the Musopen collection on Wikimedia Commons (public domain and CC0 only), and the music recordings of Project Gutenberg
 
 ### Radio
 

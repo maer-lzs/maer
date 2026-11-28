@@ -60,15 +60,15 @@ Eine App, ein Player und eine Gestaltung für vier Arten von Audio. Jede Funktio
 
 - Abos über RSS, Podcast-Bibliotheken von Audiobookshelf oder einen gpodder-Server, abgeglichen in einer Liste
 - Import aus Apple Podcasts, Overcast, AntennaPod, Pocket Casts und OPML, mit deinen Hörständen; Export ebenso
-- Als Nächstes, Routinen, Ordner für Sendungen, Einstellungen je Sendung, Mitteilungen bei neuen Folgen, Kapitel, Transkripte und Premium-Feeds
-- Empfehlungen aus deiner eigenen Bibliothek und Hörzeit
+- Als Nächstes, Routinen, Ordner für Sendungen (auch nach Thema vorgeschlagen), Einstellungen je Sendung, Mitteilungen bei neuen Folgen, Kapitel, Transkripte und Premium-Feeds
+- Empfehlungen aus deiner eigenen Bibliothek und Hörzeit, und ähnliche Sendungen unter jeder Sendung
 
 ### Musik
 
 - Subsonic- und OpenSubsonic-Server (Navidrome, gonic, Airsonic) und Jellyfin, nebeneinander
 - Playlisten zum Anlegen und Bearbeiten, Künstlerseiten, Alben zum Laden, Favoriten, Wiederholen und Scrobbeln
 - Liedtexte im Player, vom Server oder von LRCLIB
-- Freie Musik von Jamendo und den Netlabels des Internet Archive, dazu klassische Aufnahmen der Sammlung Musopen auf Wikimedia Commons (nur gemeinfrei und CC0)
+- Freie Musik von Jamendo und den Netlabels des Internet Archive, klassische Aufnahmen der Sammlung Musopen auf Wikimedia Commons (nur gemeinfrei und CC0) und die Musikaufnahmen von Project Gutenberg
 
 ### Radio
 

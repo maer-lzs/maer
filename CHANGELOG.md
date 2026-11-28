@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v3.10 (Build 69), November 28, 2026
 
 **A guide for one address at home and away.** The server guides now
 explain how one name can reach a server both at home and on the road
