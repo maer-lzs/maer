@@ -172,6 +172,12 @@ final class AuthViewModel: ObservableObject {
         return ErrorSentence.of(error)
     }
 
+    /// The sentence when the sign-in could not be stored, with the status
+    /// the keychain reported.
+    nonisolated static func notStoredSentence(status: OSStatus?) -> String {
+        String(localized: "The sign-in could not be stored on this device. You stay signed in as before.")
+    }
+
     /// The one way a client of the server comes into being: the shared one
     /// at the start, a fresh one for every sign-in.
     static func makeClient(baseURL: URL, token: String?) -> APIClient {

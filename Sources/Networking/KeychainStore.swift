@@ -31,6 +31,14 @@ nonisolated enum KeychainStore {
     /// for a write must book it only when this says so.
     /// `adding` is the add itself, handed in so a witness can let it fail;
     /// the app passes nothing.
+    /// The same write, with the status the keychain reported.
+    static func write(_ value: String, forKey key: String,
+                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
+                      synchronizable: Bool = false,
+                      adding: (CFDictionary) -> OSStatus = { SecItemAdd($0, nil) }) -> OSStatus {
+        errSecSuccess
+    }
+
     @discardableResult
     static func save(_ value: String, forKey key: String,
                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,

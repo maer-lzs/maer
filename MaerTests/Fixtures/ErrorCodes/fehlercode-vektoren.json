@@ -1,0 +1,16 @@
+{
+  "rule": "A failure sentence with a technical cause ends with the number the system or the server reported, in parentheses, after the sentence and its full stop. Without a number there are no parentheses. Never a type name, never the text of an exception, never a credential or a path.",
+  "form": "<sentence> (<code>)",
+  "cases": [
+    {"class": "server", "sentence": "The server refused the request.", "code": 404, "line": "The server refused the request. (404)"},
+    {"class": "server", "sentence": "The server responded.", "code": 503, "line": "The server responded. (503)"},
+    {"class": "keychain", "sentence": "The sign-in could not be stored in the keychain.", "code": -25308, "line": "The sign-in could not be stored in the keychain. (-25308)"},
+    {"class": "network", "sentence": "No internet connection. Please check your network and try again.", "code": -1009, "line": "No internet connection. Please check your network and try again. (-1009)"},
+    {"class": "sqlite", "sentence": "The database could not be written.", "code": 2067, "line": "The database could not be written. (2067)"},
+    {"class": "platform", "sentence": "This title cannot be played.", "code": -11800, "line": "This title cannot be played. (-11800)"},
+    {"class": "server", "sentence": "The server refused the request.", "code": 403, "line": "The server refused the request. (403)"},
+    {"class": "server", "sentence": "The server rejected the token. Please check the token.", "code": 401, "line": "The server rejected the token. Please check the token. (401)"},
+    {"class": "none", "sentence": "No internet connection. Please check your network and try again.", "code": null, "line": "No internet connection. Please check your network and try again."},
+    {"class": "fragment", "sentence": "Server error", "code": 500, "line": "Server error (500)"}
+  ]
+}

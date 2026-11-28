@@ -15,7 +15,25 @@ import Foundation
 /// sentence the platform wrote, and everything else is named by its kind in
 /// words. Never a type name, never a code. The log line has its own rule:
 /// `FailureReason`.
+///
+/// An error that carries the number its server reported says so here.
+nonisolated protocol ReportedCode {
+    var reportedCode: Int? { get }
+}
+
 nonisolated enum ErrorSentence {
+    /// A sentence and the number the system or the server reported:
+    /// `"<sentence> (<code>)"`; without a number, the sentence alone.
+    static func with(_ sentence: String, code: Int?) -> String {
+        sentence
+    }
+
+    /// The number the system or the server reported for `error`, of the
+    /// classes the form names; nil for every other.
+    static func code(of error: Error) -> Int? {
+        nil
+    }
+
     static func of(_ error: Error) -> String {
         if let own = (error as? LocalizedError)?.errorDescription, !own.isEmpty { return own }
         if error is CancellationError { return String(localized: "The action was cancelled.") }
