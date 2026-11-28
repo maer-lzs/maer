@@ -119,17 +119,42 @@ struct ErrorCodeSentenceTests {
     }
 
     /// No sentence in the sources sets a number in brackets or behind
-    /// "HTTP" by hand; counters such as "Show All (3)" are no codes.
+    /// "HTTP" by hand, neither a fixed one such as "(401)" nor a status in
+    /// the middle of the sentence; counters such as "Show All (3)" are no
+    /// codes.
     @Test("no sentence sets a code by hand", .needsTheSources)
     func noSentenceSetsACodeByHand() throws {
         var found: [String] = []
         for (name, text) in ProjectFileIntegrityTests.sourceTexts(in: ["Sources"]) {
             for line in text.split(separator: "\n") where line.contains("String(localized:") {
-                let byHand = ["HTTP \\(", "(\\(code))", "(\\(c))", "(\\(status))", "(\\(door))", "error \\(code)"]
-                if byHand.contains(where: { line.contains($0) }) { found.append("\(name): \(line.trimmingCharacters(in: .whitespaces))") }
+                if Self.setsACodeByHand(String(line)) { found.append("\(name): \(line.trimmingCharacters(in: .whitespaces))") }
             }
         }
         #expect(found.isEmpty, "a sentence sets a code by hand: \(found)")
+    }
+
+    nonisolated static func setsACodeByHand(_ line: String) -> Bool {
+        let byHand = ["HTTP \\(", "(\\(code))", "(\\(c))", "(\\(status))", "(\\(door))", "error \\(code)"]
+        return byHand.contains(where: { line.contains($0) })
+            || line.contains(#/\(-?\d{3,}\)/#)
+            || line.contains(#/\\\((status|code|httpStatus|statusCode)\b/#)
+    }
+
+    @Test("the fence sees a fixed code in brackets and a status in the middle of a sentence, not a counter")
+    func theFenceSeesEveryHand() {
+        #expect(Self.setsACodeByHand(#"String(localized: "The server rejected the login (401).")"#))
+        #expect(Self.setsACodeByHand(#"String(localized: "server answered \(status ?? 0)")"#))
+        #expect(!Self.setsACodeByHand(#"String(localized: "Show All (\(count))")"#))
+        #expect(!Self.setsACodeByHand(#"String(localized: "Top 100")"#))
+    }
+
+    @Test("a feed the server refused names its status behind the phrase, and none without one")
+    func theFeedPhraseTakesTheOnePlace() {
+        let phrase = String(localized: "server answered with an error")
+        #expect(FeedAdoptionPending.phrase(.server, status: 503) == ErrorSentence.with(phrase, code: 503))
+        let none = FeedAdoptionPending.phrase(.server, status: nil)
+        #expect(none == phrase, "\(none)")
+        #expect(!none.contains("0"))
     }
 
     @Test("the one place says it puts the code, and no other place hangs a bracket on a failure sentence", .needsTheSources)
