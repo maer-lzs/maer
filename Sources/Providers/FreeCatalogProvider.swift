@@ -75,6 +75,13 @@ final class FreeCatalogProvider: AudioProvider {
     /// The items the index of the service bars from the library, as read
     /// this run (`laden` false), until it lifts the bar.
     private var indexBarred: Set<String> = []
+    /// The bars on the device (`indexBarred`), so they outlast a restart.
+    nonisolated static let barsDocument = "catalog-index-bars.json"
+    /// For witnesses: how often the bars were handed to the document.
+    private(set) var barSaves = 0
+
+    /// The bars into their document.
+    private func saveBars() {}
     /// The Gutenberg readings whose record says public domain, as read this run.
     private var gutenbergPublicDomain: Set<String> = []
     /// The tracks of a Gutenberg work whose durations are estimated until
