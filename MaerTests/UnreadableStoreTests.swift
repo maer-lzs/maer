@@ -140,10 +140,14 @@ struct UnreadableStoreTests {
     ///   full pull.
     /// * `PodcastTranscript.swift`: parses a downloaded document, writes
     ///   nothing back.
+    /// * `MaerSyncCarriers.swift` (1, the record of the kinds at rest):
+    ///   machine state, an unreadable one is no rest and the next refusal
+    ///   starts it again.
     static let decodeToEmptyStock = [
         "Artwork+Memo.swift": 1,
         "CarrierRows.swift": 1,
         "KnownServers.swift": 1,
+        "MaerSyncCarriers.swift": 1,
         "PodcastTranscript.swift": 1,
         "RadioModels.swift": 2,
         "ResolutionCacheStore.swift": 2,

@@ -616,6 +616,12 @@ final class MaerSyncSession {
                 defaults.set(defaults.string(forKey: current.keyed(version)), forKey: next.keyed(version))
             }
         }
+        // A rest is the service's form, not a side's: it goes along, unless
+        // the target holds one of its own.
+        if defaults.object(forKey: next.keyed(Self.restsKey)) == nil,
+           let rest = defaults.object(forKey: current.keyed(Self.restsKey)) {
+            defaults.set(rest, forKey: next.keyed(Self.restsKey))
+        }
         // Nothing stays behind under the source.
         for base in Self.identityKeys { defaults.removeObject(forKey: current.keyed(base)) }
         for owner in Self.identityOwners { rows.set(current.keyed(owner), [:]) }
@@ -1184,7 +1190,9 @@ final class MaerSyncSession {
                     Logger.library.error("MAERSYNC playlists refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
                     // At rest the body waits for the build that reads the form.
                     let resting = await restsAfterRefusal(kind: Self.playlistsKind, scope: "", reason: reason, by: caller)
-                    if !resting, playlistsPending == body { playlistsPending = nil }
+                    if !resting {
+                        if playlistsPending == body { playlistsPending = nil }
+                    }
                     persist()
                     return
                 }
@@ -1300,7 +1308,9 @@ final class MaerSyncSession {
                     Logger.library.error("MAERSYNC choices refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
                     // At rest the body waits for the build that reads the form.
                     let resting = await restsAfterRefusal(kind: Self.choicesKind, scope: "", reason: reason, by: caller)
-                    if !resting, choicesPending == body { choicesPending = nil }
+                    if !resting {
+                        if choicesPending == body { choicesPending = nil }
+                    }
                     persist()
                     return
                 }
@@ -1471,7 +1481,9 @@ final class MaerSyncSession {
                     Logger.library.error("MAERSYNC \(family.kind, privacy: .public) refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
                     // At rest the document waits for the build that reads the form.
                     let resting = await restsAfterRefusal(kind: family.kind, scope: scope, reason: reason, by: caller)
-                    if !resting, family.pending == body { family.pending = nil }
+                    if !resting {
+                        if family.pending == body { family.pending = nil }
+                    }
                     return
                 }
             } catch {

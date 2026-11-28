@@ -555,7 +555,8 @@ struct MaerSyncIdentityTests {
     func everyAnswerAsksForItsAccount() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
-        #expect(code.components(separatedBy: "await transport.").count - 1 == 10, "the fence counts the ten answers of the service")
+        // Eleven since the one fetch after a refusal (the kind at rest).
+        #expect(code.components(separatedBy: "await transport.").count - 1 == 11, "the fence counts the eleven answers of the service")
         #expect(Self.answersWithoutCheck(in: code) == 0, "an answer of the service acts without asking for its account")
         #expect(code.contains("self.stillAsked(generation, \"announcement\""), "an announcement acts without asking for its account")
         #expect(code.contains("self.stillAsked(generation, \"socket close\""), "a close acts without asking for its account")
