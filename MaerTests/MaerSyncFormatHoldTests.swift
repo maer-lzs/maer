@@ -163,7 +163,10 @@ struct MaerSyncFormatHoldTests {
         #expect(Set(stored.keys).isSuperset(of: ["rss:q:0", "rss:q:1", "rss:q:2"]), "what waited was lost")
     }
 
-    @Test("a document in a newer form is not taken: the stands stay, the kind rests")
+    /// The page says "the service refused a write", so the rest begins at
+    /// the refusal, not at the fetch: the fetch takes the version and none
+    /// of the body, and the next write meets the gate of the form.
+    @Test("a document in a newer form is not taken, and the next write's refusal starts the rest")
     func aFetchAtANewerFormTakesNothing() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -173,7 +176,12 @@ struct MaerSyncFormatHoldTests {
         let carrier = MaerSyncStandCarrier(session: s)
         await carrier.refresh(by: "witness")
         #expect(carrier.stands()["rss:x:1"] == nil, "a document in a newer form was read as this build's")
+        transport.refuseEveryWrite = olderForm
+        carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(transport.writes.last?.ifMatch == "1", "the write did not name the version of the newer document")
         #expect(s.formatHolds[MaerSyncSession.standsKind] == MaerSyncStandsWire.format + 1)
+        #expect(s.lastRefusal?.reason == olderForm)
     }
 
     @Test("a document gone, or in a form not newer, ends the rest")

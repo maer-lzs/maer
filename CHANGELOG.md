@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+**Mär Sync waits for an update instead of retrying.** When the service
+holds a kind of data in a newer form than this version of the app can
+read, Mär stops sending that kind on every change and waits for an
+update of the app; what it would have sent is kept, and the Mär Sync
+page says why.
+
 **Playlists in Listen Again.** Every music playlist you have heard now
 stands in Listen Again on Start, on its page and in the car, ordered by
 when you heard it: a playlist of your music server once it was started,

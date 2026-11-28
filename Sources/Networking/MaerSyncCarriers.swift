@@ -78,7 +78,9 @@ final class MaerSyncSession {
     /// versions nor what is still unread, and its failure stops nothing.
     private(set) var identityGeneration = 0
     /// Every key of the session in the defaults, kept per identity.
-    nonisolated static let identityKeys = [versionKey, removalsKey, playlistsVersionKey, choicesVersionKey]
+    /// The kinds at rest, per identity like the versions.
+    nonisolated static let restsKey = "maerSyncFormatRests"
+    nonisolated static let identityKeys = [versionKey, removalsKey, playlistsVersionKey, choicesVersionKey, restsKey]
     /// Every owner of the session in the rows of the stands, kept per identity.
     nonisolated static let identityOwners = [mirrorKey, queueKey]
     /// Every owner of the session in the rows of the documents, kept per
@@ -263,8 +265,10 @@ final class MaerSyncSession {
     /// The form each kind is written and read in by this build, by kind.
     let ownFormats: [String: Int]
     /// The kinds that rest because the service holds their document in a
-    /// form newer than this build reads, with that form.
-    private(set) var formatHolds: [String: Int] = [:]
+    /// form newer than this build reads.
+    private var rests: [String: MaerSyncRest] = [:]
+    /// The resting kinds with the form the service holds.
+    var formatHolds: [String: Int] { rests.mapValues(\.format) }
     /// The service offered a different key than the one held. Nothing runs
     /// until a person has looked at both fingerprints and accepted or not;
     /// the settings page shows the event from here.
@@ -348,6 +352,7 @@ final class MaerSyncSession {
         choicesBody = documentRows.body(key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
         choicesPending = documentRows.body(key(Self.choicesPendingKey))
+        loadRests()
         forgetStandsIfUnread()
         forgetDocumentsIfUnread()
     }
@@ -381,6 +386,84 @@ final class MaerSyncSession {
             defaults.removeObject(forKey: key(Self.playlistsVersionKey))
             defaults.removeObject(forKey: key(Self.choicesVersionKey))
         }, then: { [weak self] in self?.takeTheReadDocuments() })
+    }
+
+    // MARK: - A kind at rest (409 at a newer form)
+
+    /// The rests of the current identity. A build that reads the form a
+    /// kind rests at ends that rest here; a rest that stays shows its
+    /// refusal sentence on the page again, as after the refusal itself.
+    private func loadRests() {
+        var loaded: [String: MaerSyncRest] = [:]
+        if let data = defaults.data(forKey: key(Self.restsKey)) {
+            // bearable, because a record that does not decode is no rest: the next refusal starts one again
+            loaded = (try? JSONDecoder().decode([String: MaerSyncRest].self, from: data)) ?? [:]
+        }
+        let ended = loaded.filter { !MaerSyncFormatHold.rests(own: ownFormats[$0.key] ?? 0, stored: $0.value.format) }
+        for kind in ended.keys {
+            loaded[kind] = nil
+            Logger.library.notice("MAERSYNC \(kind, privacy: .public) rest ended: this build reads form \(self.ownFormats[kind] ?? 0)")
+        }
+        rests = loaded
+        if !ended.isEmpty { saveRests() }
+        showRest()
+    }
+
+    private func saveRests() {
+        guard !accessUnknown else { return }
+        if rests.isEmpty {
+            defaults.removeObject(forKey: key(Self.restsKey))
+            return
+        }
+        // bearable, because a record that does not encode leaves the rest in memory only; the next launch asks again
+        guard let data = try? JSONEncoder().encode(rests) else { return }
+        defaults.set(data, forKey: key(Self.restsKey))
+    }
+
+    /// The newest rest as the refusal on the page, when no other stands.
+    private func showRest() {
+        guard lastRefusal == nil, let newest = rests.max(by: { $0.value.at < $1.value.at }) else { return }
+        lastRefusal = MaerSyncRefusal(kind: newest.key, reason: newest.value.reason,
+                                      at: Date(timeIntervalSince1970: newest.value.at))
+    }
+
+    /// After a 409: the document of this kind, asked for once. Is its form
+    /// newer than this build reads, the kind rests and true comes back;
+    /// otherwise (the gate of a shrink, or no answer) false, as before.
+    private func restsAfterRefusal(kind: String, scope: String, reason: String, by caller: String) async -> Bool {
+        guard let access else { return false }
+        let generation = identityGeneration
+        let fetched: MaerSyncDocument?
+        do {
+            fetched = try await transport.fetch(kind: kind, scope: scope, access: access)
+        } catch {
+            guard stillAsked(generation, "\(kind) fetch after refusal", by: caller) else { return false }
+            note(error, on: "\(kind) fetch after refusal", by: caller)
+            return false
+        }
+        guard stillAsked(generation, "\(kind) fetch after refusal", by: caller) else { return false }
+        let own = ownFormats[kind] ?? 0
+        guard let stored = fetched?.format, MaerSyncFormatHold.rests(own: own, stored: stored) else { return false }
+        rests[kind] = MaerSyncRest(format: stored, reason: reason, at: Date().timeIntervalSince1970)
+        saveRests()
+        Logger.library.error("MAERSYNC \(kind, privacy: .public) rests: the service holds form \(stored), this build reads \(own); no write until a build reads it by=\(caller, privacy: .public)")
+        return true
+    }
+
+    /// A fetch that finds this kind's document gone or in a form this
+    /// build reads ends its rest. Returns whether the body may be taken.
+    private func takesForm(_ kind: String, _ fetched: MaerSyncDocument?, by caller: String) -> Bool {
+        let own = ownFormats[kind] ?? 0
+        if let fetched, MaerSyncFormatHold.rests(own: own, stored: fetched.format) {
+            Logger.library.notice("MAERSYNC \(kind, privacy: .public) not taken: form \(fetched.format), this build reads \(own) by=\(caller, privacy: .public)")
+            return false
+        }
+        if rests[kind] != nil {
+            rests[kind] = nil
+            saveRests()
+            Logger.library.notice("MAERSYNC \(kind, privacy: .public) rest ended: the document is gone or in a form this build reads by=\(caller, privacy: .public)")
+        }
+        return true
     }
 
     private func takeTheReadDocuments() {
@@ -424,6 +507,7 @@ final class MaerSyncSession {
         choicesBody = documentRows.body(key(Self.choicesMirrorKey))
         choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
         choicesPending = documentRows.body(key(Self.choicesPendingKey))
+        loadRests()
         forgetStandsIfUnread()
         forgetDocumentsIfUnread()
         for family in families {
@@ -614,8 +698,10 @@ final class MaerSyncSession {
         keyChange = nil
         serviceOlder = false
         // A refusal belongs to the access it was given under; the page
-        // showed one frozen across a sign-out and a sign-in.
+        // showed one frozen across a sign-out and a sign-in. A kind still
+        // at rest says so again.
         lastRefusal = nil
+        showRest()
         // A new access is a new question to the far side: the documents
         // this device knows were read under the old one.
         for family in families { family.listed = false }
@@ -906,7 +992,7 @@ final class MaerSyncSession {
     }
 
     private func sendStands(by caller: String) async {
-        guard !halted, !unreadKinds.contains(Self.standsKind) else { return }
+        guard !halted, !unreadKinds.contains(Self.standsKind), formatHolds[Self.standsKind] == nil else { return }
         let generation = identityGeneration
         var attempt = 0
         while generation == identityGeneration, let access, !(queue.isEmpty && queuedRemovals.isEmpty), attempt < Self.writeAttempts {
@@ -943,6 +1029,8 @@ final class MaerSyncSession {
                 case .refused(let reason):
                     lastRefusal = MaerSyncRefusal(kind: Self.standsKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC stands refused reason=\(reason, privacy: .public) queued=\(self.queue.count) by=\(caller, privacy: .public); nothing is declared, the queue waits")
+                    // A newer form lets the stands rest; the queue waits either way.
+                    _ = await restsAfterRefusal(kind: Self.standsKind, scope: "", reason: reason, by: caller)
                     return
                 }
             } catch {
@@ -975,6 +1063,15 @@ final class MaerSyncSession {
         guard let fetched else {
             // The service holds no pot yet: the next write is the first.
             standsVersion = nil
+            persist()
+            _ = takesForm(Self.standsKind, nil, by: caller)
+            return true
+        }
+        guard takesForm(Self.standsKind, fetched, by: caller) else {
+            // Nothing of a newer form is read. The version is taken, so
+            // the next write meets the service's gate of the form, and its
+            // refusal starts the rest with the sentence the page shows.
+            standsVersion = fetched.etag
             persist()
             return true
         }
@@ -1041,7 +1138,7 @@ final class MaerSyncSession {
     }
 
     private func sendPlaylists(by caller: String) async {
-        guard !halted, !unreadKinds.contains(Self.playlistsKind) else { return }
+        guard !halted, !unreadKinds.contains(Self.playlistsKind), formatHolds[Self.playlistsKind] == nil else { return }
         let generation = identityGeneration
         var attempt = 0
         while generation == identityGeneration, let access, let body = playlistsPending, attempt < Self.writeAttempts {
@@ -1085,7 +1182,9 @@ final class MaerSyncSession {
                     // runner keeps its lists, the write does not clobber.
                     lastRefusal = MaerSyncRefusal(kind: Self.playlistsKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC playlists refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    if playlistsPending == body { playlistsPending = nil }
+                    // At rest the body waits for the build that reads the form.
+                    let resting = await restsAfterRefusal(kind: Self.playlistsKind, scope: "", reason: reason, by: caller)
+                    if !resting, playlistsPending == body { playlistsPending = nil }
                     persist()
                     return
                 }
@@ -1119,6 +1218,13 @@ final class MaerSyncSession {
         guard let fetched else {
             // The service holds none yet: the next write is the first.
             if playlistsVersion != nil { playlistsVersion = nil; persist() }
+            _ = takesForm(Self.playlistsKind, nil, by: caller)
+            return false
+        }
+        guard takesForm(Self.playlistsKind, fetched, by: caller) else {
+            // As for the stands: the version, never the body.
+            playlistsVersion = fetched.etag
+            persist()
             return false
         }
         guard fetched.etag != playlistsVersion else { return false }
@@ -1155,7 +1261,7 @@ final class MaerSyncSession {
     }
 
     private func sendChoices(by caller: String) async {
-        guard !halted, !unreadKinds.contains(Self.choicesKind) else { return }
+        guard !halted, !unreadKinds.contains(Self.choicesKind), formatHolds[Self.choicesKind] == nil else { return }
         let generation = identityGeneration
         var attempt = 0
         while generation == identityGeneration, let access, let body = choicesPending, attempt < Self.writeAttempts {
@@ -1192,7 +1298,9 @@ final class MaerSyncSession {
                     // write does not clobber.
                     lastRefusal = MaerSyncRefusal(kind: Self.choicesKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC choices refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    if choicesPending == body { choicesPending = nil }
+                    // At rest the body waits for the build that reads the form.
+                    let resting = await restsAfterRefusal(kind: Self.choicesKind, scope: "", reason: reason, by: caller)
+                    if !resting, choicesPending == body { choicesPending = nil }
                     persist()
                     return
                 }
@@ -1224,6 +1332,13 @@ final class MaerSyncSession {
         unreadKinds.remove(Self.choicesKind)
         guard let fetched else {
             if choicesVersion != nil { choicesVersion = nil; persist() }
+            _ = takesForm(Self.choicesKind, nil, by: caller)
+            return false
+        }
+        guard takesForm(Self.choicesKind, fetched, by: caller) else {
+            // As for the stands: the version, never the body.
+            choicesVersion = fetched.etag
+            persist()
             return false
         }
         guard fetched.etag != choicesVersion else { return false }
@@ -1307,7 +1422,7 @@ final class MaerSyncSession {
     }
 
     private func send(_ family: ScopedFamily, by caller: String) async {
-        guard !halted, !unreadKinds.contains(family.kind) else { return }
+        guard !halted, !unreadKinds.contains(family.kind), formatHolds[family.kind] == nil else { return }
         let generation = identityGeneration
         // The pending document waits for the lasting id and goes then.
         guard let scope = deviceId() else {
@@ -1354,7 +1469,9 @@ final class MaerSyncSession {
                 case .refused(let reason):
                     lastRefusal = MaerSyncRefusal(kind: family.kind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC \(family.kind, privacy: .public) refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    if family.pending == body { family.pending = nil }
+                    // At rest the document waits for the build that reads the form.
+                    let resting = await restsAfterRefusal(kind: family.kind, scope: scope, reason: reason, by: caller)
+                    if !resting, family.pending == body { family.pending = nil }
                     return
                 }
             } catch {

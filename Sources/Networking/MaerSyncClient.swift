@@ -195,8 +195,17 @@ nonisolated struct MaerSyncRefusal: Equatable, Sendable {
 /// or no document, is no reason to rest.
 nonisolated enum MaerSyncFormatHold {
     static func rests(own: Int, stored: Int?) -> Bool {
-        false
+        guard let stored else { return false }
+        return stored > own
     }
+}
+
+/// One kind at rest: the form the service holds, and the refusal that
+/// started the rest, for the settings page after a launch.
+nonisolated struct MaerSyncRest: Codable, Equatable, Sendable {
+    var format: Int
+    var reason: String
+    var at: Double
 }
 
 /// The questions the carriers ask the service. Small on purpose: a
